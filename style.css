@@ -124,6 +124,66 @@ main {
   color: var(--accent);
 }
 
+.dashboard {
+  margin-top: 3.5rem;
+  text-align: center;
+}
+
+.dashboard summary {
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.dashboard summary::-webkit-details-marker {
+  display: none;
+}
+
+.dashboard summary::after {
+  content: " +";
+}
+
+.dashboard[open] summary::after {
+  content: " –";
+}
+
+.dashboard summary:hover {
+  color: var(--accent);
+}
+
+.dashboard-list {
+  list-style: none;
+  margin: 1.4rem 0 0;
+  padding: 0;
+  text-align: left;
+}
+
+.dashboard-list li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.55rem 0.25rem;
+  border-top: 1px solid var(--hairline);
+  font-size: 0.78rem;
+}
+
+.dashboard-list li:last-child {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.dashboard-name {
+  color: var(--ink);
+}
+
+.dashboard-status {
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
 footer {
   text-align: center;
   margin-top: 3.5rem;
