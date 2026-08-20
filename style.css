@@ -92,6 +92,13 @@ main {
   border-bottom: 1px solid var(--hairline);
 }
 
+.menu .divider {
+  width: 32px;
+  height: 1px;
+  background: var(--accent);
+  margin: 1.8rem auto;
+}
+
 .menu a {
   display: flex;
   align-items: baseline;
