@@ -161,6 +161,10 @@ main {
   text-align: left;
 }
 
+.dashboard-list + .dashboard-list {
+  margin-top: 1.4rem;
+}
+
 .dashboard-list li {
   display: flex;
   align-items: baseline;
