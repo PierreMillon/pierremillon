@@ -29,7 +29,7 @@
 
   #over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:#000000cc;color:#f3efe2;font-size:28px;z-index:9}
 
-  #joyzone{display:none;position:fixed;left:0;top:var(--topbar-h);bottom:var(--bottombar-h);width:55%;z-index:3;touch-action:none}
+  #joyzone{display:none;position:fixed;left:0;right:0;top:var(--topbar-h);bottom:var(--bottombar-h);z-index:3;touch-action:none}
   #joy-base,#joy-knob{display:none;position:fixed;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:4}
   #joy-base{width:88px;height:88px;background:#00000018;border:1px solid #00000030}
   #joy-knob{width:40px;height:40px;background:#00000040}
@@ -185,6 +185,7 @@ document.addEventListener('click', e => {
 // numéro de version : résumé en un coup d'œil de ce qui a changé au
 // dernier push. Chaque nouvelle version pousse une entrée en tête ici.
 const CHANGELOG = [
+  { v: 7, text: "Correctif : le jeu se figeait dès le 1er ennemi (bug bloquant) ; joystick actif sur tout l'écran" },
   { v: 6, text: "Numéro de version cliquable (ce mini-historique) ; le menu pointe vers Bastion Orbit" },
   { v: 5, text: "Déplacement libre sur tout l'écran ; tours sans barre de vie (leur hauteur = leur vie)" },
   { v: 4, text: "Tri des calques par profondeur, pour un recouvrement visuel correct" },
@@ -263,7 +264,7 @@ function spawnEnemy(){
   const margin = 30;
   const baseX = margin + Math.random() * Math.max(1, STAGE_W - margin*2);
   const isAttacker = Math.random() < 0.3;
-  const speed = (0.9 + wave*0.12) * (TW/64);
+  const speed = 0.9 + wave*0.12;
   const e = {
     x: baseX, y: 6, baseX,
     driftPhase: Math.random()*Math.PI*2,
