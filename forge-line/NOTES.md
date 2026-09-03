@@ -9,12 +9,19 @@ Format condensé — l'idée, pas la formulation exacte.
 
 ## 🚧 En cours
 
-- (rien en cours pour l'instant — voir "à faire" ci-dessous pour la file)
+- **Grille de construction — À REVOIR** : la v11 a remplacé la grille
+  isométrique (losange) par une grille carrée invisible, à cause d'un
+  espacement irrégulier constaté. Correction reçue : ce n'est pas ce qui
+  était demandé — c'est bien la grille en perspective isométrique
+  elle-même qui doit être utilisée (message coupé, la suite doit
+  préciser sur quoi/comment). Piste : l'irrégularité venait probablement
+  de la façon dont la case cible était calculée (case du joueur + décalage
+  fixe), pas d'un défaut inévitable des grilles en losange — à corriger
+  proprement plutôt qu'à contourner avec une grille carrée. **Ne pas
+  retoucher tant que la précision demandée n'est pas arrivée.**
 
 ## 📋 À faire (demandé, pas encore fait)
 
-- Ralentir la vitesse des ennemis de 20%
-- Augmenter la vitesse de tir des tours de 20%
 - Le joueur a une "santé" visuelle : à chaque fois qu'il est attaqué par
   un ennemi (le but des ennemis reste le château/la ligne, pas le joueur,
   mais s'ils l'attaquent quand même ça compte), il ne rétrécit pas mais sa
@@ -23,6 +30,12 @@ Format condensé — l'idée, pas la formulation exacte.
   5%. Régénération : zones tampon marquées au sol près de la base — en
   rester dans une, la vie remonte (+1 point flottant affiché) au rythme
   d'environ 1 point/0,5s.
+- **Thème Vikings** : les ennemis débarquent d'un bateau (à récupérer/
+  s'inspirer du sprite bateau du jeu "Knight Wars" — autre projet du
+  portfolio — et l'adapter). Le bateau apparaît en haut de la carte, les
+  ennemis y sont "dedans" au début de la vague puis en descendent
+  progressivement. Bande d'eau bleue tout en haut (zone de plage), le bas
+  de la carte reste la zone du château fort à défendre.
 
 ## 💭 Idées à explorer plus tard (pas encore décidées)
 
@@ -71,17 +84,20 @@ Format condensé — l'idée, pas la formulation exacte.
   HTML, production seulement si le concept plaît — pour économiser les
   tokens. Chaque changement testé (Playwright si besoin) puis poussé sur
   GitHub Pages directement (pas de longue attente en review).
-- **Grille de construction** : demandé au départ comme une grille
-  isométrique (losange) façon skin du jeu. Testé et abandonné : une
-  grille en losange donne un espacement irrégulier entre cases voisines
-  selon l'endroit exact où le joueur se tient (vérifié par calcul), donc
-  de vraies brèches dans un "mur" censé être continu. Remplacée par une
-  grille carrée simple et invisible (l'isométrique reste juste le style
-  de dessin des tours) — espacement uniforme garanti. Construire cible
-  la case juste au-dessus du joueur (côté ennemis) ; pas de concept de
-  "mur" séparé, ce sont plusieurs tours posées côte à côte qui bloquent
-  physiquement — approche "composants simples type LEGO". Grille
-  affichable en debug via le menu (gris discret sur le fond beige).
+- **Grille de construction (v11, remise en cause)** : voir 🚧 "En cours"
+  ci-dessus — la v11 avait remplacé la grille isométrique par une grille
+  carrée invisible pour garantir un espacement uniforme entre tours,
+  mais ce n'est pas ce qui était demandé. À reprendre avec une vraie
+  grille isométrique dès que la précision arrive.
+- **Bug corrigé (v12)** : les ennemis "sautaient" visiblement au moment
+  où ils commençaient à bouger (juste après l'apparition, ou après une
+  hésitation). Cause : la position de départ ne correspondait pas à la
+  formule utilisée pour le mouvement (ondulation gauche-droite), donc le
+  premier calcul de position produisait un saut au lieu d'un glissement
+  continu. Corrigé en calculant la position initiale avec la même
+  formule — vérifié : saut nul.
+- **Équilibrage (v12)** : vitesse des ennemis -20%, vitesse de tir des
+  tours +20% (le joueur garde son propre rythme de tir).
 
 ## 📜 Historique des versions (résumé)
 
@@ -96,3 +112,6 @@ Format condensé — l'idée, pas la formulation exacte.
 - v9 : vagues organiques, tours-murs (collision), or au kill, bruitages,
   écran de défaite repensé
 - v10 : or/kill réduit à 1, correctif audio (débloqué au 1er geste)
+- v11 : grille de construction (carrée — à revoir, voir 🚧 ci-dessus)
+- v12 : correctif du saut visuel des ennemis au démarrage du mouvement,
+  vitesse ennemis -20%, vitesse de tir des tours +20%
