@@ -158,13 +158,13 @@
   <div class="stat">Vague <span id="waveNum">1</span></div>
   <div class="stat">🪙 <span id="goldNum">0</span></div>
   <div class="spacer"></div>
-  <button id="versionBtn">v0.3</button>
+  <button id="versionBtn">v0.4</button>
 </div>
 
 <div id="changelog" hidden>
-  <div><b>v0.3</b> — bandeaux haut/bas, réparation auto des tourelles, château réduit, perso ralenti et recentré sur l'ellipse</div>
+  <div><b>v0.4</b> — taille ÷3, vague 1 auto, fenêtres sur les murs, douves + buissons à esquiver, réparation au marteau (par à-coups + son), tirs sonores, rotation avec inertie</div>
+  <div><b>v0.3</b> — bandeaux, tourelles auto-réparées, perso recentré et ralenti</div>
   <div><b>v0.2</b> — boucle complète : orbite, combat auto, vagues, tourelles</div>
-  <div><b>v0.1</b> — premier test : cylindre + croix qui tourne</div>
 </div>
 
 <button id="nextWave" hidden>Vague suivante</button>
@@ -194,7 +194,7 @@
     H = canvas.height = innerHeight;
     cx = W / 2;
     cy = H * 0.46;
-    scale = Math.min(W, H) / 310;
+    scale = Math.min(W, H) / 930; // /3 from v0.3 — was too tall on short viewports
   }
   addEventListener('resize', resize);
   resize();
@@ -218,20 +218,50 @@
     return d;
   }
 
+  // ---- sound: tiny synthesized effects, no external assets ----
+  let actx = null;
+  function ensureAudio() {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    } else if (actx.state === 'suspended') {
+      actx.resume();
+    }
+  }
+  function beep({ freq, freqEnd = freq, dur = 0.12, type = 'triangle', vol = 0.3 }) {
+    if (!actx) return;
+    const t0 = actx.currentTime;
+    const osc = actx.createOscillator();
+    const gain = actx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(freqEnd, 20), t0 + dur);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(actx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+  const playHammer = () => beep({ freq: 180, freqEnd: 75, dur: 0.16, type: 'triangle', vol: 0.35 });
+  const playShoot = () => beep({ freq: 520, freqEnd: 180, dur: 0.07, type: 'square', vol: 0.12 });
+
   // ---- world constants ----
-  const R = 49;                 // castle radius (-30% from v2)
+  const R = 49;                 // castle radius
   const BASE_R = R + 25;        // ring where enemies stop and hit the wall
   const SPAWN_R = 480;          // enemies appear well off-screen
-  const CASTLE_MAX_H = 208;     // -20% from v2
+  const CASTLE_MAX_H = 208;
   const CASTLE_MIN_H = 16;
   const JUMP_H = 56;            // castle height at/below which enemies can jump up
   const ATTACK_RANGE = 260;
-  const ANGLE_SPEED = 1.6;      // rad/s, player catching up to camera (half speed)
+  const ANGLE_SPEED = 1.6;      // rad/s, player catching up to camera
   const RADIAL_SPEED = 90;      // units/s, player moving in/out
   const PLAYER_R = R * 0.78;    // stand a bit inside the rim, not hanging off the edge
   const TURRET_HEAL = 4;        // hp/s while player repairs a turret
-  const CASTLE_HEAL = 18;       // height/s while player repairs at center
+  const REPAIR_TICK = 0.5;      // s between hammer hits on the castle
+  const CASTLE_HEAL_STEP = 8;   // height gained per hammer hit
   const N_SEG = 24;
+  const WINDOW_ANGLES = [0.6, 3.4];
 
   const circlePts = [];
   for (let i = 0; i <= N_SEG; i++) {
@@ -239,9 +269,25 @@
     circlePts.push({ a, cx: Math.cos(a), cz: Math.sin(a) });
   }
 
+  // moat: sparse, irregularly placed bushes enemies steer around
+  const BUSHES = [
+    { a: 0.2, r: 90 }, { a: 0.9, r: 105 }, { a: 1.7, r: 92 }, { a: 2.6, r: 114 },
+    { a: 3.3, r: 88 }, { a: 4.1, r: 108 }, { a: 5.0, r: 95 }, { a: 5.7, r: 118 }
+  ].map(b => {
+    const x = b.r * Math.cos(b.a), z = b.r * Math.sin(b.a);
+    const n = 1 + (b.a * 7 % 1 > 0.5 ? 1 : 0); // 1 or 2 clumped spheres, deterministic
+    const offs = [];
+    for (let i = 0; i < n; i++) {
+      offs.push({ dx: (Math.sin(b.a * 13 + i) ) * 5, dz: (Math.cos(b.a * 9 + i)) * 5 });
+    }
+    return { x, z, angle: b.a, offs };
+  });
+  const BUSH_RADIUS = 20;
+
   // ---- game state ----
   const state = {
     theta: 0,
+    omega: 0, // angular velocity for drag inertia
     castleH: 128,
     gold: 0,
     wave: 1,
@@ -254,11 +300,12 @@
     projectiles: [],
     player: {
       angle: 0,
-      r: R,
+      r: PLAYER_R,
       behavior: 'combat', // combat | repairTurret | repairCastle
       hp: 5,
       maxHp: 5,
-      atkTimer: 0
+      atkTimer: 0,
+      repairTimer: REPAIR_TICK
     }
   };
 
@@ -296,6 +343,7 @@
 
   function fire(from, target, dmg) {
     state.projectiles.push({ from, target, t: 0, dmg, dur: 0.18 });
+    playShoot();
   }
 
   function nearestEnemyTo(pos, range) {
@@ -337,14 +385,44 @@
     document.getElementById('goldNum').textContent = state.gold;
   }
 
-  // ---- input: drag to orbit ----
-  let dragging = false, lastX = 0;
-  canvas.addEventListener('pointerdown', e => { dragging = true; lastX = e.clientX; });
+  // steer an approaching enemy around any bush it would otherwise walk into —
+  // a flat circle-vs-circle push in the (x,z) plane, same trick as any
+  // top-down game's unit separation; the "3D" is only in how it's drawn
+  function avoidBushes(e) {
+    let x = e.r * Math.cos(e.angle), z = e.r * Math.sin(e.angle);
+    for (const b of BUSHES) {
+      const dx = x - b.x, dz = z - b.z;
+      const d = Math.hypot(dx, dz);
+      if (d < BUSH_RADIUS && d > 0.001) {
+        const push = BUSH_RADIUS - d;
+        x += (dx / d) * push;
+        z += (dz / d) * push;
+      }
+    }
+    e.r = Math.hypot(x, z);
+    e.angle = Math.atan2(z, x);
+  }
+
+  // ---- input: drag to orbit, with inertia after a fast flick ----
+  let dragging = false, lastX = 0, lastT = 0;
+  canvas.addEventListener('pointerdown', e => {
+    ensureAudio();
+    dragging = true;
+    state.omega = 0;
+    lastX = e.clientX;
+    lastT = performance.now();
+  });
   canvas.addEventListener('pointermove', e => {
     if (!dragging) return;
+    const now = performance.now();
     const dx = e.clientX - lastX;
+    const dt = Math.max((now - lastT) / 1000, 0.001);
+    const dTheta = dx * 0.006;
+    state.theta += dTheta;
+    const instOmega = dTheta / dt;
+    state.omega = state.omega * 0.7 + instOmega * 0.3;
     lastX = e.clientX;
-    state.theta += dx * 0.006;
+    lastT = now;
   });
   canvas.addEventListener('pointerup', () => dragging = false);
   canvas.addEventListener('pointercancel', () => dragging = false);
@@ -378,6 +456,14 @@
   function update(dt) {
     const p = state.player;
 
+    // camera: follow finger while dragging, otherwise coast on inertia and
+    // decay (fast flick keeps spinning briefly, a controlled stop is exact)
+    if (!dragging) {
+      state.theta += state.omega * dt;
+      state.omega *= Math.pow(0.06, dt);
+      if (Math.abs(state.omega) < 0.02) state.omega = 0;
+    }
+
     // decide behavior: fight if a threat is near the camera-guarded spot,
     // otherwise auto-repair the nearest damaged turret, else heal the castle
     const guardPos = worldPos(PLAYER_R, state.theta, state.castleH);
@@ -405,9 +491,17 @@
 
     if (p.behavior === 'repairTurret' && Math.abs(angDiff(p.angle, targetAngle)) < 0.12 && Math.abs(p.r - PLAYER_R) < 6) {
       damagedTurret.hp = Math.min(damagedTurret.maxHp, damagedTurret.hp + TURRET_HEAL * dt);
-    }
-    if (p.behavior === 'repairCastle' && p.r < 8) {
-      state.castleH = Math.min(CASTLE_MAX_H, state.castleH + CASTLE_HEAL * dt);
+    } else if (p.behavior === 'repairCastle' && p.r < 8) {
+      // repairs in visible, audible increments — one hammer hit per notch,
+      // not a smooth ramp — even while enemies chip the wall continuously
+      p.repairTimer -= dt;
+      if (p.repairTimer <= 0) {
+        state.castleH = Math.min(CASTLE_MAX_H, state.castleH + CASTLE_HEAL_STEP);
+        playHammer();
+        p.repairTimer = REPAIR_TICK;
+      }
+    } else {
+      p.repairTimer = REPAIR_TICK;
     }
 
     // spawning
@@ -431,6 +525,7 @@
       e.hop += dt * 4;
       if (e.state === 'approach') {
         e.r -= e.speed * dt;
+        avoidBushes(e);
         if (e.r <= BASE_R) { e.r = BASE_R; e.state = 'attackBase'; e.timer = 1.2; }
       } else if (e.state === 'attackBase') {
         e.timer -= dt;
@@ -517,12 +612,35 @@
     const tops = circlePts.map(c => project(R * c.cx, topY, R * c.cz, rot));
     const bots = circlePts.map(c => project(R * c.cx, botY, R * c.cz, rot));
 
+    // depth-sort the wall quads so the near side is always painted last —
+    // fixes back-side quads (and windows) sometimes drawing over the front
+    const quads = [];
     for (let i = 0; i < N_SEG; i++) {
       const mid = (circlePts[i].a + circlePts[i + 1].a) / 2;
-      const light = 0.55 + 0.35 * Math.cos(mid - Math.PI * 0.75);
-      const g = Math.round(120 * light + 40);
-      ctx.fillStyle = `rgb(${g + 45},${g + 32},${g})`;
-      buildQuad([tops[i], tops[i + 1], bots[i + 1], bots[i]]);
+      const depth = (tops[i].depth + tops[i + 1].depth + bots[i].depth + bots[i + 1].depth) / 4;
+      quads.push({ i, mid, depth, pts: [tops[i], tops[i + 1], bots[i + 1], bots[i]] });
+    }
+    quads.sort((a, b) => a.depth - b.depth);
+
+    for (const q of quads) {
+      // kept clearly darker/more saturated than the beige background at
+      // every angle, so the wall doesn't wash out into it (was read as
+      // "transparent" before)
+      const light = 0.45 + 0.25 * Math.cos(q.mid - Math.PI * 0.75);
+      const g = Math.round(90 * light + 55);
+      ctx.fillStyle = `rgb(${g + 50},${g + 35},${g + 5})`;
+      buildQuad(q.pts);
+
+      for (const wa of WINDOW_ANGLES) {
+        if (Math.abs(angDiff(q.mid, wa)) < Math.PI / N_SEG) {
+          const wp = project(R * 0.99 * Math.cos(wa), topY * 0.55, R * 0.99 * Math.sin(wa), rot);
+          const ww = 5 * scale, wh = 9 * scale;
+          ctx.fillStyle = '#241c14';
+          ctx.fillRect(wp.x - ww / 2, wp.y - wh / 2, ww, wh);
+          ctx.fillStyle = 'rgba(217,185,138,0.6)';
+          ctx.fillRect(wp.x - ww / 2, wp.y - wh / 2, ww, wh * 0.3);
+        }
+      }
     }
 
     ctx.fillStyle = '#c2b393';
@@ -565,6 +683,20 @@
     ctx.beginPath();
     ctx.arc(top.x, top.y, 6 * scale * 0.4 + 4, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  function drawBush(b, rot) {
+    for (const o of b.offs) {
+      const pos = project(b.x + o.dx, 0, b.z + o.dz, rot);
+      const rad = 7 * scale;
+      const g = ctx.createRadialGradient(pos.x - rad * 0.3, pos.y - rad * 0.3, 1, pos.x, pos.y, rad);
+      g.addColorStop(0, '#7ea457');
+      g.addColorStop(1, '#385226');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(pos.x, pos.y, rad, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function drawEnemy(e, rot) {
@@ -628,11 +760,12 @@
     // the ellipse (the iso basis itself is rotated 45° from rx/rz)
     const rot = state.theta - Math.PI / 4;
 
-    const shadowPts = circlePts.map(c => project(BASE_R * 1.15 * c.cx, 0, BASE_R * 1.15 * c.cz, rot));
-    ctx.fillStyle = 'rgba(74,63,44,0.12)';
+    // moat ring around the base
+    const moatPts = circlePts.map(c => project((BASE_R + 50) * c.cx, 0, (BASE_R + 50) * c.cz, rot));
+    ctx.fillStyle = 'rgba(94,128,150,0.35)';
     ctx.beginPath();
-    ctx.moveTo(shadowPts[0].x, shadowPts[0].y);
-    for (let i = 1; i < shadowPts.length; i++) ctx.lineTo(shadowPts[i].x, shadowPts[i].y);
+    ctx.moveTo(moatPts[0].x, moatPts[0].y);
+    for (let i = 1; i < moatPts.length; i++) ctx.lineTo(moatPts[i].x, moatPts[i].y);
     ctx.closePath();
     ctx.fill();
 
@@ -640,8 +773,11 @@
     for (const e of state.enemies) (Math.cos(e.angle - rot) < 0 ? far : near).push(e);
     const farTowers = state.towers.filter(t => Math.cos(t.angle - rot) < 0);
     const nearTowers = state.towers.filter(t => Math.cos(t.angle - rot) >= 0);
+    const farBushes = BUSHES.filter(b => Math.cos(b.angle - rot) < 0);
+    const nearBushes = BUSHES.filter(b => Math.cos(b.angle - rot) >= 0);
     const playerFar = Math.cos(state.player.angle - rot) < 0;
 
+    for (const b of farBushes) drawBush(b, rot);
     for (const e of far) drawEnemy(e, rot);
     for (const t of farTowers) drawTower(t, rot);
     if (playerFar) drawPlayer(rot);
@@ -650,6 +786,7 @@
 
     for (const e of near) drawEnemy(e, rot);
     for (const t of nearTowers) drawTower(t, rot);
+    for (const b of nearBushes) drawBush(b, rot);
     if (!playerFar) drawPlayer(rot);
 
     for (const pr of state.projectiles) drawProjectile(pr, rot);
@@ -662,6 +799,7 @@
     render();
     requestAnimationFrame(loop);
   }
+  startWave(); // wave 1 begins immediately, no waiting on an empty screen
   requestAnimationFrame(loop);
 })();
 </script>
