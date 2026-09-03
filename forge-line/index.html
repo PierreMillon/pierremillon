@@ -14,7 +14,6 @@
   #menu-panel a, #menu-panel .disabled{display:block;padding:10px 14px;font-size:14px;color:#3a3529;text-decoration:none}
   #menu-panel a:hover{background:#00000010}
   #menu-panel .disabled{opacity:.45;cursor:default}
-  #menu-panel .current{background:#00000010;font-weight:600}
 
   #version-btn{margin-left:auto;margin-right:12px;padding:6px 10px;border-radius:8px;border:1px solid #00000030;background:#00000010;color:#3a3529;font-size:13px;font-family:inherit;cursor:pointer}
   #version-panel{display:none;position:fixed;top:calc(var(--topbar-h) + 6px);right:10px;background:#faf6ea;border:1px solid #00000025;border-radius:10px;box-shadow:0 6px 18px #00000022;min-width:230px;max-width:280px;z-index:10;padding:10px 14px;font-size:13px;line-height:1.7}
@@ -44,7 +43,6 @@
 <div id="topbar">
   <button id="menu-btn" aria-label="Menu">☰</button>
   <div id="menu-panel">
-    <a class="current">Forge Line</a>
     <a href="../bastion-orbit/">Bastion Orbit</a>
   </div>
   <button id="version-btn" aria-label="Historique des versions"></button>
@@ -185,6 +183,7 @@ document.addEventListener('click', e => {
 // numéro de version : résumé en un coup d'œil de ce qui a changé au
 // dernier push. Chaque nouvelle version pousse une entrée en tête ici.
 const CHANGELOG = [
+  { v: 8, text: "Menu : retiré le lien vers soi-même, ne reste que Bastion Orbit" },
   { v: 7, text: "Correctif : le jeu se figeait dès le 1er ennemi (bug bloquant) ; joystick actif sur tout l'écran" },
   { v: 6, text: "Numéro de version cliquable (ce mini-historique) ; le menu pointe vers Bastion Orbit" },
   { v: 5, text: "Déplacement libre sur tout l'écran ; tours sans barre de vie (leur hauteur = leur vie)" },
