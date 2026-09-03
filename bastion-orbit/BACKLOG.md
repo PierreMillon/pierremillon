@@ -41,6 +41,30 @@ place pour percer des trous dans le rebord et y verser de l'huile
 bouillante sur les ennemis en bas. Pas encore de mécanique, juste rendu
 possible par la plateforme.
 
+## Principe directeur : éviter la froideur mécanique
+
+Dit en conversation sur Forge Line, valable pour les deux jeux : le défaut
+classique des jeux de ce genre, c'est des ennemis trop prévisibles — tous à
+la même vitesse, qui avancent en rang, qui attaquent chacun leur tour comme
+dans les films de kung-fu où 40 sbires attendent poliment leur tour face au
+héros. On veut l'inverse : un bazar organique, humain, imprévisible.
+
+La méthode : pas une grosse IA compliquée à coder d'un coup, mais plein de
+petites règles locales et simples qui s'appliquent à chaque ennemi
+individuellement, et qui interagissent entre elles pour faire émerger des
+comportements de groupe qu'on n'a jamais explicitement programmés. Exemple
+donné : "si je suis proche d'un collègue, +1 attaque mais -1 vitesse."
+(Ça rejoint directement l'idée des engins de siège ci-dessus — c'est
+exactement ce genre de règle locale qui, empilée, fait émerger un
+comportement de groupe complexe.)
+
+Effet secondaire voulu, pas un risque à corriger : si le joueur reste
+passif (ne sort pas attaquer, laisse les vagues s'accumuler), le système
+doit pouvoir laisser les ennemis "attendre" et se regrouper en une attaque
+massive plus tard plutôt que d'arriver au compte-goutte indéfiniment — ce
+genre de moment surprenant et non scripté est le but recherché, pas un bug
+à empêcher.
+
 ## Notes de contexte (pour ne rien perdre)
 
 - "Tour" = les tourelles construites par le joueur (créneaux/cubes) ;
