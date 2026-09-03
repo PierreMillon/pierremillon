@@ -16,6 +16,11 @@
   #menu-panel .disabled{opacity:.45;cursor:default}
   #menu-panel .current{background:#00000010;font-weight:600}
 
+  #version-btn{margin-left:auto;margin-right:12px;padding:6px 10px;border-radius:8px;border:1px solid #00000030;background:#00000010;color:#3a3529;font-size:13px;font-family:inherit;cursor:pointer}
+  #version-panel{display:none;position:fixed;top:calc(var(--topbar-h) + 6px);right:10px;background:#faf6ea;border:1px solid #00000025;border-radius:10px;box-shadow:0 6px 18px #00000022;min-width:230px;max-width:280px;z-index:10;padding:10px 14px;font-size:13px;line-height:1.7}
+  #version-panel .v{font-weight:600;margin-right:4px}
+  #version-panel .row:not(:last-child){border-bottom:1px solid #00000012;padding-bottom:4px;margin-bottom:4px}
+
   #bottombar{position:fixed;bottom:0;left:0;right:0;height:var(--bottombar-h);display:flex;align-items:center;justify-content:center;background:#00000012;z-index:6}
   #hud{font-size:14px;line-height:1.4;text-align:center}
 
@@ -40,8 +45,10 @@
   <button id="menu-btn" aria-label="Menu">☰</button>
   <div id="menu-panel">
     <a class="current">Forge Line</a>
-    <span class="disabled">Bastion Orbit (bientôt)</span>
+    <a href="../bastion-orbit/">Bastion Orbit</a>
   </div>
+  <button id="version-btn" aria-label="Historique des versions"></button>
+  <div id="version-panel"></div>
 </div>
 
 <div id="stage">
@@ -166,11 +173,39 @@ const menuBtn = document.getElementById('menu-btn');
 const menuPanel = document.getElementById('menu-panel');
 menuBtn.addEventListener('click', e => {
   e.stopPropagation();
+  document.getElementById('version-panel').style.display = 'none';
   menuPanel.style.display = menuPanel.style.display === 'block' ? 'none' : 'block';
 });
 document.addEventListener('click', e => {
   if (menuPanel.style.display === 'block' && !menuPanel.contains(e.target) && e.target !== menuBtn){
     menuPanel.style.display = 'none';
+  }
+});
+
+// numéro de version : résumé en un coup d'œil de ce qui a changé au
+// dernier push. Chaque nouvelle version pousse une entrée en tête ici.
+const CHANGELOG = [
+  { v: 6, text: "Numéro de version cliquable (ce mini-historique) ; le menu pointe vers Bastion Orbit" },
+  { v: 5, text: "Déplacement libre sur tout l'écran ; tours sans barre de vie (leur hauteur = leur vie)" },
+  { v: 4, text: "Tri des calques par profondeur, pour un recouvrement visuel correct" },
+  { v: 3, text: "Carte plein écran, mouvement organique des ennemis, projectiles en sphères" },
+  { v: 2, text: "Contrôles tactiles (joystick, double-tap), style isométrique beige" },
+  { v: 1, text: "Prototype initial : ingénieur, tours, vagues d'ennemis" },
+];
+const versionBtn = document.getElementById('version-btn');
+const versionPanel = document.getElementById('version-panel');
+versionBtn.textContent = 'v' + CHANGELOG[0].v;
+versionPanel.innerHTML = CHANGELOG.map(c =>
+  `<div class="row"><span class="v">v${c.v}</span>${c.text}</div>`
+).join('');
+versionBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  menuPanel.style.display = 'none';
+  versionPanel.style.display = versionPanel.style.display === 'block' ? 'none' : 'block';
+});
+document.addEventListener('click', e => {
+  if (versionPanel.style.display === 'block' && !versionPanel.contains(e.target) && e.target !== versionBtn){
+    versionPanel.style.display = 'none';
   }
 });
 
