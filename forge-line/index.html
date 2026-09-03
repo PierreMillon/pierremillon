@@ -54,7 +54,6 @@
   <button id="menu-btn" aria-label="Menu">☰</button>
   <div id="menu-panel">
     <a href="../bastion-orbit/">Bastion Orbit</a>
-    <a href="https://pierremillon.github.io/knight-wars/">Knight Wars</a>
   </div>
   <button id="version-btn" aria-label="Historique des versions"></button>
   <div id="version-panel"></div>
@@ -147,7 +146,7 @@ const SHOT_INTERVAL_MS = 1000;
 const PLAYER_DMG = 12;
 const BASE_ENEMY_HP = 12;
 const WAVE_GROWTH = 1.2; // chaque vague est 20% plus forte que la précédente
-const KILL_REWARD = 4;   // or gagné en tuant un ennemi (rien s'il atteint la ligne)
+const KILL_REWARD = 1;   // or gagné en tuant un ennemi (rien s'il atteint la ligne)
 
 // --- petits bruitages synthétisés (aucun fichier audio, tout est généré) ---
 let audioCtx = null;
@@ -156,6 +155,15 @@ function getAudioCtx(){
   if (audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
+// les navigateurs (surtout iOS) bloquent le son tant qu'aucun vrai geste
+// utilisateur n'a débloqué l'AudioContext. Comme les premiers sons du jeu
+// (tir automatique, impact) partent du fond de la boucle de jeu et pas
+// directement d'un clic, on la débloque explicitement au tout premier
+// contact avec l'écran, sinon TOUS les sons restent muets pour la partie.
+function unlockAudioOnce(){ getAudioCtx(); }
+window.addEventListener('pointerdown', unlockAudioOnce, { once: true, passive: true });
+window.addEventListener('touchstart', unlockAudioOnce, { once: true, passive: true });
+window.addEventListener('keydown', unlockAudioOnce, { once: true });
 function playTone({ freq=440, freqEnd=null, duration=0.05, type='sine', gain=0.15 }){
   const ac = getAudioCtx(), t0 = ac.currentTime;
   const osc = ac.createOscillator();
@@ -185,18 +193,18 @@ function playNoiseBurst({ duration=0.03, gain=0.15, filterFreq=2000, filterType=
   src.start(t0);
 }
 // tir : un déclic sec, comme un grain de riz qui casse
-function sfxShoot(){ playNoiseBurst({ duration: 0.02, gain: 0.12, filterFreq: 3200, filterType: 'bandpass', filterQ: 4 }); }
+function sfxShoot(){ playNoiseBurst({ duration: 0.025, gain: 0.22, filterFreq: 3200, filterType: 'bandpass', filterQ: 4 }); }
 // impact sur un ennemi : le même déclic, un peu plus aigu et plus sourd
-function sfxHit(){ playNoiseBurst({ duration: 0.03, gain: 0.14, filterFreq: 4200, filterType: 'bandpass', filterQ: 2.2 }); }
+function sfxHit(){ playNoiseBurst({ duration: 0.035, gain: 0.24, filterFreq: 4200, filterType: 'bandpass', filterQ: 2.2 }); }
 // construction : clank métallique, clinquant mais pas aigu
 function sfxBuild(){
-  playTone({ freq: 520, freqEnd: 300, duration: 0.12, type: 'triangle', gain: 0.14 });
-  playTone({ freq: 780, freqEnd: 500, duration: 0.08, type: 'square', gain: 0.06 });
-  playNoiseBurst({ duration: 0.05, gain: 0.08, filterFreq: 2500, filterType: 'bandpass', filterQ: 3 });
+  playTone({ freq: 520, freqEnd: 300, duration: 0.14, type: 'triangle', gain: 0.22 });
+  playTone({ freq: 780, freqEnd: 500, duration: 0.09, type: 'square', gain: 0.10 });
+  playNoiseBurst({ duration: 0.06, gain: 0.14, filterFreq: 2500, filterType: 'bandpass', filterQ: 3 });
 }
 // une tour encaisse : coup de marteau sur bois sec, court et grave
 function sfxTowerHit(){
-  playTone({ freq: 160, freqEnd: 90, duration: 0.05, type: 'sine', gain: 0.16 });
+  playTone({ freq: 160, freqEnd: 90, duration: 0.06, type: 'sine', gain: 0.26 });
   playNoiseBurst({ duration: 0.02, gain: 0.06, filterFreq: 700, filterType: 'lowpass' });
 }
 
@@ -274,6 +282,7 @@ document.addEventListener('click', e => {
 // numéro de version : résumé en un coup d'œil de ce qui a changé au
 // dernier push. Chaque nouvelle version pousse une entrée en tête ici.
 const CHANGELOG = [
+  { v: 10, text: "Or : 1 par kill (au lieu de 4) ; correctif son (l'audio n'était jamais débloqué, donc muet)" },
   { v: 9, text: "Vagues organiques (salves, hésitations), tours = murs solides qui flashent quand touchées, or au kill seulement, bruitages, écran de défaite repensé (continuer/recommencer)" },
   { v: 8, text: "Menu : retiré le lien vers soi-même, ne reste que Bastion Orbit" },
   { v: 7, text: "Correctif : le jeu se figeait dès le 1er ennemi (bug bloquant) ; joystick actif sur tout l'écran" },
