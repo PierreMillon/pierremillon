@@ -144,6 +144,22 @@ const TOWER_FLASH_MS = 160; // durée du flash translucide quand une tour encais
 const player = { x: 0, y: 0 };
 let playerPlaced = false;
 
+// santé du joueur : les ennemis visent le château, pas lui — mais s'ils
+// se retrouvent au contact, ça compte quand même. Pas de rétrécissement :
+// 10 paliers de couleur jaune -> rouge, chaque palier perdu retire 5% à
+// la cadence de tir du joueur. Se régénère dans la zone tampon près de
+// la base (marquée au sol), au rythme d'un point toutes les 0,5s.
+const PLAYER_MAX_HEALTH = 10;
+const PLAYER_CONTACT_RANGE = 26;
+const PLAYER_DAMAGE_RATE = 0.02; // points perdus par frame au contact
+const PLAYER_FLASH_MS = 120;
+const REGEN_TICK_MS = 500;
+const REGEN_ZONE = { x: 0, y: 0, r: 60 }; // x/y recalculés au resize (près du spawn)
+let playerHealth = PLAYER_MAX_HEALTH;
+let playerFlashUntil = 0;
+let lastRegenTickAt = 0;
+let floatingTexts = []; // {x, y, text, createdAt, color}
+
 function resizeCanvas(){
   const dpr = window.devicePixelRatio || 1;
   const rect = stage.getBoundingClientRect();
@@ -153,6 +169,8 @@ function resizeCanvas(){
   cv.style.width = STAGE_W + 'px';
   cv.style.height = STAGE_H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // on dessine ensuite en pixels CSS
+
+  REGEN_ZONE.x = STAGE_W/2; REGEN_ZONE.y = STAGE_H - 50;
 
   if (!playerPlaced){
     player.x = STAGE_W/2; player.y = STAGE_H - 70;
@@ -324,6 +342,7 @@ document.getElementById('grid-toggle').addEventListener('click', e => {
 // numéro de version : résumé en un coup d'œil de ce qui a changé au
 // dernier push. Chaque nouvelle version pousse une entrée en tête ici.
 const CHANGELOG = [
+  { v: 14, text: "Santé du joueur : couleur jaune→rouge (10 paliers), cadence de tir réduite, régénération en zone tampon près de la base" },
   { v: 13, text: "Grille isométrique restaurée pour la construction ; thème Vikings (bateau, plage) — les ennemis débarquent" },
   { v: 12, text: "Correctif : saut visuel des ennemis au démarrage du mouvement ; ennemis -20% vitesse, tours +20% cadence de tir" },
   { v: 11, text: "Grille de construction (carrée, invisible) pour poser des tours côte à côte sans trou ; grille affichable en debug (menu)" },
@@ -435,7 +454,10 @@ function spawnEnemy(){
 }
 
 function playerShoot(now){
-  if (now - lastShotAt < SHOT_INTERVAL_MS) return;
+  // chaque palier de dégâts encaissé retire 5% à la cadence de tir
+  const dmgStage = Math.round(PLAYER_MAX_HEALTH - playerHealth); // 0 (plein) à 10 (à bout)
+  const effectiveInterval = SHOT_INTERVAL_MS / Math.max(0.5, 1 - dmgStage*0.05);
+  if (now - lastShotAt < effectiveInterval) return;
   let target = null, best = PLAYER_RANGE_PX;
   for (const e of enemies){
     const d = Math.hypot(e.x-player.x, e.y-player.y);
@@ -470,6 +492,25 @@ function update(now){
   player.y = Math.max(MARGIN, Math.min(STAGE_H-MARGIN, player.y));
 
   tryRepair(); // automatique dès qu'on est collé à une tour endommagée
+
+  // les ennemis visent le château, pas le joueur — mais s'ils se
+  // retrouvent au contact, ça compte quand même : dégâts + flash rouge
+  for (const e of enemies){
+    if (Math.hypot(e.x-player.x, e.y-player.y) < PLAYER_CONTACT_RANGE){
+      playerHealth = Math.max(0, playerHealth - PLAYER_DAMAGE_RATE);
+      playerFlashUntil = now + PLAYER_FLASH_MS;
+    }
+  }
+  // régénération dans la zone tampon près de la base, +1 point / 0,5s,
+  // avec un petit "+1" flottant pour le montrer
+  if (playerHealth < PLAYER_MAX_HEALTH && Math.hypot(player.x-REGEN_ZONE.x, player.y-REGEN_ZONE.y) < REGEN_ZONE.r){
+    if (now - lastRegenTickAt >= REGEN_TICK_MS){
+      playerHealth = Math.min(PLAYER_MAX_HEALTH, playerHealth + 1);
+      lastRegenTickAt = now;
+      floatingTexts.push({ x: player.x, y: player.y - 20, text: '+1', createdAt: now, color: '#4a9d4a' });
+    }
+  }
+  floatingTexts = floatingTexts.filter(f => now - f.createdAt < 700);
 
   playerShoot(now);
 
@@ -639,6 +680,13 @@ function draw(now){
     ctx.drawImage(boatImg, STAGE_W/2 - BOAT_W/2, WATER_H - BOAT_H*0.6, BOAT_W, BOAT_H);
   }
 
+  // zone tampon de régénération près de la base, marquée au sol
+  const regenGrad = ctx.createRadialGradient(REGEN_ZONE.x, REGEN_ZONE.y, 0, REGEN_ZONE.x, REGEN_ZONE.y, REGEN_ZONE.r);
+  regenGrad.addColorStop(0, '#7fc97f55');
+  regenGrad.addColorStop(1, '#7fc97f00');
+  ctx.fillStyle = regenGrad;
+  ctx.beginPath(); ctx.arc(REGEN_ZONE.x, REGEN_ZONE.y, REGEN_ZONE.r, 0, Math.PI*2); ctx.fill();
+
   if (showGrid) drawDebugGrid();
 
   const layers = [];
@@ -676,12 +724,37 @@ function draw(now){
     }});
   }
 
+  // couleur du joueur : jaune (plein) -> rouge (à bout), + flash bref au
+  // moment d'un coup encaissé
+  const healthT = 1 - playerHealth/PLAYER_MAX_HEALTH; // 0 sain -> 1 à bout
+  const flashing2 = now < playerFlashUntil;
+  const pTop = flashing2 ? '#ff5c5c' : lerpColor('#f7d67a', '#c23f3f', healthT);
+  const pLeft = flashing2 ? '#e04040' : lerpColor('#e0b04e', '#9c2f2f', healthT);
+  const pRight = flashing2 ? '#b52c2c' : lerpColor('#b98a34', '#6e1f1f', healthT);
   layers.push({ y: player.y, draw: () => {
-    drawIsoBox(player.x, player.y, PLAYER_HW, PLAYER_HH, PLAYER_SH, '#f7d67a', '#e0b04e', '#b98a34');
+    drawIsoBox(player.x, player.y, PLAYER_HW, PLAYER_HH, PLAYER_SH, pTop, pLeft, pRight);
   }});
 
   layers.sort((a, b) => a.y - b.y);
   for (const l of layers) l.draw();
+
+  for (const f of floatingTexts){
+    const t = (now - f.createdAt) / 700;
+    ctx.globalAlpha = Math.max(0, 1-t);
+    ctx.fillStyle = f.color;
+    ctx.font = 'bold 13px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(f.text, f.x, f.y - t*18);
+    ctx.globalAlpha = 1;
+  }
+}
+
+function lerpColor(hexA, hexB, t){
+  const a = parseInt(hexA.slice(1), 16), b = parseInt(hexB.slice(1), 16);
+  const ar=(a>>16)&255, ag=(a>>8)&255, ab=a&255;
+  const br=(b>>16)&255, bg=(b>>8)&255, bb=b&255;
+  const r = Math.round(ar+(br-ar)*t), g = Math.round(ag+(bg-ag)*t), bl = Math.round(ab+(bb-ab)*t);
+  return `rgb(${r},${g},${bl})`;
 }
 
 // écran de défaite : « continuer » pardonne juste les brèches (comme une
@@ -693,9 +766,10 @@ document.getElementById('continue-btn').addEventListener('click', () => {
   document.getElementById('over').style.display = 'none';
 });
 document.getElementById('restart-btn').addEventListener('click', () => {
-  towers = []; enemies = []; projectiles = [];
+  towers = []; enemies = []; projectiles = []; floatingTexts = [];
   gold = 0; wave = 1; breaches = 0; gameOver = false;
   spawned = 0; enemiesThisWave = 5; spawnTimer = 0; spawnInterval = pickNextSpawnDelay();
+  playerHealth = PLAYER_MAX_HEALTH; playerFlashUntil = 0; lastRegenTickAt = 0;
   player.x = STAGE_W/2; player.y = STAGE_H - 70;
   document.getElementById('over').style.display = 'none';
 });

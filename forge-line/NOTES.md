@@ -13,18 +13,31 @@ Format condensé — l'idée, pas la formulation exacte.
 
 ## 📋 À faire (demandé, pas encore fait)
 
-- Le joueur a une "santé" visuelle : à chaque fois qu'il est attaqué par
-  un ennemi (le but des ennemis reste le château/la ligne, pas le joueur,
-  mais s'ils l'attaquent quand même ça compte), il ne rétrécit pas mais sa
-  couleur vire progressivement du jaune au rouge (~10 paliers), avec un
-  flash rouge au moment du coup. Chaque palier réduit sa vitesse de tir de
-  5%. Régénération : zones tampon marquées au sol près de la base — en
-  rester dans une, la vie remonte (+1 point flottant affiché) au rythme
-  d'environ 1 point/0,5s.
+- **Bateau par vague + orientation** : la pointe du bateau (l'avant) doit
+  pointer vers le bas/l'intérieur des terres (ils arrivent depuis la mer,
+  donc la proue touche la plage en premier) — actuellement le sprite est
+  utilisé tel quel, à retourner. Le bateau doit avoir une légère rotation
+  aléatoire à chaque fois ("posé à l'arrache", pas parfaitement droit). À
+  chaque nouvelle vague, un nouveau bateau arrive (petite animation
+  d'accostage) et se pose à un endroit différent (pas toujours centré) —
+  les ennemis de cette vague sortent de CE bateau-là. Cohérent avec le
+  système de salves déjà en place (1, 2 ou 3 qui sortent à la fois).
 
 ## 💭 Idées à explorer plus tard (pas encore décidées)
 
-- (aucune en attente pour l'instant)
+- **Principe directeur : éviter la froideur mécanique** (vaut aussi pour
+  Bastion Orbit, noté dans son BACKLOG.md). Le défaut classique : ennemis
+  trop prévisibles, tous à la même vitesse, qui attaquent chacun leur tour
+  façon figurants de film de kung-fu. Voulu à la place : un bazar organique,
+  humain, imprévisible. Méthode envisagée : pas une grosse IA d'un coup,
+  mais plein de petites règles locales par ennemi qui interagissent entre
+  elles et font émerger des comportements de groupe non programmés
+  explicitement (exemple donné : "si je suis proche d'un collègue, +1
+  attaque mais -1 vitesse"). Effet secondaire voulu, pas un bug à éviter :
+  si le joueur reste passif, les ennemis pourraient s'accumuler (plusieurs
+  bateaux) puis attaquer en masse d'un coup, plutôt qu'arriver au
+  compte-goutte indéfiniment. Pas encore de règle concrète choisie — à
+  développer par petites touches, une règle à la fois.
 
 ## ✅ Décisions prises
 
@@ -92,6 +105,12 @@ Format condensé — l'idée, pas la formulation exacte.
   portfolio). Les ennemis apparaissent groupés au pied du bateau plutôt
   que dispersés sur toute la largeur, comme s'ils en débarquaient. Le
   reste de la carte (sous la plage) reste le château fort à défendre.
+- **Santé du joueur (v14)** : 10 paliers de couleur jaune → rouge (pas de
+  rétrécissement), flash rouge bref à chaque coup encaissé au contact
+  d'un ennemi (les ennemis visent le château, pas le joueur, mais le
+  contact compte quand même). Chaque palier perdu retire 5% à la cadence
+  de tir. Régénération dans une zone tampon marquée au sol près de la
+  base (halo vert), +1 point toutes les 0,5s avec un "+1" flottant.
 
 ## 📜 Historique des versions (résumé)
 
@@ -111,3 +130,5 @@ Format condensé — l'idée, pas la formulation exacte.
   vitesse ennemis -20%, vitesse de tir des tours +20%
 - v13 : grille isométrique restaurée (le carré était une fausse bonne
   idée), thème Vikings (bateau, plage)
+- v14 : santé du joueur (couleur jaune → rouge, cadence de tir réduite,
+  régénération en zone tampon)
