@@ -9,16 +9,7 @@ Format condensé — l'idée, pas la formulation exacte.
 
 ## 🚧 En cours
 
-- **Grille de construction — À REVOIR** : la v11 a remplacé la grille
-  isométrique (losange) par une grille carrée invisible, à cause d'un
-  espacement irrégulier constaté. Correction reçue : ce n'est pas ce qui
-  était demandé — c'est bien la grille en perspective isométrique
-  elle-même qui doit être utilisée (message coupé, la suite doit
-  préciser sur quoi/comment). Piste : l'irrégularité venait probablement
-  de la façon dont la case cible était calculée (case du joueur + décalage
-  fixe), pas d'un défaut inévitable des grilles en losange — à corriger
-  proprement plutôt qu'à contourner avec une grille carrée. **Ne pas
-  retoucher tant que la précision demandée n'est pas arrivée.**
+- (rien en cours — voir "à faire" ci-dessous)
 
 ## 📋 À faire (demandé, pas encore fait)
 
@@ -30,12 +21,6 @@ Format condensé — l'idée, pas la formulation exacte.
   5%. Régénération : zones tampon marquées au sol près de la base — en
   rester dans une, la vie remonte (+1 point flottant affiché) au rythme
   d'environ 1 point/0,5s.
-- **Thème Vikings** : les ennemis débarquent d'un bateau (à récupérer/
-  s'inspirer du sprite bateau du jeu "Knight Wars" — autre projet du
-  portfolio — et l'adapter). Le bateau apparaît en haut de la carte, les
-  ennemis y sont "dedans" au début de la vague puis en descendent
-  progressivement. Bande d'eau bleue tout en haut (zone de plage), le bas
-  de la carte reste la zone du château fort à défendre.
 
 ## 💭 Idées à explorer plus tard (pas encore décidées)
 
@@ -84,11 +69,14 @@ Format condensé — l'idée, pas la formulation exacte.
   HTML, production seulement si le concept plaît — pour économiser les
   tokens. Chaque changement testé (Playwright si besoin) puis poussé sur
   GitHub Pages directement (pas de longue attente en review).
-- **Grille de construction (v11, remise en cause)** : voir 🚧 "En cours"
-  ci-dessus — la v11 avait remplacé la grille isométrique par une grille
-  carrée invisible pour garantir un espacement uniforme entre tours,
-  mais ce n'est pas ce qui était demandé. À reprendre avec une vraie
-  grille isométrique dès que la précision arrive.
+- **Grille de construction (v13, corrigée)** : la v11 avait remplacé la
+  grille isométrique par une grille carrée invisible, sur la base d'un
+  test d'espacement (mesuré tous les 60px) qui semblait irrégulier.
+  Correction reçue : ce n'était pas voulu. Refait un test fin (tous les
+  1px) qui a montré que l'irrégularité était un artefact du test grossier
+  — la grille en losange fonctionne bien nativement (chaque case voisine
+  touche la précédente par un bord complet, en zigzag vertical régulier,
+  normal pour un quadrillage en losange). Grille isométrique restaurée.
 - **Bug corrigé (v12)** : les ennemis "sautaient" visiblement au moment
   où ils commençaient à bouger (juste après l'apparition, ou après une
   hésitation). Cause : la position de départ ne correspondait pas à la
@@ -98,6 +86,12 @@ Format condensé — l'idée, pas la formulation exacte.
   formule — vérifié : saut nul.
 - **Équilibrage (v12)** : vitesse des ennemis -20%, vitesse de tir des
   tours +20% (le joueur garde son propre rythme de tir).
+- **Thème Vikings (v13)** : bande d'eau bleue tout en haut de la carte
+  (la plage), bateau viking centré dessus — icône reprise à l'identique
+  du sprite `boat-icon.png` du jeu Knight Wars (autre projet du
+  portfolio). Les ennemis apparaissent groupés au pied du bateau plutôt
+  que dispersés sur toute la largeur, comme s'ils en débarquaient. Le
+  reste de la carte (sous la plage) reste le château fort à défendre.
 
 ## 📜 Historique des versions (résumé)
 
@@ -115,3 +109,5 @@ Format condensé — l'idée, pas la formulation exacte.
 - v11 : grille de construction (carrée — à revoir, voir 🚧 ci-dessus)
 - v12 : correctif du saut visuel des ennemis au démarrage du mouvement,
   vitesse ennemis -20%, vitesse de tir des tours +20%
+- v13 : grille isométrique restaurée (le carré était une fausse bonne
+  idée), thème Vikings (bateau, plage)

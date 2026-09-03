@@ -103,19 +103,35 @@ const SHOT_SPEED_PX = 8;     // px/frame
 const TOWER_MAX_SH = 28, TOWER_HW = 10, TOWER_HH = 5;
 const PLAYER_HW = 9, PLAYER_HH = 5, PLAYER_SH = 14;
 
+// thème débarquement viking : une bande d'eau tout en haut (la plage),
+// un bateau d'où sortent les ennemis — le reste de la carte est le
+// château fort qu'on défend. Icône du bateau reprise du jeu Knight Wars.
+const WATER_H = 46;
+const BOAT_W = 74, BOAT_H = 74;
+const boatImg = new Image();
+boatImg.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMYAAADGCAYAAACJm/9dAAACh0lEQVR4nO3dMYoDMRAAQeu4/39ZF9jJQSdaEOsVVQ8w66CZZBiNOecL+O/n7g+AbyQMCMKAIAwIwoAgDAjCgCAMCMKAIAwIv3d/wBONMbbs0cw5x47fZZ2JAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhishb7vWPHaxPrKXiQFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEI5eCdl4zWPHz77G2LPlYX1knYkBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBA8HPPxDasxK9+wa32ENxMDgjAgCAOCMCAIA4IwIAgDgjAgCAOCMCA87krI0x54eRoXRd5MDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCEc/HPO0Cyi7eGRmnYkBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAHh6CshrmNwlYkBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAFBGBCEAUEYEIQBQRgQhAHh6Cshc867P+EruJayzsSAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAIAwIwoBw9JUQ1zG4ysSAIAwIwoAgDAjCgCAMCMKAIAwIwoAgDAjj5MdVxhjn/rkFc067MYtMDAjCgCAMCMKAIAwIwoAgDAjCgCAMCMKAcPRKCFxlYkAQBgRhQBAGBGFAEAYEYUAQBgRhQBAGBGFAEAYEYUAQBgRhQBAGBGFAEAYEYUAQBgRhQBAGBGFAEAYEYUAQBgRhQBAGBGFAEAYEYUAQBoQ/r102hM4RmYEAAAAASUVORK5CYII=';
+
 // grille de construction : invisible en jeu normal (affichable en debug),
 // sert uniquement à caler les tours pour qu'on puisse en coller plusieurs
 // côte à côte et former une vraie ligne continue — pas de contrainte sur
 // le joueur/les ennemis, qui restent en mouvement libre.
-// Grille carrée simple (pas tournée façon losange isométrique) : une
-// grille en losange donnait un espacement irrégulier entre cases voisines
-// selon l'endroit exact où le joueur se tenait — donc de vraies brèches
-// dans le "mur". Une grille carrée garantit un espacement uniforme.
-// L'isométrique reste le style de dessin des tours (drawIsoBox), pas la
-// grille de placement elle-même.
-const GRID_CELL = 36;
+// Grille isométrique (losange), comme demandé. Un premier test grossier
+// (échantillons tous les 60px) avait fait croire à un espacement
+// irrégulier — un test fin (tous les 1px) a montré que c'était un
+// artefact d'échantillonnage : la grille avance bien case par case de
+// façon cohérente (chaque case voisine touche la précédente par un bord
+// complet), juste en zigzag vertical ±TH/2 le long d'une marche — normal
+// pour un quadrillage en losange. Les tours restent scellées entre elles
+// (distance entre cases voisines < 2×TOWER_SOLID_RADIUS).
+const GRID_TW = 48, GRID_TH = 24;
 let showGrid = false;
-function snapToGrid(v){ return Math.round(v / GRID_CELL) * GRID_CELL; }
+function gridToScreen(gx, gy){
+  return { x: (gx-gy)*GRID_TW/2, y: (gx+gy)*GRID_TH/2 };
+}
+function screenToGridCell(x, y){
+  const a = x / (GRID_TW/2), b = y / (GRID_TH/2);
+  return { gx: Math.round((a+b)/2), gy: Math.round((b-a)/2) };
+}
 
 // le pied de la tour est un obstacle solide : personne ne peut marcher
 // dessus (joueur comme ennemis), et c'est cette limite qui compte pour
@@ -236,8 +252,9 @@ function isControl(el){ return el && el.closest && el.closest('#topbar, #bottomb
 // se chevaucher, et forment une ligne de blocage continue
 function tryBuild(){
   if (gold < 10) return;
-  const bx = snapToGrid(player.x);
-  const by = snapToGrid(player.y) - GRID_CELL;
+  const cell = screenToGridCell(player.x, player.y);
+  const target = gridToScreen(cell.gx, cell.gy - 1);
+  const bx = target.x, by = target.y + GRID_TH;
   for (const t of towers) if (Math.hypot(t.x-bx, t.y-by) < 10) return; // case déjà occupée
   gold -= 10;
   towers.push({ x: bx, y: by, hp: 30, maxHp: 30, lastShotAt: 0, flashUntil: 0, lastHitSoundAt: 0 });
@@ -307,6 +324,7 @@ document.getElementById('grid-toggle').addEventListener('click', e => {
 // numéro de version : résumé en un coup d'œil de ce qui a changé au
 // dernier push. Chaque nouvelle version pousse une entrée en tête ici.
 const CHANGELOG = [
+  { v: 13, text: "Grille isométrique restaurée pour la construction ; thème Vikings (bateau, plage) — les ennemis débarquent" },
   { v: 12, text: "Correctif : saut visuel des ennemis au démarrage du mouvement ; ennemis -20% vitesse, tours +20% cadence de tir" },
   { v: 11, text: "Grille de construction (carrée, invisible) pour poser des tours côte à côte sans trou ; grille affichable en debug (menu)" },
   { v: 10, text: "Or : 1 par kill (au lieu de 4) ; correctif son (l'audio n'était jamais débloqué, donc muet)" },
@@ -386,13 +404,14 @@ function pickNearestTower(x, y){
 // la détruire ; les autres (rushers) descendent l'écran verticalement avec
 // une ondulation gauche-droite aléatoire — l'illusion d'une foule, pas de
 // tanks alignés sur la grille isométrique
+// les ennemis débarquent du bateau : ils apparaissent groupés à sa base,
+// pas dispersés au hasard sur toute la largeur de l'écran
 function spawnEnemy(){
   const hp = Math.round(BASE_ENEMY_HP * Math.pow(WAVE_GROWTH, wave-1));
-  const margin = 30;
-  const baseX = margin + Math.random() * Math.max(1, STAGE_W - margin*2);
+  const baseX = STAGE_W/2 + (Math.random()-0.5) * BOAT_W * 0.85;
   const isAttacker = Math.random() < 0.3;
   const speed = (0.9 + wave*0.12) * 0.8; // -20% par rapport à la version précédente
-  const startY = 6;
+  const startY = WATER_H - 4; // au pied du bateau, sur la plage
   const driftPhase = Math.random()*Math.PI*2;
   const driftAmp = 16 + Math.random()*24;
   const driftFreq = 0.01 + Math.random()*0.01;
@@ -583,18 +602,43 @@ function drawIsoBox(cx, cyBase, hw, hh, sh, colTop, colLeft, colRight, stacked){
 // debug : dessine la grille de construction (gris, un peu plus foncé que
 // le fond) pour vérifier visuellement l'alignement des tours
 function drawDebugGrid(){
+  const corners = [[0,0],[STAGE_W,0],[0,STAGE_H],[STAGE_W,STAGE_H]];
+  let minGx=Infinity, maxGx=-Infinity, minGy=Infinity, maxGy=-Infinity;
+  for (const [x,y] of corners){
+    const c = screenToGridCell(x,y);
+    minGx = Math.min(minGx,c.gx); maxGx = Math.max(maxGx,c.gx);
+    minGy = Math.min(minGy,c.gy); maxGy = Math.max(maxGy,c.gy);
+  }
   ctx.strokeStyle = '#00000028';
   ctx.lineWidth = 1;
-  const startX = Math.floor(0 / GRID_CELL) * GRID_CELL;
-  const startY = Math.floor(0 / GRID_CELL) * GRID_CELL;
-  ctx.beginPath();
-  for (let x = startX; x <= STAGE_W; x += GRID_CELL){ ctx.moveTo(x, 0); ctx.lineTo(x, STAGE_H); }
-  for (let y = startY; y <= STAGE_H; y += GRID_CELL){ ctx.moveTo(0, y); ctx.lineTo(STAGE_W, y); }
-  ctx.stroke();
+  for (let gy=minGy-1; gy<=maxGy+1; gy++){
+    for (let gx=minGx-1; gx<=maxGx+1; gx++){
+      const p = gridToScreen(gx, gy);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x+GRID_TW/2, p.y+GRID_TH/2);
+      ctx.lineTo(p.x, p.y+GRID_TH);
+      ctx.lineTo(p.x-GRID_TW/2, p.y+GRID_TH/2);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
 }
 
 function draw(now){
   ctx.clearRect(0, 0, STAGE_W, STAGE_H); // fond beige uni (posé par le CSS du canvas), aucune ligne de sol
+
+  // la plage : une bande d'eau tout en haut, le bateau viking d'où
+  // débarquent les ennemis — le reste de la carte est le château fort
+  const grad = ctx.createLinearGradient(0, 0, 0, WATER_H);
+  grad.addColorStop(0, '#6fa8c9');
+  grad.addColorStop(1, '#a9cfe0');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, STAGE_W, WATER_H);
+  if (boatImg.complete && boatImg.naturalWidth){
+    ctx.drawImage(boatImg, STAGE_W/2 - BOAT_W/2, WATER_H - BOAT_H*0.6, BOAT_W, BOAT_H);
+  }
+
   if (showGrid) drawDebugGrid();
 
   const layers = [];
