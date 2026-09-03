@@ -395,40 +395,54 @@ function drawIsoBox(cx, cyBase, hw, hh, sh, colTop, colLeft, colRight, stacked){
   }
 }
 
+// l'illusion de 3D tient uniquement à l'ordre de dessin : ce qui est plus
+// bas à l'écran (donc plus "proche") est redessiné par-dessus le reste —
+// pas de vraie profondeur, juste des calques bien triés
 function draw(){
   ctx.clearRect(0, 0, STAGE_W, STAGE_H); // fond beige uni (posé par le CSS du canvas), aucune ligne de sol
+
+  const layers = [];
 
   for (const k in grid){
     const [tx,ty] = k.split(',').map(Number);
     const t = grid[k];
     const gp = groundPoint(tx,ty);
-    drawIsoBox(gp.x, gp.y, 10, 5, 28, '#8fb3e8', '#5b8dd9', '#3f66a8', true);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(gp.x-12, gp.y-50, 24, 4);
-    ctx.fillStyle = t.hp/t.maxHp > 0.4 ? '#6cd66c' : '#d96c6c';
-    ctx.fillRect(gp.x-12, gp.y-50, 24*(t.hp/t.maxHp), 4);
+    layers.push({ y: gp.y, draw: () => {
+      drawIsoBox(gp.x, gp.y, 10, 5, 28, '#8fb3e8', '#5b8dd9', '#3f66a8', true);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(gp.x-12, gp.y-50, 24, 4);
+      ctx.fillStyle = t.hp/t.maxHp > 0.4 ? '#6cd66c' : '#d96c6c';
+      ctx.fillRect(gp.x-12, gp.y-50, 24*(t.hp/t.maxHp), 4);
+    }});
   }
 
-  // ennemis : boules
   for (const e of enemies){
-    const grad = ctx.createRadialGradient(e.x-3, e.y-11, 1, e.x, e.y-8, 9);
-    grad.addColorStop(0, '#f2a3a3');
-    grad.addColorStop(1, '#c33f3f');
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(e.x, e.y-8, 8, 0, Math.PI*2); ctx.fill();
+    layers.push({ y: e.y, draw: () => {
+      const grad = ctx.createRadialGradient(e.x-3, e.y-11, 1, e.x, e.y-8, 9);
+      grad.addColorStop(0, '#f2a3a3');
+      grad.addColorStop(1, '#c33f3f');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(e.x, e.y-8, 8, 0, Math.PI*2); ctx.fill();
+    }});
   }
 
-  // projectiles (joueur et tours) : petites sphères noires
   for (const pr of projectiles){
-    const grad = ctx.createRadialGradient(pr.x-1.5, pr.y-1.5, 0.5, pr.x, pr.y, 4);
-    grad.addColorStop(0, '#4a4a4a');
-    grad.addColorStop(1, '#000000');
-    ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(pr.x, pr.y, 4, 0, Math.PI*2); ctx.fill();
+    layers.push({ y: pr.y, draw: () => {
+      const grad = ctx.createRadialGradient(pr.x-1.5, pr.y-1.5, 0.5, pr.x, pr.y, 4);
+      grad.addColorStop(0, '#4a4a4a');
+      grad.addColorStop(1, '#000000');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(pr.x, pr.y, 4, 0, Math.PI*2); ctx.fill();
+    }});
   }
 
   const pgp = groundPoint(player.gx, player.gy);
-  drawIsoBox(pgp.x, pgp.y, 9, 5, 14, '#f7d67a', '#e0b04e', '#b98a34');
+  layers.push({ y: pgp.y, draw: () => {
+    drawIsoBox(pgp.x, pgp.y, 9, 5, 14, '#f7d67a', '#e0b04e', '#b98a34');
+  }});
+
+  layers.sort((a, b) => a.y - b.y);
+  for (const l of layers) l.draw();
 }
 
 function loop(ts){
