@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Bastion Orbit — test cylindre</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #e9dfc7;
+    overflow: hidden;
+    touch-action: none;
+    font-family: system-ui, sans-serif;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cylinder {
+    position: relative;
+    width: 3cm;
+    height: 5cm;
+  }
+
+  .body {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: calc(100% - 1cm);
+    background: #a99a7c;
+    border-left: 1px solid #8c7d61;
+    border-right: 1px solid #8c7d61;
+  }
+
+  .top {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 1cm;
+    border-radius: 50%;
+    background: #c2b393;
+    border: 1px solid #8c7d61;
+  }
+
+  .cross {
+    position: absolute;
+    inset: 0;
+  }
+
+  .cross span {
+    position: absolute;
+    background: #4a3f2c;
+  }
+
+  .cross .h {
+    top: 50%;
+    left: 8%;
+    width: 84%;
+    height: 2px;
+    transform: translateY(-1px);
+  }
+
+  .cross .v {
+    left: 50%;
+    top: 8%;
+    height: 84%;
+    width: 2px;
+    transform: translateX(-1px) scaleY(0.3);
+  }
+
+  .hint {
+    position: absolute;
+    bottom: 6%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    color: #8c7d61;
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="cylinder">
+    <div class="body"></div>
+    <div class="top">
+      <div class="cross" id="cross">
+        <span class="h"></span>
+        <span class="v"></span>
+      </div>
+    </div>
+  </div>
+  <div class="hint">Fais glisser pour tourner</div>
+</div>
+
+<script>
+  const cross = document.getElementById('cross');
+  let angle = 0;
+  let dragging = false;
+  let lastX = 0;
+  const sensitivity = 0.5; // degrés par pixel
+
+  function apply() {
+    cross.style.transform = 'rotate(' + angle + 'deg)';
+  }
+
+  window.addEventListener('pointerdown', e => {
+    dragging = true;
+    lastX = e.clientX;
+  });
+
+  window.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    lastX = e.clientX;
+    angle += dx * sensitivity;
+    apply();
+  });
+
+  window.addEventListener('pointerup', () => dragging = false);
+  window.addEventListener('pointercancel', () => dragging = false);
+</script>
+
+</body>
+</html>
