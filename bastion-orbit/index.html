@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Bastion Orbit</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #e9dfc7;
+    touch-action: none;
+    font-family: system-ui, sans-serif;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  #game {
+    position: fixed;
+    inset: 0;
+    display: block;
+  }
+
+  #hud {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    color: #4a3f2c;
+    font-size: 13px;
+    pointer-events: none;
+  }
+
+  #hud .stat { display: flex; align-items: center; gap: 6px; }
+
+  .bar {
+    width: 90px;
+    height: 8px;
+    background: rgba(74,63,44,0.15);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .bar > div { height: 100%; background: #7a8f5c; }
+
+  #controls {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    z-index: 10;
+  }
+
+  #controls button {
+    flex: 1;
+    max-width: 160px;
+    padding: 12px 8px;
+    border: none;
+    border-radius: 10px;
+    background: #4a3f2c;
+    color: #f2ead9;
+    font-size: 13px;
+    font-family: inherit;
+  }
+
+  #controls button:disabled { opacity: 0.4; }
+
+  #controls button.active { background: #7a8f5c; }
+
+  #nextWave {
+    position: fixed;
+    left: 50%;
+    bottom: 78px;
+    transform: translateX(-50%);
+    padding: 12px 22px;
+    border: none;
+    border-radius: 10px;
+    background: #b5482e;
+    color: #f2ead9;
+    font-size: 14px;
+    font-family: inherit;
+    z-index: 10;
+  }
+
+  #nextWave[hidden] { display: none; }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(35,28,18,0.85);
+    color: #f2ead9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+    padding: 20px;
+  }
+
+  #overlay[hidden] { display: none; }
+
+  #overlay button {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 10px;
+    background: #b5482e;
+    color: #f2ead9;
+    font-size: 15px;
+    font-family: inherit;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="stat">Vague <span id="waveNum">1</span></div>
+  <div class="stat">🪙 <span id="goldNum">0</span></div>
+  <div class="stat">Château <div class="bar"><div id="castleBar" style="width:100%"></div></div></div>
+</div>
+
+<button id="nextWave" hidden>Vague suivante</button>
+
+<div id="controls">
+  <button id="repairBtn">Réparer</button>
+  <button id="towerBtn">Tourelle (🪙5)</button>
+</div>
+
+<div id="overlay" hidden>
+  <div id="overlayText"></div>
+  <button id="restartBtn">Recommencer</button>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  let W, H, cx, cy, scale;
+
+  function resize() {
+    W = canvas.width = innerWidth;
+    H = canvas.height = innerHeight;
+    cx = W / 2;
+    cy = H * 0.44;
+    scale = Math.min(W, H) / 310;
+  }
+  addEventListener('resize', resize);
+  resize();
+
+  // ---- isometric projection (no perspective: parallel/axonometric) ----
+  const cosIso = Math.cos(Math.PI / 6);
+  const sinIso = Math.sin(Math.PI / 6);
+
+  function project(x, y, z, rot) {
+    const rx = x * Math.cos(rot) + z * Math.sin(rot);
+    const rz = -x * Math.sin(rot) + z * Math.cos(rot);
+    const sx = (rx - rz) * cosIso;
+    const sy = (rx + rz) * sinIso - y;
+    return { x: cx + sx * scale, y: cy + sy * scale, depth: rx + rz };
+  }
+
+  function angDiff(a, b) {
+    let d = (b - a) % (Math.PI * 2);
+    if (d > Math.PI) d -= Math.PI * 2;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return d;
+  }
+
+  // ---- world constants ----
+  const R = 70;                // castle radius
+  const BASE_R = 95;           // ring where enemies stop and hit the wall
+  const SPAWN_R = 480;         // enemies appear well off-screen
+  const CASTLE_MAX_H = 260;
+  const CASTLE_MIN_H = 20;
+  const JUMP_H = 70;           // castle height at/below which enemies can jump up
+  const N_SEG = 24;
+
+  const circlePts = [];
+  for (let i = 0; i <= N_SEG; i++) {
+    const a = (i / N_SEG) * Math.PI * 2;
+    circlePts.push({ a, cx: Math.cos(a), cz: Math.sin(a) });
+  }
+
+  // ---- game state ----
+  const state = {
+    theta: 0,
+    castleH: 160,
+    gold: 0,
+    wave: 1,
+    waveState: 'prep', // prep | active | cleared | gameover
+    toSpawn: 0,
+    spawnTimer: 0,
+    spawnInterval: 0.9,
+    enemies: [],
+    towers: [],
+    projectiles: [],
+    player: {
+      angle: 0,
+      mode: 'defend', // defend | repair
+      hp: 5,
+      maxHp: 5,
+      atkTimer: 0
+    }
+  };
+
+  function worldPos(r, a, y) {
+    return { x: r * Math.cos(a), y, z: r * Math.sin(a) };
+  }
+
+  function playerWorld() {
+    const p = state.player;
+    if (p.mode === 'repair') return worldPos(0, 0, state.castleH);
+    return worldPos(R, p.angle, state.castleH);
+  }
+
+  function spawnEnemy() {
+    state.enemies.push({
+      angle: Math.random() * Math.PI * 2,
+      r: SPAWN_R,
+      speed: 24 + state.wave * 1.5,
+      hp: 2,
+      maxHp: 2,
+      hop: Math.random() * 10,
+      state: 'approach', // approach | attackBase | jumping | onTop
+      timer: 0,
+      jumpFrom: 0,
+      jumpT: 0
+    });
+  }
+
+  function startWave() {
+    state.waveState = 'active';
+    state.toSpawn = 3 + state.wave * 2;
+    state.spawnTimer = 0;
+    state.spawnInterval = Math.max(0.35, 1.1 - state.wave * 0.05);
+    document.getElementById('nextWave').hidden = true;
+  }
+
+  function fire(from, target, dmg) {
+    state.projectiles.push({
+      from, target, t: 0, dmg,
+      dur: 0.18
+    });
+  }
+
+  function nearestEnemyTo(pos, range) {
+    let best = null, bestD = range;
+    for (const e of state.enemies) {
+      if (e.state === 'jumping') continue;
+      const ex = e.r * Math.cos(e.angle), ez = e.r * Math.sin(e.angle);
+      const d = Math.hypot(pos.x - ex, pos.z - ez);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best;
+  }
+
+  function killEnemy(e) {
+    e.dead = true;
+    state.gold += 1;
+    document.getElementById('goldNum').textContent = state.gold;
+  }
+
+  // ---- input: drag to orbit ----
+  let dragging = false, lastX = 0;
+  canvas.addEventListener('pointerdown', e => { dragging = true; lastX = e.clientX; });
+  canvas.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    lastX = e.clientX;
+    state.theta += dx * 0.006;
+  });
+  canvas.addEventListener('pointerup', () => dragging = false);
+  canvas.addEventListener('pointercancel', () => dragging = false);
+
+  // ---- UI ----
+  const repairBtn = document.getElementById('repairBtn');
+  const towerBtn = document.getElementById('towerBtn');
+  const nextWaveBtn = document.getElementById('nextWave');
+  const overlay = document.getElementById('overlay');
+
+  repairBtn.addEventListener('click', () => {
+    const p = state.player;
+    p.mode = p.mode === 'repair' ? 'defend' : 'repair';
+    repairBtn.classList.toggle('active', p.mode === 'repair');
+    repairBtn.textContent = p.mode === 'repair' ? 'Défendre' : 'Réparer';
+  });
+
+  towerBtn.addEventListener('click', () => {
+    if (state.gold < 5 || state.player.mode !== 'defend') return;
+    state.gold -= 5;
+    document.getElementById('goldNum').textContent = state.gold;
+    state.towers.push({ angle: state.player.angle, atkTimer: 0 });
+  });
+
+  nextWaveBtn.addEventListener('click', startWave);
+
+  document.getElementById('restartBtn').addEventListener('click', () => location.reload());
+
+  // ---- update ----
+  let last = performance.now();
+  function update(dt) {
+    const p = state.player;
+
+    // player follows camera angle around the rim, with lag
+    if (p.mode === 'defend') {
+      const maxStep = 3.2 * dt;
+      const d = angDiff(p.angle, state.theta);
+      p.angle += Math.max(-maxStep, Math.min(maxStep, d));
+    } else {
+      state.castleH = Math.min(CASTLE_MAX_H, state.castleH + 18 * dt);
+    }
+
+    // spawning
+    if (state.waveState === 'active' && state.toSpawn > 0) {
+      state.spawnTimer -= dt;
+      if (state.spawnTimer <= 0) {
+        spawnEnemy();
+        state.toSpawn--;
+        state.spawnTimer = state.spawnInterval;
+      }
+    }
+    if (state.waveState === 'active' && state.toSpawn === 0 && state.enemies.length === 0) {
+      state.waveState = 'cleared';
+      state.wave++;
+      document.getElementById('waveNum').textContent = state.wave;
+      nextWaveBtn.hidden = false;
+    }
+
+    // enemies
+    for (const e of state.enemies) {
+      e.hop += dt * 4;
+      if (e.state === 'approach') {
+        e.r -= e.speed * dt;
+        if (e.r <= BASE_R) { e.r = BASE_R; e.state = 'attackBase'; e.timer = 1.2; }
+      } else if (e.state === 'attackBase') {
+        e.timer -= dt;
+        if (e.timer <= 0) {
+          if (state.castleH <= JUMP_H && Math.random() < 0.35) {
+            e.state = 'jumping';
+            e.jumpFrom = e.r;
+            e.jumpT = 0;
+          } else {
+            state.castleH = Math.max(CASTLE_MIN_H, state.castleH - 6);
+            document.getElementById('castleBar').style.width =
+              (100 * (state.castleH - CASTLE_MIN_H) / (CASTLE_MAX_H - CASTLE_MIN_H)) + '%';
+          }
+          e.timer = 1.2;
+        }
+      } else if (e.state === 'jumping') {
+        e.jumpT += dt / 0.6;
+        e.r = e.jumpFrom * (1 - e.jumpT) + R * 0.4 * e.jumpT;
+        if (e.jumpT >= 1) { e.r = R * 0.4; e.state = 'onTop'; e.timer = 1.4; }
+      } else if (e.state === 'onTop') {
+        e.timer -= dt;
+        if (e.timer <= 0) {
+          p.hp -= 1;
+          e.timer = 1.4;
+          if (p.hp <= 0) {
+            state.waveState = 'gameover';
+            document.getElementById('overlayText').textContent =
+              'Tu es tombé à la vague ' + state.wave;
+            overlay.hidden = false;
+          }
+        }
+      }
+    }
+    state.enemies = state.enemies.filter(e => !e.dead);
+
+    // player + tower auto-attack
+    if (p.mode === 'defend') {
+      p.atkTimer -= dt;
+      if (p.atkTimer <= 0) {
+        const from = worldPos(R, p.angle, state.castleH);
+        const target = nearestEnemyTo(from, 260);
+        if (target) { fire(from, target, 1); p.atkTimer = 0.9; }
+      }
+    }
+    for (const t of state.towers) {
+      t.atkTimer -= dt;
+      if (t.atkTimer <= 0) {
+        const from = worldPos(R, t.angle, state.castleH);
+        const target = nearestEnemyTo(from, 260);
+        if (target) { fire(from, target, 1); t.atkTimer = 1.0; }
+      }
+    }
+
+    // projectiles
+    for (const pr of state.projectiles) {
+      pr.t += dt / pr.dur;
+      if (pr.t >= 1 && !pr.done) {
+        pr.done = true;
+        if (!pr.target.dead) {
+          pr.target.hp -= pr.dmg;
+          if (pr.target.hp <= 0) killEnemy(pr.target);
+        }
+      }
+    }
+    state.projectiles = state.projectiles.filter(pr => pr.t < 1.05);
+  }
+
+  // ---- rendering ----
+  function buildQuad(pts) {
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawCastle(rot) {
+    const topY = state.castleH, botY = 0;
+    const tops = circlePts.map(c => project(R * c.cx, topY, R * c.cz, rot));
+    const bots = circlePts.map(c => project(R * c.cx, botY, R * c.cz, rot));
+
+    for (let i = 0; i < N_SEG; i++) {
+      const mid = (circlePts[i].a + circlePts[i + 1].a) / 2;
+      const light = 0.55 + 0.35 * Math.cos(mid - Math.PI * 0.75);
+      const g = Math.round(120 * light + 40);
+      ctx.fillStyle = `rgb(${g + 45},${g + 32},${g})`;
+      buildQuad([tops[i], tops[i + 1], bots[i + 1], bots[i]]);
+    }
+
+    ctx.fillStyle = '#c2b393';
+    ctx.beginPath();
+    ctx.moveTo(tops[0].x, tops[0].y);
+    for (let i = 1; i <= N_SEG; i++) ctx.lineTo(tops[i].x, tops[i].y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#8c7d61';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // rotation cross
+    const a1 = project(R * 0.75, topY, 0, rot);
+    const a2 = project(-R * 0.75, topY, 0, rot);
+    const a3 = project(0, topY, R * 0.75, rot);
+    const a4 = project(0, topY, -R * 0.75, rot);
+    ctx.strokeStyle = '#4a3f2c';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(a3.x, a3.y); ctx.lineTo(a4.x, a4.y); ctx.stroke();
+  }
+
+  function drawTower(t, rot) {
+    const y0 = state.castleH, y1 = state.castleH + 22, s = 10;
+    const a = t.angle;
+    const dx = Math.cos(a) * s, dz = Math.sin(a) * s;
+    const px = R * Math.cos(a), pz = R * Math.sin(a);
+    const corners0 = [
+      project(px - dz, y0, pz + dx, rot), project(px + dz, y0, pz - dx, rot),
+      project(px + dz, y1, pz - dx, rot), project(px - dz, y1, pz + dx, rot)
+    ];
+    ctx.fillStyle = '#6b7690';
+    buildQuad(corners0);
+    ctx.strokeStyle = '#3f4658';
+    ctx.stroke();
+    const top = project(px, y1, pz, rot);
+    ctx.fillStyle = '#8893ab';
+    ctx.beginPath();
+    ctx.arc(top.x, top.y, 6 * scale * 0.4 + 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function drawEnemy(e, rot) {
+    const bounce = e.state === 'approach' ? Math.abs(Math.sin(e.hop)) * 6 : 0;
+    const pos = project(e.r * Math.cos(e.angle), bounce, e.r * Math.sin(e.angle), rot);
+    const rad = 10 * scale;
+    const g = ctx.createRadialGradient(pos.x - rad * 0.3, pos.y - rad * 0.3, 1, pos.x, pos.y, rad);
+    g.addColorStop(0, '#8a3b2e');
+    g.addColorStop(1, '#2a1a15');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+    // hp sliver
+    if (e.hp < e.maxHp) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(pos.x - rad, pos.y - rad - 6, rad * 2, 3);
+      ctx.fillStyle = '#c95a3f';
+      ctx.fillRect(pos.x - rad, pos.y - rad - 6, rad * 2 * (e.hp / e.maxHp), 3);
+    }
+  }
+
+  function drawPlayer(rot) {
+    const w = playerWorld();
+    const pos = project(w.x, w.y, w.z, rot);
+    const rad = 11 * scale;
+    const g = ctx.createRadialGradient(pos.x - rad * 0.3, pos.y - rad * 0.3, 1, pos.x, pos.y, rad);
+    g.addColorStop(0, '#7fa0c9');
+    g.addColorStop(1, '#28405e');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+
+    const p = state.player;
+    const bw = 30;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(pos.x - bw / 2, pos.y - rad - 12, bw, 4);
+    ctx.fillStyle = '#7a8f5c';
+    ctx.fillRect(pos.x - bw / 2, pos.y - rad - 12, bw * (p.hp / p.maxHp), 4);
+  }
+
+  function drawProjectile(pr, rot) {
+    const t = Math.min(1, pr.t);
+    const tx = pr.target.r * Math.cos(pr.target.angle);
+    const tz = pr.target.r * Math.sin(pr.target.angle);
+    const x = pr.from.x * (1 - t) + tx * t;
+    const y = pr.from.y * (1 - t) + 0 * t;
+    const z = pr.from.z * (1 - t) + tz * t;
+    const pos = project(x, y, z, rot);
+    ctx.fillStyle = '#20180f';
+    ctx.beginPath();
+    ctx.arc(pos.x, pos.y, 3.2 * scale, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function render() {
+    ctx.fillStyle = '#e9dfc7';
+    ctx.fillRect(0, 0, W, H);
+
+    const rot = state.theta;
+
+    // ground shadow
+    const shadowPts = circlePts.map(c => project(BASE_R * 1.15 * c.cx, 0, BASE_R * 1.15 * c.cz, rot));
+    ctx.fillStyle = 'rgba(74,63,44,0.12)';
+    ctx.beginPath();
+    ctx.moveTo(shadowPts[0].x, shadowPts[0].y);
+    for (let i = 1; i < shadowPts.length; i++) ctx.lineTo(shadowPts[i].x, shadowPts[i].y);
+    ctx.closePath();
+    ctx.fill();
+
+    const far = [], near = [];
+    for (const e of state.enemies) {
+      const d = e.r * Math.sin(e.angle - rot) * 0 + (e.r * Math.cos(e.angle) * Math.sin(rot) * 0); // unused
+      (Math.cos(e.angle - rot) < 0 ? far : near).push(e);
+    }
+    const farTowers = state.towers.filter(t => Math.cos(t.angle - rot) < 0);
+    const nearTowers = state.towers.filter(t => Math.cos(t.angle - rot) >= 0);
+    const playerFar = Math.cos((state.player.mode === 'repair' ? rot : state.player.angle) - rot) < 0
+      && state.player.mode === 'defend';
+
+    for (const e of far) drawEnemy(e, rot);
+    for (const t of farTowers) drawTower(t, rot);
+    if (playerFar) drawPlayer(rot);
+
+    drawCastle(rot);
+
+    for (const e of near) drawEnemy(e, rot);
+    for (const t of nearTowers) drawTower(t, rot);
+    if (!playerFar) drawPlayer(rot);
+
+    for (const pr of state.projectiles) drawProjectile(pr, rot);
+  }
+
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (state.waveState !== 'gameover') update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>
