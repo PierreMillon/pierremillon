@@ -157,6 +157,7 @@ function pickNextSpawnDelay(){ return Math.max(18, 65 - wave*3) + Math.random()*
 let spawnTimer = 0, spawnInterval = pickNextSpawnDelay(), enemiesThisWave = 5, spawned = 0;
 let lastShotAt = 0;
 const SHOT_INTERVAL_MS = 1000;
+const TOWER_SHOT_INTERVAL_MS = SHOT_INTERVAL_MS / 1.2; // tir des tours 20% plus rapide que le joueur
 const PLAYER_DMG = 12;
 const BASE_ENEMY_HP = 12;
 const WAVE_GROWTH = 1.2; // chaque vague est 20% plus forte que la précédente
@@ -306,6 +307,7 @@ document.getElementById('grid-toggle').addEventListener('click', e => {
 // numéro de version : résumé en un coup d'œil de ce qui a changé au
 // dernier push. Chaque nouvelle version pousse une entrée en tête ici.
 const CHANGELOG = [
+  { v: 12, text: "Correctif : saut visuel des ennemis au démarrage du mouvement ; ennemis -20% vitesse, tours +20% cadence de tir" },
   { v: 11, text: "Grille de construction (carrée, invisible) pour poser des tours côte à côte sans trou ; grille affichable en debug (menu)" },
   { v: 10, text: "Or : 1 par kill (au lieu de 4) ; correctif son (l'audio n'était jamais débloqué, donc muet)" },
   { v: 9, text: "Vagues organiques (salves, hésitations), tours = murs solides qui flashent quand touchées, or au kill seulement, bruitages, écran de défaite repensé (continuer/recommencer)" },
@@ -389,12 +391,19 @@ function spawnEnemy(){
   const margin = 30;
   const baseX = margin + Math.random() * Math.max(1, STAGE_W - margin*2);
   const isAttacker = Math.random() < 0.3;
-  const speed = 0.9 + wave*0.12;
+  const speed = (0.9 + wave*0.12) * 0.8; // -20% par rapport à la version précédente
+  const startY = 6;
+  const driftPhase = Math.random()*Math.PI*2;
+  const driftAmp = 16 + Math.random()*24;
+  const driftFreq = 0.01 + Math.random()*0.01;
   const e = {
-    x: baseX, y: 6, baseX,
-    driftPhase: Math.random()*Math.PI*2,
-    driftAmp: 16 + Math.random()*24,
-    driftFreq: 0.01 + Math.random()*0.01,
+    // x initial calculé avec la même formule que le mouvement (voir plus
+    // bas) : sinon, au premier instant où l'ennemi bouge, il "saute" de
+    // baseX vers baseX+sin(...) — un vrai téléportage au lieu d'un
+    // glissement continu
+    x: baseX + Math.sin(startY*driftFreq + driftPhase)*driftAmp,
+    y: startY, baseX,
+    driftPhase, driftAmp, driftFreq,
     hp, maxHp: hp, speed,
     role: isAttacker ? 'attacker' : 'rusher',
     target: null,
@@ -445,11 +454,11 @@ function update(now){
 
   playerShoot(now);
 
-  // tours : mêmes projectiles que le joueur, au même rythme (1 tir/s) ;
+  // tours : mêmes projectiles que le joueur, mais 20% plus rapides ;
   // pas de barre de vie séparée — leur hauteur EST leur vie (voir draw())
   for (const t of towers){
     if (t.lastShotAt === undefined) t.lastShotAt = 0;
-    if (now - t.lastShotAt >= SHOT_INTERVAL_MS){
+    if (now - t.lastShotAt >= TOWER_SHOT_INTERVAL_MS){
       let target = null, best = TOWER_RANGE_PX;
       for (const e of enemies){
         const d = Math.hypot(e.x-t.x, e.y-t.y);
