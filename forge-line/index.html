@@ -5,20 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Forge Line — prototype</title>
 <style>
+  :root{ --topbar-h:52px; --bottombar-h:64px; }
   html,body{margin:0;height:100%;background:#e8dfc8;color:#3a3529;font-family:system-ui,sans-serif;overflow:hidden;overscroll-behavior:none}
-  #hud{position:fixed;top:10px;left:10px;font-size:14px;line-height:1.6;background:#00000066;color:#f3efe2;padding:8px 12px;border-radius:6px;z-index:2}
-  #help{position:fixed;bottom:10px;left:10px;font-size:12px;opacity:.7;z-index:2}
-  #over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:#000000cc;color:#f3efe2;font-size:28px;z-index:5}
-  canvas{display:block;margin:0 auto;background:#e8dfc8;max-width:100vw;height:auto;touch-action:none}
+
+  #topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);display:flex;align-items:center;background:#00000012;z-index:6}
+  #menu-btn{margin-left:10px;width:38px;height:38px;border-radius:8px;border:1px solid #00000030;background:#00000010;color:#3a3529;font-size:18px;line-height:1;cursor:pointer}
+
+  #bottombar{position:fixed;bottom:0;left:0;right:0;height:var(--bottombar-h);display:flex;align-items:center;justify-content:center;background:#00000012;z-index:6}
+  #hud{font-size:14px;line-height:1.4;text-align:center}
+
+  #stage{position:fixed;top:var(--topbar-h);bottom:var(--bottombar-h);left:0;right:0;overflow:hidden;background:#e8dfc8}
+  canvas{display:block;touch-action:none;background:#e8dfc8}
+
+  #over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:#000000cc;color:#f3efe2;font-size:28px;z-index:9}
 
   /* contrôles tactiles */
   #touchpad{display:none}
-  .btn{position:fixed;width:66px;height:66px;border-radius:50%;background:#00000022;border:1px solid #00000033;color:#3a3529;font-size:24px;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:none;z-index:3}
+  .btn{position:fixed;width:66px;height:66px;border-radius:50%;background:#00000022;border:1px solid #00000033;color:#3a3529;font-size:24px;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:none;z-index:7}
   .btn:active{background:#00000044}
-  #act-repair{right:24px;bottom:100px}
+  #act-repair{right:22px;bottom:calc(var(--bottombar-h) + 20px)}
 
-  /* joystick tactile : apparaît là où le doigt touche la zone gauche */
-  #joyzone{display:none;position:fixed;left:0;top:0;width:55%;height:100%;z-index:3;touch-action:none}
+  #joyzone{display:none;position:fixed;left:0;top:var(--topbar-h);bottom:var(--bottombar-h);width:55%;z-index:3;touch-action:none}
   #joy-base,#joy-knob{display:none;position:fixed;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:4}
   #joy-base{width:88px;height:88px;background:#00000018;border:1px solid #00000030}
   #joy-knob{width:40px;height:40px;background:#00000040}
@@ -26,55 +33,91 @@
   @media (hover:none) and (pointer:coarse){
     #touchpad{display:block}
     #joyzone{display:block}
-    #help{display:none}
   }
 </style>
 </head>
 <body>
-<div id="hud">
-  Or : <span id="gold">0</span> —
-  Vague : <span id="wave">1</span> —
-  Brèches : <span id="breach">0</span>/10
-</div>
-<div id="help">Flèches/WASD : déplacer — double-clic : construire (10 or) — R : réparer (maintenir) — tir auto 1×/s</div>
-<div id="over"><div id="overText"></div></div>
-<canvas id="c" width="900" height="620"></canvas>
 
-<div id="joyzone"></div>
-<div id="joy-base"></div>
-<div id="joy-knob"></div>
-<div id="touchpad">
-  <div class="btn" id="act-repair">🔧</div>
+<div id="topbar">
+  <button id="menu-btn" aria-label="Menu">☰</button>
 </div>
+
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="joyzone"></div>
+  <div id="joy-base"></div>
+  <div id="joy-knob"></div>
+  <div id="touchpad">
+    <div class="btn" id="act-repair">🔧</div>
+  </div>
+  <div id="over"><div id="overText"></div></div>
+</div>
+
+<div id="bottombar">
+  <div id="hud">
+    Or : <span id="gold">0</span> —
+    Vague : <span id="wave">1</span> —
+    Brèches : <span id="breach">0</span>/10
+  </div>
+</div>
+
 <script>
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
-const TW = 64, TH = 32; // largeur/hauteur tuile isométrique
-const GX = 10, GY = 9;  // taille grille
-const originX = cv.width/2, originY = 40;
+const stage = document.getElementById('stage');
+const GX = 10, GY = 9; // grille logique servant au placement (tours/joueur), jamais dessinée
+
+// tout le jeu tourne en pixels écran (CSS px) ; la grille isométrique ne sert
+// qu'à ancrer visuellement les objets posés (tours, joueur) — les ennemis et
+// projectiles se déplacent directement dans cet espace-là.
+let TW = 64, TH = 32, originX = 0, originY = 24;
+let STAGE_W = 0, STAGE_H = 0;
+let PLAYER_RANGE_PX, TOWER_RANGE_PX, CONTACT_RANGE_PX, ATTACKER_STOP_PX, SHOT_SPEED_PX;
 
 function toScreen(gx, gy){
   return { x: originX + (gx-gy)*TW/2, y: originY + (gx+gy)*TH/2 };
 }
-// point au sol (front) d'une case, où un objet "pose" visuellement
+// point au sol (front) d'une case, où un objet posé "touche" le sol
 function groundPoint(gx, gy){
   const p = toScreen(gx, gy);
   return { x: p.x, y: p.y + TH };
 }
-// inverse de toScreen : position écran (coords canvas) -> case de grille
-function screenToGrid(canvasX, canvasY){
-  const a = (canvasX - originX) / (TW/2);
-  const b = (canvasY - originY) / (TH/2);
+function screenToGrid(x, y){
+  const a = (x - originX) / (TW/2);
+  const b = (y - originY) / (TH/2);
   return { gx: Math.round((a+b)/2), gy: Math.round((b-a)/2) };
 }
-function clientToCanvas(clientX, clientY){
+function clientToStage(clientX, clientY){
   const rect = cv.getBoundingClientRect();
-  return {
-    x: (clientX - rect.left) * (cv.width / rect.width),
-    y: (clientY - rect.top) * (cv.height / rect.height)
-  };
+  return { x: clientX - rect.left, y: clientY - rect.top };
 }
 
-const grid = {}; // "x,y" -> {type:'tower', hp, maxHp, cooldown}
+function resizeCanvas(){
+  const dpr = window.devicePixelRatio || 1;
+  const rect = stage.getBoundingClientRect();
+  STAGE_W = rect.width; STAGE_H = rect.height;
+  cv.width = Math.round(STAGE_W * dpr);
+  cv.height = Math.round(STAGE_H * dpr);
+  cv.style.width = STAGE_W + 'px';
+  cv.style.height = STAGE_H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // on dessine ensuite en pixels CSS
+
+  const marginX = 30;
+  const fitTW = (STAGE_W - marginX*2) / (GX + GY - 2) * 2;
+  TW = Math.max(20, Math.min(64, isFinite(fitTW) ? fitTW : 64));
+  TH = TW / 2;
+  originX = STAGE_W / 2;
+  originY = 24;
+
+  PLAYER_RANGE_PX = TW * 3.5;
+  TOWER_RANGE_PX = TW * 2.5;
+  CONTACT_RANGE_PX = TW * 0.5;
+  ATTACKER_STOP_PX = TW * 0.55;
+  SHOT_SPEED_PX = TW * 0.14;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+const grid = {}; // "x,y" -> {type:'tower', hp, maxHp, lastShotAt}
 function key(x,y){ return x+','+y; }
 
 const player = { gx: Math.floor(GX/2), gy: GY-1, moveCooldown: 0 };
@@ -85,9 +128,7 @@ let spawnTimer = 0, spawnInterval = 90, enemiesThisWave = 5, spawned = 0;
 let goldTimer = 0;
 let lastShotAt = 0;
 const SHOT_INTERVAL_MS = 1000;
-const PLAYER_RANGE = 3.5;
 const PLAYER_DMG = 12;
-const TOWER_RANGE = 2.5;
 const BASE_ENEMY_HP = 12;
 const WAVE_GROWTH = 1.2; // chaque vague est 20% plus forte que la précédente
 
@@ -95,7 +136,7 @@ const keys = {};
 window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-function isControl(el){ return el && el.closest && el.closest('.btn'); }
+function isControl(el){ return el && el.closest && el.closest('.btn, #topbar, #bottombar'); }
 
 function tryBuildAt(gx, gy){
   if (gx < 0 || gx >= GX || gy < 0 || gy >= GY) return;
@@ -103,7 +144,7 @@ function tryBuildAt(gx, gy){
   if (grid[k]) return;
   if (gold < 10) return;
   gold -= 10;
-  grid[k] = { type:'tower', hp:30, maxHp:30, cooldown:0 };
+  grid[k] = { type:'tower', hp:30, maxHp:30, lastShotAt:0 };
 }
 function tryRepair(){
   const t = grid[key(player.gx, player.gy)];
@@ -113,8 +154,8 @@ function tryRepair(){
 // construire : double-clic (souris) ou double-tap (tactile), n'importe où sur la carte
 document.addEventListener('dblclick', e => {
   if (isControl(e.target)) return;
-  const c = clientToCanvas(e.clientX, e.clientY);
-  const { gx, gy } = screenToGrid(c.x, c.y);
+  const s = clientToStage(e.clientX, e.clientY);
+  const { gx, gy } = screenToGrid(s.x, s.y);
   tryBuildAt(gx, gy);
 });
 let lastTap = { time: 0, x: 0, y: 0 };
@@ -125,8 +166,8 @@ document.addEventListener('touchend', e => {
   const dt = now - lastTap.time;
   const dist = Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y);
   if (dt < 300 && dist < 30){
-    const c = clientToCanvas(t.clientX, t.clientY);
-    const { gx, gy } = screenToGrid(c.x, c.y);
+    const s = clientToStage(t.clientX, t.clientY);
+    const { gx, gy } = screenToGrid(s.x, s.y);
     tryBuildAt(gx, gy);
     lastTap = { time: 0, x: 0, y: 0 };
   } else {
@@ -134,13 +175,14 @@ document.addEventListener('touchend', e => {
   }
 }, { passive:true });
 
-// touche B au clavier : construit sur la case du joueur
 window.addEventListener('keydown', e => { if (e.key.toLowerCase() === 'b') tryBuildAt(player.gx, player.gy); });
 
-// bouton réparer (tactile, maintenu)
 document.getElementById('act-repair').addEventListener('touchstart', ev => { ev.preventDefault(); keys['r'] = true; });
 document.getElementById('act-repair').addEventListener('touchend', ev => { ev.preventDefault(); keys['r'] = false; });
 document.getElementById('act-repair').addEventListener('touchcancel', ev => { ev.preventDefault(); keys['r'] = false; });
+
+// menu : réservé pour plus tard (pause, options...)
+document.getElementById('menu-btn').addEventListener('click', () => {});
 
 // joystick tactile transparent : apparaît là où le doigt touche la zone gauche
 const joyzone = document.getElementById('joyzone');
@@ -183,52 +225,56 @@ joyzone.addEventListener('touchmove', e => { e.preventDefault(); const t = e.cha
 joyzone.addEventListener('touchend', e => { e.preventDefault(); joyEnd(); });
 joyzone.addEventListener('touchcancel', e => { e.preventDefault(); joyEnd(); });
 
-// redimensionne le canvas à la largeur de l'écran (résolution interne inchangée)
-function fitCanvas(){
-  const margin = 20;
-  const scale = Math.min(1, (window.innerWidth - margin) / cv.width);
-  cv.style.width = (cv.width * scale) + 'px';
-}
-window.addEventListener('resize', fitCanvas);
-fitCanvas();
-
 function pickNearestTowerKey(x, y){
   let bestK = null, bestD = Infinity;
   for (const k in grid){
     const [tx, ty] = k.split(',').map(Number);
-    const d = Math.hypot(tx-x, ty-y);
+    const gp = groundPoint(tx, ty);
+    const d = Math.hypot(gp.x-x, gp.y-y);
     if (d < bestD){ bestD = d; bestK = k; }
   }
   return bestK;
 }
 
-// certains ennemis foncent vers le bas (rusher), d'autres visent une tour
-// pour l'occuper et la détruire (attacker) — décidé une fois à l'apparition
+// certains ennemis (attackers) foncent droit sur une tour pour l'occuper et
+// la détruire ; les autres (rushers) descendent l'écran verticalement avec
+// une ondulation gauche-droite aléatoire — l'illusion d'une foule, pas de
+// tanks alignés sur la grille isométrique
 function spawnEnemy(){
-  const x = Math.floor(Math.random()*GX);
   const hp = Math.round(BASE_ENEMY_HP * Math.pow(WAVE_GROWTH, wave-1));
+  const margin = 30;
+  const baseX = margin + Math.random() * Math.max(1, STAGE_W - margin*2);
   const isAttacker = Math.random() < 0.3;
-  const e = { x, y: 0, hp, maxHp: hp, speed: 0.015 + wave*0.0015, role: isAttacker ? 'attacker' : 'rusher', targetKey: null };
-  if (isAttacker) e.targetKey = pickNearestTowerKey(x, 0);
+  const speed = (0.9 + wave*0.12) * (TW/64);
+  const e = {
+    x: baseX, y: 6, baseX,
+    driftPhase: Math.random()*Math.PI*2,
+    driftAmp: 16 + Math.random()*24,
+    driftFreq: 0.01 + Math.random()*0.01,
+    hp, maxHp: hp, speed,
+    role: isAttacker ? 'attacker' : 'rusher',
+    targetKey: null
+  };
+  if (isAttacker) e.targetKey = pickNearestTowerKey(baseX, 0);
   enemies.push(e);
 }
 
 function playerShoot(now){
   if (now - lastShotAt < SHOT_INTERVAL_MS) return;
-  let target = null, best = PLAYER_RANGE;
+  const pp = groundPoint(player.gx, player.gy);
+  let target = null, best = PLAYER_RANGE_PX;
   for (const e of enemies){
-    const d = Math.hypot(e.x-player.gx, e.y-player.gy);
+    const d = Math.hypot(e.x-pp.x, e.y-pp.y);
     if (d < best){ best = d; target = e; }
   }
   if (!target) return;
   lastShotAt = now;
-  projectiles.push({ x: player.gx, y: player.gy, target, speed: 0.12, dmg: PLAYER_DMG });
+  projectiles.push({ x: pp.x, y: pp.y, target, speed: SHOT_SPEED_PX, dmg: PLAYER_DMG });
 }
 
 function update(now){
   if (gameOver) return;
 
-  // mouvement joueur (pas par pas avec cooldown)
   if (player.moveCooldown > 0) player.moveCooldown--;
   else {
     let dx=0, dy=0;
@@ -245,20 +291,42 @@ function update(now){
   if (keys['r']) tryRepair();
 
   playerShoot(now);
+
+  // tours : mêmes projectiles que le joueur, au même rythme (1 tir/s)
+  for (const k in grid){
+    const t = grid[k];
+    if (t.type !== 'tower') continue;
+    const [tx, ty] = k.split(',').map(Number);
+    const gp = groundPoint(tx, ty);
+    if (t.lastShotAt === undefined) t.lastShotAt = 0;
+    if (now - t.lastShotAt >= SHOT_INTERVAL_MS){
+      let target = null, best = TOWER_RANGE_PX;
+      for (const e of enemies){
+        const d = Math.hypot(e.x-gp.x, e.y-gp.y);
+        if (d < best){ best = d; target = e; }
+      }
+      if (target){
+        t.lastShotAt = now;
+        projectiles.push({ x: gp.x, y: gp.y, target, speed: SHOT_SPEED_PX, dmg: PLAYER_DMG });
+      }
+    }
+    for (const e of enemies){
+      if (Math.hypot(e.x-gp.x, e.y-gp.y) < CONTACT_RANGE_PX) t.hp -= (e.role === 'attacker' ? 0.4 : 0.15);
+    }
+  }
+  for (const k in grid) if (grid[k].hp <= 0) delete grid[k];
+
   for (const pr of projectiles){
     if (!enemies.includes(pr.target) || pr.target.hp <= 0){ pr.dead = true; continue; }
-    const dx = pr.target.x-pr.x, dy = pr.target.y-pr.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 0.15){ pr.target.hp -= pr.dmg; pr.dead = true; }
+    const dx = pr.target.x-pr.x, dy = pr.target.y-pr.y, d = Math.hypot(dx, dy);
+    if (d < 6){ pr.target.hp -= pr.dmg; pr.dead = true; }
     else { pr.x += dx/d*pr.speed; pr.y += dy/d*pr.speed; }
   }
   projectiles = projectiles.filter(p => !p.dead);
 
-  // or passif
   goldTimer++;
   if (goldTimer > 60){ gold++; goldTimer = 0; }
 
-  // spawn vague (les ennemis apparaissent en haut, colonne aléatoire)
   if (spawned < enemiesThisWave){
     spawnTimer++;
     if (spawnTimer > spawnInterval){ spawnEnemy(); spawned++; spawnTimer = 0; }
@@ -269,47 +337,24 @@ function update(now){
     spawnInterval = Math.max(30, spawnInterval - 5);
   }
 
-  // tours : mêmes projectiles que le joueur, au même rythme (1 tir/s)
-  for (const k in grid){
-    const t = grid[k];
-    if (t.type !== 'tower') continue;
-    const [tx, ty] = k.split(',').map(Number);
-    if (t.lastShotAt === undefined) t.lastShotAt = 0;
-    if (now - t.lastShotAt >= SHOT_INTERVAL_MS){
-      let target = null, best = TOWER_RANGE;
-      for (const e of enemies){
-        const d = Math.hypot(e.x-tx, e.y-ty);
-        if (d < best){ best = d; target = e; }
-      }
-      if (target){
-        t.lastShotAt = now;
-        projectiles.push({ x: tx, y: ty, target, speed: 0.12, dmg: PLAYER_DMG, source: 'tower' });
-      }
-    }
-    // dégâts subis au contact — plus lourds venant d'un ennemi qui s'acharne sur la tour
-    for (const e of enemies){
-      if (Math.hypot(e.x-tx, e.y-ty) < 0.4) t.hp -= (e.role === 'attacker' ? 0.4 : 0.15);
-    }
-  }
-  for (const k in grid) if (grid[k].hp <= 0) delete grid[k];
-
-  // avancée ennemis : les "attackers" foncent vers une tour pour l'occuper,
-  // les "rushers" filent droit vers le bas pour percer la ligne
   for (const e of enemies){
     if (e.role === 'attacker'){
       if (!e.targetKey || !grid[e.targetKey]) e.targetKey = pickNearestTowerKey(e.x, e.y);
       if (e.targetKey){
         const [tx, ty] = e.targetKey.split(',').map(Number);
-        const dx = tx-e.x, dy = ty-e.y, d = Math.hypot(dx, dy);
-        if (d > 0.5){ e.x += dx/d*e.speed; e.y += dy/d*e.speed; }
-        // sinon : reste au contact, les dégâts se règlent dans la boucle des tours
+        const gp = groundPoint(tx, ty);
+        const dx = gp.x-e.x, dy = gp.y-e.y, d = Math.hypot(dx, dy);
+        if (d > ATTACKER_STOP_PX){ e.x += dx/d*e.speed; e.y += dy/d*e.speed; }
       } else {
-        e.y += e.speed; // plus aucune tour : fonce vers le bas comme un rusher
+        e.y += e.speed;
+        e.x = e.baseX + Math.sin(e.y*e.driftFreq + e.driftPhase)*e.driftAmp;
       }
     } else {
       e.y += e.speed;
+      e.x = e.baseX + Math.sin(e.y*e.driftFreq + e.driftPhase)*e.driftAmp;
     }
-    if (e.y >= GY-1){ e.dead = true; breaches++; }
+    e.x = Math.max(16, Math.min(STAGE_W-16, e.x));
+    if (e.y >= STAGE_H - 16){ e.dead = true; breaches++; }
     if (e.hp <= 0) e.dead = true;
   }
   enemies = enemies.filter(e => !e.dead);
@@ -325,21 +370,7 @@ function update(now){
   document.getElementById('breach').textContent = breaches;
 }
 
-function drawTile(gx, gy, fill){
-  const p = toScreen(gx, gy);
-  ctx.beginPath();
-  ctx.moveTo(p.x, p.y);
-  ctx.lineTo(p.x+TW/2, p.y+TH/2);
-  ctx.lineTo(p.x, p.y+TH);
-  ctx.lineTo(p.x-TW/2, p.y+TH/2);
-  ctx.closePath();
-  ctx.fillStyle = fill;
-  ctx.fill();
-  ctx.strokeStyle = '#00000022';
-  ctx.stroke();
-}
-
-// dessine un petit cube/pavé isométrique (3 faces) posé au point (cx, cyBase)
+// dessine un petit pavé isométrique (3 faces) posé au point (cx, cyBase)
 function drawIsoBox(cx, cyBase, hw, hh, sh, colTop, colLeft, colRight, stacked){
   const cyTop = cyBase - sh - 2*hh;
   const N = { x: cx,    y: cyTop };
@@ -365,17 +396,8 @@ function drawIsoBox(cx, cyBase, hw, hh, sh, colTop, colLeft, colRight, stacked){
 }
 
 function draw(){
-  ctx.clearRect(0,0,cv.width,cv.height);
+  ctx.clearRect(0, 0, STAGE_W, STAGE_H); // fond beige uni (posé par le CSS du canvas), aucune ligne de sol
 
-  for (let gy=0; gy<GY; gy++)
-    for (let gx=0; gx<GX; gx++){
-      let fill = '#cbb98e';
-      if (gy === 0) fill = '#b99a6a';        // ligne d'apparition des ennemis
-      else if (gy === GY-1) fill = '#c98f6a'; // ligne de défense
-      drawTile(gx, gy, fill);
-    }
-
-  // tours : pavé de la hauteur de deux cubes empilés
   for (const k in grid){
     const [tx,ty] = k.split(',').map(Number);
     const t = grid[k];
@@ -389,21 +411,22 @@ function draw(){
 
   // ennemis : boules
   for (const e of enemies){
-    const gp = groundPoint(e.x, e.y);
-    const grad = ctx.createRadialGradient(gp.x-3, gp.y-11, 1, gp.x, gp.y-8, 9);
+    const grad = ctx.createRadialGradient(e.x-3, e.y-11, 1, e.x, e.y-8, 9);
     grad.addColorStop(0, '#f2a3a3');
     grad.addColorStop(1, '#c33f3f');
     ctx.fillStyle = grad;
-    ctx.beginPath(); ctx.arc(gp.x, gp.y-8, 8, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(e.x, e.y-8, 8, 0, Math.PI*2); ctx.fill();
   }
 
-  // projectiles du joueur : mini cubes
+  // projectiles (joueur et tours) : petites sphères noires
   for (const pr of projectiles){
-    const gp = groundPoint(pr.x, pr.y);
-    drawIsoBox(gp.x, gp.y-10, 3, 2, 4, '#fff3c4', '#f2c14e', '#c99a2e');
+    const grad = ctx.createRadialGradient(pr.x-1.5, pr.y-1.5, 0.5, pr.x, pr.y, 4);
+    grad.addColorStop(0, '#4a4a4a');
+    grad.addColorStop(1, '#000000');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(pr.x, pr.y, 4, 0, Math.PI*2); ctx.fill();
   }
 
-  // joueur : cube
   const pgp = groundPoint(player.gx, player.gy);
   drawIsoBox(pgp.x, pgp.y, 9, 5, 14, '#f7d67a', '#e0b04e', '#b98a34');
 }
