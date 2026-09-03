@@ -22,65 +22,86 @@
     display: block;
   }
 
-  #hud {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    padding: 10px 14px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-    color: #4a3f2c;
-    font-size: 13px;
-    pointer-events: none;
-  }
-
-  #hud .stat { display: flex; align-items: center; gap: 6px; }
-
-  .bar {
-    width: 90px;
-    height: 8px;
-    background: rgba(74,63,44,0.15);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .bar > div { height: 100%; background: #7a8f5c; }
-
-  #controls {
+  #topbar, #bottombar {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
-    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
-    display: flex;
-    gap: 10px;
-    justify-content: center;
     z-index: 10;
+    background: #3b3222;
+    color: #f2ead9;
   }
 
-  #controls button {
-    flex: 1;
-    max-width: 160px;
-    padding: 12px 8px;
+  #topbar {
+    top: 0;
+    padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+  }
+
+  #menuBtn {
+    background: none;
+    border: none;
+    color: #f2ead9;
+    font-size: 18px;
+    padding: 4px 6px;
+    line-height: 1;
+  }
+
+  #topbar .stat { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  #topbar .spacer { flex: 1; }
+
+  #versionBtn {
+    background: none;
+    border: 1px solid rgba(242,234,217,0.35);
+    border-radius: 6px;
+    color: #f2ead9;
+    font-size: 11px;
+    padding: 3px 7px;
+  }
+
+  #changelog {
+    position: fixed;
+    top: calc(46px + env(safe-area-inset-top));
+    right: 12px;
+    z-index: 11;
+    background: #3b3222;
+    color: #f2ead9;
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 12px;
+    max-width: 240px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+  }
+
+  #changelog[hidden] { display: none; }
+  #changelog div { margin-bottom: 6px; }
+  #changelog b { color: #d9b98a; }
+
+  #bottombar {
+    bottom: 0;
+    padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+    display: flex;
+    justify-content: center;
+  }
+
+  #bottombar button {
+    padding: 12px 20px;
     border: none;
     border-radius: 10px;
-    background: #4a3f2c;
+    background: #b5482e;
     color: #f2ead9;
     font-size: 13px;
     font-family: inherit;
   }
 
-  #controls button:disabled { opacity: 0.4; }
-
-  #controls button.active { background: #7a8f5c; }
+  #bottombar button:disabled { opacity: 0.4; }
 
   #nextWave {
     position: fixed;
     left: 50%;
-    bottom: 78px;
+    bottom: 76px;
     transform: translateX(-50%);
     padding: 12px 22px;
     border: none;
@@ -94,7 +115,7 @@
 
   #nextWave[hidden] { display: none; }
 
-  #overlay {
+  #menu, #overlay {
     position: fixed;
     inset: 0;
     background: rgba(35,28,18,0.85);
@@ -106,11 +127,12 @@
     gap: 14px;
     text-align: center;
     padding: 20px;
+    z-index: 20;
   }
 
-  #overlay[hidden] { display: none; }
+  #menu[hidden], #overlay[hidden] { display: none; }
 
-  #overlay button {
+  #menu a, #overlay button, #menu button {
     padding: 12px 24px;
     border: none;
     border-radius: 10px;
@@ -118,6 +140,12 @@
     color: #f2ead9;
     font-size: 15px;
     font-family: inherit;
+    text-decoration: none;
+  }
+
+  #menu button.ghost {
+    background: none;
+    border: 1px solid rgba(242,234,217,0.4);
   }
 </style>
 </head>
@@ -125,17 +153,29 @@
 
 <canvas id="game"></canvas>
 
-<div id="hud">
+<div id="topbar">
+  <button id="menuBtn" aria-label="Menu">☰</button>
   <div class="stat">Vague <span id="waveNum">1</span></div>
   <div class="stat">🪙 <span id="goldNum">0</span></div>
-  <div class="stat">Château <div class="bar"><div id="castleBar" style="width:100%"></div></div></div>
+  <div class="spacer"></div>
+  <button id="versionBtn">v0.3</button>
+</div>
+
+<div id="changelog" hidden>
+  <div><b>v0.3</b> — bandeaux haut/bas, réparation auto des tourelles, château réduit, perso ralenti et recentré sur l'ellipse</div>
+  <div><b>v0.2</b> — boucle complète : orbite, combat auto, vagues, tourelles</div>
+  <div><b>v0.1</b> — premier test : cylindre + croix qui tourne</div>
 </div>
 
 <button id="nextWave" hidden>Vague suivante</button>
 
-<div id="controls">
-  <button id="repairBtn">Réparer</button>
+<div id="bottombar">
   <button id="towerBtn">Tourelle (🪙5)</button>
+</div>
+
+<div id="menu" hidden>
+  <a href="../forge-line/">→ Forge Line</a>
+  <button class="ghost" id="closeMenu">Fermer</button>
 </div>
 
 <div id="overlay" hidden>
@@ -153,7 +193,7 @@
     W = canvas.width = innerWidth;
     H = canvas.height = innerHeight;
     cx = W / 2;
-    cy = H * 0.44;
+    cy = H * 0.46;
     scale = Math.min(W, H) / 310;
   }
   addEventListener('resize', resize);
@@ -179,12 +219,18 @@
   }
 
   // ---- world constants ----
-  const R = 70;                // castle radius
-  const BASE_R = 95;           // ring where enemies stop and hit the wall
-  const SPAWN_R = 480;         // enemies appear well off-screen
-  const CASTLE_MAX_H = 260;
-  const CASTLE_MIN_H = 20;
-  const JUMP_H = 70;           // castle height at/below which enemies can jump up
+  const R = 49;                 // castle radius (-30% from v2)
+  const BASE_R = R + 25;        // ring where enemies stop and hit the wall
+  const SPAWN_R = 480;          // enemies appear well off-screen
+  const CASTLE_MAX_H = 208;     // -20% from v2
+  const CASTLE_MIN_H = 16;
+  const JUMP_H = 56;            // castle height at/below which enemies can jump up
+  const ATTACK_RANGE = 260;
+  const ANGLE_SPEED = 1.6;      // rad/s, player catching up to camera (half speed)
+  const RADIAL_SPEED = 90;      // units/s, player moving in/out
+  const PLAYER_R = R * 0.78;    // stand a bit inside the rim, not hanging off the edge
+  const TURRET_HEAL = 4;        // hp/s while player repairs a turret
+  const CASTLE_HEAL = 18;       // height/s while player repairs at center
   const N_SEG = 24;
 
   const circlePts = [];
@@ -196,7 +242,7 @@
   // ---- game state ----
   const state = {
     theta: 0,
-    castleH: 160,
+    castleH: 128,
     gold: 0,
     wave: 1,
     waveState: 'prep', // prep | active | cleared | gameover
@@ -208,7 +254,8 @@
     projectiles: [],
     player: {
       angle: 0,
-      mode: 'defend', // defend | repair
+      r: R,
+      behavior: 'combat', // combat | repairTurret | repairCastle
       hp: 5,
       maxHp: 5,
       atkTimer: 0
@@ -221,8 +268,7 @@
 
   function playerWorld() {
     const p = state.player;
-    if (p.mode === 'repair') return worldPos(0, 0, state.castleH);
-    return worldPos(R, p.angle, state.castleH);
+    return worldPos(p.r, p.angle, state.castleH);
   }
 
   function spawnEnemy() {
@@ -249,10 +295,7 @@
   }
 
   function fire(from, target, dmg) {
-    state.projectiles.push({
-      from, target, t: 0, dmg,
-      dur: 0.18
-    });
+    state.projectiles.push({ from, target, t: 0, dmg, dur: 0.18 });
   }
 
   function nearestEnemyTo(pos, range) {
@@ -262,6 +305,28 @@
       const ex = e.r * Math.cos(e.angle), ez = e.r * Math.sin(e.angle);
       const d = Math.hypot(pos.x - ex, pos.z - ez);
       if (d < bestD) { bestD = d; best = e; }
+    }
+    return best;
+  }
+
+  function nearestDamagedTurret(fromAngle) {
+    let best = null, bestD = Infinity;
+    for (const t of state.towers) {
+      if (t.hp >= t.maxHp) continue;
+      const d = Math.abs(angDiff(fromAngle, t.angle));
+      if (d < bestD) { bestD = d; best = t; }
+    }
+    return best;
+  }
+
+  function nearestDefender(landedX, landedZ) {
+    const pw = playerWorld();
+    let best = { type: 'player' };
+    let bestD = Math.hypot(landedX - pw.x, landedZ - pw.z);
+    for (const t of state.towers) {
+      const tx = R * Math.cos(t.angle), tz = R * Math.sin(t.angle);
+      const d = Math.hypot(landedX - tx, landedZ - tz);
+      if (d < bestD) { bestD = d; best = { type: 'tower', ref: t }; }
     }
     return best;
   }
@@ -285,41 +350,64 @@
   canvas.addEventListener('pointercancel', () => dragging = false);
 
   // ---- UI ----
-  const repairBtn = document.getElementById('repairBtn');
   const towerBtn = document.getElementById('towerBtn');
   const nextWaveBtn = document.getElementById('nextWave');
   const overlay = document.getElementById('overlay');
-
-  repairBtn.addEventListener('click', () => {
-    const p = state.player;
-    p.mode = p.mode === 'repair' ? 'defend' : 'repair';
-    repairBtn.classList.toggle('active', p.mode === 'repair');
-    repairBtn.textContent = p.mode === 'repair' ? 'Défendre' : 'Réparer';
-  });
+  const menu = document.getElementById('menu');
+  const changelog = document.getElementById('changelog');
 
   towerBtn.addEventListener('click', () => {
-    if (state.gold < 5 || state.player.mode !== 'defend') return;
+    if (state.gold < 5 || state.player.behavior !== 'combat') return;
     state.gold -= 5;
     document.getElementById('goldNum').textContent = state.gold;
-    state.towers.push({ angle: state.player.angle, atkTimer: 0 });
+    state.towers.push({ angle: state.player.angle, atkTimer: 0, hp: 6, maxHp: 6 });
   });
 
   nextWaveBtn.addEventListener('click', startWave);
-
   document.getElementById('restartBtn').addEventListener('click', () => location.reload());
+
+  document.getElementById('menuBtn').addEventListener('click', () => { menu.hidden = false; });
+  document.getElementById('closeMenu').addEventListener('click', () => { menu.hidden = true; });
+
+  document.getElementById('versionBtn').addEventListener('click', () => {
+    changelog.hidden = !changelog.hidden;
+  });
 
   // ---- update ----
   let last = performance.now();
   function update(dt) {
     const p = state.player;
 
-    // player follows camera angle around the rim, with lag
-    if (p.mode === 'defend') {
-      const maxStep = 3.2 * dt;
-      const d = angDiff(p.angle, state.theta);
-      p.angle += Math.max(-maxStep, Math.min(maxStep, d));
+    // decide behavior: fight if a threat is near the camera-guarded spot,
+    // otherwise auto-repair the nearest damaged turret, else heal the castle
+    const guardPos = worldPos(PLAYER_R, state.theta, state.castleH);
+    const threat = nearestEnemyTo(guardPos, ATTACK_RANGE);
+    const damagedTurret = threat ? null : nearestDamagedTurret(p.angle);
+
+    let targetAngle = state.theta, targetR = PLAYER_R;
+    if (threat) {
+      p.behavior = 'combat';
+    } else if (damagedTurret) {
+      p.behavior = 'repairTurret';
+      targetAngle = damagedTurret.angle;
+    } else if (state.castleH < CASTLE_MAX_H) {
+      p.behavior = 'repairCastle';
+      targetR = 0;
     } else {
-      state.castleH = Math.min(CASTLE_MAX_H, state.castleH + 18 * dt);
+      p.behavior = 'combat';
+    }
+
+    const maxStep = ANGLE_SPEED * dt;
+    const d = angDiff(p.angle, targetAngle);
+    p.angle += Math.max(-maxStep, Math.min(maxStep, d));
+    const maxRStep = RADIAL_SPEED * dt;
+    p.r += Math.max(-maxRStep, Math.min(maxRStep, targetR - p.r));
+
+    if (p.behavior === 'repairTurret' && Math.abs(angDiff(p.angle, targetAngle)) < 0.12 && Math.abs(p.r - PLAYER_R) < 6) {
+      damagedTurret.hp = Math.min(damagedTurret.maxHp, damagedTurret.hp + TURRET_HEAL * dt);
+    }
+    if (p.behavior === 'repairCastle' && p.r < 8) {
+      state.castleH = Math.min(CASTLE_MAX_H, state.castleH + CASTLE_HEAL * dt);
     }
 
     // spawning
@@ -353,8 +441,6 @@
             e.jumpT = 0;
           } else {
             state.castleH = Math.max(CASTLE_MIN_H, state.castleH - 6);
-            document.getElementById('castleBar').style.width =
-              (100 * (state.castleH - CASTLE_MIN_H) / (CASTLE_MAX_H - CASTLE_MIN_H)) + '%';
           }
           e.timer = 1.2;
         }
@@ -365,25 +451,32 @@
       } else if (e.state === 'onTop') {
         e.timer -= dt;
         if (e.timer <= 0) {
-          p.hp -= 1;
-          e.timer = 1.4;
-          if (p.hp <= 0) {
-            state.waveState = 'gameover';
-            document.getElementById('overlayText').textContent =
-              'Tu es tombé à la vague ' + state.wave;
-            overlay.hidden = false;
+          const lx = e.r * Math.cos(e.angle), lz = e.r * Math.sin(e.angle);
+          const def = nearestDefender(lx, lz);
+          if (def.type === 'player') {
+            p.hp -= 1;
+            if (p.hp <= 0) {
+              state.waveState = 'gameover';
+              document.getElementById('overlayText').textContent =
+                'Tu es tombé à la vague ' + state.wave;
+              overlay.hidden = false;
+            }
+          } else {
+            def.ref.hp -= 2;
           }
+          e.timer = 1.4;
         }
       }
     }
     state.enemies = state.enemies.filter(e => !e.dead);
+    state.towers = state.towers.filter(t => t.hp > 0);
 
     // player + tower auto-attack
-    if (p.mode === 'defend') {
+    if (p.behavior === 'combat') {
       p.atkTimer -= dt;
       if (p.atkTimer <= 0) {
-        const from = worldPos(R, p.angle, state.castleH);
-        const target = nearestEnemyTo(from, 260);
+        const from = worldPos(p.r, p.angle, state.castleH);
+        const target = nearestEnemyTo(from, ATTACK_RANGE);
         if (target) { fire(from, target, 1); p.atkTimer = 0.9; }
       }
     }
@@ -391,7 +484,7 @@
       t.atkTimer -= dt;
       if (t.atkTimer <= 0) {
         const from = worldPos(R, t.angle, state.castleH);
-        const target = nearestEnemyTo(from, 260);
+        const target = nearestEnemyTo(from, ATTACK_RANGE);
         if (target) { fire(from, target, 1); t.atkTimer = 1.0; }
       }
     }
@@ -454,7 +547,7 @@
   }
 
   function drawTower(t, rot) {
-    const y0 = state.castleH, y1 = state.castleH + 22, s = 10;
+    const y0 = state.castleH, y1 = state.castleH + 18, s = 9;
     const a = t.angle;
     const dx = Math.cos(a) * s, dz = Math.sin(a) * s;
     const px = R * Math.cos(a), pz = R * Math.sin(a);
@@ -462,7 +555,8 @@
       project(px - dz, y0, pz + dx, rot), project(px + dz, y0, pz - dx, rot),
       project(px + dz, y1, pz - dx, rot), project(px - dz, y1, pz + dx, rot)
     ];
-    ctx.fillStyle = '#6b7690';
+    const dmg = 1 - t.hp / t.maxHp;
+    ctx.fillStyle = `rgb(${107 + dmg * 90},${118 - dmg * 50},${144 - dmg * 70})`;
     buildQuad(corners0);
     ctx.strokeStyle = '#3f4658';
     ctx.stroke();
@@ -484,7 +578,6 @@
     ctx.beginPath();
     ctx.arc(pos.x, pos.y, rad, 0, Math.PI * 2);
     ctx.fill();
-    // hp sliver
     if (e.hp < e.maxHp) {
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.fillRect(pos.x - rad, pos.y - rad - 6, rad * 2, 3);
@@ -531,9 +624,10 @@
     ctx.fillStyle = '#e9dfc7';
     ctx.fillRect(0, 0, W, H);
 
-    const rot = state.theta;
+    // -45°: aligns "world angle == camera theta" with the nearest point of
+    // the ellipse (the iso basis itself is rotated 45° from rx/rz)
+    const rot = state.theta - Math.PI / 4;
 
-    // ground shadow
     const shadowPts = circlePts.map(c => project(BASE_R * 1.15 * c.cx, 0, BASE_R * 1.15 * c.cz, rot));
     ctx.fillStyle = 'rgba(74,63,44,0.12)';
     ctx.beginPath();
@@ -543,14 +637,10 @@
     ctx.fill();
 
     const far = [], near = [];
-    for (const e of state.enemies) {
-      const d = e.r * Math.sin(e.angle - rot) * 0 + (e.r * Math.cos(e.angle) * Math.sin(rot) * 0); // unused
-      (Math.cos(e.angle - rot) < 0 ? far : near).push(e);
-    }
+    for (const e of state.enemies) (Math.cos(e.angle - rot) < 0 ? far : near).push(e);
     const farTowers = state.towers.filter(t => Math.cos(t.angle - rot) < 0);
     const nearTowers = state.towers.filter(t => Math.cos(t.angle - rot) >= 0);
-    const playerFar = Math.cos((state.player.mode === 'repair' ? rot : state.player.angle) - rot) < 0
-      && state.player.mode === 'defend';
+    const playerFar = Math.cos(state.player.angle - rot) < 0;
 
     for (const e of far) drawEnemy(e, rot);
     for (const t of farTowers) drawTower(t, rot);
