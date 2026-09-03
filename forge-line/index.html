@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Forge Line — prototype</title>
+<style>
+  html,body{margin:0;height:100%;background:#12141a;color:#e8e6df;font-family:system-ui,sans-serif;overflow:hidden}
+  #hud{position:fixed;top:10px;left:10px;font-size:14px;line-height:1.6;background:#00000066;padding:8px 12px;border-radius:6px}
+  #help{position:fixed;bottom:10px;left:10px;font-size:12px;opacity:.7}
+  #over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:#000000cc;font-size:28px}
+  canvas{display:block;margin:0 auto;background:#12141a}
+</style>
+</head>
+<body>
+<div id="hud">
+  Or : <span id="gold">0</span> —
+  Vague : <span id="wave">1</span> —
+  Brèches : <span id="breach">0</span>/10
+</div>
+<div id="help">Flèches/WASD : déplacer — B : construire (10 or) — R : réparer (maintenir)</div>
+<div id="over"><div id="overText"></div></div>
+<canvas id="c" width="900" height="620"></canvas>
+<script>
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const TW = 64, TH = 32; // largeur/hauteur tuile isométrique
+const GX = 10, GY = 9;  // taille grille
+const originX = cv.width/2, originY = 70;
+
+function toScreen(gx, gy){
+  return { x: originX + (gx-gy)*TW/2, y: originY + (gx+gy)*TH/2 };
+}
+
+// chemin des ennemis : ligne droite au milieu de la grille
+const PATH = [];
+for (let x=0; x<GX; x++) PATH.push({x, y: 4});
+
+const grid = {}; // "x,y" -> {type:'tower', hp, maxHp}
+function key(x,y){ return x+','+y; }
+function onPath(x,y){ return PATH.some(p=>p.x===x && p.y===y); }
+
+const player = { gx: 0, gy: 0, moveCooldown: 0 };
+let gold = 0, wave = 1, breaches = 0, gameOver = false;
+let enemies = [];
+let spawnTimer = 0, spawnInterval = 90, enemiesThisWave = 5, spawned = 0;
+let goldTimer = 0;
+
+const keys = {};
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+function tryBuild(){
+  const k = key(player.gx, player.gy);
+  if (grid[k]) return;
+  if (gold < 10) return;
+  gold -= 10;
+  grid[k] = { type:'tower', hp:30, maxHp:30, cooldown:0 };
+}
+
+function tryRepair(){
+  const k = key(player.gx, player.gy);
+  const t = grid[k];
+  if (t && t.hp < t.maxHp) t.hp = Math.min(t.maxHp, t.hp + 0.4);
+}
+
+function spawnEnemy(){
+  enemies.push({ x: 0, y: 4, hp: 10 + wave*2, maxHp: 10 + wave*2, speed: 0.02 + wave*0.002 });
+}
+
+function update(){
+  if (gameOver) return;
+
+  // mouvement joueur (pas par pas avec cooldown)
+  if (player.moveCooldown > 0) player.moveCooldown--;
+  else {
+    let dx=0, dy=0;
+    if (keys['arrowup']||keys['z']||keys['w']) dy=-1;
+    else if (keys['arrowdown']||keys['s']) dy=1;
+    else if (keys['arrowleft']||keys['q']||keys['a']) dx=-1;
+    else if (keys['arrowright']||keys['d']) dx=1;
+    if (dx||dy){
+      const nx = Math.max(0, Math.min(GX-1, player.gx+dx));
+      const ny = Math.max(0, Math.min(GY-1, player.gy+dy));
+      player.gx = nx; player.gy = ny;
+      player.moveCooldown = 7;
+    }
+  }
+  if (keys['b']) tryBuild();
+  if (keys['r']) tryRepair();
+
+  // or passif
+  goldTimer++;
+  if (goldTimer > 60){ gold++; goldTimer = 0; }
+
+  // spawn vague
+  if (spawned < enemiesThisWave){
+    spawnTimer++;
+    if (spawnTimer > spawnInterval){ spawnEnemy(); spawned++; spawnTimer = 0; }
+  } else if (enemies.length === 0){
+    wave++;
+    spawned = 0;
+    enemiesThisWave += 3;
+    spawnInterval = Math.max(30, spawnInterval - 5);
+  }
+
+  // tours : tir sur ennemis proches
+  for (const k in grid){
+    const t = grid[k];
+    if (t.type !== 'tower') continue;
+    const [tx, ty] = k.split(',').map(Number);
+    if (t.cooldown > 0) t.cooldown--;
+    let target = null, best = 2.5;
+    for (const e of enemies){
+      const d = Math.hypot(e.x-tx, e.y-ty);
+      if (d < best){ best = d; target = e; }
+    }
+    if (target && t.cooldown <= 0){
+      target.hp -= 4;
+      t.cooldown = 20;
+    }
+    // dégâts subis si tour sur le chemin et ennemi au contact
+    if (onPath(tx,ty)){
+      for (const e of enemies){
+        if (Math.hypot(e.x-tx, e.y-ty) < 0.4) t.hp -= 0.15;
+      }
+    }
+  }
+  // suppression tours détruites
+  for (const k in grid) if (grid[k].hp <= 0) delete grid[k];
+
+  // avancée ennemis
+  for (const e of enemies){
+    e.x += e.speed;
+    if (e.x >= GX-1){ e.dead = true; breaches++; }
+    if (e.hp <= 0) e.dead = true;
+    else if (!e.dead && e.hp > 0 && e.hp < e.maxHp*0.999){} // noop, lisibilité
+  }
+  enemies = enemies.filter(e => !e.dead);
+
+  if (breaches >= 10){
+    gameOver = true;
+    document.getElementById('over').style.display = 'flex';
+    document.getElementById('overText').textContent = `Château tombé — vague ${wave}`;
+  }
+
+  document.getElementById('gold').textContent = gold;
+  document.getElementById('wave').textContent = wave;
+  document.getElementById('breach').textContent = breaches;
+}
+
+function drawTile(gx, gy, fill, stroke){
+  const p = toScreen(gx, gy);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  ctx.lineTo(p.x+TW/2, p.y+TH/2);
+  ctx.lineTo(p.x, p.y+TH);
+  ctx.lineTo(p.x-TW/2, p.y+TH/2);
+  ctx.closePath();
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.strokeStyle = stroke || '#00000033';
+  ctx.stroke();
+}
+
+function draw(){
+  ctx.clearRect(0,0,cv.width,cv.height);
+
+  for (let gy=0; gy<GY; gy++)
+    for (let gx=0; gx<GX; gx++)
+      drawTile(gx, gy, onPath(gx,gy) ? '#3a2f2f' : '#232838');
+
+  // tours
+  for (const k in grid){
+    const [tx,ty] = k.split(',').map(Number);
+    const t = grid[k];
+    const p = toScreen(tx,ty);
+    ctx.fillStyle = '#5b8dd9';
+    ctx.fillRect(p.x-10, p.y-6, 20, 22);
+    // barre de vie
+    ctx.fillStyle = '#000';
+    ctx.fillRect(p.x-12, p.y-14, 24, 4);
+    ctx.fillStyle = t.hp/t.maxHp > 0.4 ? '#6cd66c' : '#d96c6c';
+    ctx.fillRect(p.x-12, p.y-14, 24*(t.hp/t.maxHp), 4);
+  }
+
+  // ennemis
+  for (const e of enemies){
+    const p = toScreen(e.x, e.y);
+    ctx.fillStyle = '#d95c5c';
+    ctx.beginPath();
+    ctx.arc(p.x, p.y+TH/2, 8, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // joueur
+  const pp = toScreen(player.gx, player.gy);
+  ctx.fillStyle = '#f2c14e';
+  ctx.beginPath();
+  ctx.arc(pp.x, pp.y+TH/2, 9, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = '#00000088';
+  ctx.stroke();
+}
+
+function loop(){
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
