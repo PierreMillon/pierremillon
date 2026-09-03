@@ -54,6 +54,7 @@
   <button id="menu-btn" aria-label="Menu">☰</button>
   <div id="menu-panel">
     <a href="../bastion-orbit/">Bastion Orbit</a>
+    <a id="grid-toggle" href="#">Afficher la grille (debug)</a>
   </div>
   <button id="version-btn" aria-label="Historique des versions"></button>
   <div id="version-panel"></div>
@@ -99,9 +100,22 @@ const PLAYER_SPEED = 4;      // px/frame
 const PLAYER_RANGE_PX = 200;
 const TOWER_RANGE_PX = 160;
 const SHOT_SPEED_PX = 8;     // px/frame
-const BUILD_OFFSET = 36;     // distance à laquelle la tour apparaît devant le joueur
 const TOWER_MAX_SH = 28, TOWER_HW = 10, TOWER_HH = 5;
 const PLAYER_HW = 9, PLAYER_HH = 5, PLAYER_SH = 14;
+
+// grille de construction : invisible en jeu normal (affichable en debug),
+// sert uniquement à caler les tours pour qu'on puisse en coller plusieurs
+// côte à côte et former une vraie ligne continue — pas de contrainte sur
+// le joueur/les ennemis, qui restent en mouvement libre.
+// Grille carrée simple (pas tournée façon losange isométrique) : une
+// grille en losange donnait un espacement irrégulier entre cases voisines
+// selon l'endroit exact où le joueur se tenait — donc de vraies brèches
+// dans le "mur". Une grille carrée garantit un espacement uniforme.
+// L'isométrique reste le style de dessin des tours (drawIsoBox), pas la
+// grille de placement elle-même.
+const GRID_CELL = 36;
+let showGrid = false;
+function snapToGrid(v){ return Math.round(v / GRID_CELL) * GRID_CELL; }
 
 // le pied de la tour est un obstacle solide : personne ne peut marcher
 // dessus (joueur comme ennemis), et c'est cette limite qui compte pour
@@ -214,11 +228,16 @@ window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
 function isControl(el){ return el && el.closest && el.closest('#topbar, #bottombar'); }
 
-// la tour apparaît collée au joueur, côté haut de l'écran (face aux ennemis)
+// la tour se cale sur la case de la grille juste au-dessus du joueur (côté
+// ennemis) — comme cette case dépend d'où le joueur se trouve à l'instant
+// du double-tap, marcher le long d'une ligne et construire plusieurs fois
+// pose des tours côte à côte : la grille garantit qu'elles s'alignent sans
+// se chevaucher, et forment une ligne de blocage continue
 function tryBuild(){
   if (gold < 10) return;
-  const bx = player.x, by = player.y - BUILD_OFFSET;
-  for (const t of towers) if (Math.hypot(t.x-bx, t.y-by) < 20) return; // évite l'empilement au même endroit
+  const bx = snapToGrid(player.x);
+  const by = snapToGrid(player.y) - GRID_CELL;
+  for (const t of towers) if (Math.hypot(t.x-bx, t.y-by) < 10) return; // case déjà occupée
   gold -= 10;
   towers.push({ x: bx, y: by, hp: 30, maxHp: 30, lastShotAt: 0, flashUntil: 0, lastHitSoundAt: 0 });
   sfxBuild();
@@ -278,10 +297,16 @@ document.addEventListener('click', e => {
     menuPanel.style.display = 'none';
   }
 });
+document.getElementById('grid-toggle').addEventListener('click', e => {
+  e.preventDefault();
+  showGrid = !showGrid;
+  e.target.textContent = showGrid ? 'Cacher la grille (debug)' : 'Afficher la grille (debug)';
+});
 
 // numéro de version : résumé en un coup d'œil de ce qui a changé au
 // dernier push. Chaque nouvelle version pousse une entrée en tête ici.
 const CHANGELOG = [
+  { v: 11, text: "Grille de construction (carrée, invisible) pour poser des tours côte à côte sans trou ; grille affichable en debug (menu)" },
   { v: 10, text: "Or : 1 par kill (au lieu de 4) ; correctif son (l'audio n'était jamais débloqué, donc muet)" },
   { v: 9, text: "Vagues organiques (salves, hésitations), tours = murs solides qui flashent quand touchées, or au kill seulement, bruitages, écran de défaite repensé (continuer/recommencer)" },
   { v: 8, text: "Menu : retiré le lien vers soi-même, ne reste que Bastion Orbit" },
@@ -546,8 +571,22 @@ function drawIsoBox(cx, cyBase, hw, hh, sh, colTop, colLeft, colRight, stacked){
 // l'illusion de 3D tient uniquement à l'ordre de dessin : ce qui est plus
 // bas à l'écran (donc plus "proche") est redessiné par-dessus le reste —
 // pas de vraie profondeur, juste des calques bien triés
+// debug : dessine la grille de construction (gris, un peu plus foncé que
+// le fond) pour vérifier visuellement l'alignement des tours
+function drawDebugGrid(){
+  ctx.strokeStyle = '#00000028';
+  ctx.lineWidth = 1;
+  const startX = Math.floor(0 / GRID_CELL) * GRID_CELL;
+  const startY = Math.floor(0 / GRID_CELL) * GRID_CELL;
+  ctx.beginPath();
+  for (let x = startX; x <= STAGE_W; x += GRID_CELL){ ctx.moveTo(x, 0); ctx.lineTo(x, STAGE_H); }
+  for (let y = startY; y <= STAGE_H; y += GRID_CELL){ ctx.moveTo(0, y); ctx.lineTo(STAGE_W, y); }
+  ctx.stroke();
+}
+
 function draw(now){
   ctx.clearRect(0, 0, STAGE_W, STAGE_H); // fond beige uni (posé par le CSS du canvas), aucune ligne de sol
+  if (showGrid) drawDebugGrid();
 
   const layers = [];
 
