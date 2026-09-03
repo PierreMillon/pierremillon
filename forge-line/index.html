@@ -26,7 +26,17 @@
   #stage{position:fixed;top:var(--topbar-h);bottom:var(--bottombar-h);left:0;right:0;overflow:hidden;background:#e8dfc8}
   canvas{display:block;touch-action:none;background:#e8dfc8}
 
-  #over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:#000000cc;color:#f3efe2;font-size:28px;z-index:9}
+  /* écran de défaite : une petite carte centrée, pas un voile plein écran —
+     le jeu reste visible (figé) derrière */
+  #over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9;pointer-events:none}
+  #over-card{pointer-events:auto;background:#faf6ea;border:1px solid #00000025;border-radius:14px;box-shadow:0 10px 30px #00000040;padding:22px 26px;text-align:center;max-width:260px}
+  #over-card h2{margin:0 0 6px;font-size:19px;color:#3a3529}
+  #over-card p{margin:0 0 16px;font-size:13px;color:#3a3529;opacity:.7}
+  #over-card .btns{display:flex;flex-direction:column;gap:8px}
+  #continue-btn{padding:10px 14px;border-radius:8px;border:none;background:#5b8dd9;color:#fff;font-size:13.5px;cursor:pointer}
+  #continue-btn:active{background:#4a78bd}
+  #restart-btn{padding:9px 14px;border-radius:8px;border:1px solid #00000030;background:transparent;color:#3a3529;font-size:13px;cursor:pointer}
+  #restart-btn:active{background:#00000010}
 
   #joyzone{display:none;position:fixed;left:0;right:0;top:var(--topbar-h);bottom:var(--bottombar-h);z-index:3;touch-action:none}
   #joy-base,#joy-knob{display:none;position:fixed;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:4}
@@ -54,7 +64,16 @@
   <div id="joyzone"></div>
   <div id="joy-base"></div>
   <div id="joy-knob"></div>
-  <div id="over"><div id="overText"></div></div>
+  <div id="over">
+    <div id="over-card">
+      <h2>Tu as perdu</h2>
+      <p id="over-wave"></p>
+      <div class="btns">
+        <button id="continue-btn">🎬 Regarder une pub (30s) pour continuer</button>
+        <button id="restart-btn">Recommencer au tout début</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="bottombar">
@@ -79,12 +98,18 @@ const MARGIN = 22;
 const PLAYER_SPEED = 4;      // px/frame
 const PLAYER_RANGE_PX = 200;
 const TOWER_RANGE_PX = 160;
-const CONTACT_RANGE_PX = 34;
-const ATTACKER_STOP_PX = 36;
 const SHOT_SPEED_PX = 8;     // px/frame
 const BUILD_OFFSET = 36;     // distance à laquelle la tour apparaît devant le joueur
 const TOWER_MAX_SH = 28, TOWER_HW = 10, TOWER_HH = 5;
 const PLAYER_HW = 9, PLAYER_HH = 5, PLAYER_SH = 14;
+
+// le pied de la tour est un obstacle solide : personne ne peut marcher
+// dessus (joueur comme ennemis), et c'est cette limite qui compte pour
+// le contact/les dégâts — pas une zone floue plus large
+const TOWER_SOLID_RADIUS = 20;
+const ATTACKER_STOP_PX = TOWER_SOLID_RADIUS;
+const CONTACT_RANGE_PX = TOWER_SOLID_RADIUS + 6;
+const TOWER_FLASH_MS = 160; // durée du flash translucide quand une tour encaisse
 
 const player = { x: 0, y: 0 };
 let playerPlaced = false;
@@ -110,17 +135,69 @@ function resizeCanvas(){
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-let towers = []; // {x, y, hp, maxHp, lastShotAt}
+let towers = []; // {x, y, hp, maxHp, lastShotAt, flashUntil, lastHitSoundAt}
 let gold = 0, wave = 1, breaches = 0, gameOver = false;
 let enemies = [];
 let projectiles = [];
-let spawnTimer = 0, spawnInterval = 90, enemiesThisWave = 5, spawned = 0;
-let goldTimer = 0;
+function pickNextSpawnDelay(){ return Math.max(18, 65 - wave*3) + Math.random()*55; }
+let spawnTimer = 0, spawnInterval = pickNextSpawnDelay(), enemiesThisWave = 5, spawned = 0;
 let lastShotAt = 0;
 const SHOT_INTERVAL_MS = 1000;
 const PLAYER_DMG = 12;
 const BASE_ENEMY_HP = 12;
 const WAVE_GROWTH = 1.2; // chaque vague est 20% plus forte que la précédente
+const KILL_REWARD = 4;   // or gagné en tuant un ennemi (rien s'il atteint la ligne)
+
+// --- petits bruitages synthétisés (aucun fichier audio, tout est généré) ---
+let audioCtx = null;
+function getAudioCtx(){
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone({ freq=440, freqEnd=null, duration=0.05, type='sine', gain=0.15 }){
+  const ac = getAudioCtx(), t0 = ac.currentTime;
+  const osc = ac.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t0);
+  if (freqEnd) osc.frequency.exponentialRampToValueAtTime(Math.max(1, freqEnd), t0 + duration);
+  const g = ac.createGain();
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  osc.connect(g); g.connect(ac.destination);
+  osc.start(t0); osc.stop(t0 + duration + 0.02);
+}
+function playNoiseBurst({ duration=0.03, gain=0.15, filterFreq=2000, filterType='bandpass', filterQ=2 }){
+  const ac = getAudioCtx(), t0 = ac.currentTime;
+  const n = Math.max(1, Math.floor(ac.sampleRate * duration));
+  const buffer = ac.createBuffer(1, n, ac.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < n; i++) data[i] = (Math.random()*2-1) * (1 - i/n);
+  const src = ac.createBufferSource();
+  src.buffer = buffer;
+  const f = ac.createBiquadFilter();
+  f.type = filterType; f.frequency.value = filterFreq; f.Q.value = filterQ;
+  const g = ac.createGain();
+  g.gain.setValueAtTime(gain, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+  src.connect(f); f.connect(g); g.connect(ac.destination);
+  src.start(t0);
+}
+// tir : un déclic sec, comme un grain de riz qui casse
+function sfxShoot(){ playNoiseBurst({ duration: 0.02, gain: 0.12, filterFreq: 3200, filterType: 'bandpass', filterQ: 4 }); }
+// impact sur un ennemi : le même déclic, un peu plus aigu et plus sourd
+function sfxHit(){ playNoiseBurst({ duration: 0.03, gain: 0.14, filterFreq: 4200, filterType: 'bandpass', filterQ: 2.2 }); }
+// construction : clank métallique, clinquant mais pas aigu
+function sfxBuild(){
+  playTone({ freq: 520, freqEnd: 300, duration: 0.12, type: 'triangle', gain: 0.14 });
+  playTone({ freq: 780, freqEnd: 500, duration: 0.08, type: 'square', gain: 0.06 });
+  playNoiseBurst({ duration: 0.05, gain: 0.08, filterFreq: 2500, filterType: 'bandpass', filterQ: 3 });
+}
+// une tour encaisse : coup de marteau sur bois sec, court et grave
+function sfxTowerHit(){
+  playTone({ freq: 160, freqEnd: 90, duration: 0.05, type: 'sine', gain: 0.16 });
+  playNoiseBurst({ duration: 0.02, gain: 0.06, filterFreq: 700, filterType: 'lowpass' });
+}
 
 const keys = {};
 window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
@@ -134,12 +211,25 @@ function tryBuild(){
   const bx = player.x, by = player.y - BUILD_OFFSET;
   for (const t of towers) if (Math.hypot(t.x-bx, t.y-by) < 20) return; // évite l'empilement au même endroit
   gold -= 10;
-  towers.push({ x: bx, y: by, hp: 30, maxHp: 30, lastShotAt: 0 });
+  towers.push({ x: bx, y: by, hp: 30, maxHp: 30, lastShotAt: 0, flashUntil: 0, lastHitSoundAt: 0 });
+  sfxBuild();
 }
 function tryRepair(){
   const t = pickNearestTower(player.x, player.y);
   if (t && t.hp < t.maxHp && Math.hypot(t.x-player.x, t.y-player.y) < CONTACT_RANGE_PX){
     t.hp = Math.min(t.maxHp, t.hp + 0.4);
+  }
+}
+// une tour posée est un obstacle solide : personne (joueur ni ennemis) ne
+// peut marcher dedans — elle sert aussi de mur pour la ligne de défense
+function resolveTowerCollision(pos, radius){
+  for (const t of towers){
+    const dx = pos.x-t.x, dy = pos.y-t.y;
+    const d = Math.hypot(dx, dy);
+    if (d < radius){
+      if (d > 0.001){ pos.x = t.x + dx/d*radius; pos.y = t.y + dy/d*radius; }
+      else { pos.x = t.x + radius; pos.y = t.y; }
+    }
   }
 }
 
@@ -183,6 +273,7 @@ document.addEventListener('click', e => {
 // numéro de version : résumé en un coup d'œil de ce qui a changé au
 // dernier push. Chaque nouvelle version pousse une entrée en tête ici.
 const CHANGELOG = [
+  { v: 9, text: "Vagues organiques (salves, hésitations), tours = murs solides qui flashent quand touchées, or au kill seulement, bruitages, écran de défaite repensé (continuer/recommencer)" },
   { v: 8, text: "Menu : retiré le lien vers soi-même, ne reste que Bastion Orbit" },
   { v: 7, text: "Correctif : le jeu se figeait dès le 1er ennemi (bug bloquant) ; joystick actif sur tout l'écran" },
   { v: 6, text: "Numéro de version cliquable (ce mini-historique) ; le menu pointe vers Bastion Orbit" },
@@ -271,7 +362,10 @@ function spawnEnemy(){
     driftFreq: 0.01 + Math.random()*0.01,
     hp, maxHp: hp, speed,
     role: isAttacker ? 'attacker' : 'rusher',
-    target: null
+    target: null,
+    // certains hésitent avant de s'avancer — l'impression qu'ils attendent
+    // une occasion plutôt que de foncer tous en rang
+    waitFrames: Math.random() < 0.4 ? Math.floor(20 + Math.random()*70) : 0
   };
   if (isAttacker) e.target = pickNearestTower(baseX, 0);
   enemies.push(e);
@@ -287,6 +381,7 @@ function playerShoot(now){
   if (!target) return;
   lastShotAt = now;
   projectiles.push({ x: player.x, y: player.y, target, speed: SHOT_SPEED_PX, dmg: PLAYER_DMG });
+  sfxShoot();
 }
 
 function update(now){
@@ -304,9 +399,13 @@ function update(now){
   }
   if (dx || dy){
     const len = Math.hypot(dx, dy) || 1;
-    player.x = Math.max(MARGIN, Math.min(STAGE_W-MARGIN, player.x + dx/len*PLAYER_SPEED));
-    player.y = Math.max(MARGIN, Math.min(STAGE_H-MARGIN, player.y + dy/len*PLAYER_SPEED));
+    player.x += dx/len*PLAYER_SPEED;
+    player.y += dy/len*PLAYER_SPEED;
   }
+  resolveTowerCollision(player, TOWER_SOLID_RADIUS); // une tour, c'est aussi un mur
+  player.x = Math.max(MARGIN, Math.min(STAGE_W-MARGIN, player.x));
+  player.y = Math.max(MARGIN, Math.min(STAGE_H-MARGIN, player.y));
+
   tryRepair(); // automatique dès qu'on est collé à une tour endommagée
 
   playerShoot(now);
@@ -324,37 +423,57 @@ function update(now){
       if (target){
         t.lastShotAt = now;
         projectiles.push({ x: t.x, y: t.y, target, speed: SHOT_SPEED_PX, dmg: PLAYER_DMG });
+        sfxShoot();
       }
     }
+    let underAttack = false;
     for (const e of enemies){
-      if (Math.hypot(e.x-t.x, e.y-t.y) < CONTACT_RANGE_PX) t.hp -= (e.role === 'attacker' ? 0.4 : 0.15);
+      if (Math.hypot(e.x-t.x, e.y-t.y) < CONTACT_RANGE_PX){
+        t.hp -= (e.role === 'attacker' ? 0.4 : 0.15);
+        underAttack = true;
+      }
+    }
+    if (underAttack){
+      t.flashUntil = now + TOWER_FLASH_MS; // brièvement translucide pendant qu'elle encaisse
+      if (now - (t.lastHitSoundAt||0) > 350){ sfxTowerHit(); t.lastHitSoundAt = now; }
     }
   }
-  towers = towers.filter(t => t.hp > 0); // à 0, la tour a "coulé" jusqu'au sol
+  towers = towers.filter(t => t.hp > 0); // à 0, la tour a "coulé" jusqu'au sol, sans bruit
 
   for (const pr of projectiles){
     if (!enemies.includes(pr.target) || pr.target.hp <= 0){ pr.dead = true; continue; }
     const dx = pr.target.x-pr.x, dy = pr.target.y-pr.y, d = Math.hypot(dx, dy);
-    if (d < 6){ pr.target.hp -= pr.dmg; pr.dead = true; }
+    if (d < 6){ pr.target.hp -= pr.dmg; pr.dead = true; sfxHit(); }
     else { pr.x += dx/d*pr.speed; pr.y += dy/d*pr.speed; }
   }
   projectiles = projectiles.filter(p => !p.dead);
 
-  goldTimer++;
-  if (goldTimer > 60){ gold++; goldTimer = 0; }
-
+  // vagues organiques : par à-coups (1, parfois 2-3 d'un coup), avec un
+  // délai irrégulier entre chaque décision plutôt qu'un tapis roulant régulier
   if (spawned < enemiesThisWave){
     spawnTimer++;
-    if (spawnTimer > spawnInterval){ spawnEnemy(); spawned++; spawnTimer = 0; }
+    if (spawnTimer > spawnInterval){
+      const remaining = enemiesThisWave - spawned;
+      let burst = 1;
+      if (remaining > 1 && Math.random() < 0.35) burst = 2;
+      if (remaining > 2 && Math.random() < 0.12) burst = 3;
+      burst = Math.min(burst, remaining);
+      for (let i = 0; i < burst; i++) spawnEnemy();
+      spawned += burst;
+      spawnTimer = 0;
+      spawnInterval = pickNextSpawnDelay();
+    }
   } else if (enemies.length === 0){
     wave++;
     spawned = 0;
     enemiesThisWave += 3;
-    spawnInterval = Math.max(30, spawnInterval - 5);
+    spawnInterval = pickNextSpawnDelay();
   }
 
   for (const e of enemies){
-    if (e.role === 'attacker'){
+    if (e.waitFrames > 0){
+      e.waitFrames--; // hésite/se planque un instant avant de s'avancer
+    } else if (e.role === 'attacker'){
       if (!e.target || !towers.includes(e.target)) e.target = pickNearestTower(e.x, e.y);
       if (e.target){
         const dx = e.target.x-e.x, dy = e.target.y-e.y, d = Math.hypot(dx, dy);
@@ -367,16 +486,21 @@ function update(now){
       e.y += e.speed;
       e.x = e.baseX + Math.sin(e.y*e.driftFreq + e.driftPhase)*e.driftAmp;
     }
+    resolveTowerCollision(e, TOWER_SOLID_RADIUS); // ne peut pas traverser une tour
     e.x = Math.max(16, Math.min(STAGE_W-16, e.x));
-    if (e.y >= STAGE_H - 16){ e.dead = true; breaches++; }
-    if (e.hp <= 0) e.dead = true;
+    if (e.hp <= 0){
+      if (!e.dead) gold += KILL_REWARD; // l'or vient de la mise à mort, pas de l'arrivée sur la carte
+      e.dead = true;
+    } else if (e.y >= STAGE_H - 16){
+      e.dead = true; breaches++;
+    }
   }
   enemies = enemies.filter(e => !e.dead);
 
   if (breaches >= 10){
     gameOver = true;
     document.getElementById('over').style.display = 'flex';
-    document.getElementById('overText').textContent = `Ligne percée — vague ${wave}`;
+    document.getElementById('over-wave').textContent = `Tu as tenu jusqu'à la vague ${wave}`;
   }
 
   document.getElementById('gold').textContent = gold;
@@ -412,17 +536,21 @@ function drawIsoBox(cx, cyBase, hw, hh, sh, colTop, colLeft, colRight, stacked){
 // l'illusion de 3D tient uniquement à l'ordre de dessin : ce qui est plus
 // bas à l'écran (donc plus "proche") est redessiné par-dessus le reste —
 // pas de vraie profondeur, juste des calques bien triés
-function draw(){
+function draw(now){
   ctx.clearRect(0, 0, STAGE_W, STAGE_H); // fond beige uni (posé par le CSS du canvas), aucune ligne de sol
 
   const layers = [];
 
   // pas de barre de vie : la hauteur du pavé EST sa vie — une tour qui
-  // encaisse rétrécit vers le sol, et disparaît une fois "coulée"
+  // encaisse rétrécit vers le sol, et disparaît une fois "coulée". Elle
+  // devient brièvement translucide pendant qu'elle se fait attaquer.
   for (const t of towers){
     const sh = TOWER_MAX_SH * Math.max(0, t.hp/t.maxHp);
+    const flashing = now < (t.flashUntil || 0);
     layers.push({ y: t.y, draw: () => {
+      if (flashing) ctx.globalAlpha = 0.45;
       drawIsoBox(t.x, t.y, TOWER_HW, TOWER_HH, sh, '#8fb3e8', '#5b8dd9', '#3f66a8', true);
+      if (flashing) ctx.globalAlpha = 1;
     }});
   }
 
@@ -454,9 +582,25 @@ function draw(){
   for (const l of layers) l.draw();
 }
 
+// écran de défaite : « continuer » pardonne juste les brèches (comme une
+// pub récompensée — pas encore branchée, mais le bouton fonctionne déjà) ;
+// « recommencer » repart entièrement de zéro
+document.getElementById('continue-btn').addEventListener('click', () => {
+  breaches = 0;
+  gameOver = false;
+  document.getElementById('over').style.display = 'none';
+});
+document.getElementById('restart-btn').addEventListener('click', () => {
+  towers = []; enemies = []; projectiles = [];
+  gold = 0; wave = 1; breaches = 0; gameOver = false;
+  spawned = 0; enemiesThisWave = 5; spawnTimer = 0; spawnInterval = pickNextSpawnDelay();
+  player.x = STAGE_W/2; player.y = STAGE_H - 70;
+  document.getElementById('over').style.display = 'none';
+});
+
 function loop(ts){
   update(ts || 0);
-  draw();
+  draw(ts || 0);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
