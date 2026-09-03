@@ -10,6 +10,11 @@
 
   #topbar{position:fixed;top:0;left:0;right:0;height:var(--topbar-h);display:flex;align-items:center;background:#00000012;z-index:6}
   #menu-btn{margin-left:10px;width:38px;height:38px;border-radius:8px;border:1px solid #00000030;background:#00000010;color:#3a3529;font-size:18px;line-height:1;cursor:pointer}
+  #menu-panel{display:none;position:fixed;top:calc(var(--topbar-h) + 6px);left:10px;background:#faf6ea;border:1px solid #00000025;border-radius:10px;box-shadow:0 6px 18px #00000022;min-width:170px;z-index:10;overflow:hidden}
+  #menu-panel a, #menu-panel .disabled{display:block;padding:10px 14px;font-size:14px;color:#3a3529;text-decoration:none}
+  #menu-panel a:hover{background:#00000010}
+  #menu-panel .disabled{opacity:.45;cursor:default}
+  #menu-panel .current{background:#00000010;font-weight:600}
 
   #bottombar{position:fixed;bottom:0;left:0;right:0;height:var(--bottombar-h);display:flex;align-items:center;justify-content:center;background:#00000012;z-index:6}
   #hud{font-size:14px;line-height:1.4;text-align:center}
@@ -19,19 +24,12 @@
 
   #over{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:#000000cc;color:#f3efe2;font-size:28px;z-index:9}
 
-  /* contrôles tactiles */
-  #touchpad{display:none}
-  .btn{position:fixed;width:66px;height:66px;border-radius:50%;background:#00000022;border:1px solid #00000033;color:#3a3529;font-size:24px;display:flex;align-items:center;justify-content:center;user-select:none;-webkit-user-select:none;touch-action:none;z-index:7}
-  .btn:active{background:#00000044}
-  #act-repair{right:22px;bottom:calc(var(--bottombar-h) + 20px)}
-
   #joyzone{display:none;position:fixed;left:0;top:var(--topbar-h);bottom:var(--bottombar-h);width:55%;z-index:3;touch-action:none}
   #joy-base,#joy-knob{display:none;position:fixed;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;z-index:4}
   #joy-base{width:88px;height:88px;background:#00000018;border:1px solid #00000030}
   #joy-knob{width:40px;height:40px;background:#00000040}
 
   @media (hover:none) and (pointer:coarse){
-    #touchpad{display:block}
     #joyzone{display:block}
   }
 </style>
@@ -40,6 +38,10 @@
 
 <div id="topbar">
   <button id="menu-btn" aria-label="Menu">☰</button>
+  <div id="menu-panel">
+    <a class="current">Forge Line</a>
+    <span class="disabled">Bastion Orbit (bientôt)</span>
+  </div>
 </div>
 
 <div id="stage">
@@ -47,9 +49,6 @@
   <div id="joyzone"></div>
   <div id="joy-base"></div>
   <div id="joy-knob"></div>
-  <div id="touchpad">
-    <div class="btn" id="act-repair">🔧</div>
-  </div>
   <div id="over"><div id="overText"></div></div>
 </div>
 
@@ -64,32 +63,26 @@
 <script>
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const stage = document.getElementById('stage');
-const GX = 10, GY = 9; // grille logique servant au placement (tours/joueur), jamais dessinée
 
-// tout le jeu tourne en pixels écran (CSS px) ; la grille isométrique ne sert
-// qu'à ancrer visuellement les objets posés (tours, joueur) — les ennemis et
-// projectiles se déplacent directement dans cet espace-là.
-let TW = 64, TH = 32, originX = 0, originY = 24;
+// tout le jeu vit en pixels écran (CSS px) — joueur, tours, ennemis et
+// projectiles se déplacent librement sur toute la carte. L'isométrique
+// n'est plus qu'un style de dessin (drawIsoBox), pas une grille de
+// placement : ça garde le tout simple et léger.
 let STAGE_W = 0, STAGE_H = 0;
-let PLAYER_RANGE_PX, TOWER_RANGE_PX, CONTACT_RANGE_PX, ATTACKER_STOP_PX, SHOT_SPEED_PX;
+const MARGIN = 22;
 
-function toScreen(gx, gy){
-  return { x: originX + (gx-gy)*TW/2, y: originY + (gx+gy)*TH/2 };
-}
-// point au sol (front) d'une case, où un objet posé "touche" le sol
-function groundPoint(gx, gy){
-  const p = toScreen(gx, gy);
-  return { x: p.x, y: p.y + TH };
-}
-function screenToGrid(x, y){
-  const a = (x - originX) / (TW/2);
-  const b = (y - originY) / (TH/2);
-  return { gx: Math.round((a+b)/2), gy: Math.round((b-a)/2) };
-}
-function clientToStage(clientX, clientY){
-  const rect = cv.getBoundingClientRect();
-  return { x: clientX - rect.left, y: clientY - rect.top };
-}
+const PLAYER_SPEED = 4;      // px/frame
+const PLAYER_RANGE_PX = 200;
+const TOWER_RANGE_PX = 160;
+const CONTACT_RANGE_PX = 34;
+const ATTACKER_STOP_PX = 36;
+const SHOT_SPEED_PX = 8;     // px/frame
+const BUILD_OFFSET = 36;     // distance à laquelle la tour apparaît devant le joueur
+const TOWER_MAX_SH = 28, TOWER_HW = 10, TOWER_HH = 5;
+const PLAYER_HW = 9, PLAYER_HH = 5, PLAYER_SH = 14;
+
+const player = { x: 0, y: 0 };
+let playerPlaced = false;
 
 function resizeCanvas(){
   const dpr = window.devicePixelRatio || 1;
@@ -101,26 +94,18 @@ function resizeCanvas(){
   cv.style.height = STAGE_H + 'px';
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // on dessine ensuite en pixels CSS
 
-  const marginX = 30;
-  const fitTW = (STAGE_W - marginX*2) / (GX + GY - 2) * 2;
-  TW = Math.max(20, Math.min(64, isFinite(fitTW) ? fitTW : 64));
-  TH = TW / 2;
-  originX = STAGE_W / 2;
-  originY = 24;
-
-  PLAYER_RANGE_PX = TW * 3.5;
-  TOWER_RANGE_PX = TW * 2.5;
-  CONTACT_RANGE_PX = TW * 0.5;
-  ATTACKER_STOP_PX = TW * 0.55;
-  SHOT_SPEED_PX = TW * 0.14;
+  if (!playerPlaced){
+    player.x = STAGE_W/2; player.y = STAGE_H - 70;
+    playerPlaced = true;
+  } else {
+    player.x = Math.min(player.x, STAGE_W-MARGIN);
+    player.y = Math.min(player.y, STAGE_H-MARGIN);
+  }
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-const grid = {}; // "x,y" -> {type:'tower', hp, maxHp, lastShotAt}
-function key(x,y){ return x+','+y; }
-
-const player = { gx: Math.floor(GX/2), gy: GY-1, moveCooldown: 0 };
+let towers = []; // {x, y, hp, maxHp, lastShotAt}
 let gold = 0, wave = 1, breaches = 0, gameOver = false;
 let enemies = [];
 let projectiles = [];
@@ -136,27 +121,27 @@ const keys = {};
 window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-function isControl(el){ return el && el.closest && el.closest('.btn, #topbar, #bottombar'); }
+function isControl(el){ return el && el.closest && el.closest('#topbar, #bottombar'); }
 
-function tryBuildAt(gx, gy){
-  if (gx < 0 || gx >= GX || gy < 0 || gy >= GY) return;
-  const k = key(gx, gy);
-  if (grid[k]) return;
+// la tour apparaît collée au joueur, côté haut de l'écran (face aux ennemis)
+function tryBuild(){
   if (gold < 10) return;
+  const bx = player.x, by = player.y - BUILD_OFFSET;
+  for (const t of towers) if (Math.hypot(t.x-bx, t.y-by) < 20) return; // évite l'empilement au même endroit
   gold -= 10;
-  grid[k] = { type:'tower', hp:30, maxHp:30, lastShotAt:0 };
+  towers.push({ x: bx, y: by, hp: 30, maxHp: 30, lastShotAt: 0 });
 }
 function tryRepair(){
-  const t = grid[key(player.gx, player.gy)];
-  if (t && t.hp < t.maxHp) t.hp = Math.min(t.maxHp, t.hp + 0.4);
+  const t = pickNearestTower(player.x, player.y);
+  if (t && t.hp < t.maxHp && Math.hypot(t.x-player.x, t.y-player.y) < CONTACT_RANGE_PX){
+    t.hp = Math.min(t.maxHp, t.hp + 0.4);
+  }
 }
 
-// construire : double-clic (souris) ou double-tap (tactile), n'importe où sur la carte
+// construire : double-clic (souris) ou double-tap (tactile), n'importe où
 document.addEventListener('dblclick', e => {
   if (isControl(e.target)) return;
-  const s = clientToStage(e.clientX, e.clientY);
-  const { gx, gy } = screenToGrid(s.x, s.y);
-  tryBuildAt(gx, gy);
+  tryBuild();
 });
 let lastTap = { time: 0, x: 0, y: 0 };
 document.addEventListener('touchend', e => {
@@ -166,29 +151,35 @@ document.addEventListener('touchend', e => {
   const dt = now - lastTap.time;
   const dist = Math.hypot(t.clientX - lastTap.x, t.clientY - lastTap.y);
   if (dt < 300 && dist < 30){
-    const s = clientToStage(t.clientX, t.clientY);
-    const { gx, gy } = screenToGrid(s.x, s.y);
-    tryBuildAt(gx, gy);
+    tryBuild();
     lastTap = { time: 0, x: 0, y: 0 };
   } else {
     lastTap = { time: now, x: t.clientX, y: t.clientY };
   }
 }, { passive:true });
 
-window.addEventListener('keydown', e => { if (e.key.toLowerCase() === 'b') tryBuildAt(player.gx, player.gy); });
+window.addEventListener('keydown', e => { if (e.key.toLowerCase() === 'b') tryBuild(); });
 
-document.getElementById('act-repair').addEventListener('touchstart', ev => { ev.preventDefault(); keys['r'] = true; });
-document.getElementById('act-repair').addEventListener('touchend', ev => { ev.preventDefault(); keys['r'] = false; });
-document.getElementById('act-repair').addEventListener('touchcancel', ev => { ev.preventDefault(); keys['r'] = false; });
-
-// menu : réservé pour plus tard (pause, options...)
-document.getElementById('menu-btn').addEventListener('click', () => {});
+// menu en haut à gauche : pour l'instant juste la liste des jeux (Bastion
+// Orbit arrivera ici une fois publié)
+const menuBtn = document.getElementById('menu-btn');
+const menuPanel = document.getElementById('menu-panel');
+menuBtn.addEventListener('click', e => {
+  e.stopPropagation();
+  menuPanel.style.display = menuPanel.style.display === 'block' ? 'none' : 'block';
+});
+document.addEventListener('click', e => {
+  if (menuPanel.style.display === 'block' && !menuPanel.contains(e.target) && e.target !== menuBtn){
+    menuPanel.style.display = 'none';
+  }
+});
 
 // joystick tactile transparent : apparaît là où le doigt touche la zone gauche
 const joyzone = document.getElementById('joyzone');
 const joyBase = document.getElementById('joy-base');
 const joyKnob = document.getElementById('joy-knob');
 let joyActive = false, joyOriginX = 0, joyOriginY = 0;
+let joyDX = 0, joyDY = 0; // vecteur de direction continu (mouvement fluide, pas 4 directions figées)
 const JOY_RADIUS = 40, JOY_DEADZONE = 12;
 
 function joyStart(x, y){
@@ -205,35 +196,27 @@ function joyMove(x, y){
   joyKnob.style.left = (joyOriginX + Math.cos(angle)*clamped)+'px';
   joyKnob.style.top = (joyOriginY + Math.sin(angle)*clamped)+'px';
 
-  keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
-  if (dist > JOY_DEADZONE){
-    const deg = angle*180/Math.PI;
-    if (deg > -45 && deg <= 45) keys['arrowright'] = true;
-    else if (deg > 45 && deg <= 135) keys['arrowdown'] = true;
-    else if (deg > -135 && deg <= -45) keys['arrowup'] = true;
-    else keys['arrowleft'] = true;
-  }
+  if (dist > JOY_DEADZONE){ joyDX = Math.cos(angle); joyDY = Math.sin(angle); }
+  else { joyDX = 0; joyDY = 0; }
 }
 function joyEnd(){
   joyActive = false;
   joyBase.style.display = 'none';
   joyKnob.style.display = 'none';
-  keys['arrowup'] = keys['arrowdown'] = keys['arrowleft'] = keys['arrowright'] = false;
+  joyDX = 0; joyDY = 0;
 }
 joyzone.addEventListener('touchstart', e => { e.preventDefault(); const t = e.changedTouches[0]; joyStart(t.clientX, t.clientY); });
 joyzone.addEventListener('touchmove', e => { e.preventDefault(); const t = e.changedTouches[0]; joyMove(t.clientX, t.clientY); });
 joyzone.addEventListener('touchend', e => { e.preventDefault(); joyEnd(); });
 joyzone.addEventListener('touchcancel', e => { e.preventDefault(); joyEnd(); });
 
-function pickNearestTowerKey(x, y){
-  let bestK = null, bestD = Infinity;
-  for (const k in grid){
-    const [tx, ty] = k.split(',').map(Number);
-    const gp = groundPoint(tx, ty);
-    const d = Math.hypot(gp.x-x, gp.y-y);
-    if (d < bestD){ bestD = d; bestK = k; }
+function pickNearestTower(x, y){
+  let best = null, bestD = Infinity;
+  for (const t of towers){
+    const d = Math.hypot(t.x-x, t.y-y);
+    if (d < bestD){ bestD = d; best = t; }
   }
-  return bestK;
+  return best;
 }
 
 // certains ennemis (attackers) foncent droit sur une tour pour l'occuper et
@@ -253,68 +236,66 @@ function spawnEnemy(){
     driftFreq: 0.01 + Math.random()*0.01,
     hp, maxHp: hp, speed,
     role: isAttacker ? 'attacker' : 'rusher',
-    targetKey: null
+    target: null
   };
-  if (isAttacker) e.targetKey = pickNearestTowerKey(baseX, 0);
+  if (isAttacker) e.target = pickNearestTower(baseX, 0);
   enemies.push(e);
 }
 
 function playerShoot(now){
   if (now - lastShotAt < SHOT_INTERVAL_MS) return;
-  const pp = groundPoint(player.gx, player.gy);
   let target = null, best = PLAYER_RANGE_PX;
   for (const e of enemies){
-    const d = Math.hypot(e.x-pp.x, e.y-pp.y);
+    const d = Math.hypot(e.x-player.x, e.y-player.y);
     if (d < best){ best = d; target = e; }
   }
   if (!target) return;
   lastShotAt = now;
-  projectiles.push({ x: pp.x, y: pp.y, target, speed: SHOT_SPEED_PX, dmg: PLAYER_DMG });
+  projectiles.push({ x: player.x, y: player.y, target, speed: SHOT_SPEED_PX, dmg: PLAYER_DMG });
 }
 
 function update(now){
   if (gameOver) return;
 
-  if (player.moveCooldown > 0) player.moveCooldown--;
-  else {
-    let dx=0, dy=0;
-    if (keys['arrowup']||keys['z']||keys['w']) dy=-1;
-    else if (keys['arrowdown']||keys['s']) dy=1;
-    else if (keys['arrowleft']||keys['q']||keys['a']) dx=-1;
-    else if (keys['arrowright']||keys['d']) dx=1;
-    if (dx||dy){
-      player.gx = Math.max(0, Math.min(GX-1, player.gx+dx));
-      player.gy = Math.max(0, Math.min(GY-1, player.gy+dy));
-      player.moveCooldown = 7;
-    }
+  // déplacement fluide (clavier 8 directions ou joystick continu)
+  let dx = 0, dy = 0;
+  if (joyActive){
+    dx = joyDX; dy = joyDY;
+  } else {
+    if (keys['arrowup']||keys['z']||keys['w']) dy -= 1;
+    if (keys['arrowdown']||keys['s']) dy += 1;
+    if (keys['arrowleft']||keys['q']||keys['a']) dx -= 1;
+    if (keys['arrowright']||keys['d']) dx += 1;
   }
-  if (keys['r']) tryRepair();
+  if (dx || dy){
+    const len = Math.hypot(dx, dy) || 1;
+    player.x = Math.max(MARGIN, Math.min(STAGE_W-MARGIN, player.x + dx/len*PLAYER_SPEED));
+    player.y = Math.max(MARGIN, Math.min(STAGE_H-MARGIN, player.y + dy/len*PLAYER_SPEED));
+  }
+  tryRepair(); // automatique dès qu'on est collé à une tour endommagée
 
   playerShoot(now);
 
-  // tours : mêmes projectiles que le joueur, au même rythme (1 tir/s)
-  for (const k in grid){
-    const t = grid[k];
-    if (t.type !== 'tower') continue;
-    const [tx, ty] = k.split(',').map(Number);
-    const gp = groundPoint(tx, ty);
+  // tours : mêmes projectiles que le joueur, au même rythme (1 tir/s) ;
+  // pas de barre de vie séparée — leur hauteur EST leur vie (voir draw())
+  for (const t of towers){
     if (t.lastShotAt === undefined) t.lastShotAt = 0;
     if (now - t.lastShotAt >= SHOT_INTERVAL_MS){
       let target = null, best = TOWER_RANGE_PX;
       for (const e of enemies){
-        const d = Math.hypot(e.x-gp.x, e.y-gp.y);
+        const d = Math.hypot(e.x-t.x, e.y-t.y);
         if (d < best){ best = d; target = e; }
       }
       if (target){
         t.lastShotAt = now;
-        projectiles.push({ x: gp.x, y: gp.y, target, speed: SHOT_SPEED_PX, dmg: PLAYER_DMG });
+        projectiles.push({ x: t.x, y: t.y, target, speed: SHOT_SPEED_PX, dmg: PLAYER_DMG });
       }
     }
     for (const e of enemies){
-      if (Math.hypot(e.x-gp.x, e.y-gp.y) < CONTACT_RANGE_PX) t.hp -= (e.role === 'attacker' ? 0.4 : 0.15);
+      if (Math.hypot(e.x-t.x, e.y-t.y) < CONTACT_RANGE_PX) t.hp -= (e.role === 'attacker' ? 0.4 : 0.15);
     }
   }
-  for (const k in grid) if (grid[k].hp <= 0) delete grid[k];
+  towers = towers.filter(t => t.hp > 0); // à 0, la tour a "coulé" jusqu'au sol
 
   for (const pr of projectiles){
     if (!enemies.includes(pr.target) || pr.target.hp <= 0){ pr.dead = true; continue; }
@@ -339,11 +320,9 @@ function update(now){
 
   for (const e of enemies){
     if (e.role === 'attacker'){
-      if (!e.targetKey || !grid[e.targetKey]) e.targetKey = pickNearestTowerKey(e.x, e.y);
-      if (e.targetKey){
-        const [tx, ty] = e.targetKey.split(',').map(Number);
-        const gp = groundPoint(tx, ty);
-        const dx = gp.x-e.x, dy = gp.y-e.y, d = Math.hypot(dx, dy);
+      if (!e.target || !towers.includes(e.target)) e.target = pickNearestTower(e.x, e.y);
+      if (e.target){
+        const dx = e.target.x-e.x, dy = e.target.y-e.y, d = Math.hypot(dx, dy);
         if (d > ATTACKER_STOP_PX){ e.x += dx/d*e.speed; e.y += dy/d*e.speed; }
       } else {
         e.y += e.speed;
@@ -403,16 +382,12 @@ function draw(){
 
   const layers = [];
 
-  for (const k in grid){
-    const [tx,ty] = k.split(',').map(Number);
-    const t = grid[k];
-    const gp = groundPoint(tx,ty);
-    layers.push({ y: gp.y, draw: () => {
-      drawIsoBox(gp.x, gp.y, 10, 5, 28, '#8fb3e8', '#5b8dd9', '#3f66a8', true);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(gp.x-12, gp.y-50, 24, 4);
-      ctx.fillStyle = t.hp/t.maxHp > 0.4 ? '#6cd66c' : '#d96c6c';
-      ctx.fillRect(gp.x-12, gp.y-50, 24*(t.hp/t.maxHp), 4);
+  // pas de barre de vie : la hauteur du pavé EST sa vie — une tour qui
+  // encaisse rétrécit vers le sol, et disparaît une fois "coulée"
+  for (const t of towers){
+    const sh = TOWER_MAX_SH * Math.max(0, t.hp/t.maxHp);
+    layers.push({ y: t.y, draw: () => {
+      drawIsoBox(t.x, t.y, TOWER_HW, TOWER_HH, sh, '#8fb3e8', '#5b8dd9', '#3f66a8', true);
     }});
   }
 
@@ -436,9 +411,8 @@ function draw(){
     }});
   }
 
-  const pgp = groundPoint(player.gx, player.gy);
-  layers.push({ y: pgp.y, draw: () => {
-    drawIsoBox(pgp.x, pgp.y, 9, 5, 14, '#f7d67a', '#e0b04e', '#b98a34');
+  layers.push({ y: player.y, draw: () => {
+    drawIsoBox(player.x, player.y, PLAYER_HW, PLAYER_HH, PLAYER_SH, '#f7d67a', '#e0b04e', '#b98a34');
   }});
 
   layers.sort((a, b) => a.y - b.y);
