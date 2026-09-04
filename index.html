@@ -85,5 +85,45 @@
       </ul>
     </nav>
   </main>
+
+  <script>
+    // Mise à jour automatique (même principe que Knight Wars — pas de
+    // service worker, qui y avait causé plus de bugs qu'il n'en résolvait :
+    // vérification légère en tâche de fond via ETag/Last-Modified). Cette
+    // page n'a aucun état à perdre (juste un menu de liens), donc dès
+    // qu'une nouvelle version est détectée, on recharge directement : pas
+    // besoin d'attendre un "point sûr" comme dans les jeux.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+        .catch(() => {});
+    }
+    if ('caches' in window) {
+      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {});
+    }
+    async function checkForUpdate(){
+      try {
+        const res = await fetch(location.pathname || 'index.html', { cache: 'no-store' });
+        if (!res.ok) return;
+        const tag = res.headers.get('etag') || res.headers.get('last-modified');
+        if (!tag) return; // l'hébergeur n'envoie ni l'un ni l'autre — rien de fiable à comparer
+        const stored = localStorage.getItem('pm_pageVersion');
+        if (stored === null) { localStorage.setItem('pm_pageVersion', tag); return; }
+        if (tag !== stored){
+          const now = Date.now();
+          let lastReload = 0;
+          try { lastReload = Number(sessionStorage.getItem('pm_lastUpdateReload')) || 0; } catch (e) { /* ignore */ }
+          if (now - lastReload < 10000) return; // garde-fou anti-boucle
+          try {
+            localStorage.setItem('pm_pageVersion', tag);
+            sessionStorage.setItem('pm_lastUpdateReload', String(now));
+          } catch (e) { /* ignore */ }
+          location.reload();
+        }
+      } catch (e) { /* hors-ligne, ou requête bloquée — on ignore, on retentera plus tard */ }
+    }
+    checkForUpdate();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+  </script>
 </body>
 </html>
