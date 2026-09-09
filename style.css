@@ -130,20 +130,3 @@ main {
   letter-spacing: 0.2em;
   color: var(--accent);
 }
-
-footer {
-  text-align: center;
-  margin-top: 3.5rem;
-}
-
-footer a {
-  color: var(--ink-soft);
-  font-size: 0.68rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  text-decoration: none;
-}
-
-footer a:hover {
-  color: var(--accent);
-}
