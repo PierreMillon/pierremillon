@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sillage — prototype 1D</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf8f4; --bg-soft:#f2efe8; --ink:#1c1a17; --ink-soft:#6f6a60;
+    --hairline:#ddd6c9; --accent:#b08d57; --danger:#a4443a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg);
+    background-image:radial-gradient(circle at 50% 0%, var(--bg-soft), var(--bg) 60%);
+    color:var(--ink);
+    font-family:"Jost",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    display:flex; align-items:center; justify-content:center;
+    padding:1.5rem 1rem; overflow:hidden; touch-action:manipulation;
+  }
+  main{width:100%;max-width:420px;display:flex;flex-direction:column;gap:0.9rem}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:1rem}
+  h1{
+    font-family:"Cormorant Garamond",Georgia,serif; font-weight:300;
+    font-size:1.5rem; letter-spacing:0.08em; margin:0;
+  }
+  .compteurs{font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-soft)}
+  .compteurs b{color:var(--accent);font-weight:500}
+
+  .scene{position:relative;width:100%;aspect-ratio:3/4;max-height:64vh}
+  canvas{display:block;width:100%;height:100%;border-top:1px solid var(--hairline);border-bottom:1px solid var(--hairline)}
+
+  .voile{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:0.6rem;text-align:center;
+    background:rgba(250,248,244,0.88);padding:1.5rem;cursor:pointer;
+  }
+  .voile[hidden]{display:none}
+  .voile p{margin:0;font-size:0.78rem;letter-spacing:0.06em;color:var(--ink-soft);line-height:1.6;max-width:23rem}
+  .voile .titre{
+    font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;
+    font-size:1.35rem;color:var(--ink);letter-spacing:0.03em;
+  }
+  .voile .titre.perdu{color:var(--danger)}
+  .voile .action{
+    margin-top:0.4rem;font-size:0.68rem;letter-spacing:0.22em;
+    text-transform:uppercase;color:var(--accent);
+  }
+
+  .aide{margin:0;font-size:0.68rem;letter-spacing:0.14em;text-transform:uppercase;color:var(--ink-soft);text-align:center}
+
+  details{border-top:1px solid var(--hairline);padding-top:0.7rem}
+  summary{
+    font-size:0.66rem;letter-spacing:0.22em;text-transform:uppercase;
+    color:var(--ink-soft);cursor:pointer;list-style:none;text-align:center;
+  }
+  summary::-webkit-details-marker{display:none}
+  .reglages{display:flex;flex-direction:column;gap:0.9rem;padding-top:1rem}
+  .reglage{display:grid;grid-template-columns:1fr auto;gap:0.3rem 1rem;align-items:center}
+  .reglage label{font-size:0.72rem;letter-spacing:0.05em;color:var(--ink)}
+  .reglage output{font-size:0.72rem;color:var(--accent);font-variant-numeric:tabular-nums}
+  .reglage .note{grid-column:1/-1;font-size:0.66rem;color:var(--ink-soft);line-height:1.5;margin:0}
+  input[type=range]{grid-column:1/-1;width:100%;accent-color:var(--accent);margin:0}
+
+  .retour{text-align:center}
+  .retour a{font-size:0.66rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none}
+  .retour a:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Sillage</h1>
+    <p class="compteurs">Ligne <b id="score">0</b> · Record <b id="record">0</b></p>
+  </header>
+
+  <div class="scene">
+    <canvas id="jeu"></canvas>
+    <div class="voile" id="voile">
+      <p class="titre" id="voileTitre">Prototype 1D</p>
+      <p id="voileTexte">Un seul axe : gauche / droite. Le futur descend vers toi. Tu ne peux pas bouger à la dernière seconde : chaque déplacement a un temps de latence. Il faut donc décider tôt.</p>
+      <p class="action" id="voileAction">Flèches ← → · touche l'écran · clique pour commencer</p>
+    </div>
+  </div>
+
+  <p class="aide">← → pour se déplacer · R pour recommencer</p>
+
+  <details>
+    <summary>Réglages du test</summary>
+    <div class="reglages">
+      <div class="reglage">
+        <label for="rHorizon">Horizon visible</label>
+        <output id="oHorizon"></output>
+        <input type="range" id="rHorizon" min="0.8" max="4" step="0.1">
+        <p class="note">Combien de secondes de futur sont affichées. Court = réflexe. Long = anticipation.</p>
+      </div>
+      <div class="reglage">
+        <label for="rLatence">Latence de mouvement</label>
+        <output id="oLatence"></output>
+        <input type="range" id="rLatence" min="80" max="400" step="10">
+        <p class="note">Délai imposé entre deux déplacements. C'est ce qui interdit d'esquiver au dernier moment.</p>
+      </div>
+      <div class="reglage">
+        <label for="rTempo">Tempo de départ</label>
+        <output id="oTempo"></output>
+        <input type="range" id="rTempo" min="0.35" max="1.2" step="0.05">
+        <p class="note">Temps entre deux murs au début. Le jeu accélère ensuite tout seul, jusqu’à un plancher qui dépend de la latence.</p>
+      </div>
+    </div>
+  </details>
+
+  <p class="retour"><a href="../">Retour</a></p>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------------------------------------------------------------
+  // Prototype minimal : 1 axe de déplacement, le temps comme 2e axe
+  // à l'écran. La verticale N'EST PAS de l'espace : c'est le futur.
+  // Ce qui est en haut arrivera dans « horizon » secondes.
+  // ---------------------------------------------------------------
+
+  const CASES = 5;              // positions possibles sur la ligne
+  const MARGE = 0.06;           // s — tolérance pour l'imprécision d'entrée
+
+  const cfg = {
+    horizon: 2.4,               // secondes de futur affichées
+    latence: 180,               // ms entre deux déplacements
+    tempo: 0.75                 // secondes entre deux murs, au départ
+  };
+
+  const cv = document.getElementById('jeu');
+  const ctx = cv.getContext('2d');
+  const elScore = document.getElementById('score');
+  const elRecord = document.getElementById('record');
+  const voile = document.getElementById('voile');
+  const voileTitre = document.getElementById('voileTitre');
+  const voileTexte = document.getElementById('voileTexte');
+  const voileAction = document.getElementById('voileAction');
+
+  let W = 0, H = 0, ligneY = 0, hautY = 0;
+
+  function redimensionner(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ligneY = H - 56;
+    hautY = 16;
+    if (etat === 'attente' || etat === 'perdu') dessiner(horloge);
+  }
+
+  // --- état -------------------------------------------------------
+  let etat = 'attente';   // attente | jeu | perdu
+  let horloge = 0;        // temps de jeu écoulé (s)
+  let position = 2;       // case du joueur
+  let dernierMouvement = -1e9;
+  let murs = [];          // { t, bloque[], sur } — t = instant d'arrivée sur la ligne
+  let prochainT = 0;
+  let cheminSur = 2;      // case laissée libre par le générateur
+  let lignesPassees = 0;
+  let murFatal = null;
+  let record = 0;
+  try { record = Number(localStorage.getItem('sillage_record')) || 0; } catch (e) { /* ignore */ }
+  elRecord.textContent = record;
+
+  // --- génération -------------------------------------------------
+  // On construit d'abord le CHEMIN qui survit, puis les murs autour.
+  // Garantit qu'aucune situation n'est insoluble malgré la latence.
+  // Plancher d'accélération : il dépend de la latence. Si deux murs sont
+  // plus rapprochés que ~2 latences, le joueur ne peut plus changer de case
+  // d'un mur au suivant — le chemin sûr se figerait et le jeu disparaîtrait.
+  function tempoPlancher(){
+    return Math.max(0.30, 2.1 * cfg.latence / 1000);
+  }
+
+  function tempoCourant(){
+    return Math.max(tempoPlancher(), cfg.tempo * Math.pow(0.987, lignesPassees));
+  }
+
+  function genererMur(){
+    const tempo = tempoCourant();
+    const lat = cfg.latence / 1000;
+
+    // Écart maximal entre la case libre de ce mur et celle du précédent.
+    // Contrainte par intervalle (et non cumulée) : le joueur doit être SUR
+    // la case libre à chaque mur, il ne peut donc pas prendre de l'avance
+    // en s'écartant. Il lui faut « écart » déplacements dans l'intervalle.
+    const pasMax = Math.max(1, Math.min(2, Math.floor((tempo - MARGE) / lat)));
+    const bas = Math.max(0, cheminSur - pasMax);
+    const haut = Math.min(CASES - 1, cheminSur + pasMax);
+    cheminSur = bas + Math.floor(Math.random() * (haut - bas + 1));
+
+    // Densité croissante : deux cases ouvertes au début (on peut jouer au
+    // plus près), une seule à partir de la ligne 50 — il faut alors suivre
+    // exactement le chemin, donc lire loin devant.
+    const densite = Math.min(CASES - 1, 2 + Math.floor(lignesPassees / 25));
+    const libres = [];
+    for (let i = 0; i < CASES; i++) if (i !== cheminSur) libres.push(i);
+    for (let i = libres.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [libres[i], libres[j]] = [libres[j], libres[i]];
+    }
+    const bloque = new Array(CASES).fill(false);
+    for (let i = 0; i < densite; i++) bloque[libres[i]] = true;
+
+    murs.push({ t: prochainT, bloque, sur: cheminSur });
+    prochainT += tempo;
+  }
+
+  function remplirFile(){
+    while (prochainT < horloge + cfg.horizon + 1) genererMur();
+  }
+
+  // --- cycle de vie -----------------------------------------------
+  function reinitialiser(){
+    etat = 'attente';
+    horloge = 0;
+    position = Math.floor(CASES / 2);
+    cheminSur = position;
+    dernierMouvement = -1e9;
+    lignesPassees = 0;
+    murFatal = null;
+    murs = [];
+    prochainT = cfg.horizon + 0.6;   // un peu de répit avant le premier mur
+    remplirFile();
+    elScore.textContent = '0';
+    voileTitre.textContent = 'Prototype 1D';
+    voileTitre.classList.remove('perdu');
+    voileTexte.textContent = "Un seul axe : gauche / droite. Le futur descend vers toi. Tu ne peux pas bouger à la dernière seconde : chaque déplacement a un temps de latence. Il faut donc décider tôt.";
+    voileAction.textContent = 'Flèches ← → · touche l’écran · clique pour commencer';
+    voile.hidden = false;
+    dessiner(0);
+  }
+
+  function demarrer(){
+    if (etat === 'jeu') return;
+    if (etat === 'perdu') reinitialiser();
+    etat = 'jeu';
+    voile.hidden = true;
+    dernierMouvement = performance.now() - cfg.latence;
+  }
+
+  function perdre(mur){
+    etat = 'perdu';
+    murFatal = mur;
+    if (lignesPassees > record){
+      record = lignesPassees;
+      elRecord.textContent = record;
+      try { localStorage.setItem('sillage_record', String(record)); } catch (e) { /* ignore */ }
+    }
+    voileTitre.textContent = 'Touché';
+    voileTitre.classList.add('perdu');
+    voileTexte.textContent = lignesPassees + ' ligne' + (lignesPassees > 1 ? 's' : '') + ' franchie' + (lignesPassees > 1 ? 's' : '') + '.';
+    voileAction.textContent = 'R · clic · toucher pour rejouer';
+    voile.hidden = false;
+  }
+
+  function deplacer(sens){
+    // Depuis l'écran d'accueil une flèche lance la partie ; après une mort,
+    // non : sinon l'écran « Touché » disparaîtrait avant d'être lu.
+    if (etat === 'attente') { demarrer(); return; }
+    if (etat !== 'jeu') return;
+    const now = performance.now();
+    if (now - dernierMouvement < cfg.latence) return;   // latence : le cœur du jeu
+    const cible = Math.min(CASES - 1, Math.max(0, position + sens));
+    if (cible === position) return;
+    position = cible;
+    dernierMouvement = now;
+  }
+
+  // --- boucle -----------------------------------------------------
+  let precedent = performance.now();
+  function boucle(maintenant){
+    const dt = Math.min(0.05, (maintenant - precedent) / 1000);
+    precedent = maintenant;
+
+    if (etat === 'jeu'){
+      horloge += dt;
+      remplirFile();
+      for (const mur of murs){
+        if (!mur.franchi && mur.t <= horloge){
+          mur.franchi = true;
+          if (mur.bloque[position]) { perdre(mur); break; }
+          lignesPassees++;
+          elScore.textContent = lignesPassees;
+        }
+      }
+      murs = murs.filter(m => m.t > horloge - 0.6);
+    }
+
+    dessiner(horloge);
+    requestAnimationFrame(boucle);
+  }
+
+  // --- rendu ------------------------------------------------------
+  function dessiner(t){
+    const largeurCase = W / CASES;
+    const pxParSec = (ligneY - hautY) / cfg.horizon;
+    const epaisseur = Math.max(10, Math.min(20, pxParSec * tempoCourant() * 0.5));
+
+    ctx.clearRect(0, 0, W, H);
+
+    // séparations de cases, très discrètes
+    ctx.strokeStyle = 'rgba(221,214,201,0.7)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < CASES; i++){
+      ctx.beginPath();
+      ctx.moveTo(Math.round(i * largeurCase) + 0.5, hautY);
+      ctx.lineTo(Math.round(i * largeurCase) + 0.5, ligneY);
+      ctx.stroke();
+    }
+
+    // couloir de prédiction : où je serai si je ne fais rien
+    ctx.fillStyle = 'rgba(176,141,87,0.09)';
+    ctx.fillRect(position * largeurCase, hautY, largeurCase, ligneY - hautY);
+
+    // murs
+    for (const mur of murs){
+      const d = (mur.t - t) / cfg.horizon;
+      if (d > 1.02 || d < -0.12) continue;
+      const y = ligneY - (mur.t - t) * pxParSec;
+      // apparition en fondu à l'horizon, traînée en fondu une fois franchi
+      const alpha = d > 0.86 ? Math.max(0, (1 - d) / 0.14)
+                  : d < 0    ? Math.max(0, 1 + d / 0.12)
+                  : 1;
+      for (let i = 0; i < CASES; i++){
+        if (!mur.bloque[i]) continue;
+        const menace = (i === position);           // ce mur me touchera
+        const fatal = (mur === murFatal);
+        ctx.fillStyle = fatal
+          ? 'rgba(164,68,58,' + alpha + ')'
+          : menace
+            ? 'rgba(164,68,58,' + (alpha * 0.42) + ')'
+            : 'rgba(28,26,23,' + (alpha * 0.82) + ')';
+        ctx.fillRect(i * largeurCase + 2, y - epaisseur / 2, largeurCase - 4, epaisseur);
+      }
+    }
+
+    // la ligne : le présent
+    ctx.strokeStyle = '#b08d57';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, Math.round(ligneY) + 0.5);
+    ctx.lineTo(W, Math.round(ligneY) + 0.5);
+    ctx.stroke();
+
+    // le joueur — pâle tant que la latence n'est pas écoulée
+    const pret = etat !== 'jeu' || (performance.now() - dernierMouvement >= cfg.latence);
+    const cx = position * largeurCase + largeurCase / 2;
+    ctx.fillStyle = etat === 'perdu' ? '#a4443a' : (pret ? '#1c1a17' : 'rgba(28,26,23,0.28)');
+    ctx.beginPath();
+    ctx.arc(cx, ligneY, 7, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // --- entrées ----------------------------------------------------
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft')       { deplacer(-1); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { deplacer(1);  e.preventDefault(); }
+    else if (e.key === 'r' || e.key === 'R') { reinitialiser(); }
+    else if (e.key === ' ' || e.key === 'Enter') { demarrer(); e.preventDefault(); }
+  });
+
+  function pointer(x){
+    const r = cv.getBoundingClientRect();
+    if (etat !== 'jeu') { demarrer(); return; }
+    deplacer(x < r.left + r.width / 2 ? -1 : 1);
+  }
+  cv.addEventListener('pointerdown', (e) => { pointer(e.clientX); e.preventDefault(); });
+  voile.addEventListener('pointerdown', (e) => { pointer(e.clientX); e.preventDefault(); });
+
+  // --- réglages ---------------------------------------------------
+  const curseurs = [
+    ['rHorizon', 'oHorizon', 'horizon', v => v.toFixed(1) + ' s'],
+    ['rLatence', 'oLatence', 'latence', v => Math.round(v) + ' ms'],
+    ['rTempo',   'oTempo',   'tempo',   v => v.toFixed(2) + ' s']
+  ];
+  for (const [idR, idO, cle, format] of curseurs){
+    const r = document.getElementById(idR);
+    const o = document.getElementById(idO);
+    r.value = cfg[cle];
+    o.textContent = format(cfg[cle]);
+    r.addEventListener('input', () => {
+      cfg[cle] = Number(r.value);
+      o.textContent = format(cfg[cle]);
+      reinitialiser();
+    });
+  }
+
+  // Poignée de lecture seule pour tester/régler depuis la console.
+  window.sillage = {
+    get etat(){ return etat; },
+    get position(){ return position; },
+    get horloge(){ return horloge; },
+    get murs(){ return murs; },
+    get lignes(){ return lignesPassees; },
+    deplacer, demarrer, reinitialiser
+  };
+
+  window.addEventListener('resize', redimensionner);
+  redimensionner();
+  reinitialiser();
+  requestAnimationFrame(boucle);
+})();
+</script>
+</body>
+</html>
