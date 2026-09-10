@@ -62,7 +62,9 @@
   .curseur label{font-size:0.72rem}
   .curseur output{font-size:0.72rem;color:var(--accent);font-variant-numeric:tabular-nums}
   .curseur input{grid-column:1/-1;width:100%;accent-color:var(--accent);margin:0}
-  .curseur .note{grid-column:1/-1}
+  .curseur .note{grid-column:1/-1;margin:0;font-size:0.65rem;color:var(--ink-soft);line-height:1.5}
+  .interrupteur{display:flex;align-items:center;gap:0.5rem;font-size:0.72rem;cursor:pointer}
+  .interrupteur input{accent-color:var(--accent);margin:0}
 
   .retour{text-align:center;margin:0}
   .retour a{font-size:0.66rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none}
@@ -85,7 +87,7 @@
     </div>
   </div>
 
-  <p class="aide">← → agissent selon la fenêtre en cours · R recommence</p>
+  <p class="aide">← → ou glissement du doigt · R recommence · M coupe le son</p>
 
   <details id="panneau">
     <summary>Banc d'essai — 6 commutateurs</summary>
@@ -149,6 +151,18 @@
       </div>
 
       <div class="curseur">
+        <label for="rCases">Nombre de cases</label>
+        <output id="oCases"></output>
+        <input type="range" id="rCases" min="3" max="9" step="1">
+        <p class="note">Positions disponibles sur la ligne. Peu de cases : lecture évidente, peu de figures possibles. Beaucoup : plus de nuance, mais plus de déplacements à prévoir d'avance.</p>
+      </div>
+
+      <div class="groupe">
+        <label class="interrupteur"><input type="checkbox" id="cSon"> Son</label>
+        <p class="note">Un clic à chaque mur franchi, un avertissement grave quand un mur va te toucher. L'oreille prévient avant l'œil — c'est une aide à l'anticipation, pas une décoration. Touche M pour couper.</p>
+      </div>
+
+      <div class="curseur">
         <label for="rHorizon">Horizon visible</label>
         <output id="oHorizon"></output>
         <input type="range" id="rHorizon" min="0.8" max="4" step="0.1">
@@ -192,7 +206,7 @@
   //     il faut décider à l'avance.
   // =================================================================
 
-  const CASES = 5;              // positions sur la ligne
+  let CASES = 5;                // positions sur la ligne (réglable)
   const TRANCHES_4D = 3;        // épaisseur du monde selon le 4e axe
   const MARGE = 0.06;           // s — tolérance d'imprécision d'entrée
   const PV_MAX = 3;
@@ -204,6 +218,8 @@
     actionTemps: 'vitesse',     // vitesse | rembobine | branche
     timelines: 'branchement',   // branchement | superposition | enregistrement
     echec: 'mort',              // mort | rembobinage | pv
+    cases: 5,
+    son: true,
     horizon: 2.4,
     latence: 180,
     tempo: 0.75
@@ -218,6 +234,7 @@
   const elScore = document.getElementById('score');
   const elRecord = document.getElementById('record');
   const elVies = document.getElementById('vies');
+  const elSon = document.getElementById('cSon');
   const voile = document.getElementById('voile');
   const voileTitre = document.getElementById('voileTitre');
   const voileTexte = document.getElementById('voileTexte');
@@ -242,11 +259,51 @@
   let vitesseTemps = 1;         // multiplicateur du défilement
   let vitesseJusqua = 0;        // fin de l'effet de vitesse (horloge de jeu)
   let invulnJusqua = 0;
+  let cibleGlissee = null;      // case visée au doigt, rejointe pas à pas
+  let dernierAxe = 'x';         // pour signaler l'ouverture d'une fenêtre
   let trace = [];               // trajectoire de l'essai en cours
   let fantome = [];             // trajectoire de l'essai précédent
   let record = 0;
   try { record = Number(localStorage.getItem('sillage_record')) || 0; } catch (e) { /* ignore */ }
   elRecord.textContent = record;
+
+  // --- son --------------------------------------------------------
+  // Volontairement minimal : un clic par mur franchi, un avertissement
+  // grave quand un mur va toucher. Le son arrive avant que l'œil ait
+  // fini de lire — c'est une aide à l'anticipation, pas un habillage.
+  let audio = null;
+
+  function contexteAudio(){
+    if (!audio){
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      try { audio = new Ctx(); } catch (e) { return null; }
+    }
+    if (audio.state === 'suspended') audio.resume().catch(() => {});
+    return audio;
+  }
+
+  function bip(freq, duree, volume, forme){
+    if (!cfg.son) return;
+    const a = contexteAudio();
+    if (!a) return;
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = forme || 'sine';
+    o.frequency.setValueAtTime(freq, a.currentTime);
+    g.gain.setValueAtTime(0.0001, a.currentTime);
+    g.gain.linearRampToValueAtTime(volume, a.currentTime + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + duree);
+    o.connect(g); g.connect(a.destination);
+    o.start();
+    o.stop(a.currentTime + duree + 0.02);
+  }
+
+  const sonFranchi  = () => bip(300 + position * 34, 0.06, 0.045, 'triangle');
+  const sonMenace   = () => bip(165, 0.20, 0.065, 'sawtooth');
+  const sonTouche   = () => bip(85, 0.38, 0.11, 'square');
+  const sonDeplace  = () => bip(520, 0.03, 0.018, 'sine');
+  const sonFenetre  = () => { bip(620, 0.07, 0.04, 'sine'); setTimeout(() => bip(830, 0.09, 0.04, 'sine'), 80); };
 
   // --- fantôme ----------------------------------------------------
   // Position de l'essai précédent à un instant donné. Sert au mode
@@ -312,9 +369,11 @@
     // axe === 'temps' : la trajectoire ne bouge pas, la fenêtre sert
     // uniquement au pouvoir temporel.
 
-    // Densité croissante. Deux cases ouvertes au début, une seule vers
-    // la ligne 50 : il faut alors suivre exactement le chemin.
-    const densite = Math.min(CASES - 1, 2 + Math.floor(lignesPassees / 25));
+    // Densité croissante, exprimée en proportion de la ligne : sinon
+    // « 2 murs bloqués » rend une ligne de 3 cases infernale et une
+    // ligne de 9 cases triviale. On va de 40 % à 80 % de la ligne.
+    const part = Math.min(0.8, 0.4 + lignesPassees * 0.005);
+    const densite = Math.min(CASES - 1, Math.max(1, Math.round(CASES * part)));
     const tr = nbTranches();
     const bloque = new Uint8Array(tr * CASES);
 
@@ -359,6 +418,8 @@
   // --- cycle de vie -----------------------------------------------
   function reinitialiser(){
     etat = 'attente';
+    CASES = cfg.cases;
+    cibleGlissee = null;
     horloge = 0;
     position = Math.floor(CASES / 2);
     tranche = Math.floor(nbTranches() / 2);
@@ -513,6 +574,7 @@
       position = cible;
     }
     dernierAgi = performance.now();
+    sonDeplace();
   }
 
   // --- boucle -----------------------------------------------------
@@ -546,13 +608,38 @@
         if (touche){
           // on sort tout de suite : encaisser() peut rembobiner l'horloge,
           // et il ne faut pas continuer à traiter la liste avec l'ancienne
+          sonTouche();
           encaisser(m);
           break;
         }
         lignesPassees++;
         elScore.textContent = lignesPassees;
+        sonFranchi();
       }
       murs = murs.filter(m => m.t > horloge - 0.6);
+
+      // avertissement sonore : un mur va toucher et il est encore temps
+      const suivant = prochainMur();
+      if (suivant && !suivant.averti && suivant.t - horloge < 0.55){
+        suivant.averti = true;
+        const menace = suivant.bloque[tranche * CASES + position] === 1 ||
+          (cfg.timelines === 'superposition' && suivant.bloque[tranche * CASES + miroir(position)] === 1);
+        if (menace) sonMenace();
+      }
+
+      // ouverture d'une fenêtre de second axe
+      const axe = axeCourant();
+      if (axe !== dernierAxe){
+        if (axe !== 'x') sonFenetre();
+        dernierAxe = axe;
+        cibleGlissee = null;          // le doigt visait une case, plus valable
+      }
+
+      // glissement du doigt : on rejoint la case visée, pas à pas
+      if (cibleGlissee !== null){
+        if (axe !== 'x' || cibleGlissee === position) cibleGlissee = null;
+        else fleche(cibleGlissee > position ? 1 : -1);
+      }
     }
 
     dessiner();
@@ -706,6 +793,15 @@
     dessinerPion(position, true);
     if (cfg.timelines === 'superposition') dessinerPion(miroir(position), false);
 
+    // case visée au doigt, pas encore atteinte
+    if (cibleGlissee !== null && cibleGlissee !== position){
+      ctx.strokeStyle = 'rgba(176,141,87,0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(g0.centre - g0.demi + (cibleGlissee + 0.5) * largeurCase0, g0.y, 7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
     // étiquettes : tranche courante, fenêtre en cours
     ctx.font = '11px Jost, sans-serif';
     ctx.textAlign = 'left';
@@ -735,19 +831,50 @@
 
   // --- entrées ----------------------------------------------------
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft')       { fleche(-1); e.preventDefault(); }
-    else if (e.key === 'ArrowRight') { fleche(1);  e.preventDefault(); }
+    if (e.key === 'ArrowLeft')       { cibleGlissee = null; fleche(-1); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { cibleGlissee = null; fleche(1);  e.preventDefault(); }
     else if (e.key === 'r' || e.key === 'R') { reinitialiser(); }
-    else if (e.key === ' ' || e.key === 'Enter') { demarrer(); e.preventDefault(); }
+    else if (e.key === 'm' || e.key === 'M') { cfg.son = !cfg.son; elSon.checked = cfg.son; }
+    else if (e.key === ' ' || e.key === 'Enter') { contexteAudio(); demarrer(); e.preventDefault(); }
   });
 
-  function pointer(clientX){
-    if (etat !== 'jeu') { demarrer(); return; }
+  // Case sous le doigt, lue sur la ligne du présent — la géométrie y est
+  // la même dans les deux vues.
+  function celluleSous(clientX){
     const r = cv.getBoundingClientRect();
-    fleche(clientX < r.left + r.width / 2 ? -1 : 1);
+    const g = geometrie(0);
+    const lc = (g.demi * 2) / CASES;
+    const i = Math.floor((clientX - r.left - (g.centre - g.demi)) / lc);
+    return Math.min(CASES - 1, Math.max(0, i));
   }
-  cv.addEventListener('pointerdown', (e) => { pointer(e.clientX); e.preventDefault(); });
-  voile.addEventListener('pointerdown', (e) => { pointer(e.clientX); e.preventDefault(); });
+
+  let doigt = null;
+
+  function toucher(clientX){
+    if (etat !== 'jeu') { demarrer(); return; }
+    if (axeCourant() === 'x') cibleGlissee = celluleSous(clientX);
+    else {
+      // sur un axe secondaire, les moitiés d'écran restent le plus lisible
+      const r = cv.getBoundingClientRect();
+      fleche(clientX < r.left + r.width / 2 ? -1 : 1);
+    }
+  }
+
+  for (const el of [cv, voile]){
+    el.addEventListener('pointerdown', (e) => {
+      doigt = e.pointerId;
+      contexteAudio();               // le son a besoin d'un geste pour démarrer
+      toucher(e.clientX);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (doigt !== e.pointerId || etat !== 'jeu') return;
+      if (axeCourant() === 'x') cibleGlissee = celluleSous(e.clientX);
+      e.preventDefault();
+    });
+    el.addEventListener('pointerup', () => { doigt = null; });
+    el.addEventListener('pointercancel', () => { doigt = null; });
+  }
 
   // --- panneau ----------------------------------------------------
   const commutateurs = [
@@ -764,7 +891,11 @@
     });
   }
 
+  elSon.checked = cfg.son;
+  elSon.addEventListener('change', () => { cfg.son = elSon.checked; if (cfg.son) contexteAudio(); });
+
   const curseurs = [
+    ['rCases',   'oCases',   'cases',   v => Math.round(v) + ' cases'],
     ['rHorizon', 'oHorizon', 'horizon', v => v.toFixed(1) + ' s'],
     ['rLatence', 'oLatence', 'latence', v => Math.round(v) + ' ms'],
     ['rTempo',   'oTempo',   'tempo',   v => v.toFixed(2) + ' s']
@@ -791,7 +922,8 @@
     get murs(){ return murs; },
     get lignes(){ return lignesPassees; },
     get pv(){ return pv; },
-    axeCourant, fleche, demarrer, reinitialiser, CASES
+    get CASES(){ return CASES; },
+    axeCourant, fleche, demarrer, reinitialiser
   };
 
   window.addEventListener('resize', redimensionner);
