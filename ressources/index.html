@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Pierre Millon — Mathématiques</title>
-  <meta name="description" content="Fiches, exercices et cours de licence de mathématiques.">
+  <meta name="description" content="Fiches, exercices et explorateurs de licence de mathématiques.">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2">
@@ -13,41 +13,102 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
-<body>
+<body class="salle">
   <main>
     <header class="hero">
       <p class="eyebrow">Pierre Millon</p>
       <h1>Mathématiques</h1>
       <div class="rule"></div>
-      <p class="tagline">Fiches, exercices et cours de licence</p>
+      <p class="tagline">Fiches, exercices et explorateurs</p>
     </header>
 
-    <nav class="menu" aria-label="Ressources de mathématiques">
-      <ul>
-        <li>
-          <a href="/licence-math/">
-            <span class="index">I</span>
+    <ul class="jeux">
+      <li>
+        <a href="/licence-math/">
+          <span class="index">I</span>
+          <span class="corps">
             <span class="name">Licence Math</span>
-          </a>
-        </li>
-        <li>
-          <a href="/fiche-de-math-gael/">
-            <span class="index">II</span>
+            <span class="desc"></span>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a href="/fiche-de-math-gael/">
+          <span class="index">II</span>
+          <span class="corps">
             <span class="name">Fiche de Math Gaël</span>
-          </a>
-        </li>
-        <li>
-          <a href="/exercices-l1-math/">
-            <span class="index">III</span>
+            <span class="desc"></span>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a href="/exercices-l1-math/">
+          <span class="index">III</span>
+          <span class="corps">
             <span class="name">Exercices L1 Math</span>
-          </a>
-        </li>
-      </ul>
-    </nav>
+            <span class="desc"></span>
+          </span>
+        </a>
+      </li>
+      <li>
+        <a href="/plan-de-wessel/">
+          <span class="index">IV</span>
+          <span class="corps">
+            <span class="name">Plan de Wessel</span>
+            <span class="desc"></span>
+          </span>
+        </a>
+      </li>
+    </ul>
 
     <footer>
       <a href="/">Les jeux</a>
     </footer>
   </main>
+
+  <script>
+    // Mise à jour automatique (même principe que Knight Wars — pas de
+    // service worker, qui y avait causé plus de bugs qu'il n'en résolvait :
+    // vérification légère en tâche de fond via ETag/Last-Modified). Cette
+    // page n'a aucun état à perdre (juste un menu de liens), donc dès
+    // qu'une nouvelle version est détectée, on recharge directement : pas
+    // besoin d'attendre un "point sûr" comme dans les jeux.
+    // ON NE TOUCHE QU'À CE QUI EST À NOUS. Ces deux nettoyages portaient sur
+    // TOUTE l'origine : getRegistrations() rend les service workers de tous les
+    // jeux du domaine, et caches.keys() toutes leurs boîtes. Ouvrir cette page
+    // désinscrivait donc le service worker de Fly or Die et effaçait son cache,
+    // c'est-à-dire son mode hors-ligne, sans que personne ne comprenne pourquoi.
+    // On se limite au service worker dont la portée est cette page elle-même.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations()
+        .then((regs) => Promise.all(regs
+          .filter((r) => new URL(r.scope).pathname === '/')
+          .map((r) => r.unregister())))
+        .catch(() => {});
+    }
+    async function checkForUpdate(){
+      try {
+        const res = await fetch(location.pathname || 'index.html', { cache: 'no-store' });
+        if (!res.ok) return;
+        const tag = res.headers.get('etag') || res.headers.get('last-modified');
+        if (!tag) return; // l'hébergeur n'envoie ni l'un ni l'autre — rien de fiable à comparer
+        const stored = localStorage.getItem('pm_pageVersion');
+        if (stored === null) { localStorage.setItem('pm_pageVersion', tag); return; }
+        if (tag !== stored){
+          const now = Date.now();
+          let lastReload = 0;
+          try { lastReload = Number(sessionStorage.getItem('pm_lastUpdateReload')) || 0; } catch (e) { /* ignore */ }
+          if (now - lastReload < 10000) return; // garde-fou anti-boucle
+          try {
+            localStorage.setItem('pm_pageVersion', tag);
+            sessionStorage.setItem('pm_lastUpdateReload', String(now));
+          } catch (e) { /* ignore */ }
+          location.reload();
+        }
+      } catch (e) { /* hors-ligne, ou requête bloquée — on ignore, on retentera plus tard */ }
+    }
+    checkForUpdate();
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+  </script>
 </body>
 </html>

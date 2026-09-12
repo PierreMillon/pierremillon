@@ -229,3 +229,15 @@ footer a:hover {
   outline: 1px solid var(--accent);
   outline-offset: 4px;
 }
+
+.jeux .separateur {
+  border: 0;
+  padding: 0;
+}
+.jeux .separateur span {
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--accent);
+  margin: 1.8rem auto;
+}
