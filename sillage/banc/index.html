@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Sillage — banc d'essai 1D</title>
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf8f4; --bg-soft:#f2efe8; --ink:#1c1a17; --ink-soft:#6f6a60;
+    --hairline:#ddd6c9; --accent:#b08d57; --danger:#a4443a; --second:#4a6b73;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg);
+    background-image:radial-gradient(circle at 50% 0%, var(--bg-soft), var(--bg) 60%);
+    color:var(--ink);
+    font-family:"Jost",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    display:flex; justify-content:center;
+    padding:1.5rem 1rem 3rem; touch-action:manipulation;
+  }
+  main{width:100%;max-width:430px;display:flex;flex-direction:column;gap:0.85rem}
+
+  header{display:flex;align-items:baseline;justify-content:space-between;gap:1rem}
+  h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:300;font-size:1.5rem;letter-spacing:0.08em;margin:0}
+  .compteurs{font-size:0.7rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-soft);text-align:right}
+  .compteurs b{color:var(--accent);font-weight:500}
+
+  .scene{position:relative;width:100%;aspect-ratio:3/4;max-height:58vh}
+  canvas{display:block;width:100%;height:100%;border-top:1px solid var(--hairline);border-bottom:1px solid var(--hairline)}
+
+  .voile{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:0.6rem;text-align:center;
+    background:rgba(250,248,244,0.9);padding:1.4rem;cursor:pointer;
+  }
+  .voile[hidden]{display:none}
+  .voile p{margin:0;font-size:0.76rem;letter-spacing:0.04em;color:var(--ink-soft);line-height:1.6;max-width:24rem}
+  .voile .titre{font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;font-size:1.35rem;color:var(--ink)}
+  .voile .titre.perdu{color:var(--danger)}
+  .voile .action{margin-top:0.3rem;font-size:0.66rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--accent)}
+
+  .aide{margin:0;font-size:0.66rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink-soft);text-align:center;line-height:1.9}
+
+  details{border-top:1px solid var(--hairline);padding-top:0.7rem}
+  summary{font-size:0.66rem;letter-spacing:0.22em;text-transform:uppercase;color:var(--ink-soft);cursor:pointer;list-style:none;text-align:center}
+  summary::-webkit-details-marker{display:none}
+  .panneau{display:flex;flex-direction:column;gap:1.1rem;padding-top:1.1rem}
+  .groupe{display:flex;flex-direction:column;gap:0.3rem}
+  .groupe > label{font-size:0.72rem;letter-spacing:0.04em;color:var(--ink)}
+  .groupe .note{margin:0;font-size:0.65rem;color:var(--ink-soft);line-height:1.5}
+  select{
+    width:100%;font-family:inherit;font-size:0.75rem;color:var(--ink);
+    background:var(--bg);border:1px solid var(--hairline);border-radius:0;
+    padding:0.45rem 0.5rem;
+  }
+  .curseur{display:grid;grid-template-columns:1fr auto;gap:0.25rem 1rem;align-items:center}
+  .curseur label{font-size:0.72rem}
+  .curseur output{font-size:0.72rem;color:var(--accent);font-variant-numeric:tabular-nums}
+  .curseur input{grid-column:1/-1;width:100%;accent-color:var(--accent);margin:0}
+  .curseur .note{grid-column:1/-1;margin:0;font-size:0.65rem;color:var(--ink-soft);line-height:1.5}
+  .interrupteur{display:flex;align-items:center;gap:0.5rem;font-size:0.72rem;cursor:pointer}
+  .interrupteur input{accent-color:var(--accent);margin:0}
+
+  .retour{text-align:center;margin:0}
+  .retour a{font-size:0.66rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none;margin:0 0.7rem}
+  .retour a:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Sillage</h1>
+    <p class="compteurs">Ligne <b id="score">0</b> · Record <b id="record">0</b><br><span id="vies"></span></p>
+  </header>
+
+  <div class="scene">
+    <canvas id="jeu"></canvas>
+    <div class="voile" id="voile">
+      <p class="titre" id="voileTitre">Banc d'essai 1D</p>
+      <p id="voileTexte">Un seul axe de contrôle. La verticale à l'écran n'est pas de l'espace : c'est le futur. Une latence entre deux déplacements interdit l'esquive au dernier moment — il faut décider tôt. Quand une fenêtre s'ouvre, les mêmes flèches pilotent un second axe.</p>
+      <p class="action" id="voileAction">Flèches ← → · touche l'écran · clique pour commencer</p>
+    </div>
+  </div>
+
+  <p class="aide">← → ou glissement du doigt · R recommence · M coupe le son</p>
+
+  <details id="panneau">
+    <summary>Banc d'essai — 6 commutateurs</summary>
+    <div class="panneau">
+
+      <div class="groupe">
+        <label for="sMonde">Monde</label>
+        <select id="sMonde">
+          <option value="temps">3D + temps — le monde évolue</option>
+          <option value="espace4d">4D spatiale — on voit une tranche</option>
+        </select>
+        <p class="note">En 4D, le second axe déplace la tranche : les murs des autres tranches ne sont pas les mêmes.</p>
+      </div>
+
+      <div class="groupe">
+        <label for="sVue">Vue</label>
+        <select id="sVue">
+          <option value="cote">De côté — le futur descend</option>
+          <option value="subjective">Subjective — dans le tunnel</option>
+        </select>
+        <p class="note">Mêmes données, deux lectures. La vue de côté montre loin, la subjective écrase le futur lointain.</p>
+      </div>
+
+      <div class="groupe">
+        <label for="sRole">Rôle du temps</label>
+        <select id="sRole">
+          <option value="adversaire">Adversaire — je le subis</option>
+          <option value="ressource">Ressource — illimitée</option>
+          <option value="mixte">Mixte — jauge limitée</option>
+        </select>
+        <p class="note">En « adversaire », aucune fenêtre temporelle ne s'ouvre et l'accélération est plus dure.</p>
+      </div>
+
+      <div class="groupe">
+        <label for="sAction">Action temporelle (← →)</label>
+        <select id="sAction">
+          <option value="vitesse">Ralentir / accélérer le défilement</option>
+          <option value="rembobine">Rembobiner / sauter en avant</option>
+          <option value="branche">Choisir une branche de futur</option>
+        </select>
+        <p class="note">Ce que font les flèches pendant une fenêtre temporelle. Sans effet en monde 4D, où le second axe est la tranche.</p>
+      </div>
+
+      <div class="groupe">
+        <label for="sTimelines">Timelines</label>
+        <select id="sTimelines">
+          <option value="branchement">Branchement — l'autre futur disparaît</option>
+          <option value="superposition">Superposition — un double en miroir</option>
+          <option value="enregistrement">Enregistrement — mon essai précédent rejoue</option>
+        </select>
+        <p class="note">Superposition : un second toi, symétrique, doit survivre aussi. Enregistrement : ton essai précédent revient en fantôme, et sa case est mortelle.</p>
+      </div>
+
+      <div class="groupe">
+        <label for="sEchec">Échec</label>
+        <select id="sEchec">
+          <option value="mort">Mort instantanée</option>
+          <option value="rembobinage">Rembobinage automatique</option>
+          <option value="pv">Trois points de vie</option>
+        </select>
+      </div>
+
+      <div class="curseur">
+        <label for="rCases">Nombre de cases</label>
+        <output id="oCases"></output>
+        <input type="range" id="rCases" min="3" max="9" step="1">
+        <p class="note">Positions disponibles sur la ligne. Peu de cases : lecture évidente, peu de figures possibles. Beaucoup : plus de nuance, mais plus de déplacements à prévoir d'avance.</p>
+      </div>
+
+      <div class="groupe">
+        <label class="interrupteur"><input type="checkbox" id="cSon"> Son</label>
+        <p class="note">Un clic à chaque mur franchi, un avertissement grave quand un mur va te toucher. L'oreille prévient avant l'œil — c'est une aide à l'anticipation, pas une décoration. Touche M pour couper.</p>
+      </div>
+
+      <div class="curseur">
+        <label for="rHorizon">Horizon visible</label>
+        <output id="oHorizon"></output>
+        <input type="range" id="rHorizon" min="0.8" max="4" step="0.1">
+        <p class="note">Secondes de futur affichées. Court = réflexe. Long = anticipation.</p>
+      </div>
+
+      <div class="curseur">
+        <label for="rLatence">Latence de mouvement</label>
+        <output id="oLatence"></output>
+        <input type="range" id="rLatence" min="80" max="400" step="10">
+        <p class="note">Délai imposé entre deux actions. C'est ce qui interdit d'esquiver au dernier moment.</p>
+      </div>
+
+      <div class="curseur">
+        <label for="rTempo">Tempo de départ</label>
+        <output id="oTempo"></output>
+        <input type="range" id="rTempo" min="0.35" max="1.2" step="0.05">
+        <p class="note">Temps entre deux murs au début. Le jeu accélère ensuite, jusqu'à un plancher lié à la latence.</p>
+      </div>
+
+    </div>
+  </details>
+
+  <p class="retour"><a href="../">Sillage</a><a href="../coupe/">La coupe</a><a href="../../">Retour</a></p>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  // =================================================================
+  // Sillage — banc d'essai
+  //
+  // Le monde tient dans une seule structure : une ligne de CASES
+  // positions, et un planning de murs datés. Tout le reste (vue,
+  // rôle du temps, timelines, échec) est une couche par-dessus.
+  //
+  // Deux invariants tiennent le jeu :
+  //  1. la verticale à l'écran est du temps, pas de l'espace ;
+  //  2. une latence sépare deux actions, donc on ne peut pas réagir,
+  //     il faut décider à l'avance.
+  // =================================================================
+
+  let CASES = 5;                // positions sur la ligne (réglable)
+  const TRANCHES_4D = 3;        // épaisseur du monde selon le 4e axe
+  const MARGE = 0.06;           // s — tolérance d'imprécision d'entrée
+  const PV_MAX = 3;
+
+  const cfg = {
+    monde: 'temps',             // temps | espace4d
+    vue: 'cote',                // cote | subjective
+    roleTemps: 'adversaire',    // adversaire | ressource | mixte
+    actionTemps: 'vitesse',     // vitesse | rembobine | branche
+    timelines: 'branchement',   // branchement | superposition | enregistrement
+    echec: 'mort',              // mort | rembobinage | pv
+    cases: 5,
+    son: true,
+    horizon: 2.4,
+    latence: 180,
+    tempo: 0.75
+  };
+
+  const nbTranches = () => (cfg.monde === 'espace4d' ? TRANCHES_4D : 1);
+  const miroir = (x) => CASES - 1 - x;
+
+  // --- éléments ---------------------------------------------------
+  const cv = document.getElementById('jeu');
+  const ctx = cv.getContext('2d');
+  const elScore = document.getElementById('score');
+  const elRecord = document.getElementById('record');
+  const elVies = document.getElementById('vies');
+  const elSon = document.getElementById('cSon');
+  const voile = document.getElementById('voile');
+  const voileTitre = document.getElementById('voileTitre');
+  const voileTexte = document.getElementById('voileTexte');
+  const voileAction = document.getElementById('voileAction');
+
+  let W = 0, H = 0, ligneY = 0, hautY = 0;
+
+  // --- état -------------------------------------------------------
+  let etat = 'attente';         // attente | jeu | perdu
+  let horloge = 0;
+  let position = 2;             // case sur la ligne
+  let tranche = 0;              // position sur le 4e axe
+  let dernierAgi = -1e9;        // dernière action (ms, horloge réelle)
+  let murs = [];
+  let prochainT = 0;
+  let indexMur = 0;
+  let cheminX = 2, cheminW = 0; // trajectoire qui survit, construite d'avance
+  let lignesPassees = 0;
+  let murFatal = null;
+  let pv = PV_MAX;
+  let jauge = 1;                // pouvoir temporel restant (mode mixte)
+  let vitesseTemps = 1;         // multiplicateur du défilement
+  let vitesseJusqua = 0;        // fin de l'effet de vitesse (horloge de jeu)
+  let invulnJusqua = 0;
+  let cibleGlissee = null;      // case visée au doigt, rejointe pas à pas
+  let dernierAxe = 'x';         // pour signaler l'ouverture d'une fenêtre
+  let trace = [];               // trajectoire de l'essai en cours
+  let fantome = [];             // trajectoire de l'essai précédent
+  let record = 0;
+  try { record = Number(localStorage.getItem('sillage_record')) || 0; } catch (e) { /* ignore */ }
+  elRecord.textContent = record;
+
+  // --- son --------------------------------------------------------
+  // Volontairement minimal : un clic par mur franchi, un avertissement
+  // grave quand un mur va toucher. Le son arrive avant que l'œil ait
+  // fini de lire — c'est une aide à l'anticipation, pas un habillage.
+  let audio = null;
+
+  function contexteAudio(){
+    if (!audio){
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return null;
+      try { audio = new Ctx(); } catch (e) { return null; }
+    }
+    if (audio.state === 'suspended') audio.resume().catch(() => {});
+    return audio;
+  }
+
+  function bip(freq, duree, volume, forme){
+    if (!cfg.son) return;
+    const a = contexteAudio();
+    if (!a) return;
+    const o = a.createOscillator();
+    const g = a.createGain();
+    o.type = forme || 'sine';
+    o.frequency.setValueAtTime(freq, a.currentTime);
+    g.gain.setValueAtTime(0.0001, a.currentTime);
+    g.gain.linearRampToValueAtTime(volume, a.currentTime + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + duree);
+    o.connect(g); g.connect(a.destination);
+    o.start();
+    o.stop(a.currentTime + duree + 0.02);
+  }
+
+  const sonFranchi  = () => bip(300 + position * 34, 0.06, 0.045, 'triangle');
+  const sonMenace   = () => bip(165, 0.20, 0.065, 'sawtooth');
+  const sonTouche   = () => bip(85, 0.38, 0.11, 'square');
+  const sonDeplace  = () => bip(520, 0.03, 0.018, 'sine');
+  const sonFenetre  = () => { bip(620, 0.07, 0.04, 'sine'); setTimeout(() => bip(830, 0.09, 0.04, 'sine'), 80); };
+
+  // --- fantôme ----------------------------------------------------
+  // Position de l'essai précédent à un instant donné. Sert au mode
+  // « enregistrement » : sa case devient mortelle, et le générateur
+  // l'évite pour ne jamais créer de mort inévitable.
+  function fantomeA(t){
+    if (cfg.timelines !== 'enregistrement' || !fantome.length) return null;
+    let lo = 0, hi = fantome.length - 1;
+    if (t <= fantome[0].t) return fantome[0];
+    if (t >= fantome[hi].t) return null;      // le fantôme est mort avant
+    while (lo < hi - 1){
+      const mid = (lo + hi) >> 1;
+      if (fantome[mid].t <= t) lo = mid; else hi = mid;
+    }
+    return fantome[lo];
+  }
+
+  // --- génération -------------------------------------------------
+  function tempoPlancher(){
+    // Sous ~2 latences, le joueur ne peut plus changer de case entre
+    // deux murs : la trajectoire se figerait et le jeu disparaîtrait.
+    return Math.max(0.30, 2.1 * cfg.latence / 1000);
+  }
+
+  function tempoCourant(){
+    const usure = cfg.roleTemps === 'adversaire' ? 0.982 : 0.988;
+    return Math.max(tempoPlancher(), cfg.tempo * Math.pow(usure, lignesPassees));
+  }
+
+  // Choisit la prochaine valeur d'un axe, à au plus « pas » cases
+  // de l'actuelle. « interdit » écarte une case (celle du fantôme).
+  function choisirSur(actuel, pas, taille, interdit){
+    const options = [];
+    for (let v = Math.max(0, actuel - pas); v <= Math.min(taille - 1, actuel + pas); v++){
+      if (v !== interdit) options.push(v);
+    }
+    if (!options.length) return actuel;
+    return options[Math.floor(Math.random() * options.length)];
+  }
+
+  function genererMur(){
+    const T = prochainT;
+    const tempo = tempoCourant();
+    const lat = cfg.latence / 1000;
+
+    // Écart maximal autorisé, par intervalle et non cumulé : le joueur
+    // doit être SUR la case libre à chaque mur, il ne peut donc pas
+    // prendre de l'avance en s'écartant du chemin.
+    const pasMax = Math.max(1, Math.min(2, Math.floor((tempo - MARGE) / lat)));
+
+    // Quel axe les flèches pilotent-elles pendant l'intervalle qui
+    // mène à ce mur ? Un seul à la fois, décidé par le générateur —
+    // c'est le « modificateur automatique selon le contexte ».
+    let axe = 'x';
+    if (cfg.monde === 'espace4d' && indexMur % 3 === 2) axe = 'tranche';
+    else if (cfg.monde === 'temps' && cfg.roleTemps !== 'adversaire' && indexMur % 5 === 4) axe = 'temps';
+
+    const spectre = fantomeA(T);
+    const interdit = (spectre && spectre.w === cheminW) ? spectre.x : -1;
+
+    if (axe === 'x')       cheminX = choisirSur(cheminX, pasMax, CASES, interdit);
+    else if (axe === 'tranche') cheminW = choisirSur(cheminW, pasMax, nbTranches(), -1);
+    // axe === 'temps' : la trajectoire ne bouge pas, la fenêtre sert
+    // uniquement au pouvoir temporel.
+
+    // Densité croissante, exprimée en proportion de la ligne : sinon
+    // « 2 murs bloqués » rend une ligne de 3 cases infernale et une
+    // ligne de 9 cases triviale. On va de 40 % à 80 % de la ligne.
+    const part = Math.min(0.8, 0.4 + lignesPassees * 0.005);
+    const densite = Math.min(CASES - 1, Math.max(1, Math.round(CASES * part)));
+    const tr = nbTranches();
+    const bloque = new Uint8Array(tr * CASES);
+
+    for (let w = 0; w < tr; w++){
+      const libres = [];
+      for (let x = 0; x < CASES; x++){
+        if (w === cheminW && x === cheminX) continue;                       // le chemin reste ouvert
+        if (w === cheminW && cfg.timelines === 'superposition'
+            && x === miroir(cheminX)) continue;                             // le double aussi
+        libres.push(x);
+      }
+      for (let i = libres.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [libres[i], libres[j]] = [libres[j], libres[i]];
+      }
+      const combien = Math.min(densite, libres.length);
+      for (let i = 0; i < combien; i++) bloque[w * CASES + libres[i]] = 1;
+    }
+
+    murs.push({ t: T, bloque, surX: cheminX, surW: cheminW, axe, franchi: false });
+    prochainT += tempo;
+    indexMur++;
+  }
+
+  function remplirFile(){
+    let garde = 0;
+    while (prochainT < horloge + cfg.horizon + 1 && garde++ < 200) genererMur();
+  }
+
+  function prochainMur(){
+    let best = null;
+    for (const m of murs) if (!m.franchi && (!best || m.t < best.t)) best = m;
+    return best;
+  }
+
+  // Axe actuellement piloté par les flèches.
+  function axeCourant(){
+    const m = prochainMur();
+    return m ? m.axe : 'x';
+  }
+
+  // --- cycle de vie -----------------------------------------------
+  function reinitialiser(){
+    etat = 'attente';
+    CASES = cfg.cases;
+    cibleGlissee = null;
+    horloge = 0;
+    position = Math.floor(CASES / 2);
+    tranche = Math.floor(nbTranches() / 2);
+    cheminX = position;
+    cheminW = tranche;
+    dernierAgi = -1e9;
+    lignesPassees = 0;
+    indexMur = 0;
+    murFatal = null;
+    pv = PV_MAX;
+    jauge = 1;
+    vitesseTemps = 1;
+    vitesseJusqua = 0;
+    invulnJusqua = 0;
+    trace = [];
+    murs = [];
+    prochainT = cfg.horizon + 0.6;
+    remplirFile();
+    elScore.textContent = '0';
+    majVies();
+    voileTitre.textContent = "Banc d'essai 1D";
+    voileTitre.classList.remove('perdu');
+    voileTexte.textContent = "Un seul axe de contrôle. La verticale à l'écran n'est pas de l'espace : c'est le futur. Une latence entre deux déplacements interdit l'esquive au dernier moment — il faut décider tôt. Quand une fenêtre s'ouvre, les mêmes flèches pilotent un second axe.";
+    voileAction.textContent = 'Flèches ← → · touche l’écran · clique pour commencer';
+    voile.hidden = false;
+    dessiner();
+  }
+
+  function demarrer(){
+    if (etat === 'jeu') return;
+    if (etat === 'perdu') reinitialiser();
+    etat = 'jeu';
+    voile.hidden = true;
+    dernierAgi = performance.now() - cfg.latence;
+  }
+
+  function majVies(){
+    if (cfg.echec === 'pv') elVies.textContent = '♥'.repeat(pv) + '♡'.repeat(PV_MAX - pv);
+    else if (cfg.roleTemps === 'mixte') elVies.textContent = 'Temps ' + Math.round(jauge * 100) + '%';
+    else elVies.textContent = '';
+  }
+
+  function perdre(mur){
+    etat = 'perdu';
+    murFatal = mur;
+    fantome = trace.slice();               // l'essai devient le fantôme du suivant
+    if (lignesPassees > record){
+      record = lignesPassees;
+      elRecord.textContent = record;
+      try { localStorage.setItem('sillage_record', String(record)); } catch (e) { /* ignore */ }
+    }
+    voileTitre.textContent = 'Touché';
+    voileTitre.classList.add('perdu');
+    const n = lignesPassees;
+    voileTexte.textContent = n + ' ligne' + (n > 1 ? 's' : '') + ' franchie' + (n > 1 ? 's' : '') + '.';
+    voileAction.textContent = 'R · clic · toucher pour rejouer';
+    voile.hidden = false;
+  }
+
+  // Un mur a touché le joueur : la conséquence dépend du commutateur.
+  function encaisser(mur){
+    if (horloge < invulnJusqua) return;
+    if (cfg.echec === 'pv'){
+      pv--;
+      majVies();
+      invulnJusqua = horloge + 1.0;
+      if (pv <= 0) perdre(mur);
+      return;
+    }
+    if (cfg.echec === 'rembobinage'){
+      rembobiner(1.6);
+      invulnJusqua = horloge + 0.8;
+      return;
+    }
+    perdre(mur);
+  }
+
+  function rembobiner(duree){
+    horloge = Math.max(0, horloge - duree);
+    let reperdus = 0;
+    for (const m of murs){
+      if (m.franchi && m.t > horloge){ m.franchi = false; reperdus++; }
+    }
+    lignesPassees = Math.max(0, lignesPassees - reperdus);
+    elScore.textContent = lignesPassees;
+    // on se replace sur le chemin du premier mur revenu devant nous
+    const suiv = prochainMur();
+    if (suiv){ position = suiv.surX; tranche = suiv.surW; }
+  }
+
+  // --- actions ----------------------------------------------------
+  function peutAgir(){
+    return performance.now() - dernierAgi >= cfg.latence;
+  }
+
+  function consommerJauge(cout){
+    if (cfg.roleTemps === 'ressource') return true;
+    if (cfg.roleTemps === 'adversaire') return false;
+    if (jauge < cout) return false;
+    jauge -= cout;
+    majVies();
+    return true;
+  }
+
+  function actionTemporelle(sens){
+    if (!consommerJauge(0.34)) return false;
+    if (cfg.actionTemps === 'vitesse'){
+      vitesseTemps = sens < 0 ? 0.5 : 1.7;
+      vitesseJusqua = horloge + 1.2;
+    } else if (cfg.actionTemps === 'rembobine'){
+      if (sens < 0) rembobiner(1.5);
+      else {
+        // saut en avant : les murs traversés sont considérés franchis
+        const cible = horloge + 0.9;
+        for (const m of murs){
+          if (!m.franchi && m.t <= cible){ m.franchi = true; lignesPassees++; }
+        }
+        horloge = cible;
+        elScore.textContent = lignesPassees;
+        const suiv = prochainMur();
+        if (suiv){ position = suiv.surX; tranche = suiv.surW; }
+      }
+    } else {
+      // branche : on redessine le futur au-delà de la fenêtre
+      const coupure = horloge + 0.5;
+      murs = murs.filter(m => m.t <= coupure);
+      const dernier = murs.reduce((a, m) => (m.t > a.t ? m : a), { t: coupure, surX: position, surW: tranche });
+      cheminX = dernier.surX !== undefined ? dernier.surX : position;
+      cheminW = dernier.surW !== undefined ? dernier.surW : tranche;
+      prochainT = dernier.t + tempoCourant();
+      indexMur += (sens < 0 ? 1 : 2);       // deux tirages différents
+      remplirFile();
+    }
+    return true;
+  }
+
+  function fleche(sens){
+    if (etat === 'attente'){ demarrer(); return; }
+    if (etat !== 'jeu') return;
+    if (!peutAgir()) return;
+
+    const axe = axeCourant();
+    if (axe === 'tranche'){
+      const cible = Math.min(nbTranches() - 1, Math.max(0, tranche + sens));
+      if (cible === tranche) return;
+      tranche = cible;
+    } else if (axe === 'temps'){
+      if (!actionTemporelle(sens)) return;
+    } else {
+      const cible = Math.min(CASES - 1, Math.max(0, position + sens));
+      if (cible === position) return;
+      position = cible;
+    }
+    dernierAgi = performance.now();
+    sonDeplace();
+  }
+
+  // --- boucle -----------------------------------------------------
+  let precedent = performance.now();
+  function boucle(maintenant){
+    const dt = Math.min(0.05, (maintenant - precedent) / 1000);
+    precedent = maintenant;
+
+    if (etat === 'jeu'){
+      if (horloge >= vitesseJusqua) vitesseTemps = 1;
+      horloge += dt * vitesseTemps;
+      if (cfg.roleTemps === 'mixte' && jauge < 1){
+        jauge = Math.min(1, jauge + dt * 0.06);
+        majVies();
+      }
+      // on échantillonne la trajectoire (elle sert de fantôme à l'essai
+      // suivant) plutôt que d'enregistrer chaque image
+      if (!trace.length || horloge - trace[trace.length - 1].t >= 0.03){
+        trace.push({ t: horloge, x: position, w: tranche });
+      }
+      remplirFile();
+
+      const spectre = fantomeA(horloge);
+      for (const m of murs){
+        if (m.franchi || m.t > horloge) continue;
+        m.franchi = true;
+        const touche =
+          m.bloque[tranche * CASES + position] === 1 ||
+          (cfg.timelines === 'superposition' && m.bloque[tranche * CASES + miroir(position)] === 1) ||
+          (spectre && spectre.w === tranche && spectre.x === position);
+        if (touche){
+          // on sort tout de suite : encaisser() peut rembobiner l'horloge,
+          // et il ne faut pas continuer à traiter la liste avec l'ancienne
+          sonTouche();
+          encaisser(m);
+          break;
+        }
+        lignesPassees++;
+        elScore.textContent = lignesPassees;
+        sonFranchi();
+      }
+      murs = murs.filter(m => m.t > horloge - 0.6);
+
+      // avertissement sonore : un mur va toucher et il est encore temps
+      const suivant = prochainMur();
+      if (suivant && !suivant.averti && suivant.t - horloge < 0.55){
+        suivant.averti = true;
+        const menace = suivant.bloque[tranche * CASES + position] === 1 ||
+          (cfg.timelines === 'superposition' && suivant.bloque[tranche * CASES + miroir(position)] === 1);
+        if (menace) sonMenace();
+      }
+
+      // ouverture d'une fenêtre de second axe
+      const axe = axeCourant();
+      if (axe !== dernierAxe){
+        if (axe !== 'x') sonFenetre();
+        dernierAxe = axe;
+        cibleGlissee = null;          // le doigt visait une case, plus valable
+      }
+
+      // glissement du doigt : on rejoint la case visée, pas à pas
+      if (cibleGlissee !== null){
+        if (axe !== 'x' || cibleGlissee === position) cibleGlissee = null;
+        else fleche(cibleGlissee > position ? 1 : -1);
+      }
+    }
+
+    dessiner();
+    requestAnimationFrame(boucle);
+  }
+
+  // --- rendu ------------------------------------------------------
+  function redimensionner(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const r = cv.getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ligneY = H - 56;
+    hautY = 16;
+    dessiner();
+  }
+
+  const COULEUR_MUR = '28,26,23';
+  const COULEUR_MENACE = '164,68,58';
+
+  // Fondu d'apparition à l'horizon. Rien n'est dessiné derrière la ligne
+  // du présent : un mur franchi n'a plus d'information à donner, et il
+  // débordait sous la zone de jeu.
+  function alphaDe(d){
+    return d > 0.86 ? Math.max(0, (1 - d) / 0.14) : 1;
+  }
+
+  // Géométrie d'une profondeur donnée : la vue de côté est plate,
+  // la vue subjective fait converger la ligne vers un point de fuite.
+  function geometrie(d){
+    if (cfg.vue === 'cote'){
+      return { y: ligneY - d * (ligneY - hautY), demi: W * 0.5, centre: W * 0.5, ech: 1 };
+    }
+    const fuiteY = hautY;
+    const p = 1 / (1 + 4 * Math.max(0, d));
+    return {
+      y: fuiteY + (ligneY - fuiteY) * p,
+      demi: W * 0.48 * p,
+      centre: W * 0.5,
+      ech: p
+    };
+  }
+
+  function dessiner(){
+    if (!W) return;
+    const tr = nbTranches();
+    const axe = axeCourant();
+    ctx.clearRect(0, 0, W, H);
+
+    const g0 = geometrie(0);
+    const largeurCase0 = (g0.demi * 2) / CASES;
+
+    // couloir de prédiction : où je serai si je ne fais rien
+    ctx.fillStyle = axe === 'x' ? 'rgba(176,141,87,0.09)' : 'rgba(74,107,115,0.10)';
+    if (cfg.vue === 'cote'){
+      ctx.fillRect(position * largeurCase0, hautY, largeurCase0, ligneY - hautY);
+    } else {
+      const gf = geometrie(1);
+      const lcf = (gf.demi * 2) / CASES;
+      ctx.beginPath();
+      ctx.moveTo(g0.centre - g0.demi + position * largeurCase0, g0.y);
+      ctx.lineTo(g0.centre - g0.demi + (position + 1) * largeurCase0, g0.y);
+      ctx.lineTo(gf.centre - gf.demi + (position + 1) * lcf, gf.y);
+      ctx.lineTo(gf.centre - gf.demi + position * lcf, gf.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // séparations de cases
+    ctx.strokeStyle = 'rgba(221,214,201,0.7)';
+    ctx.lineWidth = 1;
+    if (cfg.vue === 'cote'){
+      for (let i = 1; i < CASES; i++){
+        const x = Math.round(i * largeurCase0) + 0.5;
+        ctx.beginPath(); ctx.moveTo(x, hautY); ctx.lineTo(x, ligneY); ctx.stroke();
+      }
+    } else {
+      const gf = geometrie(1);
+      for (let i = 0; i <= CASES; i++){
+        const a = g0.centre - g0.demi + i * largeurCase0;
+        const b = gf.centre - gf.demi + i * ((gf.demi * 2) / CASES);
+        ctx.beginPath(); ctx.moveTo(a, g0.y); ctx.lineTo(b, gf.y); ctx.stroke();
+      }
+    }
+
+    // murs, du plus lointain au plus proche
+    const ordonnes = murs.slice().sort((a, b) => b.t - a.t);
+    for (const mur of ordonnes){
+      const d = (mur.t - horloge) / cfg.horizon;
+      if (d > 1.02 || d < 0) continue;
+      const g = geometrie(d);
+      const lc = (g.demi * 2) / CASES;
+      const ep = Math.max(4, 16 * g.ech * (cfg.vue === 'cote' ? 1 : 1.4));
+      const alpha = alphaDe(d);
+
+      // en 4D, la tranche visée pendant une fenêtre est esquissée
+      if (tr > 1){
+        for (let w = 0; w < tr; w++){
+          if (w === tranche) continue;
+          if (axe !== 'tranche') continue;
+          ctx.strokeStyle = 'rgba(74,107,115,' + (alpha * 0.35) + ')';
+          ctx.lineWidth = 1;
+          for (let i = 0; i < CASES; i++){
+            if (!mur.bloque[w * CASES + i]) continue;
+            ctx.strokeRect(g.centre - g.demi + i * lc + 2, g.y - ep / 2, lc - 4, ep);
+          }
+        }
+      }
+
+      for (let i = 0; i < CASES; i++){
+        if (!mur.bloque[tranche * CASES + i]) continue;
+        const menace = (i === position) ||
+          (cfg.timelines === 'superposition' && i === miroir(position));
+        const base = (mur === murFatal) ? COULEUR_MENACE : (menace ? COULEUR_MENACE : COULEUR_MUR);
+        const a = (mur === murFatal) ? alpha : (menace ? alpha * 0.45 : alpha * 0.82);
+        ctx.fillStyle = 'rgba(' + base + ',' + a + ')';
+        ctx.fillRect(g.centre - g.demi + i * lc + 2, g.y - ep / 2, lc - 4, ep);
+      }
+    }
+
+    // fantôme de l'essai précédent
+    const spectre = fantomeA(horloge);
+    if (spectre && spectre.w === tranche){
+      ctx.fillStyle = 'rgba(74,107,115,0.5)';
+      ctx.beginPath();
+      ctx.arc(g0.centre - g0.demi + (spectre.x + 0.5) * largeurCase0, g0.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // la ligne : le présent
+    ctx.strokeStyle = axe === 'x' ? '#b08d57' : '#4a6b73';
+    ctx.lineWidth = axe === 'x' ? 1 : 2;
+    ctx.beginPath();
+    ctx.moveTo(g0.centre - g0.demi, Math.round(g0.y) + 0.5);
+    ctx.lineTo(g0.centre + g0.demi, Math.round(g0.y) + 0.5);
+    ctx.stroke();
+
+    // joueur, et son double en superposition
+    const pret = etat !== 'jeu' || peutAgir();
+    const dessinerPion = (x, principal) => {
+      const cx = g0.centre - g0.demi + (x + 0.5) * largeurCase0;
+      ctx.fillStyle = etat === 'perdu' ? '#a4443a'
+        : principal ? (pret ? '#1c1a17' : 'rgba(28,26,23,0.28)')
+        : 'rgba(28,26,23,0.45)';
+      ctx.beginPath();
+      ctx.arc(cx, g0.y, principal ? 7 : 5.5, 0, Math.PI * 2);
+      ctx.fill();
+    };
+    dessinerPion(position, true);
+    if (cfg.timelines === 'superposition') dessinerPion(miroir(position), false);
+
+    // case visée au doigt, pas encore atteinte
+    if (cibleGlissee !== null && cibleGlissee !== position){
+      ctx.strokeStyle = 'rgba(176,141,87,0.8)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(g0.centre - g0.demi + (cibleGlissee + 0.5) * largeurCase0, g0.y, 7, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // étiquettes : tranche courante, fenêtre en cours
+    ctx.font = '11px Jost, sans-serif';
+    ctx.textAlign = 'left';
+    if (tr > 1){
+      ctx.fillStyle = '#6f6a60';
+      ctx.fillText('tranche ' + (tranche + 1) + ' / ' + tr, 4, hautY + 12);
+      for (let w = 0; w < tr; w++){
+        const cx = 80 + w * 11;
+        ctx.beginPath();
+        ctx.arc(cx, hautY + 8, 3.5, 0, Math.PI * 2);
+        if (w === tranche){ ctx.fillStyle = '#4a6b73'; ctx.fill(); }
+        else { ctx.strokeStyle = 'rgba(111,106,96,0.6)'; ctx.lineWidth = 1; ctx.stroke(); }
+      }
+      ctx.fillStyle = '#6f6a60';
+    }
+    if (axe !== 'x'){
+      ctx.fillStyle = '#4a6b73';
+      ctx.textAlign = 'right';
+      ctx.fillText(axe === 'tranche' ? '← → tranche' : '← → temps', W - 4, hautY + 12);
+    }
+    if (vitesseTemps !== 1){
+      ctx.fillStyle = '#4a6b73';
+      ctx.textAlign = 'center';
+      ctx.fillText(vitesseTemps < 1 ? 'temps ralenti' : 'temps accéléré', W / 2, ligneY + 22);
+    }
+  }
+
+  // --- entrées ----------------------------------------------------
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft')       { cibleGlissee = null; fleche(-1); e.preventDefault(); }
+    else if (e.key === 'ArrowRight') { cibleGlissee = null; fleche(1);  e.preventDefault(); }
+    else if (e.key === 'r' || e.key === 'R') { reinitialiser(); }
+    else if (e.key === 'm' || e.key === 'M') { cfg.son = !cfg.son; elSon.checked = cfg.son; }
+    else if (e.key === ' ' || e.key === 'Enter') { contexteAudio(); demarrer(); e.preventDefault(); }
+  });
+
+  // Case sous le doigt, lue sur la ligne du présent — la géométrie y est
+  // la même dans les deux vues.
+  function celluleSous(clientX){
+    const r = cv.getBoundingClientRect();
+    const g = geometrie(0);
+    const lc = (g.demi * 2) / CASES;
+    const i = Math.floor((clientX - r.left - (g.centre - g.demi)) / lc);
+    return Math.min(CASES - 1, Math.max(0, i));
+  }
+
+  let doigt = null;
+
+  function toucher(clientX){
+    if (etat !== 'jeu') { demarrer(); return; }
+    if (axeCourant() === 'x') cibleGlissee = celluleSous(clientX);
+    else {
+      // sur un axe secondaire, les moitiés d'écran restent le plus lisible
+      const r = cv.getBoundingClientRect();
+      fleche(clientX < r.left + r.width / 2 ? -1 : 1);
+    }
+  }
+
+  for (const el of [cv, voile]){
+    el.addEventListener('pointerdown', (e) => {
+      doigt = e.pointerId;
+      contexteAudio();               // le son a besoin d'un geste pour démarrer
+      toucher(e.clientX);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (doigt !== e.pointerId || etat !== 'jeu') return;
+      if (axeCourant() === 'x') cibleGlissee = celluleSous(e.clientX);
+      e.preventDefault();
+    });
+    el.addEventListener('pointerup', () => { doigt = null; });
+    el.addEventListener('pointercancel', () => { doigt = null; });
+  }
+
+  // --- panneau ----------------------------------------------------
+  const commutateurs = [
+    ['sMonde', 'monde'], ['sVue', 'vue'], ['sRole', 'roleTemps'],
+    ['sAction', 'actionTemps'], ['sTimelines', 'timelines'], ['sEchec', 'echec']
+  ];
+  for (const [id, cle] of commutateurs){
+    const el = document.getElementById(id);
+    el.value = cfg[cle];
+    el.addEventListener('change', () => {
+      cfg[cle] = el.value;
+      fantome = [];                  // un fantôme d'une autre config n'a pas de sens
+      reinitialiser();
+    });
+  }
+
+  elSon.checked = cfg.son;
+  elSon.addEventListener('change', () => { cfg.son = elSon.checked; if (cfg.son) contexteAudio(); });
+
+  const curseurs = [
+    ['rCases',   'oCases',   'cases',   v => Math.round(v) + ' cases'],
+    ['rHorizon', 'oHorizon', 'horizon', v => v.toFixed(1) + ' s'],
+    ['rLatence', 'oLatence', 'latence', v => Math.round(v) + ' ms'],
+    ['rTempo',   'oTempo',   'tempo',   v => v.toFixed(2) + ' s']
+  ];
+  for (const [idR, idO, cle, format] of curseurs){
+    const r = document.getElementById(idR);
+    const o = document.getElementById(idO);
+    r.value = cfg[cle];
+    o.textContent = format(cfg[cle]);
+    r.addEventListener('input', () => {
+      cfg[cle] = Number(r.value);
+      o.textContent = format(cfg[cle]);
+      reinitialiser();
+    });
+  }
+
+  // Poignée de lecture seule, pour régler et tester depuis la console.
+  window.sillage = {
+    cfg,
+    get etat(){ return etat; },
+    get position(){ return position; },
+    get tranche(){ return tranche; },
+    get horloge(){ return horloge; },
+    get murs(){ return murs; },
+    get lignes(){ return lignesPassees; },
+    get pv(){ return pv; },
+    get CASES(){ return CASES; },
+    axeCourant, fleche, demarrer, reinitialiser
+  };
+
+  window.addEventListener('resize', redimensionner);
+  redimensionner();
+  reinitialiser();
+  requestAnimationFrame(boucle);
+})();
+</script>
+</body>
+</html>
