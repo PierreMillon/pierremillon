@@ -247,7 +247,7 @@ export default function PredictionExplorer() {
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 8px 4px" }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>L'atelier des sécantes</span>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>Régression et Extrapolation</span>
           <span style={{ fontSize: 10, color: "#5c6577", fontFamily: "monospace" }}>
             {pointAYear} → {currentYear} → {futureEnd}
           </span>
