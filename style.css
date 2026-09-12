@@ -130,3 +130,114 @@ main {
   letter-spacing: 0.2em;
   color: var(--accent);
 }
+
+footer {
+  text-align: center;
+  margin-top: 3.5rem;
+}
+
+footer a {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+footer a:hover {
+  color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------------
+   LA SALLE DE JEUX. Même papier, même or, même italique : c'est la page
+   d'accueil du domaine, et elle doit ressembler au reste plutôt qu'à une
+   vitrine achetée ailleurs. Un titre sous le nom du jeu, là où le portfolio
+   n'avait qu'un nom — on choisit un jeu sur ce qu'il est, pas sur son titre.
+   --------------------------------------------------------------------------- */
+.salle main {
+  max-width: 540px;
+}
+
+.jeux {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.jeux li {
+  border-top: 1px solid var(--hairline);
+}
+
+.jeux li:last-child {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.jeux a {
+  display: flex;
+  align-items: baseline;
+  gap: 1.1rem;
+  padding: 1.25rem 0.25rem;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.jeux .index {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--accent);
+  min-width: 1.4rem;
+}
+
+.jeux .corps {
+  flex: 1;
+  min-width: 0;
+}
+
+.jeux .name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: letter-spacing 0.3s ease, color 0.3s ease;
+}
+
+/* Vide, elle ne laisse pas de trou : une ligne sans description se lit comme
+   les rangs du portfolio, et la page reste juste tant que les textes manquent. */
+.jeux .desc {
+  display: block;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1rem;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.jeux .desc:empty {
+  display: none;
+}
+.jeux .desc:not(:empty) {
+  margin-top: 0.35rem;
+}
+
+.jeux a:hover .name,
+.jeux a:focus-visible .name {
+  letter-spacing: 0.2em;
+  color: var(--accent);
+}
+.jeux a:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.jeux .separateur {
+  border: 0;
+  padding: 0;
+}
+.jeux .separateur span {
+  display: block;
+  width: 32px;
+  height: 1px;
+  background: var(--accent);
+  margin: 1.8rem auto;
+}
