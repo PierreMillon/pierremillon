@@ -1,4 +1,4 @@
-# Régression et Extrapolation
+# Extrapolation
 
 Un explorateur interactif de méthodes d'extrapolation. Une série
 temporelle synthétique (1826-2026) est générée avec une mécanique
@@ -18,7 +18,7 @@ Un bouton « Révéler la mécanique » affiche la vraie courbe génératrice
 et son nom, pour comparer chaque méthode à la réalité qu'elle essaie de
 deviner.
 
-**https://pierremillon.github.io/pierremillon/regression-et-extrapolation/**
+**https://pierremillon.github.io/pierremillon/extrapolation/**
 
 ## Stack
 
@@ -35,7 +35,7 @@ cp -r dist/* ../
 ```
 
 (depuis ce dossier `source/`, en supposant qu'il est bien placé dans
-`regression-et-extrapolation/source/` du portfolio — `dist/` copié un niveau
+`extrapolation/source/` du portfolio — `dist/` copié un niveau
 au-dessus écrase `index.html` et `assets/` à côté de `source/`.)
 
 ## Développement local
