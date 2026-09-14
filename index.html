@@ -93,14 +93,11 @@
     // page n'a aucun état à perdre (juste un menu de liens), donc dès
     // qu'une nouvelle version est détectée, on recharge directement : pas
     // besoin d'attendre un "point sûr" comme dans les jeux.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations()
-        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
-        .catch(() => {});
-    }
-    if ('caches' in window) {
-      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {});
-    }
+    // Pas de nettoyage de service worker ni de caches ici : cette page n'en
+    // a jamais eu, et getRegistrations()/caches.keys() sont scopés à toute
+    // l'ORIGINE pierremillon.github.io — on désenregistrait à chaque visite
+    // du hub le service worker des jeux voisins (Knight Wars) et on vidait
+    // leurs caches, cassant leur mode hors-ligne.
     async function checkForUpdate(){
       try {
         const res = await fetch(location.pathname || 'index.html', { cache: 'no-store' });
@@ -117,13 +114,18 @@
           try {
             localStorage.setItem('pm_pageVersion', tag);
             sessionStorage.setItem('pm_lastUpdateReload', String(now));
-          } catch (e) { /* ignore */ }
+          } catch (e) { return; } // stockage indisponible : ne pas recharger en boucle
           location.reload();
         }
       } catch (e) { /* hors-ligne, ou requête bloquée — on ignore, on retentera plus tard */ }
     }
     checkForUpdate();
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+    let lastCheckAt = Date.now();
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden || Date.now() - lastCheckAt < 30000) return; // pas plus d'une requête par 30 s
+      lastCheckAt = Date.now();
+      checkForUpdate();
+    });
   </script>
 </body>
 </html>
