@@ -29,17 +29,17 @@ function generateSeries(seed) {
   if (kind === 0) {
     const slope = 0.01 + rand() * 0.02;
     trueFn = (t) => base + slope * (t - X0);
-    label = "tendance linéaire";
+    label = "linear";
   } else if (kind === 1) {
     const k = 0.008 + rand() * 0.01;
     trueFn = (t) => base + Math.exp(k * (t - X0)) * 0.4;
-    label = "tendance accélérante, sans plafond connu";
+    label = "exp";
   } else {
     const L = 6 + rand() * 6;
     const k = 0.03 + rand() * 0.02;
     const t0 = X0 + 90 + rand() * 60;
     trueFn = (t) => base + L / (1 + Math.exp(-k * (t - t0)));
-    label = "tendance plafonnée (un « L » caché existe)";
+    label = "logistic";
   }
 
   const pts = [];
@@ -163,10 +163,10 @@ function localMean(historical, year) {
 // ---------- constants ----------
 
 const METHODS = [
-  { id: "secant", label: "Sécante (2 points)", color: "#5AA9E6" },
-  { id: "linreg", label: "Régression linéaire", color: "#6FCF97" },
-  { id: "weighted", label: "Pondérée (récent > ancien)", color: "#BB86FC" },
-  { id: "sigmoid", label: "Logistique (plafond L)", color: "#F2994A" },
+  { id: "secant", color: "#5AA9E6" },
+  { id: "linreg", color: "#6FCF97" },
+  { id: "weighted", color: "#BB86FC" },
+  { id: "sigmoid", color: "#F2994A" },
 ];
 
 const DRAW_COLOR = "#FF6B8B";
@@ -179,58 +179,212 @@ const FIXED_NOISE = (() => {
   return Array.from({ length: Math.floor((X_NOW - X0) / STEP) + 1 }, () => (r() - 0.5) * 2);
 })();
 
-const INFO = {
-  secant:
-    "Droite qui passe par deux points seulement : le point de référence et le dernier point connu. Simple, mais très sensible au bruit : si l'un des deux points est « mal tombé », toute la prévision part de travers.",
-  linreg:
-    "Droite qui rend la plus petite possible la somme des carrés des écarts, sur toute la période choisie. Le bruit se compense, mais on suppose que la pente ne change jamais.",
-  weighted:
-    "Même idée que la régression linéaire, mais un point ancien pèse moins qu'un point récent (son poids est divisé par 2 à chaque demi-vie). Suit mieux un changement de rythme récent, au prix de plus de bruit.",
-  sigmoid:
-    "Courbe en S : elle accélère, puis ralentit sous un plafond L que l'on suppose. Très bonne si un plafond existe vraiment, trompeuse sinon — tout dépend du L choisi.",
-  draw:
-    "Les données sont maintenant ta courbe. Glisse un point ● pour la déformer : les méthodes se recalculent en direct. Touche une zone vide (avant 2026) pour ajouter un point. Les deux extrémités ne bougent que verticalement. Le curseur « Bruit » ajoute des petites irrégularités, comme dans des vraies mesures.",
-  score:
-    "Écart moyen = moyenne des distances verticales, une mesure tous les 2 ans. « Passé » : écart de la méthode aux données, sur la période choisie (elle colle bien ou pas). « Futur » : écart à la vraie mécanique sur 2026 → 2126, seulement pour une série aléatoire, après la révélation.",
+const T = {
+  fr: {
+    m: {
+      secant: "Sécante (2 points)",
+      linreg: "Régression linéaire",
+      weighted: "Pondérée (récent > ancien)",
+      sigmoid: "Logistique (plafond L)",
+    },
+    kind: {
+      linear: "tendance linéaire",
+      exp: "tendance accélérante, sans plafond connu",
+      logistic: "tendance plafonnée (un « L » caché existe)",
+    },
+    info: {
+      secant:
+        "Droite qui passe par deux points seulement : le point de référence et le dernier point connu. Simple, mais très sensible au bruit : si l'un des deux points est « mal tombé », toute la prévision part de travers.",
+      linreg:
+        "Droite qui rend la plus petite possible la somme des carrés des écarts, sur toute la période choisie. Le bruit se compense, mais on suppose que la pente ne change jamais.",
+      weighted:
+        "Même idée que la régression linéaire, mais un point ancien pèse moins qu'un point récent (son poids est divisé par 2 à chaque demi-vie). Suit mieux un changement de rythme récent, au prix de plus de bruit.",
+      sigmoid:
+        "Courbe en S : elle accélère, puis ralentit sous un plafond L que l'on suppose. Très bonne si un plafond existe vraiment, trompeuse sinon — tout dépend du L choisi.",
+      draw:
+        "Les données sont maintenant ta courbe. Glisse un point ● pour la déformer : les méthodes se recalculent en direct. Touche une zone vide (avant 2026) pour ajouter un point. Les deux extrémités ne bougent que verticalement. Le curseur « Bruit » ajoute des petites irrégularités, comme dans des vraies mesures.",
+      score:
+        "Écart moyen = moyenne des distances verticales, une mesure tous les 2 ans. « Passé » : écart de la méthode aux données, sur la période choisie (elle colle bien ou pas). « Futur » : écart à la vraie mécanique sur 2026 → 2126, seulement pour une série aléatoire, après la révélation.",
+    },
+    history: "Historique",
+    close: "Fermer",
+    explain: "Explication",
+    yourCurve: "ta courbe · ",
+    randomSeries: "↻ Série aléatoire",
+    restart: "✎ Recommencer",
+    draw: "✎ Dessiner ma courbe",
+    reveal: "Révéler la mécanique",
+    hide: "Masquer la mécanique",
+    mechanic: "mécanique réelle : ",
+    myCurve: "Ma courbe",
+    pointSel: (y) => "point " + y + " sélectionné",
+    hint: "glisse un point ● · touche le graphique pour en ajouter",
+    removePt: "Retirer le point",
+    noise: "Bruit — ±",
+    methods: "Méthodes",
+    score: "Écart moyen",
+    past: "passé",
+    future: "futur",
+    ref: (y) => "Point de référence — année " + y,
+    memory: (h) => "Mémoire (pondérée) — demi-vie " + h + " ans",
+    cap: (c) => "Plafond supposé — ×" + c + " l'amplitude",
+    otherLang: "EN",
+    install: "Astuce : « Partager → Sur l'écran d'accueil » pour l'installer comme une appli.",
+  },
+  en: {
+    m: {
+      secant: "Secant (2 points)",
+      linreg: "Linear regression",
+      weighted: "Weighted (recent > old)",
+      sigmoid: "Logistic (ceiling L)",
+    },
+    kind: {
+      linear: "linear trend",
+      exp: "accelerating trend, no known ceiling",
+      logistic: "capped trend (a hidden « L » exists)",
+    },
+    info: {
+      secant:
+        "A straight line through only two points: the reference point and the last known point. Simple, but very sensitive to noise: if either point is an outlier, the whole forecast goes off.",
+      linreg:
+        "The straight line that makes the sum of squared errors as small as possible over the chosen period. Noise averages out, but the slope is assumed never to change.",
+      weighted:
+        "Same idea as linear regression, but old points weigh less than recent ones (their weight halves every half-life). Follows a recent change of pace better, at the cost of more noise.",
+      sigmoid:
+        "An S-curve: it speeds up, then slows down under an assumed ceiling L. Great if a ceiling really exists, misleading otherwise — it all depends on the chosen L.",
+      draw:
+        "The data is now your curve. Drag a point ● to reshape it: the methods update live. Tap an empty spot (before 2026) to add a point. Both ends only move vertically. The « Noise » slider adds small irregularities, like real measurements.",
+      score:
+        "Mean error = average vertical distance, measured every 2 years. « Past »: distance from the method to the data over the chosen period (does it fit?). « Future »: distance to the actual mechanism over 2026 → 2126, random series only, after revealing.",
+    },
+    history: "History",
+    close: "Close",
+    explain: "Explanation",
+    yourCurve: "your curve · ",
+    randomSeries: "↻ Random series",
+    restart: "✎ Start over",
+    draw: "✎ Draw my curve",
+    reveal: "Reveal the mechanism",
+    hide: "Hide the mechanism",
+    mechanic: "actual mechanism: ",
+    myCurve: "My curve",
+    pointSel: (y) => "point " + y + " selected",
+    hint: "drag a point ● · tap the chart to add one",
+    removePt: "Remove point",
+    noise: "Noise — ±",
+    methods: "Methods",
+    score: "Mean error",
+    past: "past",
+    future: "future",
+    ref: (y) => "Reference point — year " + y,
+    memory: (h) => "Memory (weighted) — half-life " + h + " years",
+    cap: (c) => "Assumed ceiling — ×" + c + " the range",
+    otherLang: "FR",
+    install: "Tip: « Share → Add to Home Screen » to install it like an app.",
+  },
 };
 
 const HISTORY = [
   {
+    v: "v4",
+    date: "25/09/2026",
+    fr: "Version anglaise (bouton EN/FR). Courbe dessinée et réglages gardés d'une visite à l'autre. Plus de zoom ni de loupe au toucher. Installable sur l'écran d'accueil. Mise à jour automatique. Format téléphone centré sur grand écran.",
+    en: "English version (EN/FR button). Drawn curve and settings kept between visits. No more zoom or magnifier on touch. Installable on the home screen. Automatic updates. Phone layout centred on large screens.",
+  },
+  {
     v: "v3",
     date: "25/09/2026",
-    text: "Une seule courbe de données : aléatoire, ou dessinée par toi (« ✎ Dessiner ma courbe »). Les méthodes et l'écart moyen se calculent toujours sur cette courbe, en direct pendant que tu glisses les points. Curseur de bruit. Remplace les « courbes perso » de la v2.",
+    fr: "Une seule courbe de données : aléatoire, ou dessinée par toi (« ✎ Dessiner ma courbe »). Les méthodes et l'écart moyen se calculent toujours sur cette courbe, en direct pendant que tu glisses les points. Curseur de bruit. Remplace les « courbes perso » de la v2.",
+    en: "A single data curve: random, or drawn by you (« ✎ Draw my curve »). Methods and mean error are always computed on that curve, live while you drag the points. Noise slider. Replaces the v2 « custom curves ».",
   },
   {
     v: "v2",
     date: "25/09/2026",
-    text: "Courbes perso à points déplaçables, petit ⓘ explicatif par méthode, écart moyen, vraie mécanique prolongée dans le futur, graphique tactile.",
+    fr: "Courbes perso à points déplaçables, petit ⓘ explicatif par méthode, écart moyen, vraie mécanique prolongée dans le futur, graphique tactile.",
+    en: "Custom curves with draggable points, small ⓘ explanation per method, mean error, actual mechanism extended into the future, touch chart.",
   },
   {
     v: "v1",
     date: "",
-    text: "Explorateur initial : série synthétique, 4 méthodes (sécante, régression, pondérée, logistique), bouton « Révéler la mécanique ».",
+    fr: "Explorateur initial : série synthétique, 4 méthodes (sécante, régression, pondérée, logistique), bouton « Révéler la mécanique ».",
+    en: "Initial explorer: synthetic series, 4 methods (secant, regression, weighted, logistic), « Reveal the mechanism » button.",
   },
 ];
+
+// ---------- sauvegarde locale ----------
+
+const SAVE_KEY = "extrapolation_state";
+
+// Relit la sauvegarde en vérifiant chaque champ : une valeur inattendue
+// est ignorée (valeur par défaut), jamais interprétée.
+function loadSaved() {
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); } catch (e) { raw = null; }
+  if (!raw || typeof raw !== "object") raw = {};
+  const num = (v, lo, hi, d) => (typeof v === "number" && isFinite(v) && v >= lo && v <= hi ? v : d);
+  const maxIdx = Math.floor((X_NOW - X0) / STEP) - 4;
+  let drawPts = null;
+  if (Array.isArray(raw.drawPts) && raw.drawPts.length >= 2 && raw.drawPts.length <= 60) {
+    const pts = raw.drawPts.map((p) => ({ year: num(p && p.year, X0, X_NOW, NaN), value: num(p && p.value, -1e6, 1e6, NaN) }));
+    const ok = pts.every((p, i) => !isNaN(p.year) && !isNaN(p.value) && (i === 0 || p.year > pts[i - 1].year))
+      && pts[0].year === X0 && pts[pts.length - 1].year === X_NOW;
+    if (ok) drawPts = pts;
+  }
+  const active = { secant: true, linreg: true, weighted: false, sigmoid: false };
+  if (raw.active && typeof raw.active === "object") {
+    METHODS.forEach((m) => { if (typeof raw.active[m.id] === "boolean") active[m.id] = raw.active[m.id]; });
+  }
+  let lang = raw.lang === "fr" || raw.lang === "en" ? raw.lang : null;
+  if (!lang) {
+    const nav = (typeof navigator !== "undefined" && navigator.language) || "fr";
+    lang = nav.toLowerCase().startsWith("fr") ? "fr" : "en";
+  }
+  return {
+    seed: Math.round(num(raw.seed, 0, 1e9, 7)),
+    pointAIdx: Math.round(num(raw.pointAIdx, 0, maxIdx, 0)),
+    halfLife: Math.round(num(raw.halfLife, 2, 100, 20)),
+    capMultiplier: num(raw.capMultiplier, 1.1, 4, 1.6),
+    noise: num(raw.noise, 0, 3, 0),
+    active,
+    drawPts,
+    lang,
+  };
+}
 
 // ---------- component ----------
 
 export default function PredictionExplorer() {
-  const [seed, setSeed] = useState(7);
-  const [pointAIdx, setPointAIdx] = useState(0);
-  const [halfLife, setHalfLife] = useState(20);
-  const [capMultiplier, setCapMultiplier] = useState(1.6);
-  const [active, setActive] = useState({
-    secant: true, linreg: true, weighted: false, sigmoid: false,
-  });
+  const saved = useMemo(loadSaved, []);
+  const [seed, setSeed] = useState(saved.seed);
+  const [pointAIdx, setPointAIdx] = useState(saved.pointAIdx);
+  const [halfLife, setHalfLife] = useState(saved.halfLife);
+  const [capMultiplier, setCapMultiplier] = useState(saved.capMultiplier);
+  const [active, setActive] = useState(saved.active);
   const [revealTrue, setRevealTrue] = useState(false);
-  const [drawPts, setDrawPts] = useState(null); // null = série aléatoire
-  const [noise, setNoise] = useState(0);
+  const [drawPts, setDrawPts] = useState(saved.drawPts); // null = série aléatoire
+  const [noise, setNoise] = useState(saved.noise);
+  const [lang, setLang] = useState(saved.lang);
   const [selectedPt, setSelectedPt] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [info, setInfo] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
 
+  const t = T[lang];
   const drawn = drawPts != null;
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  // sauvegarde (pas pendant un glissé : on écrit une fois au lâcher)
+  useEffect(() => {
+    if (dragging) return;
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify({
+        seed, pointAIdx, halfLife, capMultiplier, active, drawPts, noise, lang,
+      }));
+    } catch (e) { /* stockage indisponible : on continue sans */ }
+  }, [seed, pointAIdx, halfLife, capMultiplier, active, drawPts, noise, lang, dragging]);
 
   const random = useMemo(() => generateSeries(seed), [seed]);
   const drawFn = useMemo(() => (drawn ? monotoneInterp(drawPts) : null), [drawn, drawPts]);
@@ -321,7 +475,7 @@ export default function PredictionExplorer() {
     const dataAt = new Map(historical.map((p) => [p.year, p.value]));
     const dataFn = (t) => dataAt.get(t);
     return METHODS.filter((m) => active[m.id]).map((m) => ({
-      id: m.id, label: m.label, color: m.color,
+      id: m.id, color: m.color,
       past: meanAbs(models[m.id], dataFn, pointAYear, X_NOW),
       future: drawn ? null : meanAbs(models[m.id], random.trueFn, X_NOW + STEP, X1),
     }));
@@ -338,7 +492,7 @@ export default function PredictionExplorer() {
         fontFamily: "'Georgia', serif",
         background: "#12161d",
         color: "#EDEAE3",
-        height: "100vh",
+        height: "100%",
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
@@ -349,7 +503,7 @@ export default function PredictionExplorer() {
         style={{
           flex: "0 0 46%",
           background: "#1c222c",
-          padding: "8px 6px 4px",
+          padding: "max(8px, env(safe-area-inset-top)) 6px 4px",
           borderBottom: "1px solid #2a313d",
           display: "flex",
           flexDirection: "column",
@@ -360,14 +514,21 @@ export default function PredictionExplorer() {
             Extrapolation
             <button
               onClick={() => setShowHistory(true)}
-              aria-label="Historique des versions"
+              aria-label={t.history}
               style={{ ...iconBtn, marginLeft: 8 }}
             >
               ⓘ
             </button>
+            <button
+              onClick={() => setLang(lang === "fr" ? "en" : "fr")}
+              aria-label={lang === "fr" ? "English" : "Français"}
+              style={{ ...iconBtn, fontSize: 10, fontFamily: "monospace", border: "1px solid #3a4250", borderRadius: 4, padding: "1px 5px", marginLeft: 4 }}
+            >
+              {t.otherLang}
+            </button>
           </span>
           <span style={{ fontSize: 10, color: "#5c6577", fontFamily: "monospace" }}>
-            {drawn ? "ta courbe · " : ""}{pointAYear} → {X_NOW} → {X1}
+            {drawn ? t.yourCurve : ""}{pointAYear} → {X_NOW} → {X1}
           </span>
         </div>
         <Chart
@@ -387,18 +548,18 @@ export default function PredictionExplorer() {
       </div>
 
       {/* CONTROLS — bottom half, scrollable */}
-      <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "10px 12px 24px" }}>
+      <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "10px 12px max(24px, env(safe-area-inset-bottom))" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <button onClick={newSeries} style={btnStyle("#EDEAE3", "#1c222c")}>
-            ↻ Série aléatoire
+            {t.randomSeries}
           </button>
           {drawn ? (
             <button onClick={startDrawing} style={btnStyle("#EDEAE3", "#1c222c")}>
-              ✎ Recommencer
+              {t.restart}
             </button>
           ) : (
             <button onClick={startDrawing} style={btnStyle(DRAW_COLOR, "#1c222c")}>
-              ✎ Dessiner ma courbe
+              {t.draw}
             </button>
           )}
         </div>
@@ -408,38 +569,38 @@ export default function PredictionExplorer() {
             onClick={() => setRevealTrue((r) => !r)}
             style={{ ...btnStyle(revealTrue ? "#12161d" : "#EDEAE3", revealTrue ? "#EDEAE3" : "#1c222c"), width: "100%", marginBottom: 10 }}
           >
-            {revealTrue ? "Masquer la mécanique" : "Révéler la mécanique"}
+            {revealTrue ? t.hide : t.reveal}
           </button>
         )}
 
         {showFuture && (
           <div style={{ fontSize: 11, color: "#8A93A3", fontFamily: "monospace", marginBottom: 10 }}>
-            mécanique réelle : {random.label}
+            {t.mechanic}{t.kind[random.label]}
           </div>
         )}
 
         {drawn && (
           <>
             <SectionTitle>
-              Ma courbe
-              <button onClick={() => setInfo(info === "draw" ? null : "draw")} style={iconBtn} aria-label="Explication">ⓘ</button>
+              {t.myCurve}
+              <button onClick={() => setInfo(info === "draw" ? null : "draw")} style={iconBtn} aria-label={t.explain}>ⓘ</button>
             </SectionTitle>
-            {info === "draw" && <InfoBox>{INFO.draw}</InfoBox>}
+            {info === "draw" && <InfoBox>{t.info.draw}</InfoBox>}
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 11, fontFamily: "monospace", color: "#8A93A3" }}>
               <span style={{ flex: 1 }}>
-                {selectedPt != null
-                  ? "point " + drawPts[selectedPt].year + " sélectionné"
-                  : "glisse un point ● · touche le graphique pour en ajouter"}
+                {selectedPt != null && drawPts[selectedPt]
+                  ? t.pointSel(drawPts[selectedPt].year)
+                  : t.hint}
               </span>
               {canRemove && (
                 <button onClick={removeSelectedPoint} style={{ ...btnStyle("#EDEAE3", "#1c222c"), flex: "0 0 auto", padding: "5px 9px" }}>
-                  Retirer le point
+                  {t.removePt}
                 </button>
               )}
             </div>
             <div style={{ marginBottom: 16 }}>
               <SliderRow
-                label={"Bruit — ±" + noise.toFixed(1)}
+                label={t.noise + noise.toFixed(1)}
                 min={0}
                 max={30}
                 value={Math.round(noise * 10)}
@@ -450,7 +611,7 @@ export default function PredictionExplorer() {
         )}
 
         {/* MÉTHODES */}
-        <SectionTitle>Méthodes</SectionTitle>
+        <SectionTitle>{t.methods}</SectionTitle>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
           {METHODS.map((m) => (
             <div
@@ -473,38 +634,38 @@ export default function PredictionExplorer() {
                   style={{ accentColor: m.color, width: 15, height: 15, flexShrink: 0 }}
                 />
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 11.5, fontFamily: "monospace", lineHeight: 1.2 }}>{m.label}</span>
+                <span style={{ fontSize: 11.5, fontFamily: "monospace", lineHeight: 1.2 }}>{t.m[m.id]}</span>
               </label>
               <button
                 onClick={() => setInfo(info === m.id ? null : m.id)}
                 style={{ ...iconBtn, padding: "8px 8px", color: info === m.id ? m.color : "#8A93A3" }}
-                aria-label={"Explication : " + m.label}
+                aria-label={t.explain + " : " + t.m[m.id]}
               >
                 ⓘ
               </button>
             </div>
           ))}
         </div>
-        {METHODS.some((m) => m.id === info) && <InfoBox>{INFO[info]}</InfoBox>}
+        {METHODS.some((m) => m.id === info) && <InfoBox>{t.info[info]}</InfoBox>}
 
         {/* ÉCARTS */}
         {scores.length > 0 && (
           <>
             <SectionTitle>
-              Écart moyen
-              <button onClick={() => setInfo(info === "score" ? null : "score")} style={iconBtn} aria-label="Explication">ⓘ</button>
+              {t.score}
+              <button onClick={() => setInfo(info === "score" ? null : "score")} style={iconBtn} aria-label={t.explain}>ⓘ</button>
             </SectionTitle>
-            {info === "score" && <InfoBox>{INFO.score}</InfoBox>}
+            {info === "score" && <InfoBox>{t.info.score}</InfoBox>}
             <div style={{ fontFamily: "monospace", fontSize: 11.5, marginBottom: 16 }}>
               <div style={{ display: "flex", color: "#5c6577", padding: "0 0 4px" }}>
                 <span style={{ flex: 1 }} />
-                <span style={{ width: 62, textAlign: "right" }}>passé</span>
-                {!drawn && <span style={{ width: 62, textAlign: "right" }}>futur</span>}
+                <span style={{ width: 62, textAlign: "right" }}>{t.past}</span>
+                {!drawn && <span style={{ width: 62, textAlign: "right" }}>{t.future}</span>}
               </div>
               {scores.map((s) => (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", padding: "3px 0" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, marginRight: 7 }} />
-                  <span style={{ flex: 1 }}>{s.label}</span>
+                  <span style={{ flex: 1 }}>{t.m[s.id]}</span>
                   <span style={{ width: 62, textAlign: "right" }}>
                     {fmt(s.past)}{scores.length > 1 && bestPast.id === s.id ? " ★" : ""}
                   </span>
@@ -521,14 +682,14 @@ export default function PredictionExplorer() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <SliderRow
-            label={"Point de référence — année " + pointAYear}
+            label={t.ref(pointAYear)}
             min={0}
             max={historical.length - 5}
             value={pointAIdx}
             onChange={setPointAIdx}
           />
           <SliderRow
-            label={"Mémoire (pondérée) — demi-vie " + halfLife + " ans"}
+            label={t.memory(halfLife)}
             min={2}
             max={100}
             value={halfLife}
@@ -536,7 +697,7 @@ export default function PredictionExplorer() {
             disabled={!active.weighted}
           />
           <SliderRow
-            label={"Plafond supposé — ×" + capMultiplier.toFixed(1) + " l'amplitude"}
+            label={t.cap(capMultiplier.toFixed(1))}
             min={11}
             max={40}
             value={Math.round(capMultiplier * 10)}
@@ -562,15 +723,18 @@ export default function PredictionExplorer() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Historique</span>
-              <button onClick={() => setShowHistory(false)} style={iconBtn} aria-label="Fermer">✕</button>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{t.history}</span>
+              <button onClick={() => setShowHistory(false)} style={iconBtn} aria-label={t.close}>✕</button>
             </div>
             {HISTORY.map((h) => (
               <div key={h.v} style={{ marginBottom: 12, fontFamily: "monospace", fontSize: 11.5, lineHeight: 1.45 }}>
                 <div style={{ color: "#F2994A" }}>{h.v}{h.date ? " · " + h.date : ""}</div>
-                <div style={{ color: "#C9C5BC" }}>{h.text}</div>
+                <div style={{ color: "#C9C5BC" }}>{h[lang]}</div>
               </div>
             ))}
+            <div style={{ fontFamily: "monospace", fontSize: 11, color: "#8A93A3", borderTop: "1px solid #2a313d", paddingTop: 10 }}>
+              {t.install}
+            </div>
           </div>
         </div>
       )}
@@ -600,6 +764,19 @@ function Chart({
   const [size, setSize] = useState({ w: 300, h: 200 });
   const drag = useRef(null);
   const tap = useRef(null);
+
+  // Loupe iOS au double-tap / appui long sur le graphique : seul un
+  // preventDefault sur les événements tactiles bruts l'empêche ; les
+  // événements pointer, eux, continuent d'arriver.
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const stop = (e) => e.preventDefault();
+    ["touchstart", "touchend", "dblclick", "contextmenu"].forEach((t) =>
+      el.addEventListener(t, stop, { passive: false }));
+    return () => ["touchstart", "touchend", "dblclick", "contextmenu"].forEach((t) =>
+      el.removeEventListener(t, stop));
+  }, []);
 
   useEffect(() => {
     const el = wrapRef.current;

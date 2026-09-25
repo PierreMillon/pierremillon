@@ -39,6 +39,7 @@ recopier le résultat :
 ```sh
 npm install
 npm run build
+rm -rf ../assets
 cp -r dist/* ../
 ```
 
