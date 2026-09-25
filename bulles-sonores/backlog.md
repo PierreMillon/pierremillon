@@ -10,11 +10,12 @@ Tri : priorité décroissante.
 - [x] Mélodies surtout par pas conjoints (plus chantables)
 - [x] Bouton « Afficher les notes » (do, ré, mi…)
 - [x] v5 — Prototype de sensation plein écran : glisser, pincer pour séparer, appui maintenu = coupe en deux, double-tap = grossit, double-tap maintenu = grossit en continu
+- [x] v7 — Tenue élastique (bulle tirée vers le doigt), pincer dans l'axe des doigts, fusion (bulle tenue collée à une autre, ou deux bulles tenues rapprochées), son coupé en quittant, loupe iOS bloquée, style Oscilloscope seul
 - [x] v6 — Physique confiée à Rapier (`@dimforge/rapier2d-compat@0.14.0`, jsDelivr) au lieu du code maison, gestes inchangés
 
 ## À faire
 
-- [ ] P1 — Tester la v6 (Rapier) sur iPhone : sensation de glace, rebonds, poussée d'une bulle tenue — test Playwright automatique non terminé avant le push
+- [ ] P1 — Tester la v7 sur iPhone : tenue élastique, pincer, fusion, plus de loupe ni de son en quittant
 
 - [ ] P1 — Tester sur iPhone : son au premier toucher, taille des bulles, pas de zoom
 - [ ] P1 — Réglage de la vitesse de dérive (facile / normal / difficile)
@@ -36,8 +37,8 @@ sauvegarde locale en try/catch, son débloqué au premier geste.
 
 Écarts à corriger avant de sortir du statut « essai » :
 
-- [ ] Design : bulles actuellement glossy/réalistes — choisir un style
-  assumé (flat, low poly, pixel ou fil de fer) plutôt qu'un entre-deux
+- [x] Design : style Oscilloscope seul (fil de fer vert phosphore), les
+  autres styles sont retirés
 - [ ] Aucun lore — même minimal, sur le ton absurde
 - [ ] Pas de fin ni de palier « maîtrise experte » définis (le jeu monte à
   l'infini) — penser un objectif de complétion à 100%
