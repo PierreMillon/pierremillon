@@ -45,15 +45,26 @@ Tri : priorité décroissante.
   (multiplier = ajouter plusieurs fois), racines carrées (on retire (10t)²
   puis (20t + u) × u) — plans vérifiés exhaustivement
 
+- [x] v4 — Division avec reste, racine approchée à un chiffre après la
+  virgule (on pose N × 100, on calcule la racine entière, on divise par 10)
+- [x] v4 — Lien avec Pas à Pas : le badge ✦ 10 (« faire 10 ») s'affiche sur
+  le niveau « + avec 10 » ; Soroban publie ses badges sous
+  `pm_badges_soroban` (convention décrite dans ../VISION.md)
+- [x] v4 — Service worker « réseau d'abord » (comme Pas à Pas) : hors ligne
+  une fois ouvert, police comprise
+
 ## À faire
 
-- [ ] P1 — Retour de Pierre : le son s'entend-il maintenant sur iPhone ?
-  force du cran, rebond, clarté du guidage
-- [ ] P2 — Division avec reste, racine non entière (approchée)
-- [ ] P2 — Méthode japonaise traditionnelle de la division (quotient posé à
-  gauche du dividende) : demande plus de tiges
-- [ ] P2 — Relier ces badges à ceux de Pas à Pas (../VISION.md), une fois
-  que les deux projets auront un système commun
+- [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
+  force du cran, rebond, clarté du guidage (seul Pierre peut le faire)
+
+## Écarté
+
+- Méthode japonaise traditionnelle de la division (quotient posé à gauche
+  du dividende) : demanderait 7 à 9 tiges, donc des perles trop petites
+  pour le doigt sur un téléphone, pour une idée déjà montrée par la
+  division « par paquets ». Même esprit que ../VISION.md, « portée
+  volontairement limitée ».
 
 ## Conformité à la charte (../REGLES-JEUX.md)
 
@@ -72,10 +83,7 @@ au clavier (Tab, Entrée, flèches), affichage testé en format carré
 
 Écarts restants :
 
-- [ ] Installable seulement à moitié : manifeste + balises iOS présents,
-  mais pas de service worker (la page d'accueil du portfolio les
-  désinscrit tous sur ce domaine). Donc pas de vrai mode hors ligne, et
-  Chrome Android peut ne pas proposer l'installation — à vérifier sur
-  téléphone
-- [ ] Police Google Fonts chargée en ligne (repli sur une police monospace
-  système hors ligne)
+- [ ] Hors ligne fragile : la page d'accueil du portfolio désinscrit tous
+  les service workers du domaine quand on la visite ; celui du Soroban se
+  réinscrit à la visite suivante du Soroban (même situation que Pas à Pas)
+- [ ] Installation (PWA) à vérifier sur téléphone
