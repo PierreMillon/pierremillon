@@ -1530,6 +1530,31 @@
       };
       function tr(t) { return LANG === "en" && EN[t] ? EN[t] : t; }
 
+      // ---------- Écriture usuelle ----------
+      // Pendant les calculs, tous les produits ont leur point (2·x). À la
+      // fin, une étape de plus revient à l'écriture habituelle (2x) : même
+      // objet, écrit plus court.
+      function needsDots(list) {
+        return list.some(function (it, i) {
+          if (it.frac) return needsDots(it.num) || needsDots(it.den);
+          if (it.cancel) return false;
+          if (/\bsup\b/.test(it.k)) return false;
+          if (/(\d)(<i>|<svg)|(<\/i>)(<i>)/.test(it.t)) return true;
+          return i > 0 && isFactorEnd(list[i - 1]) && isFactorStart(it);
+        });
+      }
+      DEMOS.forEach(function (d) {
+        if (d.custom) return;
+        var k = d.steps.length - 1;
+        while (k >= 0 && (!d.steps[k].expr || d.steps[k].summary)) k--;
+        if (k < 0 || !needsDots(d.steps[k].expr)) return;
+        var last = d.steps[k];
+        d.steps.splice(k + 1, 0, {
+          expr: last.expr, implicit: true, line: last.line, trace: last.trace,
+          note: "Écriture usuelle : le point de multiplication ne s'écrit plus, c'est le même produit."
+        });
+      });
+
       // ---------- Vérification des calculs ----------
       // Chaque étape de chaque démo est recalculée avec des valeurs au hasard
       // pour x, ○ et □ : une expression doit garder la même valeur d'une
@@ -1655,7 +1680,9 @@
         if (step.signs && step.signs.indexOf(tok.id) >= 0) el.classList.add("sign-hl");
         var inner = document.createElement("span");
         inner.className = "in";
-        inner.innerHTML = tok.t;
+        // Point explicite à l'intérieur d'un jeton : 2x → 2·x, ab → a·b
+        inner.innerHTML = step.implicit || /\bsup\b/.test(tok.k) ? tok.t
+          : tok.t.replace(/(\d)(<i>|<svg)/g, "$1·$2").replace(/(<\/i>)(<i>)/g, "$1·$2");
         el.appendChild(inner);
         return el;
       }
@@ -1676,11 +1703,32 @@
         }
       }
 
+      // Produits implicites entre jetons : 2(…), x(…), )(…, x²(… → un point
+      // « · » explicite est inséré, sauf à l'étape « écriture usuelle ».
+      function isFactorEnd(t) {
+        if (!t || t.frac || t.cancel || /\bop\b/.test(t.k)) return false;
+        return /(\d|<\/i>|\)|<\/svg>)$/.test(t.t) || /\bsup\b/.test(t.k);
+      }
+      function isFactorStart(t) {
+        if (!t || t.frac || t.cancel || /\bop\b|\bsup\b/.test(t.k)) return false;
+        return /^(\(|<i>|<svg)/.test(t.t);
+      }
+      function withDots(list, implicit) {
+        if (implicit) return list;
+        var out = [];
+        list.forEach(function (it, i) {
+          var prev = list[i - 1];
+          if (i > 0 && isFactorEnd(prev) && isFactorStart(it)) out.push(T("auto-" + prev.id + "-" + it.id, "·", "op dot"));
+          out.push(it);
+        });
+        return out;
+      }
+
       function buildExprEl(step, plain) {
         var expr = document.createElement("div");
         expr.className = "expr";
-        var forStep = plain ? {} : step;
-        step.expr.forEach(function (item) {
+        var forStep = plain ? { implicit: step.implicit } : step;
+        withDots(step.expr, step.implicit).forEach(function (item) {
           if (item.cancel) {
             var cv = document.createElement("span");
             cv.className = "cancel";
@@ -1710,12 +1758,12 @@
             f.className = "frac";
             var num = document.createElement("span");
             num.className = "row";
-            item.num.forEach(function (t) { num.appendChild(tokenEl(t, forStep)); });
+            withDots(item.num, step.implicit).forEach(function (t) { num.appendChild(tokenEl(t, forStep)); });
             var bar = document.createElement("span");
             bar.className = "bar";
             var den = document.createElement("span");
             den.className = "row";
-            item.den.forEach(function (t) { den.appendChild(tokenEl(t, forStep)); });
+            withDots(item.den, step.implicit).forEach(function (t) { den.appendChild(tokenEl(t, forStep)); });
             f.appendChild(num);
             f.appendChild(bar);
             f.appendChild(den);
@@ -3447,6 +3495,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v25", text: "Notation : pendant les calculs, chaque produit a son point (2·x, a·b, 2·(○ + □)) ; une dernière étape passe à l'écriture usuelle (2x, ab, 2(○ + □)) — le même produit, écrit plus court." },
         { v: "v24", text: "Mode jeu (menu ☰) : à chaque étape qui change l'écriture, deux propositions — la vraie étape et une fausse (un signe ou un nombre changé, vérifiée fausse par le calcul). Bonne réponse : l'animation continue ; erreur : la bonne réponse s'allume." },
         { v: "v23", text: "Barre des ensembles toujours visible en bas : ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ, on choisit où l'on travaille (tout ce qui est plus petit est inclus). Nouveau chapitre Solutions : la réponse dépend de l'ensemble — 2 − 3 donne ∅ dans ℕ et { −1 } dans ℤ ; x² = 4 donne { 2 } dans ℕ et { −2 ; 2 } dans ℤ ; x² = −1 n'a de solution que dans ℂ." },
         { v: "v22", text: "Nouveau chapitre Ensembles : un nombre s'affiche, on le glisse (ou on touche) dans un ensemble — ℕ*, ℕ, ℤ, ℚ, ℝ, ℂ en première ligne ; 𝔻, ℝ∖ℚ, ℝ₊, iℝ, 𝕌 en seconde. Toute case qui le contient est juste ; la réponse allume toutes ses cases. Appui long : définition de l'ensemble. Les cases et les nombres suivent les ensembles cochés dans le menu." },

@@ -30,6 +30,7 @@ Tri : priorité décroissante.
 - Calcul mental 16 + 27 : **maintenant**, animation continue, compléments à
   **5 et à 10** (le cadre de dix = 2 rangées de 5)
 - Dépôt séparé : **plus tard**
+- [x] Notation point explicite + étape finale « écriture usuelle » (v25)
 - Rapports : courts + liens
 
 
