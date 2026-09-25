@@ -25,13 +25,25 @@ Tri : priorité décroissante.
 - [ ] Déplacer vers son propre dépôt `bulles-sonores` + GitHub Pages
 - [ ] Appliquer les règles communes des jeux HTML (voir ci-dessous)
 
-## Règles des jeux HTML
+## Conformité à la charte (../REGLES-JEUX.md)
 
-- Un seul `index.html` autonome, sans build
-- Palette et polices du portfolio (ivoire, Cormorant Garamond, Jost)
-- Mobile d'abord : largeur téléphone, gouttière 16px, pas de défilement horizontal
-- Tactile : `pointerdown`, pas de zoom au double tap
-- Son démarré seulement après un geste (contrainte iOS)
-- `localStorage` toujours dans un try/catch
-- Lien « ← Portfolio » en haut
-- Respect de `prefers-reduced-motion`
+Déjà conforme : une seule mécanique, un seul fichier HTML sans build,
+sauvegarde locale en try/catch, son débloqué au premier geste.
+
+Écarts à corriger avant de sortir du statut « essai » :
+
+- [ ] Design : bulles actuellement glossy/réalistes — choisir un style
+  assumé (flat, low poly, pixel ou fil de fer) plutôt qu'un entre-deux
+- [ ] Aucun lore — même minimal, sur le ton absurde
+- [ ] Pas de fin ni de palier « maîtrise experte » définis (le jeu monte à
+  l'infini) — penser un objectif de complétion à 100%
+- [ ] Pas installable en PWA (pas de manifest, pas de service worker)
+- [ ] Pas de mode multijoueur sans serveur
+- [ ] Pas de fausse pub de déblocage de difficulté
+- [ ] Anglais absent (tout en français)
+- [ ] Boucle de rendu (`requestAnimationFrame`) tourne en continu même à
+  l'écran d'accueil, y compris quand l'onglet est masqué — à couper pour
+  la batterie
+- [ ] Pas testé sur un format carré / téléphone pliant
+- [ ] Pas de bouton de retours / test A/B dans un menu (il n'y a pas de
+  menu du tout pour l'instant)

@@ -25,12 +25,19 @@ Tri : priorité décroissante.
 - [ ] Déplacer vers son propre dépôt `pas-a-pas` + GitHub Pages
 - [ ] Appliquer les règles communes des jeux HTML (voir ci-dessous)
 
-## Règles des jeux HTML
+## Conformité à la charte (../REGLES-JEUX.md)
 
-- Un seul `index.html` autonome, sans build
-- Palette et polices du portfolio (ivoire, Cormorant Garamond, Jost)
-- Mobile d'abord : largeur téléphone, gouttière 16px, pas de défilement horizontal
-- Données des démos séparées du moteur d'animation
-- Respect de `prefers-reduced-motion`
-- Navigation clavier (flèches) et boutons
-- Lien « ← Portfolio » en haut
+Pas à Pas n'est pas un jeu au sens de la charte : pas d'échec possible, pas
+de palier de difficulté, pas de session à rejouer. C'est un outil
+d'animation pédagogique. Seule la partie technique de la charte
+s'applique.
+
+Déjà conforme : un seul fichier HTML sans build, `prefers-reduced-motion`
+respecté, navigation clavier.
+
+Écarts à corriger avant de sortir du statut « essai » :
+
+- [ ] Pas installable en PWA
+- [ ] Anglais absent (tout en français)
+- [ ] Pas testé sur un format carré / téléphone pliant
+- [ ] Aucune sauvegarde locale de la progression (à quelle démo on en est)
