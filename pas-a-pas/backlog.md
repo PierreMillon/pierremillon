@@ -101,7 +101,7 @@ Tri : priorité décroissante.
 ## Migration future
 
 - [ ] Déplacer vers son propre dépôt `pas-a-pas` + GitHub Pages
-- [ ] Appliquer les règles communes des jeux HTML (voir ci-dessous)
+- [x] Appliquer les règles communes des jeux HTML (PWA, anglais, sauvegarde, formats d'écran)
 
 ## Conformité à la charte (../REGLES-JEUX.md)
 
