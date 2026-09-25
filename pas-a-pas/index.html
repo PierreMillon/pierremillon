@@ -412,54 +412,48 @@
           steps: [
             {
               top: true,
-              expr: [T("c5", "5"), T("m", "−", "op"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
+              expr: [T("m", "−", "op"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
               hl: ["m"],
-              note: "Point de départ. Devant la parenthèse, un signe <b>−</b>. C'est ici qu'on se trompe le plus souvent."
+              note: "Point de départ, réduit à ce qui compte pour cet exercice : un signe <b>−</b> devant une parenthèse. C'est ici qu'on se trompe le plus souvent."
             },
             {
-              expr: [T("c5", "5"), T("p1", "+", "op"), T("m", "(−1)"), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
+              expr: [T("m", "(−1)"), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
               hl: ["m"],
               note: "Soustraire, c'est ajouter l'opposé : <b>− ( … )</b> veut dire <b>+ (−1) · ( … )</b>."
             },
             {
               fx: { type: "touch", src: "m", targets: ["a", "sb", "sc"] },
+              instant: ["m2", "m3"],
               expr: [
-                T("c5", "5"),
-                T("q0", "+", "op"), T("m", "(−1)"), T("d1", "·", "op dot"), T("lpA", "(", "par"), T("a", "2" + X), T("rpA", ")", "par"),
-                T("q1", "+", "op"), T("m2", "(−1)", "", ["m"]), T("d2", "·", "op dot"), T("lpB", "(", "par"), T("sb", "−", "op"), T("b", "3"), T("rpB", ")", "par"),
-                T("q2", "+", "op"), T("m3", "(−1)", "", ["m"]), T("d3", "·", "op dot"), T("lpC", "(", "par"), T("c", X), T("rpC", ")", "par")
+                T("m", "(−1)"), T("d1", "·", "op dot"), T("lpA", "(", "par"), T("a", "2" + X), T("rpA", ")", "par"),
+                T("q1", "+", "op"), T("m2", "(−1)"), T("d2", "·", "op dot"), T("lpB", "(", "par"), T("sb", "−", "op"), T("b", "3"), T("rpB", ")", "par"),
+                T("q2", "+", "op"), T("m3", "(−1)"), T("d3", "·", "op dot"), T("lpC", "(", "par"), T("c", X), T("rpC", ")", "par")
               ],
               note: "Le (−1) touche chaque terme séparément : on écrit chaque produit en toutes lettres, sans encore le calculer. Ce n'est pas encore simplifié, juste réparti."
             },
             {
               top: true,
-              expr: [T("c5", "5"), T("sa", "−", "op", ["m"]), T("a", "2" + X), T("sb", "+", "op"), T("b", "3"), T("sc", "−", "op", ["m3"]), T("c", X)],
+              expr: [T("sa", "−", "op", ["m"]), T("a", "2" + X), T("sb", "+", "op"), T("b", "3"), T("sc", "−", "op", ["m3"]), T("c", X)],
               hl: ["sa", "sb", "sc"],
               magic: "« On change les signes à l'intérieur de la parenthèse. »<br>« Moins par moins, ça fait plus. »",
               note: "Chaque produit se calcule : (−1)·2<i>x</i> = −2<i>x</i>, (−1)·(−3) = +3, (−1)·<i>x</i> = −<i>x</i>. C'est là que la phrase magique prend racine — vraie comme résultat, pas comme méthode."
             },
             {
-              expr: [T("c5", "5"), T("sb", "+", "op"), T("b", "3"), T("sa", "−", "op"), T("a", "2" + X), T("sc", "−", "op"), T("c", X)],
-              hl: ["c5", "sb", "b"],
-              note: "On regroupe les nombres ensemble et les <i>x</i> ensemble. Chaque terme voyage <b>avec son signe</b>."
-            },
-            {
-              fx: { type: "meet", ids: ["c5", "sb", "b"] },
-              expr: [T("n8", "8", "", ["c5", "sb", "b"]), T("sa", "−", "op"), T("a", "2" + X), T("sc", "−", "op"), T("c", X)],
+              expr: [T("sa", "−", "op"), T("a", "2" + X), T("sc", "−", "op"), T("c", X), T("sb", "+", "op"), T("b", "3")],
               hl: ["sa", "a", "sc", "c"],
-              note: "5 + 3 = 8."
+              note: "On regroupe les <i>x</i> ensemble. Chaque terme voyage <b>avec son signe</b>."
             },
             {
-              expr: [T("n8", "8"), T("sa", "−", "op"), T("a", "2" + X), T("sc", "−", "op"), T("c", "1" + X)],
+              expr: [T("sa", "−", "op"), T("a", "2" + X), T("sc", "−", "op"), T("c", "1" + X), T("sb", "+", "op"), T("b", "3")],
               hl: ["a", "c"],
               note: "<i>x</i> tout seul, c'est <b>1</b><i>x</i> : le facteur devant <i>x</i> est bien 1, même quand on ne l'écrit pas. Ce sont ces deux facteurs, 2 et 1, qu'on va combiner."
             },
             {
               top: true,
               fx: { type: "meet", ids: ["a", "sc", "c"] },
-              expr: [T("n8", "8"), T("sa", "−", "op"), T("x3", "3" + X, "", ["a", "sc", "c"])],
+              expr: [T("sa", "−", "op"), T("x3", "3" + X, "", ["a", "sc", "c"]), T("sb", "+", "op"), T("b", "3")],
               magic: "« On regroupe et on calcule. »",
-              note: "−2<i>x</i> − 1<i>x</i> = −3<i>x</i>, car (−2) + (−1) = −3. Résultat : <b>8 − 3<i>x</i></b>, sans sauter d'étape."
+              note: "−2<i>x</i> − 1<i>x</i> = −3<i>x</i>, car (−2) + (−1) = −3. Résultat : <b>−3<i>x</i> + 3</b>, sans sauter d'étape."
             }
           ]
         },
@@ -611,6 +605,20 @@
             expr.appendChild(tokenEl(item, forStep));
           }
         });
+        // Empêche un symbole isolé (souvent une parenthèse fermante) de se
+        // retrouver seul en bout de ligne : les deux derniers jetons sont
+        // solidaires, ils passent à la ligne ensemble ou pas du tout.
+        if (shrink && expr.children.length >= 3) {
+          var last = expr.lastElementChild;
+          var prev = last.previousElementSibling;
+          var pair = document.createElement("span");
+          pair.style.display = "inline-flex";
+          pair.style.alignItems = "center";
+          pair.style.gap = "0.1em";
+          expr.insertBefore(pair, prev);
+          pair.appendChild(prev);
+          pair.appendChild(last);
+        }
         return expr;
       }
 
@@ -706,48 +714,48 @@
 
       // ---------- Effets ----------
 
+      // Le premier exemplaire du signe garde l'identifiant "m" : il migre
+      // tout seul via le repositionnement normal (l'étape suivante le place
+      // déjà au bon endroit, avec le temps que ça prend). On ne fait donc
+      // voyager ici que les copies supplémentaires — une par une, chacune
+      // restant posée à l'endroit où elle atterrit, pas de disparition.
       function fxTouch(fx) {
         var snap = snapshot();
         var src = snap[fx.src];
         if (!src) return Promise.resolve();
-        var g = ghostOf(src, "traveller");
-        g.innerHTML = "−1";
-        src.el.style.opacity = "0.25";
-        var pos = { x: 0, y: 0 };
 
-        // Chaque terme est visité l'un après l'autre, sans se presser : le
-        // signe doit se voir se déplacer, pas juste clignoter d'un état à l'autre.
-        var chain = wait(300);
-        fx.targets.forEach(function (id) {
+        var extraTargets = fx.targets.slice(1);
+        var chain = wait(400);
+        extraTargets.forEach(function (id) {
           var t = snap[id];
           if (!t) return;
           chain = chain.then(function () {
+            var g = ghostOf(src, "traveller");
+            g.innerHTML = "−1";
             var to = {
               x: center(t).x - center(src).x,
               y: t.y - src.y - src.h * 0.75
             };
-            var mid = { x: (pos.x + to.x) / 2, y: Math.min(pos.y, to.y) - 40 };
+            var mid = { x: to.x * 0.5, y: Math.min(0, to.y) - 44 };
             var a = g.animate([
-              { transform: "translate(" + pos.x + "px," + pos.y + "px) scale(0.7)" },
+              { transform: "translate(0,0) scale(0.7)" },
               { transform: "translate(" + mid.x + "px," + mid.y + "px) scale(0.7)" },
               { transform: "translate(" + to.x + "px," + to.y + "px) scale(0.7)" }
-            ], { duration: ms(850), easing: "ease-in-out", fill: "forwards" });
-            pos = to;
+            ], { duration: ms(1300), easing: "ease-in-out", fill: "forwards" });
+            // Le fantôme reste affiché, posé à l'arrivée — il ne s'efface
+            // pas : c'est lui qui deviendra visuellement le jeton final.
             return done(a).then(function () {
               var hit = t.el.animate([
                 { transform: "scale(1)", color: "var(--ink)" },
                 { transform: "scale(1.3)", color: "var(--sign)" },
                 { transform: "scale(1)", color: "var(--sign)" }
-              ], { duration: ms(480), easing: "ease-out", fill: "forwards" });
+              ], { duration: ms(500), easing: "ease-out", fill: "forwards" });
               return done(hit);
-            }).then(function () { return wait(180); });
+            }).then(function () { return wait(450); });
           });
         });
 
-        return chain.then(function () {
-          var out = g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms(250), fill: "forwards" });
-          return done(out).then(function () { g.remove(); });
-        });
+        return chain.then(function () { return wait(250); });
       }
 
       function fxMeet(fx, vanished) {
@@ -790,6 +798,10 @@
         return pre.then(function () {
           var old = snapshot();
           build(step);
+          // Les fantômes du glissement du signe restent posés jusqu'ici :
+          // le vrai jeton est maintenant en place au même endroit, donc on
+          // les retire sans qu'aucune image double soit jamais visible.
+          stage.querySelectorAll(".ghost.traveller").forEach(function (g) { g.remove(); });
           var neu = snapshot();
           var anims = [];
 
@@ -810,6 +822,9 @@
                   { transform: "rotateX(0deg)", opacity: 1 }
                 ], { duration: ms(450), easing: "ease-out" })));
               }
+            } else if (step.instant && step.instant.indexOf(id) >= 0) {
+              // Déjà amené en place par le glissement du signe (ghost) :
+              // apparaît directement, sans reprendre une deuxième animation.
             } else {
               var from = forward && n.el.dataset.from
                 ? n.el.dataset.from.split(",").map(function (f) { return old[f]; }).filter(Boolean)
