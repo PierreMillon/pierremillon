@@ -45,7 +45,7 @@ Tri : priorité décroissante.
   1re dizaine avant la 2e), 3 réussites de suite = badge ✦ 10. Le badge
   conditionne l'affichage du cadre de dix sous les additions des autres
   démos. Premier badge de la vision long terme.
-- [ ] P2 — Défi soustraction façon Singapour (« retirer de 10 », ex. 13 − 5
+- [x] P2 — Défi soustraction façon Singapour (« retirer de 10 », ex. 13 − 5
   = 10 − 5 + 3), même badge ou badge suivant
 - [x] P2 — Démo factorisation/distributivité avec des figures géométriques
   simples (ex. un rond + un carré = un groupe ; deux fois ce groupe = facteur
@@ -53,7 +53,7 @@ Tri : priorité décroissante.
   (factoriser ↔ distribuer, dans les deux sens)
 - [ ] P2 — Mode jeu : l'élève choisit la transformation, l'animation valide ou montre l'erreur
 - [x] P2 — Équations (même opération des deux côtés, ⇔ à la fin)
-- [ ] P2 — Plus d'exemples : double distributivité, identités remarquables
+- [x] P2 — Plus d'exemples : double distributivité (Double), identité remarquable (Identité), avec page récapitulative
 - [x] P2 — Ajouter au menu du portfolio (groupe maths)
 - [ ] P3 — Saisie libre d'une expression — **écarté pour l'instant** (voir
   ../VISION.md « portée volontairement limitée ») : on reste sur peu
