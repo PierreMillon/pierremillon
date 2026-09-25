@@ -32,7 +32,9 @@ Tri : priorité décroissante.
 - [ ] P2 — Mode jeu : l'élève choisit la transformation, l'animation valide ou montre l'erreur
 - [ ] P2 — Plus d'exemples : double distributivité, identités remarquables, équations (même opération des deux côtés)
 - [x] P2 — Ajouter au menu du portfolio (groupe maths)
-- [ ] P3 — Saisie libre d'une expression (moteur de calcul formel, gros chantier)
+- [ ] P3 — Saisie libre d'une expression — **écarté pour l'instant** (voir
+  ../VISION.md « portée volontairement limitée ») : on reste sur peu
+  d'exemples choisis à la main, pas un moteur de calcul formel
 
 ## Vision long terme (pas à construire maintenant)
 
