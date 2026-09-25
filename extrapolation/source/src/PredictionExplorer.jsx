@@ -286,6 +286,12 @@ const T = {
 
 const HISTORY = [
   {
+    v: "v5",
+    date: "25/09/2026",
+    fr: "La ligne du point de référence se glisse directement sur le graphique (petit triangle en bas). L'échelle ne saute plus quand on lâche un point.",
+    en: "The reference-point line can be dragged right on the chart (small triangle at the bottom). The scale no longer jumps when you release a point.",
+  },
+  {
     v: "v4",
     date: "25/09/2026",
     fr: "Version anglaise (bouton EN/FR). Courbe dessinée et réglages gardés d'une visite à l'autre. Plus de zoom ni de loupe au toucher. Installable sur l'écran d'accueil. Mise à jour automatique. Format téléphone centré sur grand écran.",
@@ -443,7 +449,17 @@ export default function PredictionExplorer() {
     }
     return [lo, hi];
   }, [historical, revealTrue, drawn, random]);
-  if (!dragging) frozenDomain.current = liveDomain;
+  // Au lâcher, on garde l'échelle actuelle tant que les données y tiennent
+  // encore largement : sinon le point « sauterait » sous le doigt.
+  if (!dragging) {
+    const prev = frozenDomain.current;
+    const vals = historical.map((p) => p.value);
+    const dMin = Math.min(...vals), dMax = Math.max(...vals);
+    const keep = prev && drawn
+      && dMin >= prev[0] && dMax <= prev[1]
+      && (prev[1] - prev[0]) <= 4 * ((liveDomain[1] - liveDomain[0]) || 1);
+    if (!keep) frozenDomain.current = liveDomain;
+  }
   const yDomain = frozenDomain.current;
 
   const startDrawing = () => {
@@ -537,6 +553,8 @@ export default function PredictionExplorer() {
           models={models}
           active={active}
           pointAYear={pointAYear}
+          maxPointAIdx={historical.length - 5}
+          setPointAIdx={setPointAIdx}
           yDomain={yDomain}
           drawPts={drawPts}
           drawFn={drawFn}
@@ -758,6 +776,7 @@ function niceTicks(lo, hi, count) {
 function Chart({
   historical, trueFn, models, active, pointAYear, yDomain,
   drawPts, drawFn, setDrawPts, selectedPt, setSelectedPt, setDragging,
+  maxPointAIdx, setPointAIdx,
 }) {
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
@@ -841,6 +860,20 @@ function Chart({
     drag.current = null;
     setDragging(false);
   };
+
+  // Ligne du point de référence : se glisse horizontalement au doigt.
+  const refDrag = useRef(false);
+  const onRefDown = (e) => {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    refDrag.current = true;
+  };
+  const onRefMove = (e) => {
+    if (!refDrag.current) return;
+    const idx = Math.round((ix(local(e).x) - X0) / STEP);
+    setPointAIdx(Math.max(0, Math.min(maxPointAIdx, idx)));
+  };
+  const onRefUp = () => { refDrag.current = false; };
 
   const onBgDown = (e) => {
     tap.current = { ...local(e), t: Date.now() };
@@ -938,6 +971,21 @@ function Chart({
             />
           </g>
         ))}
+
+        {/* poignée de la ligne de référence, en bas du graphique */}
+        <g
+          onPointerDown={onRefDown}
+          onPointerMove={onRefMove}
+          onPointerUp={onRefUp}
+          onPointerCancel={onRefUp}
+          style={{ cursor: "ew-resize" }}
+        >
+          <rect x={sx(pointAYear) - 16} y={M.top + ph - 34} width="32" height="34" fill="transparent" />
+          <path
+            d={"M" + sx(pointAYear) + "," + (M.top + ph - 16) + "l-7,12h14z"}
+            fill="#8A93A3"
+          />
+        </g>
       </svg>
     </div>
   );

@@ -22,17 +22,16 @@ Tri : priorité décroissante.
 - [x] v4 — Français / anglais (bouton EN/FR, langue du téléphone par défaut)
 - [x] v4 — Installable (manifest, icône écran d'accueil), astuce dans l'Historique
 - [x] v4 — Format téléphone centré sur tablette / ordinateur, zones sûres iPhone
+- [x] v5 — L'échelle verticale ne saute plus au lâcher d'un point (gardée
+  tant que les données y tiennent)
+- [x] v5 — Ligne du point de référence glissable sur le graphique (triangle en bas)
 
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : glissé des points, taille des
   cibles, lisibilité du tableau d'écart
-- [ ] P2 — Au lâcher d'un point, l'échelle verticale se recalcule et le
-  point « saute » à l'écran (la valeur, elle, ne change pas) : animer la
-  transition, ou n'élargir l'échelle que si un point sort du cadre
 - [ ] P2 — Pouvoir aussi dessiner le futur (2026 → 2126) comme « vérité »
   et comparer les méthodes à elle
-- [ ] P3 — Glisser directement la ligne du point de référence sur le graphique
 
 ## Conformité à la charte (../REGLES-JEUX.md)
 
