@@ -9,8 +9,12 @@ Tri : priorité décroissante.
 - [x] Prototype jouable : gamme de do, bulles qui dérivent, 3 vies, record local
 - [x] Mélodies surtout par pas conjoints (plus chantables)
 - [x] Bouton « Afficher les notes » (do, ré, mi…)
+- [x] v5 — Prototype de sensation plein écran : glisser, pincer pour séparer, appui maintenu = coupe en deux, double-tap = grossit, double-tap maintenu = grossit en continu
+- [x] v6 — Physique confiée à Rapier (`@dimforge/rapier2d-compat@0.14.0`, jsDelivr) au lieu du code maison, gestes inchangés
 
 ## À faire
+
+- [ ] P1 — Tester la v6 (Rapier) sur iPhone : sensation de glace, rebonds, poussée d'une bulle tenue — test Playwright automatique non terminé avant le push
 
 - [ ] P1 — Tester sur iPhone : son au premier toucher, taille des bulles, pas de zoom
 - [ ] P1 — Réglage de la vitesse de dérive (facile / normal / difficile)
@@ -45,5 +49,8 @@ sauvegarde locale en try/catch, son débloqué au premier geste.
   l'écran d'accueil, y compris quand l'onglet est masqué — à couper pour
   la batterie
 - [ ] Pas testé sur un format carré / téléphone pliant
+- [ ] Hors ligne incomplet : le moteur Rapier (~580 Ko compressé) est chargé
+  depuis jsDelivr — le copier dans le dépôt ou le mettre en cache via un
+  service worker
 - [ ] Pas de bouton de retours / test A/B dans un menu (il n'y a pas de
   menu du tout pour l'instant)
