@@ -51,6 +51,8 @@ Tri : priorité décroissante.
   simples (ex. un rond + un carré = un groupe ; deux fois ce groupe = facteur
   2 devant), pensée pour être comprise sans lire le français, et réversible
   (factoriser ↔ distribuer, dans les deux sens)
+- [x] P1 — Identités remarquables (3) sous forme générale + chapitre ℂ (a² + b²), ensembles ℕ ℤ ℚ ℝ ℂ à cocher dans le menu
+- [ ] P1 — Quiz Ensembles : ranger un nombre dans le bon ensemble (glisser ou toucher)
 - [ ] P2 — Mode jeu : l'élève choisit la transformation, l'animation valide ou montre l'erreur
 - [x] P2 — Équations (même opération des deux côtés, ⇔ à la fin)
 - [x] P2 — Plus d'exemples : double distributivité (Double), identité remarquable (Identité), avec page récapitulative
@@ -112,7 +114,7 @@ respecté, navigation clavier.
 
 Écarts à corriger avant de sortir du statut « essai » :
 
-- [ ] Pas installable en PWA
-- [ ] Anglais absent (tout en français)
-- [ ] Pas testé sur un format carré / téléphone pliant
-- [ ] Aucune sauvegarde locale de la progression (à quelle démo on en est)
+- [x] Installable en PWA (manifeste + service worker réseau d'abord)
+- [x] Anglais : interface, onglets, phrases magiques, règles de divisibilité (l'historique reste en français)
+- [x] Testé 600×600, 700×620 et téléphone couché 844×390
+- [x] Reprend sur la dernière démo ouverte ; langue, ensembles cochés et badge sauvegardés

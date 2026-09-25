@@ -7,6 +7,11 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
   <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=2">
   <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#05100a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -116,6 +121,27 @@
     }
 
     .menu-item:last-child { border-bottom: none; }
+
+    /* Ensembles de nombres cochés : ils décident quels chapitres existent */
+    .menu-sets {
+      display: flex;
+      gap: 0.3rem;
+      padding: 0.6rem 0.8rem 0.8rem;
+    }
+
+    .menu-sets button {
+      flex: 1;
+      font-family: inherit;
+      font-size: 1rem;
+      color: var(--ink-soft);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      border-radius: 6px;
+      padding: 0.35rem 0;
+      cursor: pointer;
+    }
+
+    .menu-sets button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
     .menu-item:hover, .menu-item:focus-visible { color: var(--accent); }
     .menu-panel[hidden] { display: none; }
 
@@ -658,6 +684,17 @@
 
     [hidden] { display: none !important; }
 
+    /* Écrans bas (téléphone couché) : tout se resserre pour tenir */
+    @media (max-height: 480px) {
+      .stage-top { min-height: 0; padding: 0.9rem 0.5rem 0.2rem; gap: 0.2rem; }
+      .stage-top .expr { font-size: 1.4rem; }
+      .magic { min-height: 0; font-size: 0.75rem; }
+      .stage, .stage-wrap.split .stage { min-height: 80px; padding: 0.8rem 0.5rem; }
+      .expr, .ghost { font-size: clamp(1.3rem, 5vh, 2rem); }
+      .controls { height: 2.8rem; }
+      .arrow-btn { width: 2.6rem; height: 2.6rem; }
+    }
+
     .badge {
       margin-left: auto;
       font-size: 0.72rem;
@@ -838,8 +875,10 @@
 
     <div class="menu-panel" id="menuPanel" hidden>
       <a class="menu-item" href="../">← Portfolio</a>
-      <button class="menu-item" id="histBtn">Historique</button>
-      <button class="menu-item" id="badgeReset">Effacer le badge</button>
+      <button class="menu-item" id="histBtn" data-tr="Historique">Historique</button>
+      <button class="menu-item" id="badgeReset" data-tr="Effacer le badge">Effacer le badge</button>
+      <button class="menu-item" id="langBtn" data-tr="English">English</button>
+      <div class="menu-sets" id="menuSets"></div>
     </div>
 
     <div class="overlay" id="histOverlay" hidden>
@@ -896,6 +935,7 @@
       function V(top, bottom, eq) { return { cancel: true, top: top, bottom: bottom, eq: eq || null }; }
 
       var X = "<i>x</i>";
+      var A = "<i>a</i>", B = "<i>b</i>", I = "<i>i</i>";
 
       var DEMOS = [
         { title: "Singapour", custom: "sg", steps: [{ expr: [] }] },
@@ -1198,33 +1238,131 @@
           ]
         },
         {
-          title: "Identité",
+          title: "(a+b)²",
+          set: "R",
           split: true,
           steps: [
             {
               top: true,
-              expr: [T("l", "(", "par"), T("xa", X), T("pa", "+", "op"), T("ta", "3"), T("r", ")", "par"), T("sq2", "2", "sup")],
+              expr: [T("l", "(", "par"), T("a1", A), T("p", "+", "op"), T("b1", B), T("r", ")", "par"), T("sq", "2", "sup")],
               magic: "« (a + b)² = a² + 2ab + b² »"
             },
             {
-              expr: [T("l", "(", "par"), T("xa", X), T("pa", "+", "op"), T("ta", "3"), T("r", ")", "par"), T("l2", "(", "par", ["sq2"]), T("xb", X, "", ["sq2"]), T("pb", "+", "op", ["sq2"]), T("tb", "3", "", ["sq2"]), T("r2", ")", "par", ["sq2"])],
-              note: "Au carré, c'est multiplié par lui-même : (<i>x</i> + 3)(<i>x</i> + 3)."
+              expr: [T("l", "(", "par"), T("a1", A), T("p", "+", "op"), T("b1", B), T("r", ")", "par"), T("l2", "(", "par", ["sq"]), T("a2", A, "", ["sq"]), T("p2", "+", "op", ["sq"]), T("b2", B, "", ["sq"]), T("r2", ")", "par", ["sq"])],
+              note: "Au carré : multiplié par lui-même."
             },
             {
-              expr: [T("xa", X), T("m1", "·", "op dot"), T("xb", X), T("p1", "+", "op"), T("xa2", X, "", ["xa"]), T("m2", "·", "op dot"), T("tb", "3"), T("pa", "+", "op"), T("ta", "3"), T("m3", "·", "op dot"), T("xb2", X, "", ["xb"]), T("p3", "+", "op"), T("ta2", "3", "", ["ta"]), T("m4", "·", "op dot"), T("tb2", "3", "", ["tb"])],
-              stagger: { m1: 0, p1: 1200, xa2: 1200, m2: 1200, m3: 2400, xb2: 2400, p3: 3600, ta2: 3600, m4: 3600, tb2: 3600 },
-              note: "Double distributivité : quatre produits."
+              expr: [T("a1", A), T("m1", "·", "op dot"), T("a2", A), T("p", "+", "op"), T("a1b", A, "", ["a1"]), T("m2", "·", "op dot"), T("b2", B), T("p2", "+", "op"), T("b1", B), T("m3", "·", "op dot"), T("a2b", A, "", ["a2"]), T("p3", "+", "op"), T("b1b", B, "", ["b1"]), T("m4", "·", "op dot"), T("b2b", B, "", ["b2"])],
+              stagger: { m1: 0, a1b: 1200, m2: 1200, m3: 2400, a2b: 2400, p3: 3600, b1b: 3600, m4: 3600, b2b: 3600 },
+              note: "Quatre produits."
             },
             {
-              expr: [T("sq", X + "²", "", ["xa", "m1", "xb"]), T("p1", "+", "op"), T("u", "3" + X, "", ["xa2", "m2", "tb"]), T("pa", "+", "op"), T("v", "3" + X, "", ["ta", "m3", "xb2"]), T("p3", "+", "op"), T("nine", "9", "", ["ta2", "m4", "tb2"])],
-              hl: ["u", "v"],
-              note: "Les deux produits du milieu sont <b>égaux</b> : 3<i>x</i> et 3<i>x</i>. C'est de là que vient le « 2ab »."
+              expr: [T("aa", A, "", ["a1", "m1", "a2"]), T("aa2", "2", "sup"), T("p", "+", "op"), T("ab", A + B, "", ["a1b", "m2", "b2"]), T("p2", "+", "op"), T("ba", A + B, "", ["b1", "m3", "a2b"]), T("p3", "+", "op"), T("bb", B, "", ["b1b", "m4", "b2b"]), T("bb2", "2", "sup")],
+              hl: ["ab", "ba"],
+              note: "b·a = ab : l'ordre d'un produit ne compte pas. Les deux termes du milieu sont égaux."
             },
             {
               top: true,
-              fx: { type: "meet", ids: ["u", "pa", "v"] },
-              expr: [T("sq", X + "²"), T("p1", "+", "op"), T("sx", "6" + X, "", ["u", "pa", "v"]), T("p3", "+", "op"), T("nine", "9")],
-              note: "3<i>x</i> + 3<i>x</i> = 2 · 3<i>x</i> = 6<i>x</i>. Résultat : <b><i>x</i>² + 6<i>x</i> + 9</b>."
+              fx: { type: "meet", ids: ["ab", "p2", "ba"] },
+              expr: [T("aa", A), T("aa2", "2", "sup"), T("p", "+", "op"), T("tab", "2" + A + B, "", ["ab", "p2", "ba"]), T("p3", "+", "op"), T("bb", B), T("bb2", "2", "sup")],
+              note: "ab + ab = 2ab : <b>a² + 2ab + b²</b>."
+            },
+            { summary: true }
+          ]
+        },
+        {
+          title: "(a−b)²",
+          set: "R",
+          split: true,
+          steps: [
+            {
+              top: true,
+              expr: [T("l", "(", "par"), T("a1", A), T("p", "−", "op"), T("b1", B), T("r", ")", "par"), T("sq", "2", "sup")],
+              magic: "« (a − b)² = a² − 2ab + b² »"
+            },
+            {
+              expr: [T("l", "(", "par"), T("a1", A), T("p", "−", "op"), T("b1", B), T("r", ")", "par"), T("l2", "(", "par", ["sq"]), T("a2", A, "", ["sq"]), T("p2", "−", "op", ["sq"]), T("b2", B, "", ["sq"]), T("r2", ")", "par", ["sq"])]
+            },
+            {
+              expr: [T("a1", A), T("m1", "·", "op dot"), T("a2", A), T("p", "−", "op"), T("a1b", A, "", ["a1"]), T("m2", "·", "op dot"), T("b2", B), T("p2", "−", "op"), T("b1", B), T("m3", "·", "op dot"), T("a2b", A, "", ["a2"]), T("p3", "+", "op"), T("b1b", B, "", ["b1"]), T("m4", "·", "op dot"), T("b2b", B, "", ["b2"])],
+              stagger: { m1: 0, a1b: 1200, m2: 1200, m3: 2400, a2b: 2400, p3: 3600, b1b: 3600, m4: 3600, b2b: 3600 },
+              hl: ["p3"],
+              note: "(−b)·(−b) = +b² : moins par moins donne plus."
+            },
+            {
+              expr: [T("aa", A, "", ["a1", "m1", "a2"]), T("aa2", "2", "sup"), T("p", "−", "op"), T("ab", A + B, "", ["a1b", "m2", "b2"]), T("p2", "−", "op"), T("ba", A + B, "", ["b1", "m3", "a2b"]), T("p3", "+", "op"), T("bb", B, "", ["b1b", "m4", "b2b"]), T("bb2", "2", "sup")],
+              hl: ["ab", "ba"]
+            },
+            {
+              top: true,
+              fx: { type: "meet", ids: ["ab", "p2", "ba"] },
+              expr: [T("aa", A), T("aa2", "2", "sup"), T("p", "−", "op"), T("tab", "2" + A + B, "", ["ab", "p2", "ba"]), T("p3", "+", "op"), T("bb", B), T("bb2", "2", "sup")],
+              note: "−ab − ab = −2ab : <b>a² − 2ab + b²</b>."
+            },
+            { summary: true }
+          ]
+        },
+        {
+          title: "(a+b)(a−b)",
+          set: "R",
+          split: true,
+          steps: [
+            {
+              top: true,
+              expr: [T("l", "(", "par"), T("a1", A), T("p", "+", "op"), T("b1", B), T("r", ")", "par"), T("l2", "(", "par"), T("a2", A), T("p2", "−", "op"), T("b2", B), T("r2", ")", "par")],
+              magic: "« (a + b)(a − b) = a² − b² »"
+            },
+            {
+              expr: [T("a1", A), T("m1", "·", "op dot"), T("a2", A), T("p2", "−", "op"), T("a1b", A, "", ["a1"]), T("m2", "·", "op dot"), T("b2", B), T("p", "+", "op"), T("b1", B), T("m3", "·", "op dot"), T("a2b", A, "", ["a2"]), T("p3", "−", "op"), T("b1b", B, "", ["b1"]), T("m4", "·", "op dot"), T("b2b", B, "", ["b2"])],
+              stagger: { m1: 0, a1b: 1200, m2: 1200, m3: 2400, a2b: 2400, p3: 3600, b1b: 3600, m4: 3600, b2b: 3600 }
+            },
+            {
+              expr: [T("aa", A, "", ["a1", "m1", "a2"]), T("aa2", "2", "sup"), T("p2", "−", "op"), T("ab", A + B, "", ["a1b", "m2", "b2"]), T("p", "+", "op"), T("ba", A + B, "", ["b1", "m3", "a2b"]), T("p3", "−", "op"), T("bb", B, "", ["b1b", "m4", "b2b"]), T("bb2", "2", "sup")],
+              hl: ["p2", "ab", "p", "ba"],
+              note: "−ab et +ab sont opposés."
+            },
+            {
+              top: true,
+              fx: { type: "meet", ids: ["p2", "ab", "p", "ba"] },
+              expr: [T("aa", A), T("aa2", "2", "sup"), T("p3", "−", "op"), T("bb", B), T("bb2", "2", "sup")],
+              note: "Ils s'annulent : <b>a² − b²</b>."
+            },
+            { summary: true }
+          ]
+        },
+        {
+          title: "a²+b² ℂ",
+          set: "C",
+          split: true,
+          steps: [
+            {
+              top: true,
+              expr: [T("l", "(", "par"), T("a1", A), T("p", "+", "op"), T("i1", I + B), T("r", ")", "par"), T("l2", "(", "par"), T("a2", A), T("p2", "−", "op"), T("i2", I + B), T("r2", ")", "par")],
+              magic: "« Dans ℂ, a² + b² se factorise : (a + ib)(a − ib) »"
+            },
+            {
+              expr: [T("a1", A), T("m1", "·", "op dot"), T("a2", A), T("p2", "−", "op"), T("a1b", A, "", ["a1"]), T("m2", "·", "op dot"), T("i2", I + B), T("p", "+", "op"), T("i1", I + B), T("m3", "·", "op dot"), T("a2b", A, "", ["a2"]), T("p3", "−", "op"), T("i1b", I + B, "", ["i1"]), T("m4", "·", "op dot"), T("i2b", I + B, "", ["i2"])],
+              stagger: { m1: 0, a1b: 1200, m2: 1200, m3: 2400, a2b: 2400, p3: 3600, i1b: 3600, m4: 3600, i2b: 3600 },
+              note: "Même geste que (a + b)(a − b), avec ib à la place de b."
+            },
+            {
+              expr: [T("aa", A, "", ["a1", "m1", "a2"]), T("aa2", "2", "sup"), T("p2", "−", "op"), T("ab", I + A + B, "", ["a1b", "m2", "i2"]), T("p", "+", "op"), T("ba", I + A + B, "", ["i1", "m3", "a2b"]), T("p3", "−", "op"), T("ii", I, "", ["i1b", "m4", "i2b"]), T("ii2", "2", "sup"), T("bb", B), T("bb2", "2", "sup")],
+              hl: ["p2", "ab", "p", "ba"],
+              note: "Les termes du milieu sont opposés ; (ib)·(ib) = i²b²."
+            },
+            {
+              fx: { type: "meet", ids: ["p2", "ab", "p", "ba"] },
+              expr: [T("aa", A), T("aa2", "2", "sup"), T("p3", "−", "op"), T("ii", I), T("ii2", "2", "sup"), T("bb", B), T("bb2", "2", "sup")]
+            },
+            {
+              expr: [T("aa", A), T("aa2", "2", "sup"), T("p3", "−", "op"), T("ii", "(−1)", "", ["ii", "ii2"]), T("bb", B), T("bb2", "2", "sup")],
+              hl: ["ii"],
+              note: "Le nombre i est défini par <b>i² = −1</b>."
+            },
+            {
+              top: true,
+              expr: [T("aa", A), T("aa2", "2", "sup"), T("p3", "+", "op", ["p3", "ii"]), T("bb", B), T("bb2", "2", "sup")],
+              note: "−(−1)b² = +b² : <b>a² + b²</b>. Impossible à factoriser dans ℝ, possible dans ℂ."
             },
             { summary: true }
           ]
@@ -1268,6 +1406,24 @@
         }
       ];
 
+      // ---------- Langue (FR / EN) ----------
+      // Le français est la langue de référence ; EN traduit l'interface, les
+      // onglets, les phrases magiques et les règles de divisibilité.
+      var LANG = "fr";
+      try { if (localStorage.getItem("pasapas_lang") === "en") LANG = "en"; } catch (e) {}
+      var EN = {
+        "Singapour": "Singapore", "Premiers": "Primes", "Opposés": "Opposites", "Piège": "Trap",
+        "Distribuer": "Distribute", "Factoriser": "Factor", "Identité": "Identity", "Équation": "Equation",
+        "« On change les signes à l'intérieur de la parenthèse. »": "“Change the signs inside the brackets.”",
+        "« On regroupe et on calcule. »": "“Group and compute.”",
+        "« On passe le 3 de l'autre côté en changeant son signe. »": "“Move the 3 to the other side and flip its sign.”",
+        "« On passe le 2 de l'autre côté en divisant. »": "“Move the 2 to the other side by dividing.”",
+        "« (a + b)² = a² + 2ab + b² »": "“(a + b)² = a² + 2ab + b²”",
+        "départ": "start", "résultat": "result", "sauter des étapes": "skip steps", "pas à pas": "step by step",
+        "Historique": "History", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
+      };
+      function tr(t) { return LANG === "en" && EN[t] ? EN[t] : t; }
+
       // ---------- Vérification des calculs ----------
       // Chaque étape de chaque démo est recalculée avec des valeurs au hasard
       // pour x, ○ et □ : une expression doit garder la même valeur d'une
@@ -1280,6 +1436,7 @@
           .replace(/<svg[^>]*><circle[^>]*\/><\/svg>/g, "O")
           .replace(/<svg[^>]*><rect[^>]*\/><\/svg>/g, "Q")
           .replace(/<[^>]+>/g, "")
+          .replace(/i/g, "I")
           .replace(/−/g, "-").replace(/·/g, "*").replace(/²/g, "^2");
       }
 
@@ -1295,15 +1452,25 @@
       function evalExpr(str, env) {
         // Multiplication implicite : 2x, 2(…), )(…, x(…
         var js = str.replace(/\s+/g, "")
-          .replace(/([0-9xOQ)])(?=[xOQ(])/g, "$1*")
+          .replace(/([0-9xOQabI)])(?=[xOQabI(])/g, "$1*")
           .replace(/\^(\d)/g, "**$1");
-        if (!/^[0-9xOQ+\-*\/().]*$/.test(js)) throw new Error("caractère inattendu : " + str);
-        return Function("x", "O", "Q", "return (" + js + ");")(env.x, env.O, env.Q);
+        if (!/^[0-9xOQabI+\-*\/().]*$/.test(js)) throw new Error("caractère inattendu : " + str);
+        return Function("x", "O", "Q", "a", "b", "I", "return (" + js + ");")(env.x, env.O, env.Q, env.a, env.b, env.I || 0);
+      }
+
+      // Valeur complexe [réel, imaginaire] : l'expression est un polynôme
+      // de degré ≤ 2 en i ; on le reconstruit par 3 évaluations (i = 0, 1,
+      // −1) puis on remplace i² par −1.
+      function evalC(str, env) {
+        function f(t) { var e = Object.assign({}, env, { I: t }); return evalExpr(str, e); }
+        var c0 = f(0), p1 = f(1), m1 = f(-1);
+        var c1 = (p1 - m1) / 2, c2 = (p1 + m1) / 2 - c0;
+        return [c0 - c2, c1];
       }
 
       function verifyDemos() {
         var issues = [];
-        var envs = [{ x: 1.7, O: 2.3, Q: -0.9 }, { x: -3.1, O: 0.6, Q: 4.2 }];
+        var envs = [{ x: 1.7, O: 2.3, Q: -0.9, a: 1.3, b: -2.2 }, { x: -3.1, O: 0.6, Q: 4.2, a: -0.7, b: 3.4 }];
         DEMOS.forEach(function (demo) {
           if (demo.custom) return;
           var ref = null, root = null;
@@ -1328,9 +1495,9 @@
                 if (Math.abs(f(root)) > 1e-9 || Math.abs(f(root + 1.7)) < 1e-9)
                   issues.push(demo.title + " étape " + (i + 1) + " : « " + txt + " » n'a plus la même solution");
               } else {
-                var vals = envs.map(function (env) { return evalExpr(txt, env); });
+                var vals = envs.map(function (env) { return evalC(txt, env); });
                 if (ref === null || st.fresh) ref = vals;
-                else if (vals.some(function (v, k) { return Math.abs(v - ref[k]) > 1e-9; }))
+                else if (vals.some(function (v, k) { return Math.abs(v[0] - ref[k][0]) > 1e-9 || Math.abs(v[1] - ref[k][1]) > 1e-9; }))
                   issues.push(demo.title + " étape " + (i + 1) + " : « " + txt + " » ne vaut plus l'expression de départ");
               }
             } catch (e) {
@@ -1682,7 +1849,7 @@
         // rigoureux, contrasté avec le détail sans raccourci en dessous.
         magicEl.classList.remove("show");
         setTimeout(function () {
-          magicEl.innerHTML = step.magic || "";
+          magicEl.innerHTML = tr(step.magic || "");
           if (step.magic) magicEl.classList.add("show");
         }, animate ? ms(200) : 0);
       }
@@ -1700,8 +1867,8 @@
       var stageBottomTag = document.querySelector(".stage-bottom .row-tag");
 
       function updateRowTags(isFinal) {
-        if (stageTopTag) stageTopTag.textContent = isFinal ? "départ" : "sauter des étapes";
-        if (stageBottomTag) stageBottomTag.textContent = isFinal ? "résultat" : "pas à pas";
+        if (stageTopTag) stageTopTag.textContent = tr(isFinal ? "départ" : "sauter des étapes");
+        if (stageBottomTag) stageBottomTag.textContent = tr(isFinal ? "résultat" : "pas à pas");
       }
 
       // Aligne la rangée du haut sur l'étape-ancre la plus proche : elle ne
@@ -2105,6 +2272,7 @@
         tabsEl.querySelectorAll(".tab").forEach(function (t, k) {
           t.setAttribute("aria-selected", k === i ? "true" : "false");
         });
+        try { localStorage.setItem("pasapas_demo", DEMOS[i].title); } catch (e) {}
         var custom = DEMOS[i].custom;
         sgEl.hidden = custom !== "sg";
         pfEl.hidden = custom !== "pf";
@@ -2123,7 +2291,10 @@
         var b = document.createElement("button");
         b.className = "tab";
         b.setAttribute("role", "tab");
-        b.textContent = d.title;
+        b.textContent = tr(d.title);
+        b.dataset.title = d.title;
+        // Titre mathématique : pas de majuscules (a ≠ A)
+        if (/[()²]/.test(d.title)) b.style.textTransform = "none";
         b.addEventListener("click", function () { selectDemo(i); });
         tabsEl.appendChild(b);
       });
@@ -2615,9 +2786,25 @@
         12: "12 n'est pas premier : 12 = 2 × 2 × 3. Divise deux fois par 2, puis par 3.",
         13: "÷13 : ajoute 4 fois le dernier chiffre au reste du nombre ; le résultat est dans la table de 13 (ex. 91 : 9 + 4 = 13 ✓)."
       };
+      var DIV_INFO_EN = {
+        0: "÷0 is forbidden: no number times 0 gives your number back. Never divide by zero.",
+        1: "÷1 is useless: n ÷ 1 = n, nothing gets broken down.",
+        2: "÷2: the number ends in 0, 2, 4, 6 or 8.",
+        3: "÷3: the sum of the digits is in the 3 times table (e.g. 87: 8 + 7 = 15 ✓).",
+        4: "4 is not prime: 4 = 2 × 2. Divide by 2 twice.",
+        5: "÷5: the number ends in 0 or 5.",
+        6: "6 is not prime: 6 = 2 × 3. Divide by 2, then by 3.",
+        7: "÷7: subtract twice the last digit from the rest; the result is in the 7 times table (e.g. 91: 9 − 2 = 7 ✓).",
+        8: "8 is not prime: 8 = 2 × 2 × 2. Divide by 2 three times.",
+        9: "9 is not prime: 9 = 3 × 3. Divide by 3 twice.",
+        10: "10 is not prime: 10 = 2 × 5. Divide by 2, then by 5.",
+        11: "÷11: alternating sum of digits (+ − + …) in the 11 times table (e.g. 143: 1 − 4 + 3 = 0 ✓).",
+        12: "12 is not prime: 12 = 2 × 2 × 3. Divide by 2 twice, then by 3.",
+        13: "÷13: add 4 times the last digit to the rest; the result is in the 13 times table (e.g. 91: 9 + 4 = 13 ✓)."
+      };
       var pfTip = document.getElementById("pfTip");
       function pfShowTip(d, btn) {
-        pfTip.textContent = DIV_INFO[d];
+        pfTip.textContent = (LANG === "en" ? DIV_INFO_EN : DIV_INFO)[d];
         pfTip.hidden = false;
         var rb = btn.getBoundingClientRect(), rs = pfEl.getBoundingClientRect();
         pfTip.style.left = Math.max(4, Math.min(rs.width - pfTip.offsetWidth - 4, rb.left - rs.left + rb.width / 2 - pfTip.offsetWidth / 2)) + "px";
@@ -2812,6 +2999,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v21", text: "Identités remarquables sous leur forme générale : (a + b)² = a² + 2ab + b², (a − b)² = a² − 2ab + b², (a + b)(a − b) = a² − b². Nouveau chapitre ℂ : a² + b² = (a + ib)(a − ib), grâce à i² = −1. Menu ☰ : on coche les ensembles ℕ ℤ ℚ ℝ ℂ, les chapitres suivent (ℂ décoché au départ). Tient aussi sur téléphone couché. Le vérificateur calcule aussi avec a, b et i." },
+        { v: "v20", text: "Reprend sur la dernière démo ouverte. Anglais disponible (menu ☰ → English). Installable comme une application (ajouter à l'écran d'accueil), fonctionne hors ligne." },
         { v: "v19", text: "Deux nouvelles démos : Double ((x + 1)(x + 2) = x² + 3x + 2, quatre produits écrits un par un) et Identité ((x + 3)² = x² + 6x + 9 : on voit d'où vient le « 2ab »). Page récapitulative à la fin de chacune." },
         { v: "v18", text: "Singapour : soustraction « retirer de 10 », une manche sur deux. 13 − 5 : on retire les jetons de la dizaine pleine, pas des 3 à côté (sinon la dizaine s'allume en jaune) → 10 − 5 + 3 → 5 + 3 → 8. Appui bref ou glisser hors des cadres pour retirer, appui sur un jeton retiré pour le remettre, appui sur le 5 pour tout retirer d'un coup." },
         { v: "v17", text: "Premiers : diviseurs de ÷0 à ÷13 — les premiers (2, 3, 5, 7, 11, 13) sont vifs, les autres estompés avec la raison (0 interdit, 1 inutile, 4 = 2 × 2, 6 = 2 × 3…). Appui long sur un diviseur : la règle de divisibilité s'affiche dans une fenêtre. Les traits de l'arbre s'arrêtent au bord des cercles. Nombres jusqu'à 200, avec parfois 11 ou 13." },
@@ -2874,7 +3063,75 @@
         if (!menuPanel.hidden && !menuPanel.contains(e.target) && e.target !== menuBtn) closeMenu();
       });
 
-      selectDemo(0);
+      function applyLang() {
+        document.documentElement.lang = LANG;
+        tabsEl.querySelectorAll(".tab").forEach(function (t) { t.textContent = tr(t.dataset.title); });
+        document.querySelectorAll("[data-tr]").forEach(function (el) { el.textContent = tr(el.dataset.tr); });
+        var hc = document.getElementById("histClose");
+        if (hc) hc.textContent = tr("Fermer");
+      }
+      document.getElementById("langBtn").addEventListener("click", function () {
+        closeMenu();
+        LANG = LANG === "fr" ? "en" : "fr";
+        try { localStorage.setItem("pasapas_lang", LANG); } catch (e) {}
+        applyLang();
+        lastTopStep = null;
+        if (!busy) selectDemo(demoIndex);
+      });
+      applyLang();
+
+      // ---------- Ensembles de nombres ----------
+      // Chaque chapitre appartient à l'ensemble où il se passe. On coche ou
+      // décoche les ensembles dans le menu : les chapitres suivent. ℂ est
+      // décoché au départ (chapitre des complexes en option).
+      var SET_OF = {
+        "Singapour": "N", "Premiers": "N", "Ensembles": "N", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
+        "Fraction": "Q", "Piège": "Q", "Équation": "Q",
+        "Distribuer": "R", "Factoriser": "R", "Double": "R"
+      };
+      var SET_NAMES = [["N", "ℕ"], ["Z", "ℤ"], ["Q", "ℚ"], ["R", "ℝ"], ["C", "ℂ"]];
+      var sets = { N: true, Z: true, Q: true, R: true, C: false };
+      try { var saved = JSON.parse(localStorage.getItem("pasapas_sets") || "null"); if (saved) sets = saved; } catch (e) {}
+      function setOf(d) { return d.set || SET_OF[d.title] || "N"; }
+      var menuSets = document.getElementById("menuSets");
+      SET_NAMES.forEach(function (sn) {
+        var b = document.createElement("button");
+        b.textContent = sn[1];
+        b.setAttribute("aria-pressed", sets[sn[0]] ? "true" : "false");
+        b.addEventListener("click", function (e) {
+          e.stopPropagation();
+          sets[sn[0]] = !sets[sn[0]];
+          if (!Object.keys(sets).some(function (k) { return sets[k]; })) sets.N = true;
+          try { localStorage.setItem("pasapas_sets", JSON.stringify(sets)); } catch (err) {}
+          menuSets.querySelectorAll("button").forEach(function (bb, k) {
+            bb.setAttribute("aria-pressed", sets[SET_NAMES[k][0]] ? "true" : "false");
+          });
+          applySets();
+        });
+        menuSets.appendChild(b);
+      });
+      function applySets() {
+        tabsEl.querySelectorAll(".tab").forEach(function (t, k) { t.hidden = !sets[setOf(DEMOS[k])]; });
+        if (!sets[setOf(DEMOS[demoIndex])] && !busy) {
+          for (var k = 0; k < DEMOS.length; k++) if (sets[setOf(DEMOS[k])]) { selectDemo(k); break; }
+        }
+      }
+
+      // Reprend là où on s'était arrêté (même démo qu'à la dernière visite)
+      var startDemo = 0;
+      try {
+        var savedTitle = localStorage.getItem("pasapas_demo");
+        DEMOS.forEach(function (d, k) { if (d.title === savedTitle) startDemo = k; });
+      } catch (e) {}
+      if (!sets[setOf(DEMOS[startDemo])]) startDemo = 0;
+      selectDemo(startDemo);
+      applySets();
+
+      // Installable (PWA) : manifeste + service worker « réseau d'abord » —
+      // toujours la version en ligne si possible, la copie locale hors ligne
+      if ("serviceWorker" in navigator && location.protocol === "https:") {
+        navigator.serviceWorker.register("sw.js").catch(function () {});
+      }
     })();
   </script>
 
