@@ -18,13 +18,13 @@ Un bouton « Révéler la mécanique » affiche la vraie courbe génératrice
 (prolongée jusqu'en 2126) et son nom, pour comparer chaque méthode à la
 réalité qu'elle essaie de deviner.
 
-**Mes courbes** : on peut dessiner ses propres prédictions (jusqu'à 4).
-Chaque courbe passe par des points que l'on glisse au doigt ; toucher
-une zone vide du graphique ajoute un point. Les points sont reliés par
-une interpolation cubique monotone (Fritsch–Carlson). Un tableau donne
-l'écart moyen de chaque courbe aux données (passé) puis, après la
-révélation, à la vraie mécanique (futur). Chaque méthode a un petit ⓘ
-explicatif.
+**Dessiner ma courbe** : au lieu d'une série aléatoire, on peut
+dessiner soi-même les données (1826-2026). La courbe passe par des
+points que l'on glisse au doigt ; toucher une zone vide ajoute un point.
+Les points sont reliés par une interpolation cubique monotone
+(Fritsch–Carlson), avec un curseur de bruit optionnel. Les quatre
+méthodes et le tableau d'écart moyen se recalculent en direct sur la
+courbe dessinée. Chaque méthode a un petit ⓘ explicatif.
 
 **https://pierremillon.github.io/pierremillon/extrapolation/**
 
