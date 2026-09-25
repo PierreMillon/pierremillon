@@ -103,6 +103,9 @@
     }
     .tabs { margin-top: 0.7rem; }
     .levels { margin-top: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    /* Même en mode Libre, les niveaux gardent leur place (invisibles) :
+       le boulier a la même taille dans les deux modes */
+    .levels[hidden] { display: flex; visibility: hidden; }
 
     .chip {
       flex: 1;
@@ -142,19 +145,33 @@
       letter-spacing: 0.06em;
       color: var(--ink);
     }
-    .task[hidden] { display: none; }
+    /* Toutes les zones de texte ont une hauteur fixe (2 lignes au plus) :
+       sinon, quand une légende passe de 1 à 2 lignes, la place laissée au
+       boulier change et il se met à grossir / rétrécir tout seul */
+    .task {
+      height: 2.7em;
+      line-height: 1.35;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+    .task[hidden] { display: -webkit-box; visibility: hidden; }
     .task .step { color: var(--ink-soft); font-size: 0.85rem; }
     .value {
       font-size: clamp(2.2rem, 11vw, 3.2rem);
       font-weight: 300;
       letter-spacing: 0.08em;
       line-height: 1.15;
+      white-space: nowrap;
       color: var(--accent);
       text-shadow: 0 0 10px rgba(61, 224, 138, 0.45);
       font-variant-numeric: tabular-nums;
     }
     .split {
-      min-height: 1.4em;
+      height: 2.8em;
+      line-height: 1.4;
+      overflow: hidden;
       font-size: 0.9rem;
       color: var(--ink-soft);
       letter-spacing: 0.04em;
@@ -224,8 +241,8 @@
     .bottombar {
       display: flex;
       justify-content: center;
-      flex-wrap: wrap;
-      gap: 0.5rem;
+      flex-wrap: nowrap;
+      gap: 0.4rem;
       padding: 0 16px 1rem;
     }
 
@@ -242,7 +259,18 @@
       cursor: pointer;
     }
     .btn:active { background: var(--accent-soft); }
-    .btn[hidden] { display: none; }
+    /* Un bouton masqué garde sa place : la barre du bas ne change jamais
+       de hauteur, donc le boulier non plus */
+    .btn[hidden] { display: block; visibility: hidden; }
+    .bottombar .btn {
+      flex: 1 1 0;
+      min-width: 0;
+      height: 2.9rem;
+      padding: 0 0.4rem;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      line-height: 1.2;
+    }
     .btn.quiet { border-color: var(--hairline); color: var(--ink-soft); }
 
     body.busy .bead { cursor: default; }
@@ -383,8 +411,10 @@
       var STICK_GIVE = 0.12;     // elle ne bouge presque pas tant qu'elle colle
       var FOLLOW = 0.85;         // ensuite elle suit le doigt, un peu en retard
       var SNAP = 0.55;           // fraction de la course qui fait basculer
-      var SPRING_K = 380;        // raideur du ressort
-      var SPRING_C = 24;         // amortissement (< 39 : léger rebond)
+      // Ressort plus lent qu'avant : on doit voir la perle glisser d'un
+      // bout à l'autre (≈ 0,3 s), jamais un saut d'une place à l'autre
+      var SPRING_K = 150;        // raideur du ressort
+      var SPRING_C = 19;         // amortissement (< 24,5 : léger rebond)
       var DEMO_STEP_MS = 850;    // un geste de la démo au ralenti
 
       // Géométrie (unités du viewBox). Une tige tous les 100.
@@ -404,7 +434,10 @@
       // Perle vue de profil : un losange aplati aux pointes coupées
       var BEAD_POINTS = "-42,0 -15,-20 15,-20 42,0 15,20 -15,20";
 
+      // « Réduire les animations » (iOS) : la perle glisse quand même —
+      // un mouvement continu, sans rebond — au lieu de sauter à sa place
       var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (reduceMotion) SPRING_C = 2 * Math.sqrt(SPRING_K);
 
       // ---------- Stockage (toujours en try/catch, jamais interprété) ----------
 
@@ -438,7 +471,7 @@
           },
           rest: "reste {r}", pasapas: "Même idée que le badge ✦ 10 de Pas à Pas (faire 10).",
           cap: {
-            zero: "on remet à zéro", pose: "chiffre par chiffre, de gauche à droite",
+            zero: "on remet à zéro", pose: "",
             direct: "+{a} : direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "retenue : +1 à gauche",
             sdirect: "−{a} : direct", s5: "−{a} = −5 + {b}", s10: "−{a} = −10 + {b}", borrow: "emprunt : −1 à gauche"
           }
@@ -467,7 +500,7 @@
           },
           rest: "remainder {r}", pasapas: "Same idea as the ✦ 10 badge in Pas à Pas (making ten).",
           cap: {
-            zero: "clearing the board", pose: "digit by digit, left to right",
+            zero: "clearing the board", pose: "",
             direct: "+{a}: direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "carry: +1 on the left",
             sdirect: "−{a}: direct", s5: "−{a} = −5 + {b}", s10: "−{a} = −10 + {b}", borrow: "borrow: −1 on the left"
           }
@@ -475,7 +508,7 @@
       };
 
       var lang = load("lang");
-      if (lang !== "fr" && lang !== "en") lang = /^fr/i.test(navigator.language || "fr") ? "fr" : "en";
+      if (lang !== "fr" && lang !== "en") lang = "fr"; // français par défaut, même sur un téléphone en anglais
 
       function fmt(s, o) {
         return s.replace(/\{(\w+)\}/g, function (m, k) { return o && k in o ? o[k] : m; });
@@ -610,7 +643,7 @@
         b.target = y;
         b.on = on;
         applyCls(b);
-        if (instant || reduceMotion) { b.y = y; b.v = 0; draw(b); }
+        if (instant) { b.y = y; b.v = 0; draw(b); }
       }
 
       function renderSplit() {
@@ -839,9 +872,12 @@
           unlockAudio();
           if (!actx) return;
           var w = actx.currentTime + 0.01;
-          var f = (heavy ? 640 : 880) * (0.97 + Math.random() * 0.06);
-          tone(f, f * 0.86, 0.42 * vol, 0.11, w, "triangle");   // corps de la perle
-          tone(f * 2.4, f * 2.2, 0.08 * vol, 0.035, w);          // petit claquement boisé
+          // Grave, comme une perle de bois épaisse : le corps est bas, et
+          // c'est l'onde triangle (ses harmoniques) plus un petit claquement
+          // qui le rendent audible sur le haut-parleur d'un téléphone
+          var f = (heavy ? 150 : 200) * (0.97 + Math.random() * 0.06);
+          tone(f, f * 0.8, 0.6 * vol, 0.16, w, "triangle");      // corps de la perle
+          tone(f * 3.1, f * 2.8, 0.07 * vol, 0.03, w);           // petit claquement boisé
         } catch (e) {}
       }
 
@@ -850,7 +886,7 @@
           unlockAudio();
           if (!actx) return;
           var w = actx.currentTime + 0.02;
-          [784, 988, 1175, 1568].forEach(function (f, i) {
+          [392, 494, 587, 784].forEach(function (f, i) {
             tone(f, f, 0.16, 1.1, w + i * 0.11);
           });
         } catch (e) {}
@@ -1377,6 +1413,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v5", text: "Le boulier garde toujours la même taille : les lignes de texte, les niveaux et les boutons ont une place fixe, il ne zoome plus ni ne dézoome tout seul pendant une opération. Sons beaucoup plus graves. Une perle touchée glisse toujours jusqu'à sa place, plus lentement, sans jamais se téléporter (même avec « Réduire les animations »). Légende « chiffre par chiffre » retirée. Français par défaut." },
         { v: "v4", text: "Division avec reste (ce qu'on ne peut plus retirer reste sur le boulier : 351 ÷ 4 = 87, reste 3). Racines approchées à un chiffre après la virgule (√2 ≈ 1,4 : on pose 200 et on calcule √200 ≈ 14). Le badge ✦ 10 de Pas à Pas s'affiche sur « + avec 10 » (même geste : faire 10). Utilisable hors ligne une fois ouvert (police comprise)." },
         { v: "v3", text: "Son réparé sur iPhone (débloqué à la fin du toucher, joue même en mode silencieux, placé dans des fréquences que le haut-parleur rend) et plus doux. Guidage pas à pas : les perles à bouger clignotent, la ligne du haut dit l'étape du calcul, celle du bas la technique ; une perle bougée par erreur est signalée. Réussite : une seconde de pause, puis un écran de félicitations qui reste jusqu'à « Suivant », avec les techniques utilisées. Nouvelles opérations : division (on retire le diviseur par paquets), puissances (multiplier = ajouter plusieurs fois), racines carrées (on retire (10t)², puis (20t + u) × u)." },
         { v: "v2", text: "Perles souples : elles résistent un peu sous le doigt, basculent d'un coup passé un cran, reviennent en rebondissant si on les lâche trop tôt, s'écrasent légèrement en arrivant. Son de bois plus doux, petite vibration (Android). Zoom et double-tap vraiment bloqués. Mode Opérations : poser un nombre puis ajouter, retirer ou multiplier ; « Voir au ralenti » montre chaque geste (compléments à 5 et à 10, retenues) ; un exercice réussi à la main sans avoir regardé gagne un badge qui débloque « D'un coup ». Français / anglais, installable sur l'écran d'accueil, perles utilisables au clavier." },
