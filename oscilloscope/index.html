@@ -260,6 +260,8 @@
               nogl: "WebGL is not available on this device." }
       };
       var VERSIONS = [
+        { v: "v4", fr: "Son réparé sur iPhone : il sort même en mode silencieux, et le générateur démarre bien sous Safari.",
+                   en: "Sound fixed on iPhone: it plays even in silent mode, and the generator starts properly in Safari." },
         { v: "v3", fr: "Refaite façon Jerobeam Fenderson (oscilloscope music) : le son stéréo pilote le faisceau (gauche = X, droite = Y), ce qu'on voit est ce qu'on entend. Faisceau gaussien calculé en WebGL (intégrale le long de chaque segment, comme woscope), quatre scènes qui se métamorphosent l'une en l'autre, texte CRT tapé par-dessus avec lignes de balayage.",
                    en: "Redone Jerobeam Fenderson style (oscilloscope music): stereo sound drives the beam (left = X, right = Y), what you see is what you hear. Gaussian beam computed in WebGL (integrated along each segment, like woscope), four scenes morphing into each other, CRT text typed on top with scanlines." },
         { v: "v2", fr: "Trois styles : vectoriel, terminal, musique X-Y.", en: "Three styles: vector, terminal, X-Y music." },
@@ -474,11 +476,45 @@
       var audio = null, proc = null, audioOn = false;
       var queue = [];
 
+      // iPhone : en mode silencieux (bouton sur le côté), Web Audio est
+      // coupé. On passe la session audio en « lecture » (Safari 16.4+) et,
+      // pour les versions plus anciennes, on joue en boucle un <audio>
+      // muet, ce qui fait basculer la page dans la même catégorie qu'une
+      // vidéo ou une musique : le son sort même en mode silencieux.
+      var unlockEl = null;
+      function silentWav() {
+        var n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+        function str(o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
+        str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE"); str(12, "fmt ");
+        v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+        v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+        str(36, "data"); v.setUint32(40, n, true);
+        for (var i = 0; i < n; i++) v.setUint8(44 + i, 128);
+        return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+      }
+      function unlockIOS() {
+        try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+        try {
+          if (!unlockEl) {
+            unlockEl = document.createElement("audio");
+            unlockEl.setAttribute("playsinline", "");
+            unlockEl.setAttribute("x-webkit-airplay", "deny");
+            unlockEl.loop = true;
+            unlockEl.src = silentWav();
+          }
+          var p = unlockEl.play();
+          if (p && p.catch) p.catch(function () {});
+        } catch (e) {}
+      }
+
       function startAudio() {
         try {
+          unlockIOS();
           if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
           RATE = audio.sampleRate;
-          proc = audio.createScriptProcessor(1024, 0, 2);
+          // Au moins 1 entrée : Safari n'appelle jamais onaudioprocess sur
+          // un ScriptProcessor déclaré sans entrée
+          proc = audio.createScriptProcessor(1024, 1, 2);
           var gain = audio.createGain();
           gain.gain.value = 0.35;
           proc.onaudioprocess = function (e) {
@@ -500,6 +536,7 @@
 
       function stopAudio() {
         if (proc) { try { proc.disconnect(); } catch (e) {} proc.onaudioprocess = null; proc = null; }
+        if (unlockEl) { try { unlockEl.pause(); } catch (e) {} }
         audioOn = false;
         RATE = 48000;
         queue = [];
