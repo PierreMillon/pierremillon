@@ -28,10 +28,23 @@ Tri : priorité décroissante.
 - [x] v6 — La courbe dessinée va jusqu'en 2126 : la partie future (pointillé)
   est la « vérité » à deviner, colonne « futur » calculée dessus
 
+- [x] v7 — Onglet Bourse : vrais cours mensuels embarqués (hors ligne),
+  prédiction du mois suivant au doigt, méthodes naïve / sécante /
+  régression / pondérée / moyenne mobile, erreur en % et sens juste,
+  calcul en % (log), test walk-forward sur toute la série, valeurs collées
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : glissé des points, taille des
-  cibles, lisibilité du tableau d'écart
+  cibles, lisibilité du tableau d'écart, onglet Bourse
+- [ ] P2 — Bourse : simuler un « fonds » — acheter quand la méthode prédit
+  une hausse, vendre sinon — et comparer le capital final à « acheter et
+  garder », frais de transaction compris
+- [ ] P2 — Bourse : plus de valeurs (CAC 40, actions récentes, données
+  journalières) — Yahoo, Stooq et FRED sont bloqués depuis l'environnement
+  de build ; soit une autre source ouverte, soit « Coller » depuis un export
+- [ ] P3 — Bourse : méthodes plus riches (moyennes mobiles croisées,
+  momentum, lissage exponentiel), une à la fois, chacune avec son ⓘ
 
 ## Conformité à la charte (../REGLES-JEUX.md)
 

@@ -51,7 +51,7 @@ function generateSeries(seed) {
   return { pts, label, trueFn };
 }
 
-function linreg(points) {
+export function linreg(points) {
   const nn = points.length;
   const mx = points.reduce((s, p) => s + p.year, 0) / nn;
   const my = points.reduce((s, p) => s + p.value, 0) / nn;
@@ -64,7 +64,7 @@ function linreg(points) {
   return { slope, intercept: my - slope * mx };
 }
 
-function weightedLinreg(points, currentYear, halfLife) {
+export function weightedLinreg(points, currentYear, halfLife) {
   const lambda = Math.log(2) / Math.max(halfLife, 1);
   const w = points.map((p) => Math.exp(-lambda * (currentYear - p.year)));
   const sw = w.reduce((a, b) => a + b, 0);
@@ -149,7 +149,7 @@ function monotoneInterp(pts) {
   };
 }
 
-function meanAbs(fn, ref, from, to) {
+export function meanAbs(fn, ref, from, to) {
   let s = 0, c = 0;
   for (let t = from; t <= to; t += STEP) { s += Math.abs(fn(t) - ref(t)); c++; }
   return c ? s / c : null;
@@ -191,7 +191,7 @@ const FIXED_NOISE = (() => {
   return Array.from({ length: Math.floor((X_NOW - X0) / STEP) + 1 }, () => (r() - 0.5) * 2);
 })();
 
-const T = {
+export const T = {
   fr: {
     m: {
       secant: "Sécante (2 points)",
@@ -296,7 +296,13 @@ const T = {
   },
 };
 
-const HISTORY = [
+export const HISTORY = [
+  {
+    v: "v7",
+    date: "25/09/2026",
+    fr: "Nouvel onglet Bourse : vrais cours mensuels (S&P 500 depuis 1871, or, pétrole Brent, Apple, Microsoft, Amazon, Google, IBM) ou tes propres valeurs collées. Tu places au doigt le cours du mois suivant, les méthodes aussi, puis on révèle : erreur en % et « sens juste ». Méthode naïve (= dernier cours) comme référence, calcul en %, test sur toute la série.",
+    en: "New Markets tab: real monthly prices (S&P 500 since 1871, gold, Brent crude, Apple, Microsoft, Amazon, Google, IBM) or your own pasted values. You place next month's price with your finger, the methods too, then it's revealed: % error and « right direction ». Naive method (= last price) as benchmark, % mode, test on the whole series.",
+  },
   {
     v: "v6",
     date: "25/09/2026",
@@ -378,7 +384,7 @@ function loadSaved() {
 
 // ---------- component ----------
 
-export default function PredictionExplorer() {
+export default function PredictionExplorer({ lang }) {
   const saved = useMemo(loadSaved, []);
   const [seed, setSeed] = useState(saved.seed);
   const [pointAIdx, setPointAIdx] = useState(saved.pointAIdx);
@@ -388,18 +394,13 @@ export default function PredictionExplorer() {
   const [revealTrue, setRevealTrue] = useState(false);
   const [drawPts, setDrawPts] = useState(saved.drawPts); // null = série aléatoire
   const [noise, setNoise] = useState(saved.noise);
-  const [lang, setLang] = useState(saved.lang);
   const [selectedPt, setSelectedPt] = useState(null);
   const [dragging, setDragging] = useState(false);
   const [info, setInfo] = useState(null);
-  const [showHistory, setShowHistory] = useState(false);
 
   const t = T[lang];
   const drawn = drawPts != null;
 
-  useEffect(() => {
-    document.documentElement.lang = lang;
-  }, [lang]);
 
   // sauvegarde (pas pendant un glissé : on écrit une fois au lâcher)
   useEffect(() => {
@@ -543,30 +544,13 @@ export default function PredictionExplorer() {
         style={{
           flex: "0 0 46%",
           background: "#1c222c",
-          padding: "max(8px, env(safe-area-inset-top)) 6px 4px",
+          padding: "4px 6px 4px",
           borderBottom: "1px solid #2a313d",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 8px 4px" }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>
-            Extrapolation
-            <button
-              onClick={() => setShowHistory(true)}
-              aria-label={t.history}
-              style={{ ...iconBtn, marginLeft: 8 }}
-            >
-              ⓘ
-            </button>
-            <button
-              onClick={() => setLang(lang === "fr" ? "en" : "fr")}
-              aria-label={lang === "fr" ? "English" : "Français"}
-              style={{ ...iconBtn, fontSize: 10, fontFamily: "monospace", border: "1px solid #3a4250", borderRadius: 4, padding: "1px 5px", marginLeft: 4 }}
-            >
-              {t.otherLang}
-            </button>
-          </span>
+        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", padding: "0 8px 4px" }}>
           <span style={{ fontSize: 10, color: "#5c6577", fontFamily: "monospace" }}>
             {drawn ? t.yourCurve : ""}{pointAYear} → {X_NOW} → {X1}
           </span>
@@ -747,46 +731,15 @@ export default function PredictionExplorer() {
         </div>
       </div>
 
-      {showHistory && (
-        <div
-          onClick={() => setShowHistory(false)}
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: "#1c222c", border: "1px solid #3a4250", borderRadius: 10,
-              padding: "14px 16px", maxWidth: 420, width: "100%", maxHeight: "80vh", overflowY: "auto",
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>{t.history}</span>
-              <button onClick={() => setShowHistory(false)} style={iconBtn} aria-label={t.close}>✕</button>
-            </div>
-            {HISTORY.map((h) => (
-              <div key={h.v} style={{ marginBottom: 12, fontFamily: "monospace", fontSize: 11.5, lineHeight: 1.45 }}>
-                <div style={{ color: "#F2994A" }}>{h.v}{h.date ? " · " + h.date : ""}</div>
-                <div style={{ color: "#C9C5BC" }}>{h[lang]}</div>
-              </div>
-            ))}
-            <div style={{ fontFamily: "monospace", fontSize: 11, color: "#8A93A3", borderTop: "1px solid #2a313d", paddingTop: 10 }}>
-              {t.install}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 // ---------- chart (SVG tactile) ----------
 
-const M = { top: 8, right: 10, bottom: 18, left: 34 };
+export const M = { top: 8, right: 10, bottom: 18, left: 34 };
 
-function niceTicks(lo, hi, count) {
+export function niceTicks(lo, hi, count) {
   const raw = (hi - lo) / count;
   const mag = Math.pow(10, Math.floor(Math.log10(raw)));
   const step = [1, 2, 5, 10].map((k) => k * mag).find((s) => s >= raw);
@@ -1018,11 +971,11 @@ function Chart({
 
 // ---------- small UI bits ----------
 
-function fmt(v) {
+export function fmt(v) {
   return v == null ? "—" : v.toFixed(2);
 }
 
-const iconBtn = {
+export const iconBtn = {
   background: "none",
   border: "none",
   color: "#8A93A3",
@@ -1040,7 +993,7 @@ const plainBtn = {
   cursor: "pointer",
 };
 
-function SectionTitle({ children }) {
+export function SectionTitle({ children }) {
   return (
     <div style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8A93A3", fontFamily: "monospace", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
       {children}
@@ -1048,7 +1001,7 @@ function SectionTitle({ children }) {
   );
 }
 
-function InfoBox({ children }) {
+export function InfoBox({ children }) {
   return (
     <div style={{ fontSize: 11.5, lineHeight: 1.45, fontFamily: "monospace", color: "#C9C5BC", background: "#161b23", borderLeft: "2px solid #F2994A", padding: "7px 9px", marginBottom: 10, borderRadius: 4 }}>
       {children}
@@ -1056,7 +1009,7 @@ function InfoBox({ children }) {
   );
 }
 
-function btnStyle(fg, bg) {
+export function btnStyle(fg, bg) {
   return {
     background: bg,
     color: fg,
@@ -1070,7 +1023,7 @@ function btnStyle(fg, bg) {
   };
 }
 
-function SliderRow({ label, min, max, value, onChange, disabled }) {
+export function SliderRow({ label, min, max, value, onChange, disabled }) {
   return (
     <div style={{ opacity: disabled ? 0.4 : 1 }}>
       <div style={{ fontSize: 11.5, marginBottom: 4, fontFamily: "monospace" }}>{label}</div>
