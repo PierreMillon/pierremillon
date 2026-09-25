@@ -62,6 +62,13 @@ Tri : priorité décroissante.
     toujours identiques, appliquées à des objets différents. Nom
     provisoire évoqué pour cette idée/l'appli entière : « l'Alchimiste »
     (transformer par étapes plutôt que calculer d'un bloc).
+  - Explicitement pas un exposé théorique à lire : le but est de **montrer**
+    ce que font mentalement les gens rapides en calcul, en l'animant au
+    ralenti, en continu et fluide — pas des étapes discrètes qui
+    s'enchaînent sèchement comme les démos actuelles, mais quelque chose
+    qui donne l'impression de voir le raisonnement se dérouler dans la
+    tête, en direct. Pensé pour le téléphone en priorité, pas comme un
+    contenu théorique qu'on pourrait aussi bien lire sur papier.
 
 ## Migration future
 
