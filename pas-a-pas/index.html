@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pas à Pas</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400;1,500&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #faf8f4;
+      --bg-soft: #f2efe8;
+      --ink: #1c1a17;
+      --ink-soft: #6f6a60;
+      --hairline: #ddd6c9;
+      --accent: #b08d57;
+      --accent-soft: rgba(176, 141, 87, 0.16);
+      --sign: #b5523b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      background-image: radial-gradient(circle at 50% 0%, var(--bg-soft), var(--bg) 60%);
+      color: var(--ink);
+      font-family: "Jost", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      justify-content: center;
+      padding: 1.4rem 16px 2rem;
+    }
+
+    main {
+      width: 100%;
+      max-width: 640px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .back {
+      color: var(--ink-soft);
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+    }
+
+    .back:hover { color: var(--accent); }
+
+    h1 {
+      margin: 0;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 300;
+      font-size: clamp(1.7rem, 6vw, 2.3rem);
+      letter-spacing: 0.06em;
+    }
+
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1.2rem 0 0.4rem;
+    }
+
+    .tab {
+      font-family: inherit;
+      font-size: 0.7rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      padding: 0.55rem 1rem;
+      cursor: pointer;
+      transition: border-color 0.25s ease, color 0.25s ease;
+    }
+
+    .tab:hover { color: var(--ink); }
+    .tab[aria-selected="true"] { border-color: var(--accent); color: var(--ink); }
+
+    .stage {
+      position: relative;
+      margin-top: 0.9rem;
+      min-height: 240px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2.4rem 0.5rem;
+      border-top: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--hairline);
+      overflow: hidden;
+    }
+
+    .expr {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.1em;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 500;
+      font-size: clamp(1.9rem, 8vw, 3rem);
+      line-height: 1;
+    }
+
+    .tok {
+      display: inline-block;
+      padding: 0.08em 0.1em;
+      border-radius: 0.2em;
+      transition: background 0.35s ease, color 0.35s ease;
+    }
+
+    .tok .in { display: inline-block; }
+    .tok i { font-style: italic; }
+    .tok.op { padding: 0.08em 0.22em; }
+    .tok.par { font-weight: 300; }
+    .tok.dot { padding: 0.08em 0.05em; }
+
+    .tok.hl {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .tok.sign-hl { color: var(--sign); }
+
+    .frac {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .frac .row {
+      display: flex;
+      align-items: center;
+      gap: 0.05em;
+      padding: 0.05em 0.2em;
+    }
+
+    .frac .bar {
+      align-self: stretch;
+      height: 2px;
+      background: var(--ink);
+      margin: 0.08em 0;
+    }
+
+    .ghost {
+      position: absolute;
+      margin: 0;
+      pointer-events: none;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 500;
+      font-size: clamp(1.9rem, 8vw, 3rem);
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ghost.traveller { color: var(--sign); z-index: 3; }
+
+    .note {
+      min-height: 5.5rem;
+      margin: 1.2rem 0 0;
+      font-size: 1rem;
+      line-height: 1.65;
+      color: var(--ink);
+    }
+
+    .note i {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-size: 1.15em;
+    }
+
+    .counter {
+      white-space: nowrap;
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.8rem;
+      margin-top: 1.4rem;
+    }
+
+    .btn {
+      white-space: nowrap;
+      font-family: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      padding: 0.8rem 1.4rem;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease, opacity 0.25s ease;
+    }
+
+    .btn:hover:not(:disabled),
+    .btn:focus-visible { background: var(--accent); color: #fff; }
+
+    .btn.quiet { border-color: var(--hairline); color: var(--ink-soft); }
+    .btn:disabled { opacity: 0.35; cursor: default; }
+
+    .hint {
+      margin-top: 1.6rem;
+      font-size: 0.72rem;
+      color: var(--ink-soft);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <a class="back" href="../">← Portfolio</a>
+      <h1>Pas à Pas</h1>
+    </header>
+
+    <div class="tabs" role="tablist" id="tabs"></div>
+
+    <div class="stage" id="stage"></div>
+
+    <p class="note" id="note"></p>
+
+    <div class="controls">
+      <button class="btn quiet" id="prevBtn">← Retour</button>
+      <span class="counter" id="counter"></span>
+      <button class="btn" id="nextBtn">Suivant →</button>
+    </div>
+
+    <p class="hint">Page d'essai · flèches du clavier aussi</p>
+  </main>
+
+  <script>
+    (function () {
+      // ---------- Données ----------
+      // Un jeton : { id, t: contenu HTML, k: classe, from: ids d'origine }
+      // Une fraction : { frac: true, num: [jetons], den: [jetons] }
+      // fx : animation jouée en arrivant sur l'étape (en avançant seulement)
+
+      function T(id, t, k, from) { return { id: id, t: t, k: k || "", from: from || null }; }
+      function F(num, den) { return { frac: true, num: num, den: den }; }
+
+      var X = "<i>x</i>";
+
+      var DEMOS = [
+        {
+          title: "−( … )",
+          steps: [
+            {
+              expr: [T("c5", "5"), T("m", "−", "op"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
+              hl: ["m"],
+              note: "Point de départ. Devant la parenthèse, un signe <b>−</b>. C'est ici qu'on se trompe le plus souvent."
+            },
+            {
+              expr: [T("c5", "5"), T("p1", "+", "op"), T("m", "(−1)"), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
+              hl: ["m"],
+              note: "Soustraire, c'est ajouter l'opposé : <b>− ( … )</b> veut dire <b>+ (−1) · ( … )</b>."
+            },
+            {
+              fx: { type: "touch", src: "m", targets: ["a", "sb", "sc"] },
+              expr: [T("c5", "5"), T("sa", "−", "op"), T("a", "2" + X), T("sb", "+", "op"), T("b", "3"), T("sc", "−", "op"), T("c", X)],
+              signs: ["sa", "sb", "sc"],
+              note: "Le (−1) va toucher <b>chaque</b> terme de la parenthèse. Chaque signe s'inverse : +2<i>x</i> devient −2<i>x</i>, −3 devient +3, +<i>x</i> devient −<i>x</i>."
+            },
+            {
+              expr: [T("c5", "5"), T("sb", "+", "op"), T("b", "3"), T("sa", "−", "op"), T("a", "2" + X), T("sc", "−", "op"), T("c", X)],
+              hl: ["c5", "sb", "b"],
+              note: "On regroupe les nombres ensemble et les <i>x</i> ensemble. Chaque terme voyage <b>avec son signe</b>."
+            },
+            {
+              fx: { type: "meet", ids: ["c5", "sb", "b"] },
+              expr: [T("n8", "8", "", ["c5", "sb", "b"]), T("sa", "−", "op"), T("a", "2" + X), T("sc", "−", "op"), T("c", X)],
+              hl: ["sa", "a", "sc", "c"],
+              note: "5 + 3 = 8."
+            },
+            {
+              fx: { type: "meet", ids: ["a", "sc", "c"] },
+              expr: [T("n8", "8"), T("sa", "−", "op"), T("x3", "3" + X, "", ["a", "sc", "c"])],
+              note: "−2<i>x</i> − <i>x</i> = −3<i>x</i>, car (−2) + (−1) = −3. Résultat : <b>8 − 3<i>x</i></b>, sans sauter d'étape."
+            }
+          ]
+        },
+        {
+          title: "Opposés",
+          steps: [
+            {
+              expr: [T("a", "3" + X), T("sb", "+", "op"), T("b", "2"), T("sc", "−", "op"), T("c", "3" + X), T("sd", "+", "op"), T("d", "5")],
+              note: "Point de départ."
+            },
+            {
+              expr: [T("a", "3" + X), T("sb", "+", "op"), T("b", "2"), T("sc", "−", "op"), T("c", "3" + X), T("sd", "+", "op"), T("d", "5")],
+              hl: ["a", "sc", "c"],
+              note: "+3<i>x</i> et −3<i>x</i> sont <b>opposés</b> : même valeur, signes contraires."
+            },
+            {
+              expr: [T("a", "3" + X), T("sc", "−", "op"), T("c", "3" + X), T("sb", "+", "op"), T("b", "2"), T("sd", "+", "op"), T("d", "5")],
+              hl: ["a", "sc", "c"],
+              note: "On les rapproche. L'ordre d'une somme ne change rien, tant que chacun garde son signe."
+            },
+            {
+              fx: { type: "meet", ids: ["a", "sc", "c"] },
+              expr: [T("z", "0", "", ["a", "sc", "c"]), T("sb", "+", "op"), T("b", "2"), T("sd", "+", "op"), T("d", "5")],
+              hl: ["z"],
+              note: "3<i>x</i> − 3<i>x</i> = 0. Ils se touchent et s'annulent."
+            },
+            {
+              expr: [T("b", "2"), T("sd", "+", "op"), T("d", "5")],
+              note: "0 est neutre pour l'addition : 0 + 2 = 2. On peut l'effacer."
+            },
+            {
+              fx: { type: "meet", ids: ["b", "sd", "d"] },
+              expr: [T("n7", "7", "", ["b", "sd", "d"])],
+              note: "2 + 5 = 7. Résultat : <b>7</b>."
+            }
+          ]
+        },
+        {
+          title: "Fraction",
+          steps: [
+            {
+              expr: [F([T("n6", "6"), T("nx", X)], [T("d9", "9")])],
+              note: "Point de départ : 6<i>x</i> sur 9."
+            },
+            {
+              expr: [F(
+                [T("n2", "2", "", ["n6"]), T("o1", "·", "op dot", ["n6"]), T("n3", "3", "", ["n6"]), T("o2", "·", "op dot"), T("nx", X)],
+                [T("d3", "3", "", ["d9"]), T("o3", "·", "op dot", ["d9"]), T("d3b", "3", "", ["d9"])]
+              )],
+              note: "On écrit chaque nombre comme un <b>produit de facteurs</b> : 6 = 2 · 3 et 9 = 3 · 3."
+            },
+            {
+              expr: [F(
+                [T("n2", "2"), T("o1", "·", "op dot"), T("n3", "3"), T("o2", "·", "op dot"), T("nx", X)],
+                [T("d3", "3"), T("o3", "·", "op dot"), T("d3b", "3")]
+              )],
+              hl: ["n3", "d3"],
+              note: "Le facteur 3 est présent <b>en haut et en bas</b>."
+            },
+            {
+              fx: { type: "meet", ids: ["n3", "d3"] },
+              expr: [F(
+                [T("n2", "2"), T("o2", "·", "op dot"), T("nx", X)],
+                [T("d3b", "3")]
+              )],
+              note: "3 ÷ 3 = 1. Diviser le haut et le bas par le même facteur non nul ne change pas la valeur."
+            },
+            {
+              expr: [F([T("n2", "2"), T("nx", X)], [T("d3b", "3")])],
+              note: "Résultat : <b>2<i>x</i> sur 3</b>. Attention : on simplifie des <b>facteurs</b> (liés par ×), jamais des termes d'une somme. (<i>x</i> + 3) sur 3 n'est pas <i>x</i>."
+            }
+          ]
+        }
+      ];
+
+      // ---------- Éléments ----------
+
+      var stage = document.getElementById("stage");
+      var noteEl = document.getElementById("note");
+      var counterEl = document.getElementById("counter");
+      var prevBtn = document.getElementById("prevBtn");
+      var nextBtn = document.getElementById("nextBtn");
+      var tabsEl = document.getElementById("tabs");
+
+      var demoIndex = 0;
+      var cur = 0;
+      var busy = false;
+      var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var SPEED = reduced ? 0.01 : 1;
+
+      function ms(n) { return n * SPEED; }
+      function wait(n) { return new Promise(function (r) { setTimeout(r, ms(n)); }); }
+      function done(anim) { return anim.finished.catch(function () {}); }
+
+      // ---------- Rendu ----------
+
+      function tokenEl(tok, step) {
+        var el = document.createElement("span");
+        el.className = "tok " + tok.k;
+        el.dataset.id = tok.id;
+        if (tok.from) el.dataset.from = tok.from.join(",");
+        if (step.hl && step.hl.indexOf(tok.id) >= 0) el.classList.add("hl");
+        if (step.signs && step.signs.indexOf(tok.id) >= 0) el.classList.add("sign-hl");
+        var inner = document.createElement("span");
+        inner.className = "in";
+        inner.innerHTML = tok.t;
+        el.appendChild(inner);
+        return el;
+      }
+
+      function build(step) {
+        stage.innerHTML = "";
+        var expr = document.createElement("div");
+        expr.className = "expr";
+        step.expr.forEach(function (item) {
+          if (item.frac) {
+            var f = document.createElement("span");
+            f.className = "frac";
+            var num = document.createElement("span");
+            num.className = "row";
+            item.num.forEach(function (t) { num.appendChild(tokenEl(t, step)); });
+            var bar = document.createElement("span");
+            bar.className = "bar";
+            var den = document.createElement("span");
+            den.className = "row";
+            item.den.forEach(function (t) { den.appendChild(tokenEl(t, step)); });
+            f.appendChild(num);
+            f.appendChild(bar);
+            f.appendChild(den);
+            expr.appendChild(f);
+          } else {
+            expr.appendChild(tokenEl(item, step));
+          }
+        });
+        stage.appendChild(expr);
+      }
+
+      function snapshot() {
+        var base = stage.getBoundingClientRect();
+        var map = {};
+        stage.querySelectorAll(".tok").forEach(function (el) {
+          var r = el.getBoundingClientRect();
+          map[el.dataset.id] = {
+            el: el,
+            x: r.left - base.left,
+            y: r.top - base.top,
+            w: r.width,
+            h: r.height,
+            html: el.querySelector(".in").innerHTML
+          };
+        });
+        return map;
+      }
+
+      function center(s) { return { x: s.x + s.w / 2, y: s.y + s.h / 2 }; }
+
+      function ghostOf(s, extraClass) {
+        var g = document.createElement("span");
+        g.className = "ghost " + (extraClass || "");
+        g.style.left = s.x + "px";
+        g.style.top = s.y + "px";
+        g.style.width = s.w + "px";
+        g.style.height = s.h + "px";
+        g.innerHTML = s.html;
+        stage.appendChild(g);
+        return g;
+      }
+
+      // ---------- Effets ----------
+
+      function fxTouch(fx) {
+        var snap = snapshot();
+        var src = snap[fx.src];
+        if (!src) return Promise.resolve();
+        var g = ghostOf(src, "traveller");
+        g.innerHTML = "−1";
+        src.el.style.opacity = "0.25";
+        var pos = { x: 0, y: 0 };
+
+        var chain = wait(150);
+        fx.targets.forEach(function (id) {
+          var t = snap[id];
+          if (!t) return;
+          chain = chain.then(function () {
+            var to = {
+              x: center(t).x - center(src).x,
+              y: t.y - src.y - src.h * 0.75
+            };
+            var mid = { x: (pos.x + to.x) / 2, y: Math.min(pos.y, to.y) - 34 };
+            var a = g.animate([
+              { transform: "translate(" + pos.x + "px," + pos.y + "px) scale(0.7)" },
+              { transform: "translate(" + mid.x + "px," + mid.y + "px) scale(0.7)" },
+              { transform: "translate(" + to.x + "px," + to.y + "px) scale(0.7)" }
+            ], { duration: ms(520), easing: "ease-in-out", fill: "forwards" });
+            pos = to;
+            return done(a).then(function () {
+              var hit = t.el.animate([
+                { transform: "scale(1)", color: "var(--ink)" },
+                { transform: "scale(1.3)", color: "#b5523b" },
+                { transform: "scale(1)", color: "#b5523b" }
+              ], { duration: ms(380), easing: "ease-out", fill: "forwards" });
+              return done(hit);
+            });
+          });
+        });
+
+        return chain.then(function () {
+          var out = g.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms(250), fill: "forwards" });
+          return done(out).then(function () { g.remove(); });
+        });
+      }
+
+      function fxMeet(fx, vanished) {
+        var snap = snapshot();
+        var parts = fx.ids.map(function (id) { return snap[id]; }).filter(Boolean);
+        if (!parts.length) return Promise.resolve();
+        var cx = 0, cy = 0;
+        parts.forEach(function (p) { var c = center(p); cx += c.x; cy += c.y; });
+        cx /= parts.length; cy /= parts.length;
+
+        parts.forEach(function (p) { p.el.classList.add("hl"); });
+
+        return wait(350).then(function () {
+          var anims = parts.map(function (p) {
+            var c = center(p);
+            vanished[p.el.dataset.id] = true;
+            return done(p.el.animate([
+              { transform: "translate(0,0) scale(1)", opacity: 1 },
+              { transform: "translate(" + (cx - c.x) * 0.85 + "px," + (cy - c.y) * 0.85 + "px) scale(0.9)", opacity: 1, offset: 0.7 },
+              { transform: "translate(" + (cx - c.x) + "px," + (cy - c.y) + "px) scale(0.3)", opacity: 0 }
+            ], { duration: ms(650), easing: "ease-in", fill: "forwards" }));
+          });
+          return Promise.all(anims);
+        });
+      }
+
+      // ---------- Transition entre deux étapes ----------
+
+      function transition(to, forward) {
+        var demo = DEMOS[demoIndex];
+        var step = demo.steps[to];
+        var vanished = {};
+        var pre = Promise.resolve();
+
+        if (forward && step.fx) {
+          if (step.fx.type === "touch") pre = fxTouch(step.fx);
+          if (step.fx.type === "meet") pre = fxMeet(step.fx, vanished);
+        }
+
+        return pre.then(function () {
+          var old = snapshot();
+          build(step);
+          var neu = snapshot();
+          var anims = [];
+
+          Object.keys(neu).forEach(function (id) {
+            var n = neu[id];
+            var o = old[id];
+            if (o && !vanished[id]) {
+              var dx = o.x - n.x, dy = o.y - n.y;
+              if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                anims.push(done(n.el.animate([
+                  { transform: "translate(" + dx + "px," + dy + "px)" },
+                  { transform: "translate(0,0)" }
+                ], { duration: ms(650), easing: "cubic-bezier(.5,0,.2,1)" })));
+              }
+              if (o.html !== n.html) {
+                anims.push(done(n.el.querySelector(".in").animate([
+                  { transform: "rotateX(90deg)", opacity: 0.2 },
+                  { transform: "rotateX(0deg)", opacity: 1 }
+                ], { duration: ms(450), easing: "ease-out" })));
+              }
+            } else {
+              var from = forward && n.el.dataset.from
+                ? n.el.dataset.from.split(",").map(function (f) { return old[f]; }).filter(Boolean)
+                : [];
+              if (from.length) {
+                var fx = 0, fy = 0;
+                from.forEach(function (f) { var c = center(f); fx += c.x; fy += c.y; });
+                fx /= from.length; fy /= from.length;
+                var c = center(n);
+                anims.push(done(n.el.animate([
+                  { transform: "translate(" + (fx - c.x) + "px," + (fy - c.y) + "px) scale(0.4)", opacity: 0 },
+                  { transform: "translate(0,0) scale(1)", opacity: 1 }
+                ], { duration: ms(600), easing: "cubic-bezier(.3,1.4,.5,1)" })));
+              } else {
+                anims.push(done(n.el.animate([
+                  { transform: "scale(0.5)", opacity: 0 },
+                  { transform: "scale(1)", opacity: 1 }
+                ], { duration: ms(450), delay: ms(200), easing: "ease-out", fill: "backwards" })));
+              }
+            }
+          });
+
+          // Jetons qui disparaissent sans effet : fondu sur place
+          Object.keys(old).forEach(function (id) {
+            if (neu[id] || vanished[id]) return;
+            var g = ghostOf(old[id]);
+            anims.push(done(g.animate([
+              { transform: "scale(1)", opacity: 1 },
+              { transform: "scale(0.6)", opacity: 0 }
+            ], { duration: ms(400), easing: "ease-in", fill: "forwards" })).then(function () { g.remove(); }));
+          });
+
+          return Promise.all(anims);
+        });
+      }
+
+      // ---------- Navigation ----------
+
+      function refreshUi() {
+        var demo = DEMOS[demoIndex];
+        var last = demo.steps.length - 1;
+        noteEl.innerHTML = demo.steps[cur].note;
+        counterEl.textContent = (cur + 1) + " / " + (last + 1);
+        prevBtn.disabled = busy || cur === 0;
+        nextBtn.disabled = busy;
+        nextBtn.textContent = cur === last ? "Recommencer ↺" : "Suivant →";
+      }
+
+      function go(to) {
+        var demo = DEMOS[demoIndex];
+        if (busy || to < 0 || to >= demo.steps.length || to === cur) return;
+        var forward = to === cur + 1;
+        busy = true;
+        cur = to;
+        refreshUi();
+        transition(to, forward).then(function () {
+          busy = false;
+          refreshUi();
+        });
+      }
+
+      function next() {
+        var last = DEMOS[demoIndex].steps.length - 1;
+        if (cur === last) {
+          if (busy) return;
+          cur = 0;
+          build(DEMOS[demoIndex].steps[0]);
+          refreshUi();
+        } else {
+          go(cur + 1);
+        }
+      }
+
+      function selectDemo(i) {
+        if (busy) return;
+        demoIndex = i;
+        cur = 0;
+        tabsEl.querySelectorAll(".tab").forEach(function (t, k) {
+          t.setAttribute("aria-selected", k === i ? "true" : "false");
+        });
+        build(DEMOS[i].steps[0]);
+        refreshUi();
+      }
+
+      DEMOS.forEach(function (d, i) {
+        var b = document.createElement("button");
+        b.className = "tab";
+        b.setAttribute("role", "tab");
+        b.textContent = d.title;
+        b.addEventListener("click", function () { selectDemo(i); });
+        tabsEl.appendChild(b);
+      });
+
+      nextBtn.addEventListener("click", next);
+      prevBtn.addEventListener("click", function () { go(cur - 1); });
+
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
+        if (e.key === "ArrowLeft") { e.preventDefault(); go(cur - 1); }
+      });
+
+      selectDemo(0);
+    })();
+  </script>
+</body>
+</html>
