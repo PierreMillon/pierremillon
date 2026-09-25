@@ -279,7 +279,7 @@
       font-size: 1.3rem;
       color: var(--accent);
     }
-    .stage-wrap.final .stage-divider::after { content: "="; }
+    .stage-wrap.final .stage-divider::after { content: attr(data-sign); }
 
     .stage-bottom { position: relative; }
 
@@ -424,6 +424,70 @@
       height: 2px;
       background: var(--ink);
       margin: 0.06em 0;
+    }
+
+    /* Droite des réels : une flèche de 0 vers la valeur. Multiplier par
+       −1 la fait tourner d'un demi-tour autour de 0 (démo −×−). */
+    .numline {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      bottom: 12px;
+      height: 44px;
+      pointer-events: none;
+    }
+
+    .numline .axis {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 14px;
+      height: 1px;
+      background: var(--ink-soft);
+    }
+
+    .numline .tick {
+      position: absolute;
+      top: 10px;
+      width: 1px;
+      height: 9px;
+      background: var(--ink-soft);
+    }
+
+    .numline .lab {
+      position: absolute;
+      top: 24px;
+      transform: translateX(-50%);
+      font-size: 0.62rem;
+      color: var(--ink-soft);
+    }
+
+    .numline .vec {
+      position: absolute;
+      left: 50%;
+      top: 13px;
+      height: 3px;
+      background: var(--sign);
+      transform-origin: 0 50%;
+    }
+
+    .numline .vec::after {
+      content: "";
+      position: absolute;
+      right: -2px;
+      top: -5px;
+      border-left: 9px solid var(--sign);
+      border-top: 6.5px solid transparent;
+      border-bottom: 6.5px solid transparent;
+    }
+
+    .shape {
+      width: 0.72em;
+      height: 0.72em;
+      vertical-align: -0.04em;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.4;
     }
 
     .ghost {
@@ -683,6 +747,144 @@
               note: "Résultat : <b>2<i>x</i> sur 3</b>. Attention : on simplifie des <b>facteurs</b> (liés par ×), jamais des termes d'une somme. (<i>x</i> + 3) sur 3 n'est pas <i>x</i>."
             }
           ]
+        },
+        {
+          title: "Piège",
+          steps: [
+            {
+              expr: [F([T("nx", X), T("p", "+", "op"), T("n3", "3")], [T("d3", "3")])],
+              note: "Point de départ : (<i>x</i> + 3) sur 3. Tentation : barrer les deux 3."
+            },
+            {
+              expr: [F([T("nx", X), T("p", "+", "op"), T("n3", "3")], [T("d3", "3")])],
+              hl: ["n3", "d3"],
+              note: "Le 3 du haut est un <b>terme</b> d'une somme, pas un facteur : on n'a pas le droit de le barrer."
+            },
+            {
+              expr: [F([T("nx", X)], [T("d3", "3")]), T("p", "+", "op"), F([T("n3", "3")], [T("d3b", "3", "", ["d3"])])],
+              note: "Diviser une somme, c'est diviser <b>chaque terme</b> : (<i>x</i> + 3)/3 = <i>x</i>/3 + 3/3."
+            },
+            {
+              fx: { type: "meet", ids: ["n3", "d3b"] },
+              expr: [F([T("nx", X)], [T("d3", "3")]), T("p", "+", "op"), T("one", "1", "", ["n3", "d3b"])],
+              note: "3/3 = 1 : là, oui, c'est un vrai facteur commun."
+            },
+            {
+              expr: [F([T("nx", X)], [T("d3", "3")]), T("p", "+", "op"), T("one", "1"), T("ne", "≠", "op"), T("wx", X)],
+              hl: ["ne"],
+              note: "Résultat : <i>x</i>/3 + 1, pas <i>x</i>. Vérifie avec <i>x</i> = 3 : (3 + 3)/3 = 2, alors que « <i>x</i> » donnerait 3."
+            }
+          ]
+        },
+        {
+          title: "−×−",
+          steps: [
+            {
+              line: 3,
+              expr: [T("a", "3")],
+              note: "3, c'est une flèche de 0 vers 3."
+            },
+            {
+              line: 3,
+              expr: [T("m", "(−1)"), T("d", "·", "op dot"), T("a", "3")],
+              hl: ["m"],
+              note: "Multiplier par −1, c'est faire <b>demi-tour</b> : la flèche tourne de 180° autour de 0."
+            },
+            {
+              fx: { type: "rotate", from: 0, to: 180 },
+              line: -3,
+              expr: [T("r", "−3", "", ["m", "d", "a"])],
+              note: "(−1)·3 = −3 : la flèche pointe de l'autre côté."
+            },
+            {
+              line: -3,
+              expr: [T("m2", "(−1)"), T("d2", "·", "op dot"), T("r", "(−3)")],
+              hl: ["m2"],
+              note: "Encore une fois (−1) : encore un demi-tour."
+            },
+            {
+              fx: { type: "rotate", from: 180, to: 360 },
+              line: 3,
+              expr: [T("a3", "3", "", ["m2", "d2", "r"])],
+              note: "Deux demi-tours = un tour complet : on revient à 3. Moins par moins donne plus — pas une règle magique, une rotation."
+            }
+          ]
+        },
+        {
+          title: "Distribuer",
+          steps: [
+            {
+              expr: [T("n2", "2"), T("d", "·", "op dot"), T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par")]
+            },
+            {
+              expr: [T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par"), T("pm", "+", "op", ["n2"]),
+                     T("lp2", "(", "par", ["n2"]), T("ob", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>", "", ["n2"]), T("pb", "+", "op", ["n2"]), T("qb", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>", "", ["n2"]), T("rp2", ")", "par", ["n2"])]
+            },
+            {
+              expr: [T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pm", "+", "op"), T("ob", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("pb", "+", "op"), T("qb", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>")],
+              hl: ["oa", "ob"]
+            },
+            {
+              expr: [T("k1", "2", "", ["ob"]), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("k2", "2", "", ["qb"]), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>")]
+            }
+          ]
+        },
+        {
+          title: "Factoriser",
+          steps: [
+            {
+              expr: [T("k1", "2"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("k2", "2"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>")]
+            },
+            {
+              expr: [T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pm", "+", "op", ["k1"]), T("ob", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>", "", ["k1"]), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("pb", "+", "op", ["k2"]), T("qb", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>", "", ["k2"])]
+            },
+            {
+              expr: [T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par"), T("pm", "+", "op"),
+                     T("lp2", "(", "par"), T("ob", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pb", "+", "op"), T("qb", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp2", ")", "par")],
+              hl: ["oa", "qa", "ob", "qb"]
+            },
+            {
+              fx: { type: "meet", ids: ["lp2", "ob", "pb", "qb", "rp2", "pm"] },
+              expr: [T("n2", "2", "", ["lp2", "ob", "pb", "qb", "rp2", "pm"]), T("d", "·", "op dot"), T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par")]
+            }
+          ]
+        },
+        {
+          title: "Équation",
+          split: true,
+          finalSign: "⇔",
+          steps: [
+            {
+              top: true,
+              expr: [T("a", "2" + X), T("p", "+", "op"), T("b", "3"), T("eq", "=", "op"), T("c", "7")],
+              magic: "« On passe le 3 de l'autre côté en changeant son signe. »"
+            },
+            {
+              expr: [T("a", "2" + X), T("p", "+", "op"), T("b", "3"), T("m1", "−", "op"), T("b1", "3"), T("eq", "=", "op"), T("c", "7"), T("m2", "−", "op"), T("b2", "3")],
+              hl: ["m1", "b1", "m2", "b2"],
+              note: "Rien ne « passe » de l'autre côté : on retire 3 <b>des deux côtés</b>, l'égalité reste vraie."
+            },
+            {
+              expr: [T("a", "2" + X), T("z", "0", "", ["p", "b", "m1", "b1"]), T("eq", "=", "op"), T("c", "7"), T("m2", "−", "op"), T("b2", "3")],
+              hl: ["z"]
+            },
+            {
+              top: true,
+              fx: { type: "meet", ids: ["c", "m2", "b2"] },
+              expr: [T("a", "2" + X), T("eq", "=", "op"), T("r4", "4", "", ["c", "m2", "b2"])],
+              magic: "« On passe le 2 de l'autre côté en divisant. »"
+            },
+            {
+              expr: [F([T("a", "2" + X)], [T("q1", "2")]), T("eq", "=", "op"), F([T("r4", "4")], [T("q2", "2")])],
+              hl: ["q1", "q2"],
+              note: "Même geste : on divise <b>les deux côtés</b> par 2."
+            },
+            {
+              top: true,
+              fx: { type: "meet", ids: ["r4", "q2"] },
+              expr: [T("xx", X, "", ["a", "q1"]), T("eq", "=", "op"), T("r2", "2", "", ["r4", "q2"])]
+            }
+          ]
         }
       ];
 
@@ -781,11 +983,53 @@
         return expr;
       }
 
+      function numLine(v) {
+        var nl = document.createElement("div");
+        nl.className = "numline";
+        var axis = document.createElement("span");
+        axis.className = "axis";
+        nl.appendChild(axis);
+        for (var k = -4; k <= 4; k++) {
+          var left = (50 + k * 12.5) + "%";
+          var t = document.createElement("span");
+          t.className = "tick";
+          t.style.left = left;
+          nl.appendChild(t);
+          if (k % 2 === 0 || Math.abs(k) === 3) {
+            var l = document.createElement("span");
+            l.className = "lab";
+            l.style.left = left;
+            l.textContent = k < 0 ? "−" + (-k) : String(k);
+            nl.appendChild(l);
+          }
+        }
+        var vec = document.createElement("span");
+        vec.className = "vec";
+        vec.style.width = (Math.abs(v) * 12.5) + "%";
+        vec.style.transform = "rotate(" + (v < 0 ? 180 : 0) + "deg)";
+        nl.appendChild(vec);
+        return nl;
+      }
+
       function build(step) {
         stage.innerHTML = "";
         var expr = buildExprEl(step, false);
         stage.appendChild(expr);
         fitOneLine(expr, stage);
+        if (step.line !== undefined) stage.appendChild(numLine(step.line));
+      }
+
+      // Multiplier par −1 : la flèche tourne d'un demi-tour autour de 0,
+      // lentement, dans le plan — elle ne « saute » pas de 3 à −3.
+      function fxRotate(fx) {
+        var vec = stage.querySelector(".numline .vec");
+        if (!vec) return Promise.resolve();
+        return wait(500).then(function () {
+          return done(vec.animate([
+            { transform: "rotate(" + fx.from + "deg)" },
+            { transform: "rotate(" + fx.to + "deg)" }
+          ], { duration: ms(2600), easing: "cubic-bezier(.45,0,.25,1)", fill: "forwards" }));
+        }).then(function () { return wait(400); });
       }
 
       // ---------- Rangée du haut ("écrit normalement") ----------
@@ -831,6 +1075,7 @@
         return anchor;
       }
 
+      var stageDivider = document.querySelector(".stage-divider");
       var stageTopTag = document.querySelector(".stage-top .row-tag");
       var stageBottomTag = document.querySelector(".stage-bottom .row-tag");
 
@@ -849,6 +1094,9 @@
         if (!demo.split) { stageWrap.classList.remove("final"); return; }
         var isFinal = cur === demo.steps.length - 1;
         stageWrap.classList.toggle("final", isFinal);
+        // Une équation n'est pas égale à sa solution : elle lui est
+        // équivalente (mêmes solutions), d'où ⇔ plutôt que =.
+        stageDivider.dataset.sign = demo.finalSign || "=";
         updateRowTags(isFinal);
         var anchor = isFinal ? demo.steps[0] : topAnchorStep(demo, cur);
         if (anchor !== lastTopStep) {
@@ -1060,6 +1308,7 @@
         if (forward && step.fx) {
           if (step.fx.type === "touch") pre = fxTouch(step.fx);
           if (step.fx.type === "meet") pre = fxMeet(step.fx, vanished);
+          if (step.fx.type === "rotate") pre = fxRotate(step.fx);
         }
 
         return pre.then(function () {
@@ -1251,6 +1500,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v7", text: "Nouvelles démos : Piège ((x + 3)/3 ≠ x), −×− (multiplier par −1 = demi-tour sur la droite des réels), Distribuer / Factoriser avec des formes (rond, carré) sans texte, Équation (le même geste des deux côtés)." },
         { v: "v6", text: "Méthode de Singapour : au moment où deux nombres fusionnent (2 + 5, (−2) + (−1)), un cadre de dix (2 rangées de 5, comme à Singapour) apparaît et chaque nombre vient le remplir de jetons, puis tout se referme sur le résultat. Jetons jaunes = négatifs." },
         { v: "v5", text: "Distribution du −1 terme par terme, écrite en toutes lettres (−1)·(terme), avant de la simplifier. Phrases magiques sur la ligne du haut. Contrôles réduits à deux flèches." },
         { v: "v4", text: "Écran scindé écrit / détail sur la démo −( … ) : le haut montre la formule telle qu'on l'écrit à la main, le bas ne saute aucune étape. Retrait des commentaires sous l'animation." },

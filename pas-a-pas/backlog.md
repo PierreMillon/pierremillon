@@ -14,8 +14,8 @@ Tri : priorité décroissante.
 ## À faire
 
 - [ ] P1 — Retour sur la page d'essai : vitesse, lisibilité, clarté des explications
-- [ ] P1 — Démo « piège » : (x + 3) / 3 ≠ x, montrer pourquoi on ne peut pas simplifier
-- [ ] P2 — Démo dédiée « moins par moins = plus » : expliquée par une rotation à
+- [x] P1 — Démo « piège » : (x + 3) / 3 ≠ x, montrer pourquoi on ne peut pas simplifier
+- [x] P2 — Démo dédiée « moins par moins = plus » : expliquée par une rotation à
   180° sur l'axe des réels (multiplier par −1 = tourner), séparée de la démo
   −( … ) qui ne fait que la citer comme phrase magique
 - [x] P2 — Addition d'entiers façon Singapour, branchée sur `fxMeet`
@@ -25,12 +25,13 @@ Tri : priorité décroissante.
   ten frame + number bonds + stratégie « faire 10 », pas une ligne de
   carrés. Utilisé sur 2 + 5 (Opposés) et (−2) + (−1) (−( … )).
   Reste : nombres de signes contraires (annulation jeton à jeton).
-- [ ] P2 — Démo factorisation/distributivité avec des figures géométriques
+- [x] P2 — Démo factorisation/distributivité avec des figures géométriques
   simples (ex. un rond + un carré = un groupe ; deux fois ce groupe = facteur
   2 devant), pensée pour être comprise sans lire le français, et réversible
   (factoriser ↔ distribuer, dans les deux sens)
 - [ ] P2 — Mode jeu : l'élève choisit la transformation, l'animation valide ou montre l'erreur
-- [ ] P2 — Plus d'exemples : double distributivité, identités remarquables, équations (même opération des deux côtés)
+- [x] P2 — Équations (même opération des deux côtés, ⇔ à la fin)
+- [ ] P2 — Plus d'exemples : double distributivité, identités remarquables
 - [x] P2 — Ajouter au menu du portfolio (groupe maths)
 - [ ] P3 — Saisie libre d'une expression — **écarté pour l'instant** (voir
   ../VISION.md « portée volontairement limitée ») : on reste sur peu
