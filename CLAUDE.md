@@ -24,6 +24,10 @@ Un nouveau projet (jeu ou page d'essai) :
   rejouable — ex. un outil pédagogique comme `pas-a-pas/`), le dire
   explicitement dans le backlog : seule la partie technique de la charte
   s'applique alors
+- a un bouton « Historique » (ou ⓘ discret) accessible depuis l'écran
+  principal, qui ouvre la liste des versions — une ligne par version avec
+  ce qui a changé. À mettre à jour à chaque modification poussée sur ce
+  projet, jamais laissé en retard par rapport au code
 
 ## Fusion des PR
 
