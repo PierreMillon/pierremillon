@@ -30,6 +30,15 @@ Français / anglais, état sauvegardé en local (`extrapolation_state`),
 mise à jour automatique (script inline dans `index.html`), installable
 (`public/manifest.webmanifest`). Backlog : `../backlog.md`.
 
+**Onglet Bourse** : vrais cours mensuels, embarqués dans
+`src/data/markets.json` (S&P 500 — Shiller via `datasets/s-and-p-500`,
+or — `datasets/gold-prices`, Brent — `datasets/oil-prices`, 5 actions
+2000-2010 — `vega-datasets/stocks.csv`, tous sur GitHub), ou valeurs
+collées. On prédit le mois suivant au doigt, face à 5 méthodes (dont la
+naïve « = dernier cours », référence à battre), avec un test
+walk-forward sur toute la série. Pour mettre à jour les données,
+`python3 scripts/fetch-markets.py`, puis build.
+
 **https://pierremillon.github.io/pierremillon/extrapolation/**
 
 ## Stack
