@@ -59,6 +59,13 @@ Tri : priorité décroissante.
   continue (même avec « Réduire les animations ») ; légende « chiffre par
   chiffre » retirée ; français par défaut
 
+- [x] v6 — Badges-outils (règles fixées avec Pierre) : chaque badge gagné
+  devient un bouton en bas ; appuyé, il fait en accéléré animé les gestes
+  qu'il connaît et s'arrête au premier geste inconnu. Chaque badge inclut
+  ceux d'avant. Tous les badges gagnés sont affichés. Une réussite suffit
+  pour gagner un badge, même après le ralenti. Remplace « D'un coup »
+- [x] v6 — Réussite en bandeau en haut : le boulier reste visible
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
