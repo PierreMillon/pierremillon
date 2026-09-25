@@ -9,9 +9,15 @@ forcément tout cocher dès le prototype, mais toute décision qui s'en
 - **Une seule mécanique** par jeu. Pas d'empilement de systèmes.
 - **Design** : flat design, low poly, pixel art ou fil de fer — un style
   simple et assumé, pas de réalisme.
-- **Style filaire "vieux moniteur"** pour les jeux qui l'adoptent : pensé
-  pour rester lisible avec tout profil de handicap visuel (contraste fort,
-  pas de dépendance à la seule couleur).
+- **Esthétique par défaut : oscilloscope / vieux moniteur.** Fond noir (ou
+  quasi noir), tracé fin en vert phosphore (une seule couleur dominante,
+  pas de dégradé), lignes vectorielles plutôt que des formes pleines —
+  l'esprit des tout premiers écrans à tube, construits sur un
+  oscilloscope. C'est le style des derniers jeux faits par Pierre ; à
+  utiliser par défaut pour un nouveau jeu, sauf raison contraire (un autre
+  style listé ci-dessus reste possible si le jeu s'y prête mieux). Pensé
+  pour rester lisible avec tout profil de handicap visuel : le fort
+  contraste noir/vert porte l'information, jamais une teinte seule.
 - **Lore** sur fond d'humour et de culture absurde.
 - **Accessibilité de la difficulté** : un enfant de 3 ans doit pouvoir
   jouer et s'amuser dès la première minute ; terminer le jeu à 100%

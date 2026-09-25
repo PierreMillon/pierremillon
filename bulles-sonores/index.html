@@ -9,16 +9,18 @@
   <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
+    /* Oscilloscope / vieux moniteur — palette fixe, jamais d'ivoire ici
+       (voir REGLES-JEUX.md : esthétique par défaut du catalogue) */
     :root {
-      --bg: #faf8f4;
-      --bg-soft: #f2efe8;
-      --ink: #1c1a17;
-      --ink-soft: #6f6a60;
-      --hairline: #ddd6c9;
-      --accent: #b08d57;
-      --bad: #b5523b;
+      --bg: #05100a;
+      --bg-soft: #0a1a12;
+      --ink: #3be08a;
+      --ink-soft: #2a8f5c;
+      --hairline: #123322;
+      --accent: #6dffb0;
+      --accent-soft: rgba(61, 224, 138, 0.16);
     }
 
     * { box-sizing: border-box; }
@@ -30,7 +32,7 @@
       background: var(--bg);
       background-image: radial-gradient(circle at 50% 0%, var(--bg-soft), var(--bg) 60%);
       color: var(--ink);
-      font-family: "Jost", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       -webkit-font-smoothing: antialiased;
       display: flex;
       flex-direction: column;
@@ -61,64 +63,113 @@
 
     .back:hover { color: var(--accent); }
 
+    .subline {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 0.3rem;
+    }
+
+    .hist-btn {
+      font-family: inherit;
+      color: var(--ink-soft);
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+
+    .hist-btn:hover { color: var(--accent); }
+
+    .hist-list {
+      width: 100%;
+      max-width: 22rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      text-align: left;
+      max-height: 50vh;
+      overflow-y: auto;
+    }
+
+    .hist-list li {
+      padding: 0.7rem 0;
+      border-top: 1px solid var(--hairline);
+      font-size: 0.85rem;
+      line-height: 1.5;
+      color: var(--ink-soft);
+    }
+
+    .hist-list li:last-child { border-bottom: 1px solid var(--hairline); }
+
+    .hist-list b {
+      display: block;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-style: italic;
+      color: var(--accent);
+      margin-bottom: 0.1rem;
+    }
+
     h1 {
       margin: 0;
-      font-family: "Cormorant Garamond", Georgia, serif;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
       font-weight: 300;
       font-size: clamp(1.6rem, 6vw, 2.2rem);
       letter-spacing: 0.06em;
     }
 
-    .stats {
+    .styles {
       width: 100%;
       max-width: 560px;
       display: flex;
-      justify-content: space-between;
-      margin: 0.9rem 0 0.6rem;
-      padding: 0.6rem 0.25rem;
-      border-top: 1px solid var(--hairline);
-      border-bottom: 1px solid var(--hairline);
-      font-size: 0.72rem;
-      letter-spacing: 0.16em;
+      gap: 0.4rem;
+      margin: 1rem 0 0.8rem;
+    }
+
+    .style-btn {
+      flex: 1;
+      font-family: inherit;
+      font-size: 0.66rem;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--ink-soft);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      padding: 0.5rem 0.3rem;
+      cursor: pointer;
+      transition: border-color 0.25s ease, color 0.25s ease;
     }
 
-    .stats b {
-      font-family: "Cormorant Garamond", Georgia, serif;
-      font-style: italic;
-      font-weight: 400;
-      font-size: 1.05rem;
-      letter-spacing: 0.02em;
-      color: var(--accent);
-      margin-left: 0.35rem;
-    }
-
-    .status {
-      min-height: 1.6rem;
-      margin: 0.2rem 0 0.4rem;
-      font-family: "Cormorant Garamond", Georgia, serif;
-      font-style: italic;
-      font-size: 1.15rem;
-      color: var(--ink-soft);
-      text-align: center;
-      transition: color 0.3s ease;
-    }
-
-    .status.bad { color: var(--bad); }
-    .status.good { color: var(--accent); }
+    .style-btn[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
 
     .arena {
       position: relative;
       width: 100%;
       max-width: 560px;
       flex: 1;
-      min-height: 280px;
+      min-height: 340px;
       border-radius: 18px;
-      background: radial-gradient(circle at 50% 30%, #fffdf9, var(--bg-soft));
+      background: var(--bg-soft);
       border: 1px solid var(--hairline);
       overflow: hidden;
-      touch-action: manipulation;
+      touch-action: none;
+    }
+
+    .arena::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--hairline) 1px, transparent 1px),
+        linear-gradient(90deg, var(--hairline) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.3;
+      pointer-events: none;
     }
 
     .bubble {
@@ -126,40 +177,59 @@
       left: 0;
       top: 0;
       border-radius: 50%;
-      border: none;
       padding: 0;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: "Cormorant Garamond", Georgia, serif;
-      font-style: italic;
-      font-size: 1.05rem;
-      color: rgba(28, 26, 23, 0.55);
-      background:
-        radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.95) 0 12%, rgba(255, 255, 255, 0) 30%),
-        radial-gradient(circle at 50% 50%, hsla(var(--h), 70%, 80%, 0.35) 0 55%, hsla(var(--h), 60%, 62%, 0.75) 100%);
-      box-shadow:
-        inset 0 0 0 1.5px hsla(var(--h), 55%, 55%, 0.55),
-        0 6px 18px hsla(var(--h), 50%, 50%, 0.12);
-      transition: filter 0.15s ease;
+      margin: 0;
+      cursor: grab;
+      touch-action: none;
       will-change: transform;
+      background: var(--c);
+      border: 2px solid var(--ink);
     }
 
-    .bubble .label { opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
-    .show-notes .bubble .label { opacity: 1; }
+    .bubble.dragging { cursor: grabbing; z-index: 5; }
 
-    .bubble.lit {
-      filter: brightness(1.12) saturate(1.6);
-      box-shadow:
-        inset 0 0 0 2.5px hsla(var(--h), 70%, 45%, 0.9),
-        0 0 28px 6px hsla(var(--h), 80%, 60%, 0.55);
+    .bubble.spawn { animation: spawnIn 0.35s cubic-bezier(.3, 1.4, .5, 1) both; }
+    @keyframes spawnIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* Style « Gel mou » : remplissage plein, se déforme et reste mou au contact */
+    .arena[data-style="gel"] .bubble { box-shadow: inset 0 -6px 10px rgba(0,0,0,0.08); }
+
+    /* Style « Bulle de savon » : membrane fine, vibre, irise */
+    .arena[data-style="soap"] .bubble {
+      background: radial-gradient(circle at 34% 30%, rgba(160,255,210,0.55), transparent 45%), var(--c);
+      opacity: 0.72;
+      border-width: 1.5px;
     }
 
-    .bubble.wrong {
-      box-shadow:
-        inset 0 0 0 2.5px var(--bad),
-        0 0 24px 4px rgba(181, 82, 59, 0.45);
+    /* Style « Rebond simple » : plein et net, rebondit sans rester déformé */
+    .arena[data-style="bounce"] .bubble { box-shadow: none; }
+
+    /* Style « Oscilloscope » : contour seul, sans remplissage — la page
+       entière est déjà noir/vert phosphore (voir REGLES-JEUX.md), ce style
+       ne change que le tracé, pas la couleur */
+    .arena[data-style="wire"] .bubble {
+      background: transparent;
+      box-shadow: 0 0 7px rgba(61, 224, 138, 0.5), inset 0 0 7px rgba(61, 224, 138, 0.22);
+    }
+
+    .charge-ring {
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      border: 2px solid var(--ink);
+      opacity: 0;
+      transform: scale(0.3);
+      transition: opacity 0.08s linear;
+    }
+
+    .bubble.charging .charge-ring { opacity: 0.55; }
+
+    .particle {
+      position: absolute;
+      left: 0;
+      top: 0;
+      border-radius: 50%;
+      pointer-events: none;
     }
 
     .ring {
@@ -167,14 +237,9 @@
       left: 0;
       top: 0;
       border-radius: 50%;
-      border: 2px solid hsla(var(--h), 60%, 55%, 0.7);
+      border: 2px solid var(--ink);
       pointer-events: none;
-      animation: ring 0.55s ease-out forwards;
-    }
-
-    @keyframes ring {
-      from { opacity: 0.9; transform: var(--t) scale(1); }
-      to   { opacity: 0;   transform: var(--t) scale(1.7); }
+      opacity: 0.7;
     }
 
     .overlay {
@@ -187,10 +252,8 @@
       gap: 1rem;
       padding: 1.5rem;
       text-align: center;
-      background: rgba(250, 248, 244, 0.86);
-      backdrop-filter: blur(3px);
-      -webkit-backdrop-filter: blur(3px);
-      z-index: 5;
+      background: rgba(5, 16, 10, 0.94);
+      z-index: 6;
     }
 
     .overlay[hidden] { display: none; }
@@ -198,15 +261,15 @@
     .overlay p {
       margin: 0;
       max-width: 22rem;
-      font-size: 0.92rem;
+      font-size: 0.9rem;
       line-height: 1.6;
       color: var(--ink-soft);
     }
 
     .overlay .big {
-      font-family: "Cormorant Garamond", Georgia, serif;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
       font-weight: 300;
-      font-size: 2rem;
+      font-size: 1.8rem;
       color: var(--ink);
     }
 
@@ -221,35 +284,14 @@
       border-radius: 999px;
       padding: 0.8rem 1.8rem;
       cursor: pointer;
-      transition: background 0.25s ease, color 0.25s ease;
     }
 
-    .btn:hover, .btn:focus-visible { background: var(--accent); color: #fff; }
-
-    .controls {
-      width: 100%;
-      max-width: 560px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .hint {
       margin-top: 0.8rem;
-      gap: 0.8rem;
-    }
-
-    .link {
-      font-family: inherit;
       font-size: 0.68rem;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
       color: var(--ink-soft);
-      background: none;
-      border: none;
-      padding: 0.4rem 0;
-      cursor: pointer;
+      text-align: center;
     }
-
-    .link:hover, .link:focus-visible { color: var(--accent); }
-    .link:disabled { opacity: 0.35; cursor: default; }
   </style>
 </head>
 <body>
@@ -258,78 +300,91 @@
     <h1>Bulles Sonores</h1>
   </header>
 
-  <div class="stats">
-    <span>Niveau<b id="level">1</b></span>
-    <span>Vies<b id="lives">3</b></span>
-    <span>Record<b id="best">0</b></span>
+  <div class="subline">
+    <button class="hist-btn" id="histBtn">Historique</button>
   </div>
 
-  <div class="status" id="status">Écoute, puis rejoue.</div>
+  <div class="styles" id="styles" role="tablist" aria-label="Style visuel"></div>
 
-  <div class="arena" id="arena">
+  <div class="overlay" id="histOverlay" hidden>
+    <div class="big">Historique</div>
+    <ul class="hist-list" id="histList"></ul>
+    <button class="btn" id="histClose">Fermer</button>
+  </div>
+
+  <div class="arena" id="arena" data-style="wire">
     <div class="overlay" id="overlay">
-      <div class="big" id="overlayTitle">Bulles Sonores</div>
-      <p id="overlayText">Chaque bulle chante une note. Écoute la mélodie, retiens l'ordre, puis éclate les bulles dans le même ordre. Les bulles bougent : fie-toi à la couleur et au son, pas à la place.</p>
-      <button class="btn" id="startBtn">Commencer</button>
+      <div class="big">Bulles Sonores</div>
+      <p>Prototype de sensation, sans but pour l'instant. Glisse une bulle,
+      colle-en deux l'une contre l'autre, écarte-en une à deux doigts, ou
+      reste appuyé dessus pour la faire éclater.</p>
+      <button class="btn" id="startBtn">Toucher pour commencer</button>
     </div>
   </div>
 
-  <div class="controls">
-    <button class="link" id="replayBtn" disabled>Réécouter (−1 vie)</button>
-    <button class="link" id="notesBtn">Afficher les notes</button>
-  </div>
+  <p class="hint">Prototype de sensation · pas encore un jeu</p>
 
   <script>
     (function () {
-      // Gamme de do majeur, do4 → do5
-      var NOTES = [
-        { name: "do",  freq: 261.63, hue: 0 },
-        { name: "ré",  freq: 293.66, hue: 30 },
-        { name: "mi",  freq: 329.63, hue: 52 },
-        { name: "fa",  freq: 349.23, hue: 110 },
-        { name: "sol", freq: 392.00, hue: 175 },
-        { name: "la",  freq: 440.00, hue: 215 },
-        { name: "si",  freq: 493.88, hue: 265 },
-        { name: "do",  freq: 523.25, hue: 320 }
+      // ---------- Réglages ----------
+
+      var TARGET_COUNT = 5;
+      var MAX_COUNT = 7;
+      var RESPAWN_DELAY = [900, 2200]; // ms, borne min/max
+      var POP_HOLD_MS = 650;
+      var JITTER_PX = 10;           // tolérance de mouvement pour rester en "appui"
+      var SPLIT_DIST_FACTOR = 2.3;  // distance (× rayon) entre deux doigts qui déclenche la séparation
+      // Monochrome vert phosphore — plusieurs intensités, jamais une autre teinte
+      var COLORS = ["#3be08a", "#2fd17d", "#54e8a0", "#26c46f", "#6dffb0"];
+
+      // "wire" (oscilloscope) est le style par défaut du catalogue —
+      // voir REGLES-JEUX.md. Les trois autres restent en option.
+      var STYLES = [
+        { id: "wire", label: "Oscilloscope" },
+        { id: "gel", label: "Gel mou" },
+        { id: "soap", label: "Bulle de savon" },
+        { id: "bounce", label: "Rebond simple" }
       ];
-
-      // Notes disponibles selon le niveau : d'abord l'accord do-mi-sol-do
-      function notesForLevel(level) {
-        if (level < 4) return [0, 2, 4, 7];
-        if (level < 7) return [0, 1, 2, 4, 5, 7];
-        return [0, 1, 2, 3, 4, 5, 6, 7];
-      }
-
-      function speedForLevel(level) {
-        return 18 + level * 4; // px/s
-      }
 
       var arena = document.getElementById("arena");
       var overlay = document.getElementById("overlay");
-      var overlayTitle = document.getElementById("overlayTitle");
-      var overlayText = document.getElementById("overlayText");
       var startBtn = document.getElementById("startBtn");
-      var replayBtn = document.getElementById("replayBtn");
-      var notesBtn = document.getElementById("notesBtn");
-      var statusEl = document.getElementById("status");
-      var levelEl = document.getElementById("level");
-      var livesEl = document.getElementById("lives");
-      var bestEl = document.getElementById("best");
+      var stylesEl = document.getElementById("styles");
 
-      var audio = null;
+      var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      var SPEED = reduced ? 0.05 : 1;
+      function ms(n) { return n * SPEED; }
+
       var bubbles = [];
-      var sequence = [];
-      var step = 0;
-      var level = 1;
-      var lives = 3;
-      var best = 0;
-      var state = "idle"; // idle | playing | input | over
+      var nextId = 1;
+      var running = false;
       var lastTime = 0;
+      var style = "wire";
 
-      try { best = parseInt(localStorage.getItem("bulles-sonores-best"), 10) || 0; } catch (e) {}
-      bestEl.textContent = best;
+      try { style = localStorage.getItem("bulles-sonores-style") || "wire"; } catch (e) {}
+      arena.dataset.style = style;
+
+      // ---------- Style ----------
+
+      STYLES.forEach(function (s) {
+        var b = document.createElement("button");
+        b.className = "style-btn";
+        b.textContent = s.label;
+        b.setAttribute("aria-pressed", s.id === style ? "true" : "false");
+        b.addEventListener("click", function () {
+          style = s.id;
+          arena.dataset.style = style;
+          stylesEl.querySelectorAll(".style-btn").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
+          b.setAttribute("aria-pressed", "true");
+          try { localStorage.setItem("bulles-sonores-style", style); } catch (e) {}
+        });
+        stylesEl.appendChild(b);
+      });
 
       // ---------- Son ----------
+
+      var audio = null;
+      var theremin = null; // { osc, gain }
 
       function initAudio() {
         if (!audio) {
@@ -339,130 +394,329 @@
         if (audio && audio.state === "suspended") audio.resume();
       }
 
-      function playNote(freq, duration) {
+      function playTone(freq, duration, gainPeak, type) {
         if (!audio) return;
         var t = audio.currentTime;
         var gain = audio.createGain();
         gain.connect(audio.destination);
         gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.28, t + 0.015);
+        gain.gain.exponentialRampToValueAtTime(gainPeak || 0.2, t + 0.012);
         gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
-
         var osc = audio.createOscillator();
-        osc.type = "sine";
-        osc.frequency.setValueAtTime(freq * 1.03, t);
-        osc.frequency.exponentialRampToValueAtTime(freq, t + 0.05); // petit « bloup » de bulle
+        osc.type = type || "sine";
+        osc.frequency.setValueAtTime(freq, t);
         osc.connect(gain);
-
-        var shimmer = audio.createOscillator();
-        var shimmerGain = audio.createGain();
-        shimmer.type = "triangle";
-        shimmer.frequency.value = freq * 2;
-        shimmerGain.gain.value = 0.18;
-        shimmer.connect(shimmerGain).connect(gain);
-
         osc.start(t);
-        shimmer.start(t);
-        osc.stop(t + duration + 0.05);
-        shimmer.stop(t + duration + 0.05);
+        osc.stop(t + duration + 0.03);
       }
 
-      function playBuzz() {
+      function playPop(big) {
         if (!audio) return;
         var t = audio.currentTime;
         var gain = audio.createGain();
         gain.connect(audio.destination);
-        gain.gain.setValueAtTime(0.0001, t);
-        gain.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+        gain.gain.setValueAtTime(0.22, t);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 0.35 : 0.22));
         var osc = audio.createOscillator();
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(140, t);
-        osc.frequency.exponentialRampToValueAtTime(90, t + 0.4);
+        osc.type = "square";
+        osc.frequency.setValueAtTime(big ? 340 : 520, t);
+        osc.frequency.exponentialRampToValueAtTime(big ? 90 : 160, t + (big ? 0.3 : 0.18));
         osc.connect(gain);
         osc.start(t);
-        osc.stop(t + 0.45);
+        osc.stop(t + 0.4);
+      }
+
+      function thereminStart() {
+        if (!audio || theremin) return;
+        var gain = audio.createGain();
+        gain.gain.setValueAtTime(0.0001, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.1, audio.currentTime + 0.08);
+        gain.connect(audio.destination);
+        var osc = audio.createOscillator();
+        osc.type = "triangle";
+        osc.frequency.value = 400;
+        osc.connect(gain);
+        osc.start();
+        theremin = { osc: osc, gain: gain };
+      }
+
+      function thereminUpdate(freq) {
+        if (!theremin || !audio) return;
+        theremin.osc.frequency.setTargetAtTime(freq, audio.currentTime, 0.05);
+      }
+
+      function thereminStop() {
+        if (!theremin || !audio) return;
+        var t = audio.currentTime;
+        theremin.gain.gain.setTargetAtTime(0.0001, t, 0.05);
+        var osc = theremin.osc;
+        setTimeout(function () { try { osc.stop(); } catch (e) {} }, 220);
+        theremin = null;
       }
 
       // ---------- Bulles ----------
 
-      function arenaSize() {
-        return { w: arena.clientWidth, h: arena.clientHeight };
-      }
+      function arenaSize() { return { w: arena.clientWidth, h: arena.clientHeight }; }
 
-      function bubbleRadius(count) {
+      function baseRadius() {
         var s = arenaSize();
-        var r = Math.sqrt((s.w * s.h) / (count * Math.PI)) * 0.42;
-        return Math.max(30, Math.min(58, r));
+        return Math.max(28, Math.min(46, Math.sqrt((s.w * s.h) / (TARGET_COUNT * Math.PI)) * 0.4));
       }
 
-      function clearBubbles() {
-        bubbles.forEach(function (b) { b.el.remove(); });
-        bubbles = [];
-      }
-
-      function createBubbles(noteIndexes) {
-        clearBubbles();
+      function spawnBubble(x, y, r, animate) {
+        r = r || baseRadius();
         var s = arenaSize();
-        var r = bubbleRadius(noteIndexes.length);
-        var speed = speedForLevel(level);
-
-        noteIndexes.forEach(function (ni) {
-          var note = NOTES[ni];
-          var el = document.createElement("button");
-          el.className = "bubble";
-          el.style.setProperty("--h", note.hue);
-          el.style.width = el.style.height = (r * 2) + "px";
-          el.setAttribute("aria-label", note.name);
-          var label = document.createElement("span");
-          label.className = "label";
-          label.textContent = note.name;
-          el.appendChild(label);
-
-          // Placement sans chevauchement (quelques essais)
-          var x, y, tries = 0;
+        if (x === undefined) {
+          var tries = 0;
           do {
             x = r + Math.random() * Math.max(1, s.w - 2 * r);
             y = r + Math.random() * Math.max(1, s.h - 2 * r);
             tries++;
-          } while (tries < 60 && bubbles.some(function (o) {
-            return Math.hypot(o.x - x, o.y - y) < o.r + r + 6;
-          }));
+          } while (tries < 40 && bubbles.some(function (o) { return Math.hypot(o.x - x, o.y - y) < o.r + r + 4; }));
+        }
 
-          var angle = Math.random() * Math.PI * 2;
-          var b = {
-            note: ni,
-            el: el,
-            x: x,
-            y: y,
-            r: r,
-            vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed
-          };
+        var el = document.createElement("button");
+        el.className = "bubble" + (animate ? " spawn" : "");
+        el.style.setProperty("--c", COLORS[Math.floor(Math.random() * COLORS.length)]);
+        el.style.width = el.style.height = (r * 2) + "px";
+        var chargeRing = document.createElement("span");
+        chargeRing.className = "charge-ring";
+        el.appendChild(chargeRing);
 
-          el.addEventListener("pointerdown", function (ev) {
-            ev.preventDefault();
-            onBubble(b);
-          });
+        var angle = Math.random() * Math.PI * 2;
+        var speed = 5 + Math.random() * 6;
+        var b = {
+          id: nextId++,
+          el: el,
+          x: x, y: y, r: r,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          touches: {},      // pointerId -> { x, y } dans le repère de l'arène
+          dragTX: x, dragTY: y,
+          holdStart: 0,
+          holdPos: null,
+          impactAmp: 0,
+          impactAngle: 0,
+          wobble: 0
+        };
 
-          arena.appendChild(el);
-          bubbles.push(b);
-        });
-        render();
+        el.addEventListener("pointerdown", function (ev) { onDown(ev, b); });
+        el.addEventListener("pointermove", function (ev) { onMove(ev, b); });
+        el.addEventListener("pointerup", function (ev) { onUp(ev, b); });
+        el.addEventListener("pointercancel", function (ev) { onUp(ev, b); });
+
+        arena.appendChild(el);
+        bubbles.push(b);
+        applyTransform(b);
+        return b;
       }
+
+      function removeBubble(b) {
+        var i = bubbles.indexOf(b);
+        if (i >= 0) bubbles.splice(i, 1);
+        b.el.remove();
+        maybeRespawn();
+      }
+
+      function maybeRespawn() {
+        if (!running) return;
+        if (bubbles.length >= TARGET_COUNT) return;
+        var delay = RESPAWN_DELAY[0] + Math.random() * (RESPAWN_DELAY[1] - RESPAWN_DELAY[0]);
+        setTimeout(function () {
+          if (running && bubbles.length < TARGET_COUNT) spawnBubble(undefined, undefined, undefined, true);
+        }, ms(delay));
+      }
+
+      function burst(x, y, color, n) {
+        for (var i = 0; i < n; i++) {
+          var p = document.createElement("span");
+          p.className = "particle";
+          var size = 4 + Math.random() * 6;
+          p.style.width = p.style.height = size + "px";
+          p.style.background = color;
+          p.style.left = x + "px";
+          p.style.top = y + "px";
+          arena.appendChild(p);
+          var angle = Math.random() * Math.PI * 2;
+          var dist = 22 + Math.random() * 36;
+          var dx = Math.cos(angle) * dist, dy = Math.sin(angle) * dist;
+          var a = p.animate([
+            { transform: "translate(-50%,-50%) translate(0,0) scale(1)", opacity: 1 },
+            { transform: "translate(-50%,-50%) translate(" + dx + "px," + dy + "px) scale(0.2)", opacity: 0 }
+          ], { duration: ms(420 + Math.random() * 180), easing: "ease-out", fill: "forwards" });
+          a.finished.catch(function () {}).then(function () { p.remove(); });
+        }
+      }
+
+      function ringAt(x, y, r, color) {
+        var ring = document.createElement("div");
+        ring.className = "ring";
+        ring.style.borderColor = color || "var(--ink)";
+        ring.style.width = ring.style.height = (r * 2) + "px";
+        ring.style.left = (x - r) + "px";
+        ring.style.top = (y - r) + "px";
+        arena.appendChild(ring);
+        var a = ring.animate([
+          { opacity: 0.75, transform: "scale(1)" },
+          { opacity: 0, transform: "scale(1.8)" }
+        ], { duration: ms(500), easing: "ease-out", fill: "forwards" });
+        a.finished.catch(function () {}).then(function () { ring.remove(); });
+      }
+
+      // ---------- Rendu (déformation par style) ----------
+
+      function applyTransform(b) {
+        var amp = b.impactAmp;
+        var angle = b.impactAngle;
+        var sx = 1, sy = 1;
+
+        if (style === "soap") {
+          var w = 1 + Math.sin(b.wobble) * amp * 0.5;
+          sx = w; sy = w;
+        } else {
+          // gel / rebond / filaire : aplatissement dirigé le long du contact
+          var flat = Math.min(0.22, amp);
+          sx = 1 - flat;
+          sy = 1 + flat;
+        }
+
+        var pinchScale = "";
+        if (b.pinch) {
+          pinchScale = " scale(" + b.pinch.sx.toFixed(3) + "," + b.pinch.sy.toFixed(3) + ") rotate(" + b.pinch.angle.toFixed(2) + "rad)";
+          b.el.style.transform =
+            "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px)" + pinchScale;
+        } else {
+          b.el.style.transform =
+            "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px) rotate(" + angle.toFixed(3) + "rad) scale(" + sx.toFixed(3) + "," + sy.toFixed(3) + ") rotate(" + (-angle).toFixed(3) + "rad)";
+        }
+      }
+
+      function kick(b, amp, angle) {
+        if (amp > b.impactAmp) { b.impactAmp = amp; b.impactAngle = angle; }
+        b.wobble = 0;
+      }
+
+      // ---------- Pointeur : glisser / coller / écarter / rester appuyé ----------
+
+      function localPos(ev) {
+        var rect = arena.getBoundingClientRect();
+        return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      }
+
+      function onDown(ev, b) {
+        if (!running) return;
+        initAudio();
+        ev.preventDefault();
+        try { b.el.setPointerCapture(ev.pointerId); } catch (e) {}
+        var p = localPos(ev);
+        b.touches[ev.pointerId] = p;
+
+        var count = Object.keys(b.touches).length;
+        if (count === 1) {
+          b.el.classList.add("dragging");
+          b.dragTX = b.x; b.dragTY = b.y;
+          b.holdStart = performance.now();
+          b.holdPos = p;
+          thereminStart();
+        } else if (count === 2) {
+          // Un deuxième doigt arrive sur la même bulle : on annule l'appui
+          // long en cours et on entre en mode « écarter ».
+          b.holdStart = 0;
+          b.el.classList.remove("charging");
+        }
+      }
+
+      function onMove(ev, b) {
+        if (!b.touches[ev.pointerId]) return;
+        var p = localPos(ev);
+        b.touches[ev.pointerId] = p;
+        var ids = Object.keys(b.touches);
+
+        if (ids.length === 1) {
+          b.dragTX = p.x; b.dragTY = p.y;
+          if (b.holdPos && Math.hypot(p.x - b.holdPos.x, p.y - b.holdPos.y) > JITTER_PX) {
+            b.holdStart = 0; // a bougé : ce n'est plus un appui long
+          }
+          thereminUpdate(220 + (1 - clamp(p.y / arenaSize().h, 0, 1)) * 480);
+        } else if (ids.length === 2) {
+          var a = b.touches[ids[0]], c = b.touches[ids[1]];
+          var dx = c.x - a.x, dy = c.y - a.y;
+          var dist = Math.hypot(dx, dy);
+          b.x = (a.x + c.x) / 2;
+          b.y = (a.y + c.y) / 2;
+          var stretch = clamp(dist / (b.r * 2), 1, SPLIT_DIST_FACTOR + 0.4);
+          b.pinch = { sx: 1 / Math.sqrt(stretch), sy: stretch, angle: Math.atan2(dy, dx) };
+          if (dist > b.r * 2 * SPLIT_DIST_FACTOR) splitBubble(b, a, c, ids[0], ids[1]);
+        }
+      }
+
+      function onUp(ev, b) {
+        if (!b.touches[ev.pointerId]) return;
+        delete b.touches[ev.pointerId];
+        var ids = Object.keys(b.touches);
+
+        if (ids.length === 0) {
+          b.el.classList.remove("dragging", "charging");
+          b.vx = clamp((b.dragTX - b.x) * 6, -140, 140);
+          b.vy = clamp((b.dragTY - b.y) * 6, -140, 140);
+          thereminStop();
+        } else if (ids.length === 1) {
+          b.pinch = null;
+          var rest = b.touches[ids[0]];
+          b.dragTX = rest.x; b.dragTY = rest.y;
+        }
+      }
+
+      function splitBubble(b, posA, posC, idA, idC) {
+        var r2 = Math.max(20, b.r / Math.SQRT2);
+        delete b.touches[idA];
+        delete b.touches[idC];
+        removeBubble(b);
+        var one = spawnBubble(posA.x, posA.y, r2, true);
+        var two = spawnBubble(posC.x, posC.y, r2, true);
+        one.el.style.setProperty("--c", b.el.style.getPropertyValue("--c"));
+        two.el.style.setProperty("--c", b.el.style.getPropertyValue("--c"));
+        [[one, idA, posA], [two, idC, posC]].forEach(function (pair) {
+          var bub = pair[0], id = pair[1], pos = pair[2];
+          try { bub.el.setPointerCapture(Number(id)); } catch (e) {}
+          bub.touches[id] = pos;
+          bub.dragTX = pos.x; bub.dragTY = pos.y;
+          bub.el.classList.add("dragging");
+        });
+        playTone(560, 0.18, 0.16, "sawtooth");
+        playTone(700, 0.14, 0.12, "sawtooth");
+        ringAt(posA.x, posA.y, r2, "var(--ink)");
+        ringAt(posC.x, posC.y, r2, "var(--ink)");
+      }
+
+      function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+      // ---------- Boucle physique ----------
 
       function update(dt) {
         var s = arenaSize();
+
         bubbles.forEach(function (b) {
-          b.x += b.vx * dt;
-          b.y += b.vy * dt;
-          if (b.x < b.r)       { b.x = b.r;       b.vx = Math.abs(b.vx); }
-          if (b.x > s.w - b.r) { b.x = s.w - b.r; b.vx = -Math.abs(b.vx); }
-          if (b.y < b.r)       { b.y = b.r;       b.vy = Math.abs(b.vy); }
-          if (b.y > s.h - b.r) { b.y = s.h - b.r; b.vy = -Math.abs(b.vy); }
+          var ids = Object.keys(b.touches);
+          if (ids.length === 1 && !b.pinch) {
+            // Suivi souple du doigt : la bulle "rattrape" la cible, ne se
+            // téléporte pas — donne la sensation d'une masse molle tenue.
+            b.x += (b.dragTX - b.x) * Math.min(1, dt * 14);
+            b.y += (b.dragTY - b.y) * Math.min(1, dt * 14);
+          } else if (ids.length === 0) {
+            b.x += b.vx * dt;
+            b.y += b.vy * dt;
+            var bounced = false, angle = 0;
+            if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.6; bounced = true; angle = 0; }
+            if (b.x > s.w - b.r) { b.x = s.w - b.r; b.vx = -Math.abs(b.vx) * 0.6; bounced = true; angle = 0; }
+            if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.6; bounced = true; angle = Math.PI / 2; }
+            if (b.y > s.h - b.r) { b.y = s.h - b.r; b.vy = -Math.abs(b.vy) * 0.6; bounced = true; angle = Math.PI / 2; }
+            if (bounced) kick(b, 0.12, angle);
+            b.vx *= 0.99; b.vy *= 0.99;
+          }
         });
 
-        // Rebonds doux entre bulles
+        // Contacts entre bulles : on les repousse et on les déforme.
         for (var i = 0; i < bubbles.length; i++) {
           for (var j = i + 1; j < bubbles.length; j++) {
             var a = bubbles[i], c = bubbles[j];
@@ -471,200 +725,125 @@
             var min = a.r + c.r;
             if (dist < min) {
               var nx = dx / dist, ny = dy / dist;
-              var push = (min - dist) / 2;
-              a.x -= nx * push; a.y -= ny * push;
-              c.x += nx * push; c.y += ny * push;
-              var va = a.vx * nx + a.vy * ny;
-              var vc = c.vx * nx + c.vy * ny;
-              if (va - vc > 0) {
-                a.vx += (vc - va) * nx; a.vy += (vc - va) * ny;
-                c.vx += (va - vc) * nx; c.vy += (va - vc) * ny;
+              var overlap = (min - dist);
+              var wasTouching = a._touch === c;
+              if (!wasTouching) {
+                var speed = Math.hypot(a.vx - c.vx, a.vy - c.vy);
+                var impact = clamp(0.04 + speed / 260, 0.04, 0.2);
+                var ang = Math.atan2(ny, nx);
+                kick(a, impact, ang);
+                kick(c, impact, ang);
+                if (running) playTone(180 + Math.random() * 40, 0.12, clamp(0.05 + speed / 900, 0.04, 0.16));
               }
+              a._touch = c; c._touch = a;
+              // séparation douce (sauf la bulle activement tenue par un doigt seul)
+              var aFree = Object.keys(a.touches).length === 0;
+              var cFree = Object.keys(c.touches).length === 0;
+              var push = overlap / (aFree && cFree ? 2 : 1);
+              if (aFree) { a.x -= nx * push; a.y -= ny * push; }
+              if (cFree) { c.x += nx * push; c.y += ny * push; }
+              // Style gel : reste visuellement écrasé tant que le contact dure
+              if (style === "gel") {
+                var live = clamp(overlap / min, 0, 0.4);
+                if (live > a.impactAmp) { a.impactAmp = live; a.impactAngle = Math.atan2(ny, nx); }
+                if (live > c.impactAmp) { c.impactAmp = live; c.impactAngle = Math.atan2(ny, nx); }
+              }
+            } else {
+              if (a._touch === c) { a._touch = null; c._touch = null; }
             }
           }
         }
+
+        bubbles.forEach(function (b) {
+          b.x = clamp(b.x, b.r, s.w - b.r);
+          b.y = clamp(b.y, b.r, s.h - b.r);
+          if (style !== "gel" || (Object.keys(b.touches).length === 0 && !b._touch)) {
+            b.impactAmp *= Math.max(0, 1 - dt * 9);
+          }
+          b.wobble += dt * (reduced ? 2 : 16);
+
+          // Appui long -> éclatement
+          if (b.holdStart && Object.keys(b.touches).length === 1) {
+            var held = performance.now() - b.holdStart;
+            b.el.classList.add("charging");
+            var ring = b.el.querySelector(".charge-ring");
+            if (ring) ring.style.transform = "scale(" + clamp(held / POP_HOLD_MS, 0, 1).toFixed(2) + ")";
+            if (held / POP_HOLD_MS > 0.55 && Math.random() < 0.15) {
+              playTone(300 + held / 2, 0.05, 0.03, "square");
+            }
+            if (held > POP_HOLD_MS) {
+              popBubble(b);
+            }
+          } else {
+            b.el.classList.remove("charging");
+          }
+
+          applyTransform(b);
+        });
       }
 
-      function render() {
-        bubbles.forEach(function (b) {
-          b.el.style.transform = "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px)";
-        });
+      function popBubble(b) {
+        var color = b.el.style.getPropertyValue("--c");
+        burst(b.x, b.y, color, 10);
+        playPop(b.r > baseRadius() * 0.85);
+        removeBubble(b);
       }
 
       function loop(time) {
         var dt = Math.min(0.05, (time - lastTime) / 1000 || 0);
         lastTime = time;
-        if (state !== "idle" && state !== "over") update(dt);
-        render();
+        if (running) update(dt);
         requestAnimationFrame(loop);
       }
 
-      function flash(b, cls, ms) {
-        b.el.classList.add(cls);
-        setTimeout(function () { b.el.classList.remove(cls); }, ms);
-        if (cls === "lit") {
-          var ring = document.createElement("div");
-          ring.className = "ring";
-          ring.style.setProperty("--h", NOTES[b.note].hue);
-          ring.style.width = ring.style.height = (b.r * 2) + "px";
-          ring.style.setProperty("--t", "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px)");
-          arena.appendChild(ring);
-          setTimeout(function () { ring.remove(); }, 600);
-        }
-      }
+      // ---------- Démarrage ----------
 
-      function bubbleFor(noteIndex) {
-        for (var i = 0; i < bubbles.length; i++) {
-          if (bubbles[i].note === noteIndex) return bubbles[i];
-        }
-        return null;
-      }
-
-      // ---------- Jeu ----------
-
-      function setStatus(text, cls) {
-        statusEl.textContent = text;
-        statusEl.className = "status" + (cls ? " " + cls : "");
-      }
-
-      function updateStats() {
-        levelEl.textContent = level;
-        livesEl.textContent = lives;
-        bestEl.textContent = best;
-      }
-
-      // Mélodie : surtout des pas conjoints, quelques sauts
-      function makeSequence(available, length) {
-        var seq = [];
-        var pos = Math.floor(Math.random() * available.length);
-        for (var i = 0; i < length; i++) {
-          if (i > 0) {
-            var r = Math.random();
-            var move = r < 0.55 ? (Math.random() < 0.5 ? -1 : 1)
-                     : r < 0.8  ? (Math.random() < 0.5 ? -2 : 2)
-                     : r < 0.9  ? 0
-                     : Math.floor(Math.random() * available.length) - pos;
-            pos = Math.max(0, Math.min(available.length - 1, pos + move));
-          }
-          seq.push(available[pos]);
-        }
-        return seq;
-      }
-
-      function startLevel() {
-        var available = notesForLevel(level);
-        createBubbles(available);
-        sequence = makeSequence(available, level + 2);
-        updateStats();
-        setTimeout(playSequence, 500);
-      }
-
-      function playSequence() {
-        state = "playing";
-        replayBtn.disabled = true;
-        setStatus("Écoute…");
-        var tempo = Math.max(380, 650 - level * 20);
-        sequence.forEach(function (ni, k) {
-          setTimeout(function () {
-            var b = bubbleFor(ni);
-            playNote(NOTES[ni].freq, tempo / 1000 * 1.1);
-            if (b) flash(b, "lit", tempo * 0.7);
-          }, k * tempo);
-        });
-        setTimeout(function () {
-          state = "input";
-          step = 0;
-          replayBtn.disabled = lives <= 1;
-          setStatus("À toi : " + sequence.length + " notes.");
-        }, sequence.length * tempo + 150);
-      }
-
-      function onBubble(b) {
+      function start() {
         initAudio();
-        if (state !== "input") {
-          // Hors tour : on peut quand même écouter une bulle en attendant
-          if (state === "idle" || state === "over") return;
-          return;
-        }
-        playNote(NOTES[b.note].freq, 0.45);
-
-        if (b.note === sequence[step]) {
-          flash(b, "lit", 250);
-          step++;
-          var left = sequence.length - step;
-          if (left === 0) {
-            state = "playing";
-            setStatus("Juste !", "good");
-            if (level > best) {
-              best = level;
-              try { localStorage.setItem("bulles-sonores-best", String(best)); } catch (e) {}
-            }
-            level++;
-            setTimeout(startLevel, 900);
-          } else {
-            setStatus("Encore " + left + ".");
-          }
-        } else {
-          flash(b, "wrong", 450);
-          playBuzz();
-          lives--;
-          updateStats();
-          if (lives <= 0) {
-            gameOver();
-          } else {
-            state = "playing";
-            setStatus("Raté. Réécoute.", "bad");
-            setTimeout(playSequence, 1100);
-          }
-        }
-      }
-
-      function gameOver() {
-        state = "over";
-        replayBtn.disabled = true;
-        setStatus("Fin de partie.", "bad");
-        overlayTitle.textContent = "Niveau " + level;
-        overlayText.textContent = level - 1 > 0
-          ? "Tu as rejoué " + (level - 1) + " mélodie" + (level - 1 > 1 ? "s" : "") + " sans perdre le fil. Record : niveau " + best + "."
-          : "Pas encore de mélodie complète. Astuce : chante les notes dans ta tête.";
-        startBtn.textContent = "Rejouer";
-        setTimeout(function () { overlay.hidden = false; }, 700);
-      }
-
-      function newGame() {
-        initAudio();
-        level = 1;
-        lives = 3;
         overlay.hidden = true;
-        state = "playing";
-        startLevel();
+        running = true;
+        bubbles.slice().forEach(function (b) { b.el.remove(); });
+        bubbles = [];
+        for (var i = 0; i < TARGET_COUNT; i++) spawnBubble();
       }
 
-      startBtn.addEventListener("click", newGame);
+      startBtn.addEventListener("click", start);
 
-      replayBtn.addEventListener("click", function () {
-        if (state !== "input" || lives <= 1) return;
-        lives--;
-        updateStats();
-        playSequence();
+      // ---------- Historique ----------
+
+      var VERSIONS = [
+        { v: "v4", text: "Prototype de sensation affiné : moins de bulles à l'écran, contacts plus doux, correction du double-comptage au démarrage. Style « Oscilloscope » (fond noir, vert phosphore) par défaut." },
+        { v: "v3", text: "Refonte en prototype de sensation, sans but : glisser une bulle, en coller deux l'une contre l'autre, en écarter une à deux doigts, rester appuyé pour éclater. Quatre styles visuels au choix." },
+        { v: "v2", text: "Jeu de fusion (deux bulles de même note qui fusionnent, but : boucler une octave) — mis de côté au profit du prototype de sensation." },
+        { v: "v1", text: "Premier prototype : mémoriser une mélodie jouée par le jeu et la rejouer dans l'ordre, façon Simon." }
+      ];
+
+      var histBtn = document.getElementById("histBtn");
+      var histOverlay = document.getElementById("histOverlay");
+      var histList = document.getElementById("histList");
+      var histClose = document.getElementById("histClose");
+
+      VERSIONS.forEach(function (entry) {
+        var li = document.createElement("li");
+        var b = document.createElement("b");
+        b.textContent = entry.v;
+        li.appendChild(b);
+        li.appendChild(document.createTextNode(entry.text));
+        histList.appendChild(li);
       });
 
-      notesBtn.addEventListener("click", function () {
-        var on = arena.classList.toggle("show-notes");
-        notesBtn.textContent = on ? "Masquer les notes" : "Afficher les notes";
-      });
+      histBtn.addEventListener("click", function () { histOverlay.hidden = false; });
+      histClose.addEventListener("click", function () { histOverlay.hidden = true; });
 
       window.addEventListener("resize", function () {
         var s = arenaSize();
         bubbles.forEach(function (b) {
-          b.x = Math.min(Math.max(b.r, b.x), s.w - b.r);
-          b.y = Math.min(Math.max(b.r, b.y), s.h - b.r);
+          b.x = clamp(b.x, b.r, s.w - b.r);
+          b.y = clamp(b.y, b.r, s.h - b.r);
         });
       });
 
-      // Bulles décoratives derrière l'écran d'accueil
-      createBubbles(notesForLevel(1));
-      state = "idle";
+      for (var i = 0; i < 4; i++) spawnBubble();
       requestAnimationFrame(function (t) { lastTime = t; requestAnimationFrame(loop); });
     })();
   </script>
