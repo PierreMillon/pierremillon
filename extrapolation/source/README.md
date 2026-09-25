@@ -26,6 +26,10 @@ Les points sont reliés par une interpolation cubique monotone
 méthodes et le tableau d'écart moyen se recalculent en direct sur la
 courbe dessinée. Chaque méthode a un petit ⓘ explicatif.
 
+Français / anglais, état sauvegardé en local (`extrapolation_state`),
+mise à jour automatique (script inline dans `index.html`), installable
+(`public/manifest.webmanifest`). Backlog : `../backlog.md`.
+
 **https://pierremillon.github.io/pierremillon/extrapolation/**
 
 ## Stack
