@@ -27,17 +27,16 @@
 
     html, body { height: 100%; }
 
+    /* Pas une fenêtre qui représente un oscilloscope : tout l'écran EST
+       l'oscilloscope. Le fond, c'est directement l'arène, plein cadre. */
     body {
       margin: 0;
+      height: 100vh;
+      height: 100dvh;
       background: var(--bg);
-      background-image: radial-gradient(circle at 50% 0%, var(--bg-soft), var(--bg) 60%);
       color: var(--ink);
       font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       -webkit-font-smoothing: antialiased;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 1.2rem 16px 1.5rem;
       overflow: hidden;
       -webkit-user-select: none;
       user-select: none;
@@ -45,9 +44,17 @@
       -webkit-touch-callout: none;
     }
 
+    .topbar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 5;
+      padding: 1rem 16px 0;
+    }
+
     header {
       width: 100%;
-      max-width: 560px;
       display: flex;
       align-items: baseline;
       justify-content: space-between;
@@ -66,7 +73,6 @@
 
     .subline {
       width: 100%;
-      max-width: 560px;
       display: flex;
       justify-content: flex-end;
       margin-top: 0.3rem;
@@ -125,10 +131,9 @@
 
     .styles {
       width: 100%;
-      max-width: 560px;
       display: flex;
       gap: 0.4rem;
-      margin: 1rem 0 0.8rem;
+      margin: 0.8rem 0 0;
     }
 
     .style-btn {
@@ -149,14 +154,12 @@
     .style-btn[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
 
     .arena {
-      position: relative;
-      width: 100%;
-      max-width: 560px;
-      flex: 1;
-      min-height: 340px;
-      border-radius: 18px;
-      background: var(--bg-soft);
-      border: 1px solid var(--hairline);
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--bg);
       overflow: hidden;
       touch-action: none;
     }
@@ -296,16 +299,20 @@
   </style>
 </head>
 <body>
-  <header>
-    <a class="back" href="../">← Portfolio</a>
-    <h1>Bulles Sonores</h1>
-  </header>
+  <div class="arena" id="arena" data-style="wire"></div>
 
-  <div class="subline">
-    <button class="hist-btn" id="histBtn">Historique</button>
+  <div class="topbar">
+    <header>
+      <a class="back" href="../">← Portfolio</a>
+      <h1>Bulles Sonores</h1>
+    </header>
+
+    <div class="subline">
+      <button class="hist-btn" id="histBtn">Historique</button>
+    </div>
+
+    <div class="styles" id="styles" role="tablist" aria-label="Style visuel"></div>
   </div>
-
-  <div class="styles" id="styles" role="tablist" aria-label="Style visuel"></div>
 
   <div class="overlay" id="histOverlay" hidden>
     <div class="big">Historique</div>
@@ -313,28 +320,29 @@
     <button class="btn" id="histClose">Fermer</button>
   </div>
 
-  <div class="arena" id="arena" data-style="wire">
-    <div class="overlay" id="overlay">
-      <div class="big">Bulles Sonores</div>
-      <p>Prototype de sensation, sans but pour l'instant. Glisse une bulle,
-      colle-en deux l'une contre l'autre, écarte-en une à deux doigts, ou
-      reste appuyé dessus pour la faire éclater.</p>
-      <button class="btn" id="startBtn">Toucher pour commencer</button>
-    </div>
-  </div>
-
-  <p class="hint">Prototype de sensation · pas encore un jeu</p>
-
   <script>
     (function () {
+      // Physique maison (pas de librairie externe — comme les autres jeux
+      // du catalogue) : glissé "sur glace" via un amortissement exponentiel
+      // faible, collisions cercle-cercle classiques, tout recalculé chaque
+      // image à partir des positions/rayons courants.
+
       // ---------- Réglages ----------
 
       var TARGET_COUNT = 5;
-      var MAX_COUNT = 7;
+      var MAX_COUNT = 8;
       var RESPAWN_DELAY = [900, 2200]; // ms, borne min/max
-      var POP_HOLD_MS = 650;
-      var JITTER_PX = 10;           // tolérance de mouvement pour rester en "appui"
-      var SPLIT_DIST_FACTOR = 2.3;  // distance (× rayon) entre deux doigts qui déclenche la séparation
+      var SPLIT_HOLD_MS = 650;   // appui simple maintenu -> la bulle se coupe en deux
+      var DOUBLE_TAP_MS = 320;   // fenêtre pour qu'un deuxième tap compte comme double-tap
+      var TAP_MAX_MS = 220;      // au-delà, un appui n'est plus un "tap" mais un maintien
+      var JITTER_PX = 10;        // tolérance de mouvement pour rester "stationnaire"
+      var SPLIT_DIST_FACTOR = 2.3; // distance (× rayon) entre deux doigts qui déclenche la séparation
+      var GROW_BUMP = 1.18;      // grossissement instantané au double-tap rapide
+      var GROW_RATE = 0.55;      // grossissement continu (rayon/s) en double-tap + maintien
+      var MAX_R_FACTOR = 2.2;    // ne grossit pas au-delà de ce multiple du rayon de départ
+      var MIN_R = 16;
+      var ICE_DAMPING = 0.32;    // amortissement par seconde — faible = glisse longtemps
+      var WALL_BOUNCE = 0.62;
       // Monochrome vert phosphore — plusieurs intensités, jamais une autre teinte
       var COLORS = ["#3be08a", "#2fd17d", "#54e8a0", "#26c46f", "#6dffb0"];
 
@@ -348,17 +356,16 @@
       ];
 
       var arena = document.getElementById("arena");
-      var overlay = document.getElementById("overlay");
-      var startBtn = document.getElementById("startBtn");
       var stylesEl = document.getElementById("styles");
 
       var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       var SPEED = reduced ? 0.05 : 1;
       function ms(n) { return n * SPEED; }
+      function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
       var bubbles = [];
       var nextId = 1;
-      var running = false;
+      var running = true;
       var lastTime = 0;
       var style = "wire";
 
@@ -368,21 +375,22 @@
       // ---------- Style ----------
 
       STYLES.forEach(function (s) {
-        var b = document.createElement("button");
-        b.className = "style-btn";
-        b.textContent = s.label;
-        b.setAttribute("aria-pressed", s.id === style ? "true" : "false");
-        b.addEventListener("click", function () {
+        var btn = document.createElement("button");
+        btn.className = "style-btn";
+        btn.textContent = s.label;
+        btn.setAttribute("aria-pressed", s.id === style ? "true" : "false");
+        btn.addEventListener("click", function () {
           style = s.id;
           arena.dataset.style = style;
           stylesEl.querySelectorAll(".style-btn").forEach(function (x) { x.setAttribute("aria-pressed", "false"); });
-          b.setAttribute("aria-pressed", "true");
+          btn.setAttribute("aria-pressed", "true");
           try { localStorage.setItem("bulles-sonores-style", style); } catch (e) {}
         });
-        stylesEl.appendChild(b);
+        stylesEl.appendChild(btn);
       });
 
-      // ---------- Son ----------
+      // ---------- Son (une octave plus bas : les aigus précédents étaient
+      // jugés "chelou") ----------
 
       var audio = null;
       var theremin = null; // { osc, gain }
@@ -411,31 +419,15 @@
         osc.stop(t + duration + 0.03);
       }
 
-      function playPop(big) {
-        if (!audio) return;
-        var t = audio.currentTime;
-        var gain = audio.createGain();
-        gain.connect(audio.destination);
-        gain.gain.setValueAtTime(0.22, t);
-        gain.gain.exponentialRampToValueAtTime(0.0001, t + (big ? 0.35 : 0.22));
-        var osc = audio.createOscillator();
-        osc.type = "square";
-        osc.frequency.setValueAtTime(big ? 340 : 520, t);
-        osc.frequency.exponentialRampToValueAtTime(big ? 90 : 160, t + (big ? 0.3 : 0.18));
-        osc.connect(gain);
-        osc.start(t);
-        osc.stop(t + 0.4);
-      }
-
       function thereminStart() {
         if (!audio || theremin) return;
         var gain = audio.createGain();
         gain.gain.setValueAtTime(0.0001, audio.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.1, audio.currentTime + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.09, audio.currentTime + 0.08);
         gain.connect(audio.destination);
         var osc = audio.createOscillator();
         osc.type = "triangle";
-        osc.frequency.value = 400;
+        osc.frequency.value = 200;
         osc.connect(gain);
         osc.start();
         theremin = { osc: osc, gain: gain };
@@ -455,6 +447,25 @@
         theremin = null;
       }
 
+      // Si l'onglet se ferme ou passe en arrière-plan en plein geste, le
+      // thérémin continue de jouer : couper net le contexte audio produit
+      // un petit "clic" désagréable. On coupe proprement avant.
+      function silenceNow() {
+        if (theremin) {
+          try {
+            theremin.gain.gain.cancelScheduledValues(audio.currentTime);
+            theremin.gain.gain.value = 0;
+            theremin.osc.stop();
+          } catch (e) {}
+          theremin = null;
+        }
+        if (audio && audio.state === "running") {
+          try { audio.suspend(); } catch (e) {}
+        }
+      }
+      document.addEventListener("visibilitychange", function () { if (document.hidden) silenceNow(); });
+      window.addEventListener("pagehide", silenceNow);
+
       // ---------- Bulles ----------
 
       function arenaSize() { return { w: arena.clientWidth, h: arena.clientHeight }; }
@@ -464,7 +475,7 @@
         return Math.max(28, Math.min(46, Math.sqrt((s.w * s.h) / (TARGET_COUNT * Math.PI)) * 0.4));
       }
 
-      function spawnBubble(x, y, r, animate) {
+      function spawnBubble(x, y, r, vx, vy, animate) {
         r = r || baseRadius();
         var s = arenaSize();
         if (x === undefined) {
@@ -475,6 +486,12 @@
             tries++;
           } while (tries < 40 && bubbles.some(function (o) { return Math.hypot(o.x - x, o.y - y) < o.r + r + 4; }));
         }
+        if (vx === undefined) {
+          var angle = Math.random() * Math.PI * 2;
+          var speed = 60 + Math.random() * 90; // vif au départ : la glace le laisse filer
+          vx = Math.cos(angle) * speed;
+          vy = Math.sin(angle) * speed;
+        }
 
         var el = document.createElement("button");
         el.className = "bubble" + (animate ? " spawn" : "");
@@ -484,21 +501,25 @@
         chargeRing.className = "charge-ring";
         el.appendChild(chargeRing);
 
-        var angle = Math.random() * Math.PI * 2;
-        var speed = 5 + Math.random() * 6;
         var b = {
           id: nextId++,
           el: el,
-          x: x, y: y, r: r,
-          vx: Math.cos(angle) * speed,
-          vy: Math.sin(angle) * speed,
-          touches: {},      // pointerId -> { x, y } dans le repère de l'arène
+          x: x, y: y, r: r, r0: r,
+          vx: vx, vy: vy,
+          touches: {},         // pointerId -> { x, y } dans le repère de l'arène
           dragTX: x, dragTY: y,
-          holdStart: 0,
-          holdPos: null,
+          history: [],         // derniers points {t,x,y} pendant un glisser, pour la vitesse de lâcher
+          pressStart: 0,
+          pressPos: null,
+          pressMoved: false,
+          isSecondTap: false,
+          growingContinuous: false,
+          splitTriggered: false,
+          lastReleaseTime: 0,
           impactAmp: 0,
           impactAngle: 0,
-          wobble: 0
+          wobble: 0,
+          _touch: null
         };
 
         el.addEventListener("pointerdown", function (ev) { onDown(ev, b); });
@@ -524,7 +545,7 @@
         if (bubbles.length >= TARGET_COUNT) return;
         var delay = RESPAWN_DELAY[0] + Math.random() * (RESPAWN_DELAY[1] - RESPAWN_DELAY[0]);
         setTimeout(function () {
-          if (running && bubbles.length < TARGET_COUNT) spawnBubble(undefined, undefined, undefined, true);
+          if (running && bubbles.length < TARGET_COUNT) spawnBubble(undefined, undefined, undefined, undefined, undefined, true);
         }, ms(delay));
       }
 
@@ -575,7 +596,6 @@
           var w = 1 + Math.sin(b.wobble) * amp * 0.5;
           sx = w; sy = w;
         } else {
-          // gel / rebond / filaire : aplatissement dirigé le long du contact
           var flat = Math.min(0.22, amp);
           sx = 1 - flat;
           sy = 1 + flat;
@@ -584,8 +604,7 @@
         var pinchScale = "";
         if (b.pinch) {
           pinchScale = " scale(" + b.pinch.sx.toFixed(3) + "," + b.pinch.sy.toFixed(3) + ") rotate(" + b.pinch.angle.toFixed(2) + "rad)";
-          b.el.style.transform =
-            "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px)" + pinchScale;
+          b.el.style.transform = "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px)" + pinchScale;
         } else {
           b.el.style.transform =
             "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px) rotate(" + angle.toFixed(3) + "rad) scale(" + sx.toFixed(3) + "," + sy.toFixed(3) + ") rotate(" + (-angle).toFixed(3) + "rad)";
@@ -593,11 +612,18 @@
       }
 
       function kick(b, amp, angle) {
+        if (!b) return;
         if (amp > b.impactAmp) { b.impactAmp = amp; b.impactAngle = angle; }
         b.wobble = 0;
       }
 
-      // ---------- Pointeur : glisser / coller / écarter / rester appuyé ----------
+      function setRadius(b, r) {
+        r = clamp(r, MIN_R, b.r0 * MAX_R_FACTOR);
+        b.r = r;
+        b.el.style.width = b.el.style.height = (r * 2) + "px";
+      }
+
+      // ---------- Pointeur : glisser / coller / écarter / tap / maintien ----------
 
       function localPos(ev) {
         var rect = arena.getBoundingClientRect();
@@ -614,15 +640,25 @@
 
         var count = Object.keys(b.touches).length;
         if (count === 1) {
+          var now = performance.now();
           b.el.classList.add("dragging");
           b.dragTX = b.x; b.dragTY = b.y;
-          b.holdStart = performance.now();
-          b.holdPos = p;
+          b.history = [{ t: now, x: p.x, y: p.y }];
+          b.pressStart = now;
+          b.pressPos = p;
+          b.pressMoved = false;
+          b.splitTriggered = false;
+          b.growingContinuous = false;
+          // Ce doigt arrive-t-il juste après un tap rapide ? On ne décide
+          // pas encore s'il s'agit d'un double-tap bref (grossit d'un coup)
+          // ou d'un double-tap maintenu (grossit en continu) — ça se
+          // tranche à la relâche, ou dans la boucle s'il reste appuyé.
+          b.isSecondTap = (now - b.lastReleaseTime) < DOUBLE_TAP_MS;
           thereminStart();
         } else if (count === 2) {
-          // Un deuxième doigt arrive sur la même bulle : on annule l'appui
-          // long en cours et on entre en mode « écarter ».
-          b.holdStart = 0;
+          // Un deuxième doigt arrive sur la même bulle : on annule le
+          // maintien en cours et on entre en mode « écarter ».
+          b.pressStart = 0;
           b.el.classList.remove("charging");
         }
       }
@@ -635,10 +671,13 @@
 
         if (ids.length === 1) {
           b.dragTX = p.x; b.dragTY = p.y;
-          if (b.holdPos && Math.hypot(p.x - b.holdPos.x, p.y - b.holdPos.y) > JITTER_PX) {
-            b.holdStart = 0; // a bougé : ce n'est plus un appui long
+          var now = performance.now();
+          b.history.push({ t: now, x: p.x, y: p.y });
+          while (b.history.length > 8) b.history.shift();
+          if (!b.pressMoved && b.pressPos && Math.hypot(p.x - b.pressPos.x, p.y - b.pressPos.y) > JITTER_PX) {
+            b.pressMoved = true;
           }
-          thereminUpdate(220 + (1 - clamp(p.y / arenaSize().h, 0, 1)) * 480);
+          thereminUpdate(110 + (1 - clamp(p.y / arenaSize().h, 0, 1)) * 240);
         } else if (ids.length === 2) {
           var a = b.touches[ids[0]], c = b.touches[ids[1]];
           var dx = c.x - a.x, dy = c.y - a.y;
@@ -655,12 +694,42 @@
         if (!b.touches[ev.pointerId]) return;
         delete b.touches[ev.pointerId];
         var ids = Object.keys(b.touches);
+        var now = performance.now();
 
         if (ids.length === 0) {
           b.el.classList.remove("dragging", "charging");
-          b.vx = clamp((b.dragTX - b.x) * 6, -140, 140);
-          b.vy = clamp((b.dragTY - b.y) * 6, -140, 140);
+          var held = b.pressStart ? now - b.pressStart : 999;
+          var quickTap = b.pressStart && !b.pressMoved && held < TAP_MAX_MS && !b.splitTriggered && !b.growingContinuous;
+
+          // Vitesse de lâcher : mesurée sur les tout derniers points, pas
+          // juste la dernière frame — le geste garde son élan.
+          var vx = 0, vy = 0;
+          if (b.history.length >= 2) {
+            var first = b.history[0], last = b.history[b.history.length - 1];
+            var dt = Math.max(16, last.t - first.t) / 1000;
+            vx = (last.x - first.x) / dt;
+            vy = (last.y - first.y) / dt;
+          }
+          b.vx = clamp(vx, -900, 900);
+          b.vy = clamp(vy, -900, 900);
           thereminStop();
+
+          if (b.growingContinuous) {
+            // On a grossi en continu : le geste est déjà accompli, pas de
+            // tap à enchaîner derrière.
+            b.lastReleaseTime = 0;
+          } else if (quickTap) {
+            if (b.isSecondTap) {
+              growBump(b);
+              b.lastReleaseTime = 0;
+            } else {
+              b.lastReleaseTime = now;
+            }
+          } else {
+            b.lastReleaseTime = 0;
+          }
+          b.growingContinuous = false;
+          b.pressStart = 0;
         } else if (ids.length === 1) {
           b.pinch = null;
           var rest = b.touches[ids[0]];
@@ -668,13 +737,19 @@
         }
       }
 
+      function growBump(b) {
+        setRadius(b, b.r * GROW_BUMP);
+        playTone(260, 0.12, 0.14, "triangle");
+        ringAt(b.x, b.y, b.r, "var(--ink)");
+      }
+
       function splitBubble(b, posA, posC, idA, idC) {
-        var r2 = Math.max(20, b.r / Math.SQRT2);
+        var r2 = Math.max(MIN_R, b.r / Math.SQRT2);
         delete b.touches[idA];
         delete b.touches[idC];
         removeBubble(b);
-        var one = spawnBubble(posA.x, posA.y, r2, true);
-        var two = spawnBubble(posC.x, posC.y, r2, true);
+        var one = spawnBubble(posA.x, posA.y, r2, b.vx * 0.5, b.vy * 0.5, true);
+        var two = spawnBubble(posC.x, posC.y, r2, b.vx * 0.5, b.vy * 0.5, true);
         one.el.style.setProperty("--c", b.el.style.getPropertyValue("--c"));
         two.el.style.setProperty("--c", b.el.style.getPropertyValue("--c"));
         [[one, idA, posA], [two, idC, posC]].forEach(function (pair) {
@@ -684,36 +759,58 @@
           bub.dragTX = pos.x; bub.dragTY = pos.y;
           bub.el.classList.add("dragging");
         });
-        playTone(560, 0.18, 0.16, "sawtooth");
-        playTone(700, 0.14, 0.12, "sawtooth");
+        playTone(280, 0.16, 0.15, "sawtooth");
+        playTone(350, 0.13, 0.11, "sawtooth");
         ringAt(posA.x, posA.y, r2, "var(--ink)");
         ringAt(posC.x, posC.y, r2, "var(--ink)");
       }
 
-      function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+      // Appui simple maintenu sans bouger : la bulle se coupe en deux,
+      // chacune s'éloignant de l'axe où le doigt appuyait.
+      function splitInPlace(b) {
+        b.splitTriggered = true;
+        var angle = Math.random() * Math.PI * 2;
+        var off = b.r * 0.45;
+        var posA = { x: b.x + Math.cos(angle) * off, y: b.y + Math.sin(angle) * off };
+        var posC = { x: b.x - Math.cos(angle) * off, y: b.y - Math.sin(angle) * off };
+        var r2 = Math.max(MIN_R, b.r / Math.SQRT2);
+        var kickSpeed = 90;
+        var id = Object.keys(b.touches)[0];
+        delete b.touches[id];
+        removeBubble(b);
+        var one = spawnBubble(posA.x, posA.y, r2, Math.cos(angle) * kickSpeed, Math.sin(angle) * kickSpeed, true);
+        var two = spawnBubble(posC.x, posC.y, r2, -Math.cos(angle) * kickSpeed, -Math.sin(angle) * kickSpeed, true);
+        one.el.style.setProperty("--c", b.el.style.getPropertyValue("--c"));
+        two.el.style.setProperty("--c", b.el.style.getPropertyValue("--c"));
+        playTone(280, 0.16, 0.15, "sawtooth");
+        playTone(350, 0.13, 0.11, "sawtooth");
+        ringAt(posA.x, posA.y, r2, "var(--ink)");
+        ringAt(posC.x, posC.y, r2, "var(--ink)");
+      }
 
       // ---------- Boucle physique ----------
 
       function update(dt) {
         var s = arenaSize();
+        var iceFactor = Math.exp(-ICE_DAMPING * dt); // amortissement doux, façon glace
 
         bubbles.forEach(function (b) {
           var ids = Object.keys(b.touches);
           if (ids.length === 1 && !b.pinch) {
-            // Suivi souple du doigt : la bulle "rattrape" la cible, ne se
-            // téléporte pas — donne la sensation d'une masse molle tenue.
-            b.x += (b.dragTX - b.x) * Math.min(1, dt * 14);
-            b.y += (b.dragTY - b.y) * Math.min(1, dt * 14);
+            // Suivi direct du doigt — pas de délai à la prise en main.
+            b.x = b.dragTX;
+            b.y = b.dragTY;
           } else if (ids.length === 0) {
             b.x += b.vx * dt;
             b.y += b.vy * dt;
             var bounced = false, angle = 0;
-            if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * 0.6; bounced = true; angle = 0; }
-            if (b.x > s.w - b.r) { b.x = s.w - b.r; b.vx = -Math.abs(b.vx) * 0.6; bounced = true; angle = 0; }
-            if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * 0.6; bounced = true; angle = Math.PI / 2; }
-            if (b.y > s.h - b.r) { b.y = s.h - b.r; b.vy = -Math.abs(b.vy) * 0.6; bounced = true; angle = Math.PI / 2; }
+            if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * WALL_BOUNCE; bounced = true; angle = 0; }
+            if (b.x > s.w - b.r) { b.x = s.w - b.r; b.vx = -Math.abs(b.vx) * WALL_BOUNCE; bounced = true; angle = 0; }
+            if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * WALL_BOUNCE; bounced = true; angle = Math.PI / 2; }
+            if (b.y > s.h - b.r) { b.y = s.h - b.r; b.vy = -Math.abs(b.vy) * WALL_BOUNCE; bounced = true; angle = Math.PI / 2; }
             if (bounced) kick(b, 0.12, angle);
-            b.vx *= 0.99; b.vy *= 0.99;
+            b.vx *= iceFactor;
+            b.vy *= iceFactor;
           }
         });
 
@@ -730,14 +827,21 @@
               var wasTouching = a._touch === c;
               if (!wasTouching) {
                 var speed = Math.hypot(a.vx - c.vx, a.vy - c.vy);
-                var impact = clamp(0.04 + speed / 260, 0.04, 0.2);
+                var impact = clamp(0.05 + speed / 700, 0.05, 0.22);
                 var ang = Math.atan2(ny, nx);
                 kick(a, impact, ang);
                 kick(c, impact, ang);
-                if (running) playTone(180 + Math.random() * 40, 0.12, clamp(0.05 + speed / 900, 0.04, 0.16));
+                if (running) playTone(85 + Math.random() * 15, 0.11, clamp(0.04 + speed / 2000, 0.03, 0.13));
+                // Échange d'élan façon billard, atténué (pas un choc parfait)
+                var rvx = a.vx - c.vx, rvy = a.vy - c.vy;
+                var rel = rvx * nx + rvy * ny;
+                if (rel > 0) {
+                  var imp = rel * 0.5;
+                  a.vx -= imp * nx; a.vy -= imp * ny;
+                  c.vx += imp * nx; c.vy += imp * ny;
+                }
               }
               a._touch = c; c._touch = a;
-              // séparation douce (sauf la bulle activement tenue par un doigt seul)
               var aFree = Object.keys(a.touches).length === 0;
               var cFree = Object.keys(c.touches).length === 0;
               var push = overlap / (aFree && cFree ? 2 : 1);
@@ -763,17 +867,23 @@
           }
           b.wobble += dt * (reduced ? 2 : 16);
 
-          // Appui long -> éclatement
-          if (b.holdStart && Object.keys(b.touches).length === 1) {
-            var held = performance.now() - b.holdStart;
-            b.el.classList.add("charging");
-            var ring = b.el.querySelector(".charge-ring");
-            if (ring) ring.style.transform = "scale(" + clamp(held / POP_HOLD_MS, 0, 1).toFixed(2) + ")";
-            if (held / POP_HOLD_MS > 0.55 && Math.random() < 0.15) {
-              playTone(300 + held / 2, 0.05, 0.03, "square");
-            }
-            if (held > POP_HOLD_MS) {
-              popBubble(b);
+          if (b.pressStart && Object.keys(b.touches).length === 1 && !b.pressMoved) {
+            var held = performance.now() - b.pressStart;
+            if (b.isSecondTap) {
+              // Passé le seuil d'un tap franc sans relâcher : c'est un
+              // double-tap maintenu, on bascule en grossissement continu.
+              if (held > TAP_MAX_MS) b.growingContinuous = true;
+              if (b.growingContinuous) {
+                setRadius(b, b.r + GROW_RATE * b.r0 * dt);
+                b.el.classList.add("charging");
+                var gring = b.el.querySelector(".charge-ring");
+                if (gring) gring.style.transform = "scale(" + (0.7 + 0.3 * Math.sin(performance.now() / 110)) + ")";
+              }
+            } else {
+              b.el.classList.add("charging");
+              var ring = b.el.querySelector(".charge-ring");
+              if (ring) ring.style.transform = "scale(" + clamp(held / SPLIT_HOLD_MS, 0, 1).toFixed(2) + ")";
+              if (held > SPLIT_HOLD_MS && !b.splitTriggered) splitInPlace(b);
             }
           } else {
             b.el.classList.remove("charging");
@@ -783,13 +893,6 @@
         });
       }
 
-      function popBubble(b) {
-        var color = b.el.style.getPropertyValue("--c");
-        burst(b.x, b.y, color, 10);
-        playPop(b.r > baseRadius() * 0.85);
-        removeBubble(b);
-      }
-
       function loop(time) {
         var dt = Math.min(0.05, (time - lastTime) / 1000 || 0);
         lastTime = time;
@@ -797,22 +900,10 @@
         requestAnimationFrame(loop);
       }
 
-      // ---------- Démarrage ----------
-
-      function start() {
-        initAudio();
-        overlay.hidden = true;
-        running = true;
-        bubbles.slice().forEach(function (b) { b.el.remove(); });
-        bubbles = [];
-        for (var i = 0; i < TARGET_COUNT; i++) spawnBubble();
-      }
-
-      startBtn.addEventListener("click", start);
-
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v5", text: "Glissé façon glace (amortissement plus faible), vitesse de lâcher fidèle au geste. Appui maintenu = la bulle se coupe en deux (avant : elle éclatait). Double-tap = grossit ; double-tap maintenu = grossit en continu. Sons descendus d'une octave. Écran d'accueil retiré, plein écran (l'oscilloscope, c'est tout l'écran, pas une fenêtre)." },
         { v: "v4", text: "Prototype de sensation affiné : moins de bulles à l'écran, contacts plus doux, correction du double-comptage au démarrage. Style « Oscilloscope » (fond noir, vert phosphore) par défaut." },
         { v: "v3", text: "Refonte en prototype de sensation, sans but : glisser une bulle, en coller deux l'une contre l'autre, en écarter une à deux doigts, rester appuyé pour éclater. Quatre styles visuels au choix." },
         { v: "v2", text: "Jeu de fusion (deux bulles de même note qui fusionnent, but : boucler une octave) — mis de côté au profit du prototype de sensation." },
@@ -826,9 +917,9 @@
 
       VERSIONS.forEach(function (entry) {
         var li = document.createElement("li");
-        var b = document.createElement("b");
-        b.textContent = entry.v;
-        li.appendChild(b);
+        var bEl = document.createElement("b");
+        bEl.textContent = entry.v;
+        li.appendChild(bEl);
         li.appendChild(document.createTextNode(entry.text));
         histList.appendChild(li);
       });
@@ -844,10 +935,15 @@
         });
       });
 
-      for (var i = 0; i < 4; i++) spawnBubble();
+      // ---------- Démarrage ----------
+      // Pas d'écran d'accueil : ça commence tout de suite (un seul joueur,
+      // qui connaît déjà le prototype — inutile de le lui réexpliquer).
+
+      for (var i = 0; i < TARGET_COUNT; i++) spawnBubble();
       requestAnimationFrame(function (t) { lastTime = t; requestAnimationFrame(loop); });
     })();
   </script>
+
 
   <script>
     // Mise à jour automatique (même principe que la page d'accueil du
