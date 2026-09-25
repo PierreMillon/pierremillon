@@ -25,13 +25,13 @@ Tri : priorité décroissante.
 - [x] v5 — L'échelle verticale ne saute plus au lâcher d'un point (gardée
   tant que les données y tiennent)
 - [x] v5 — Ligne du point de référence glissable sur le graphique (triangle en bas)
+- [x] v6 — La courbe dessinée va jusqu'en 2126 : la partie future (pointillé)
+  est la « vérité » à deviner, colonne « futur » calculée dessus
 
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : glissé des points, taille des
   cibles, lisibilité du tableau d'écart
-- [ ] P2 — Pouvoir aussi dessiner le futur (2026 → 2126) comme « vérité »
-  et comparer les méthodes à elle
 
 ## Conformité à la charte (../REGLES-JEUX.md)
 
