@@ -30,13 +30,15 @@ Français / anglais, état sauvegardé en local (`extrapolation_state`),
 mise à jour automatique (script inline dans `index.html`), installable
 (`public/manifest.webmanifest`). Backlog : `../backlog.md`.
 
-**Onglet Bourse** : vrais cours mensuels, embarqués dans
-`src/data/markets.json` (S&P 500 — Shiller via `datasets/s-and-p-500`,
-or — `datasets/gold-prices`, Brent — `datasets/oil-prices`, 5 actions
-2000-2010 — `vega-datasets/stocks.csv`, tous sur GitHub), ou valeurs
-collées. On prédit le mois suivant au doigt, face à 5 méthodes (dont la
-naïve « = dernier cours », référence à battre), avec un test
-walk-forward sur toute la série. Pour mettre à jour les données,
+**Onglet Bourse** : Bitcoin (jour / semaine / mois) et S&P 500
+(mensuel). Bitcoin : historique quotidien intégré (`src/data/btc.json`,
+Coin Metrics, 2010 → 23/05/2026), complété en direct dans le navigateur
+jusqu'à hier (Binance, sinon CoinGecko), mis en cache local. S&P 500 :
+Shiller (`src/data/markets.json`). On prédit 1 à 12 pas au doigt, face
+à 8 méthodes cachées jusqu'à la validation ; score en erreur %, sens
+juste et fonds fictif de 10 000 $ (achat / vente à découvert, 0,1 % de
+frais) face à « acheter et garder » ; test walk-forward sur toute la
+série. Pour rafraîchir les données intégrées :
 `python3 scripts/fetch-markets.py`, puis build.
 
 **https://pierremillon.github.io/pierremillon/extrapolation/**

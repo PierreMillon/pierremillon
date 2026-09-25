@@ -33,18 +33,38 @@ Tri : priorité décroissante.
   régression / pondérée / moyenne mobile, erreur en % et sens juste,
   calcul en % (log), test walk-forward sur toute la série, valeurs collées
 
+- [x] v8 — Bourse : Bitcoin (jour / semaine / mois, historique intégré
+  Coin Metrics + complément en direct Binance / CoinGecko) et S&P 500 ;
+  autres valeurs retirées
+- [x] v8 — Méthodes : lissage exponentiel (Holt), momentum, moyennes
+  croisées, AR(2) — toutes disponibles d'un coup, chacune avec son ⓘ
+- [x] v8 — Horizon 1 à 12 pas, prédiction par points à glisser ;
+  prédictions des méthodes cachées avant « Valider »
+- [x] v8 — Parties de 10 / 25 / 50 manches ; score : erreur %, sens juste,
+  fonds fictif 10 000 $ (achat + vente à découvert, 0,1 % de frais),
+  « bat le naïf ? », comparaison à « acheter et garder »
+- [x] v8 — Écran figé (page sans défilement ni rebond, seuls les panneaux
+  de réglages défilent)
+
+Choix de Pierre (questionnaire du 25/09) : priorité aux méthodes, pas de
+temps au choix, une seule valeur (Bitcoin) + S&P gardé, horizon 1 ou
+plusieurs pas, données en direct, dollars, toutes les méthodes d'un coup,
+prédictions cachées avant validation, parties réglables, 10 000 $ de
+départ, reste un onglet d'Extrapolation.
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : glissé des points, taille des
   cibles, lisibilité du tableau d'écart, onglet Bourse
-- [ ] P2 — Bourse : simuler un « fonds » — acheter quand la méthode prédit
-  une hausse, vendre sinon — et comparer le capital final à « acheter et
-  garder », frais de transaction compris
-- [ ] P2 — Bourse : plus de valeurs (CAC 40, actions récentes, données
-  journalières) — Yahoo, Stooq et FRED sont bloqués depuis l'environnement
-  de build ; soit une autre source ouverte, soit « Coller » depuis un export
-- [ ] P3 — Bourse : méthodes plus riches (moyennes mobiles croisées,
-  momentum, lissage exponentiel), une à la fois, chacune avec son ⓘ
+- [ ] P1 — Vérifier sur le téléphone que la mise à jour en direct de
+  Bitcoin marche (Binance / CoinGecko n'ont pas pu être testés depuis
+  l'environnement de build, bloqués) : la ligne sous la série doit
+  afficher « données jusqu'au <hier> · Binance BTCUSDT »
+- [ ] P2 — Les erreurs moyennes en % sur Bitcoin sont dominées par
+  2010-2011 (cours de quelques cents, variations énormes) : proposer de
+  commencer le test à une date choisie
+- [ ] P3 — Plus tard : autres valeurs (CAC 40, actions) une fois une
+  source ouverte trouvée
 
 ## Conformité à la charte (../REGLES-JEUX.md)
 

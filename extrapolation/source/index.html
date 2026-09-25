@@ -16,6 +16,10 @@
     html, body, #root { height: 100%; margin: 0; }
     * { box-sizing: border-box; }
     /* Pas de zoom ni de loupe iOS : double-tap, pincement, sélection, appui long */
+    /* Écran figé façon application : pas de défilement ni de rebond de la
+       page ; seuls les panneaux .scroll défilent à l'intérieur */
+    html, body { height: 100%; overflow: hidden; }
+    body { position: fixed; inset: 0; }
     html, body {
       background: #0b0e13;
       touch-action: manipulation;
@@ -37,6 +41,10 @@
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(type, function (e) { e.preventDefault(); }, { passive: false });
     });
+    document.addEventListener("touchmove", function (e) {
+      if (e.target.closest && e.target.closest(".scroll")) return;
+      e.preventDefault();
+    }, { passive: false });
 
     // Mise à jour automatique (copiée de la page d'accueil du portfolio) :
     // pas de service worker, vérification légère via ETag/Last-Modified.

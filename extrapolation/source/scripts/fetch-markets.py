@@ -15,20 +15,13 @@ series = []
 rows = list(csv.DictReader(io.StringIO(get("datasets/s-and-p-500/main/data/data.csv"))))
 series.append({"id": "sp500", "name": "S&P 500", "unit": "points", "source": "Robert Shiller / datasets/s-and-p-500 (GitHub)",
                "pts": [[r["Date"][:7], round(float(r["SP500"]), 2)] for r in rows if r["SP500"] and float(r["SP500"]) > 0]})
-rows = list(csv.DictReader(io.StringIO(get("datasets/gold-prices/main/data/monthly.csv"))))
-series.append({"id": "gold", "name": "Or", "nameEn": "Gold", "unit": "$/oz", "source": "datasets/gold-prices (GitHub)",
-               "pts": [[r["Date"][:7], round(float(r["Price"]), 2)] for r in rows if r["Price"]]})
-rows = list(csv.DictReader(io.StringIO(get("datasets/oil-prices/main/data/brent-monthly.csv"))))
-series.append({"id": "brent", "name": "Pétrole Brent", "nameEn": "Brent crude", "unit": "$/baril", "unitEn": "$/barrel",
-               "source": "EIA / datasets/oil-prices (GitHub)",
-               "pts": [[r["Date"][:7], round(float(r["Price"]), 2)] for r in rows if r["Price"]]})
-rows = list(csv.DictReader(io.StringIO(get("vega/vega-datasets/main/data/stocks.csv"))))
-names = {"AAPL": "Apple", "MSFT": "Microsoft", "AMZN": "Amazon", "GOOG": "Google", "IBM": "IBM"}
-for sym in ["AAPL", "MSFT", "AMZN", "GOOG", "IBM"]:
-    pts = [[datetime.datetime.strptime(r["date"], "%b %d %Y").strftime("%Y-%m"), round(float(r["price"]), 2)]
-           for r in rows if r["symbol"] == sym]
-    series.append({"id": sym.lower(), "name": names[sym] + " (" + sym + ")", "unit": "$",
-                   "source": "vega-datasets stocks.csv (GitHub)", "pts": pts})
+# Bitcoin : cours quotidien, Coin Metrics (fichier séparé, un nombre par jour)
+rows = list(csv.DictReader(io.StringIO(get("coinmetrics/data/master/csv/btc.csv"))))
+btc = [(r["time"], float(r["PriceUSD"])) for r in rows if r.get("PriceUSD")]
+with open("src/data/btc.json", "w") as f:
+    f.write(json.dumps({"start": btc[0][0], "source": "Coin Metrics community data (github.com/coinmetrics/data)",
+                        "vals": [float(f"{v:.6g}") for _, v in btc]}, separators=(",", ":")))
+print("btc", len(btc), btc[0], btc[-1])
 
 for s in series:
     print(s["id"], len(s["pts"]), s["pts"][0], s["pts"][-1])
