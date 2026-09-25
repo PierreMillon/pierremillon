@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
   <title>Pas à Pas</title>
   <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
   <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=2">
@@ -37,6 +37,10 @@
       display: flex;
       justify-content: center;
       padding: 1.4rem 16px 2rem;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
     }
 
     main {
@@ -47,11 +51,62 @@
     }
 
     header {
+      position: relative;
       display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 1rem;
+      align-items: center;
+      gap: 0.8rem;
     }
+
+    .menu-btn {
+      width: 2.1rem;
+      height: 2.1rem;
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: var(--ink-soft);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .menu-btn:hover, .menu-btn[aria-expanded="true"] { border-color: var(--accent); color: var(--accent); }
+
+    .menu-panel {
+      position: absolute;
+      top: 3rem;
+      left: 0;
+      z-index: 15;
+      display: flex;
+      flex-direction: column;
+      min-width: 10rem;
+      background: var(--bg);
+      border: 1px solid var(--hairline);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .menu-item {
+      display: block;
+      font-family: inherit;
+      font-size: 0.78rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      text-align: left;
+      color: var(--ink);
+      background: transparent;
+      border: none;
+      border-bottom: 1px solid var(--hairline);
+      padding: 0.8rem 1rem;
+      cursor: pointer;
+    }
+
+    .menu-item:last-child { border-bottom: none; }
+    .menu-item:hover, .menu-item:focus-visible { color: var(--accent); }
+    .menu-panel[hidden] { display: none; }
 
     .back {
       color: var(--ink-soft);
@@ -152,10 +207,12 @@
 
     h1 {
       margin: 0;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
-      font-weight: 300;
-      font-size: clamp(1.7rem, 6vw, 2.3rem);
-      letter-spacing: 0.06em;
+      font-family: inherit;
+      font-weight: 400;
+      font-size: 0.85rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
     }
 
     .tabs {
@@ -328,19 +385,18 @@
     .controls {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 2.6rem;
-      margin-top: 0.6rem;
-      padding: 0.3rem 0;
+      justify-content: space-between;
+      height: 3.6rem;
+      margin-top: 0.4rem;
     }
 
     .arrow-btn {
-      width: 2.5rem;
-      height: 2.5rem;
+      width: 3.2rem;
+      height: 3.2rem;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
+      font-size: 1.3rem;
       line-height: 1;
       color: var(--ink);
       background: transparent;
@@ -359,12 +415,13 @@
 <body>
   <main>
     <header>
-      <a class="back" href="../">← Portfolio</a>
+      <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false">☰</button>
       <h1>Pas à Pas</h1>
     </header>
 
-    <div class="subline">
-      <button class="hist-btn" id="histBtn">Historique</button>
+    <div class="menu-panel" id="menuPanel" hidden>
+      <a class="menu-item" href="../">← Portfolio</a>
+      <button class="menu-item" id="histBtn">Historique</button>
     </div>
 
     <div class="overlay" id="histOverlay" hidden>
@@ -377,12 +434,12 @@
 
     <div class="stage-wrap" id="stageWrap">
       <div class="stage-top" id="stageTop">
-        <span class="row-tag">écrit</span>
+        <span class="row-tag">sauter des étapes</span>
         <p class="magic" id="magic"></p>
       </div>
       <div class="stage-divider"></div>
       <div class="stage-bottom">
-        <span class="row-tag">détail</span>
+        <span class="row-tag">pas à pas</span>
         <div class="stage" id="stage"></div>
       </div>
     </div>
@@ -953,8 +1010,32 @@
         histList.appendChild(li);
       });
 
-      histBtn.addEventListener("click", function () { histOverlay.hidden = false; });
+      histBtn.addEventListener("click", function () {
+        closeMenu();
+        histOverlay.hidden = false;
+      });
       histClose.addEventListener("click", function () { histOverlay.hidden = true; });
+
+      // ---------- Menu (☰) ----------
+
+      var menuBtn = document.getElementById("menuBtn");
+      var menuPanel = document.getElementById("menuPanel");
+
+      function closeMenu() {
+        menuPanel.hidden = true;
+        menuBtn.setAttribute("aria-expanded", "false");
+      }
+
+      menuBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var open = menuPanel.hidden;
+        menuPanel.hidden = !open;
+        menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      document.addEventListener("click", function (e) {
+        if (!menuPanel.hidden && !menuPanel.contains(e.target) && e.target !== menuBtn) closeMenu();
+      });
 
       selectDemo(0);
     })();

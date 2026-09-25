@@ -33,6 +33,16 @@ Un nouveau projet (jeu ou page d'essai) :
   principal, qui ouvre la liste des versions — une ligne par version avec
   ce qui a changé. À mettre à jour à chaque modification poussée sur ce
   projet, jamais laissé en retard par rapport au code
+- **désactive systématiquement le zoom tactile et la loupe iOS** (déjà
+  demandé pour le jeu d'avion, à refaire à chaque fois) :
+  - `<meta name="viewport" content="... user-scalable=no, maximum-scale=1">`
+  - `touch-action: manipulation;` (ou `none` si des gestes multi-doigts
+    personnalisés sont gérés à la main, comme dans Bulles Sonores) sur le
+    corps de page et les éléments interactifs — empêche le double-tap zoom
+    et le pincer-zoomer
+  - `-webkit-user-select: none; user-select: none;` (empêche la sélection
+    de texte qui déclenche la loupe de grossissement)
+  - `-webkit-touch-callout: none;` (empêche le menu/la loupe à l'appui long)
 
 ## Fusion des PR
 
