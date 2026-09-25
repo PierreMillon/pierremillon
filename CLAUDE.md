@@ -12,6 +12,11 @@ et s'y conformer.** C'est la charte de conception fixée par Pierre — une
 mécanique, style visuel assumé, hors ligne, sauvegarde locale, PWA,
 accessibilité, etc.
 
+**Esthétique par défaut d'un nouveau jeu : oscilloscope / vieux moniteur**
+— fond noir, tracé vectoriel fin en vert phosphore, pas de formes pleines
+ni de dégradé. C'est le style des derniers jeux de Pierre ; s'en écarter
+est un choix à justifier, pas un oubli (détails dans `REGLES-JEUX.md`).
+
 Un nouveau projet (jeu ou page d'essai) :
 
 - vit dans son propre dossier à la racine (ex. `bulles-sonores/`), un seul
