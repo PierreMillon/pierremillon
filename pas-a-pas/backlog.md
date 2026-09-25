@@ -18,13 +18,13 @@ Tri : priorité décroissante.
 - [ ] P2 — Démo dédiée « moins par moins = plus » : expliquée par une rotation à
   180° sur l'axe des réels (multiplier par −1 = tourner), séparée de la démo
   −( … ) qui ne fait que la citer comme phrase magique
-- [ ] P2 — Démo addition d'entiers façon « méthode de Singapour » : chaque
-  nombre est une ligne de carrés (5 = une ligne de 5 carrés), on assemble
-  deux lignes bout à bout pour voir la somme — base avant même l'algèbre,
-  premier maillon de la charte badges → ensembles de nombres. Le visuel de
-  blocs doit apparaître au moment précis d'une fusion (réutiliser le
-  mécanisme `fxMeet` déjà en place pour regrouper des termes), pas comme
-  une démo isolée à part.
+- [x] P2 — Addition d'entiers façon Singapour, branchée sur `fxMeet`
+  (option `blocks`) : au moment d'une fusion, un **cadre de dix** (2 rangées
+  de 5 cases) apparaît et chaque nombre vient le remplir de jetons, puis
+  tout se referme sur le résultat. Vérifié contre le programme MOE (P1) :
+  ten frame + number bonds + stratégie « faire 10 », pas une ligne de
+  carrés. Utilisé sur 2 + 5 (Opposés) et (−2) + (−1) (−( … )).
+  Reste : nombres de signes contraires (annulation jeton à jeton).
 - [ ] P2 — Démo factorisation/distributivité avec des figures géométriques
   simples (ex. un rond + un carré = un groupe ; deux fois ce groupe = facteur
   2 devant), pensée pour être comprise sans lire le français, et réversible
