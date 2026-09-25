@@ -83,3 +83,13 @@ prototype de bulles tactiles sans but) n'est qu'un premier maillon.
 Chaque backlog (`pas-a-pas/backlog.md`, `bulles-sonores/backlog.md`) liste
 les tâches concrètes ; ce document sert à relire l'intention d'ensemble
 avant de trancher une nouvelle fonctionnalité.
+
+## Badges partagés
+
+Chaque projet garde ses badges chez lui, mais les publie aussi dans le
+`localStorage` du domaine sous une clé commune `pm_badges_<projet>`
+(liste de noms séparés par des virgules), pour qu'un autre projet puisse
+les lire et les afficher. Premier lien : le badge ✦ 10 de Pas à Pas
+(`pasapas_badge_dix`, « faire 10 ») apparaît dans Soroban sur le niveau
+« + avec 10 » — c'est le même geste, le complément à 10. Soroban publie
+les siens sous `pm_badges_soroban`.
