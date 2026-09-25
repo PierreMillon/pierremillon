@@ -505,6 +505,22 @@
       border-bottom: 6.5px solid transparent;
     }
 
+    svg.arcs {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    svg.arcs path {
+      fill: none;
+      stroke: var(--sign);
+      stroke-width: 2;
+      stroke-linecap: round;
+    }
+
     .shape {
       width: 0.72em;
       height: 0.72em;
@@ -651,6 +667,11 @@
     .sg-dot.free { cursor: grab; touch-action: none; z-index: 3; }
     .sg-dot.drag { z-index: 5; transform: scale(1.15); }
 
+    .sg-b {
+      cursor: pointer;
+      border-bottom: 2px dotted var(--ink-soft);
+    }
+
     .sg-streak { display: flex; gap: 0.4rem; }
 
     .sg-streak span {
@@ -751,14 +772,35 @@
               note: "Soustraire, c'est ajouter l'opposé : <b>− ( … )</b> veut dire <b>+ (−1) · ( … )</b>."
             },
             {
-              fx: { type: "touch", src: "m", targets: ["a", "sb", "sc"] },
-              instant: ["m2", "m3"],
+              fx: { type: "arc", src: "m", to: ["a"] },
+              arcs: [["a"]],
+              signs: ["a"],
+              expr: [T("m", "(−1)"), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
+              note: "Le (−1) va toucher le premier terme : 2<i>x</i>."
+            },
+            {
+              fx: { type: "arc", src: "m", to: ["sb", "b"] },
+              arcs: [["a"], ["sb", "b"]],
+              signs: ["a", "sb", "b"],
+              expr: [T("m", "(−1)"), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
+              note: "Puis le deuxième : −3, avec son signe."
+            },
+            {
+              fx: { type: "arc", src: "m", to: ["c"] },
+              arcs: [["a"], ["sb", "b"], ["c"]],
+              signs: ["a", "sb", "b", "c"],
+              expr: [T("m", "(−1)"), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
+              note: "Puis le troisième : <i>x</i>. Chaque terme a été touché une fois."
+            },
+            {
+              // Écrit groupe par groupe, dans l'ordre des arcs
+              stagger: { d1: 0, lpA: 0, rpA: 0, q1: 1600, m2: 1600, d2: 1600, lpB: 1600, rpB: 1600, q2: 3200, m3: 3200, d3: 3200, lpC: 3200, rpC: 3200 },
               expr: [
                 T("m", "(−1)"), T("d1", "·", "op dot"), T("lpA", "(", "par"), T("a", "2" + X), T("rpA", ")", "par"),
                 T("q1", "+", "op"), T("m2", "(−1)"), T("d2", "·", "op dot"), T("lpB", "(", "par"), T("sb", "−", "op"), T("b", "3"), T("rpB", ")", "par"),
                 T("q2", "+", "op"), T("m3", "(−1)"), T("d3", "·", "op dot"), T("lpC", "(", "par"), T("c", X), T("rpC", ")", "par")
               ],
-              note: "Le (−1) touche chaque terme séparément : on écrit chaque produit en toutes lettres, sans encore le calculer. Ce n'est pas encore simplifié, juste réparti."
+              note: "On écrit chaque produit en toutes lettres, un par un, sans encore le calculer. Ce n'est pas encore simplifié, juste réparti."
             },
             {
               top: true,
@@ -808,7 +850,7 @@
               note: "On les rapproche. L'ordre d'une somme ne change rien, tant que chacun garde son signe."
             },
             {
-              expr: [V([T("a", "3" + X)], [T("sc", "−", "op"), T("c", "3" + X)], [T("eq0", "=", "op"), T("z", "0")]), T("sb", "+", "op"), T("b", "7"), T("sd", "+", "op"), T("d", "5")],
+              expr: [V([T("a", "3" + X)], [T("sc", "−", "op"), T("c", "3" + X)], [T("z", "0")]), T("sb", "+", "op"), T("b", "7"), T("sd", "+", "op"), T("d", "5")],
               hl: ["z"],
               note: "Posé comme une soustraction, comme à l'école : 3<i>x</i> au-dessus, −3<i>x</i> en dessous, une barre — ça fait 0."
             },
@@ -1072,11 +1114,19 @@
             var botRow = document.createElement("span");
             botRow.className = "crow";
             item.bottom.forEach(function (t) { botRow.appendChild(tokenEl(t, forStep)); });
+            // Posé en colonne, comme à l'école : les deux termes l'un sous
+            // l'autre, la barre, puis le résultat sous la barre (pas à
+            // côté : sinon on croirait lire une fraction)
             cv.appendChild(topRow);
-            cv.appendChild(cbar);
             cv.appendChild(botRow);
+            cv.appendChild(cbar);
+            if (item.eq) {
+              var resRow = document.createElement("span");
+              resRow.className = "crow";
+              item.eq.forEach(function (t) { resRow.appendChild(tokenEl(t, forStep)); });
+              cv.appendChild(resRow);
+            }
             expr.appendChild(cv);
-            if (item.eq) item.eq.forEach(function (t) { expr.appendChild(tokenEl(t, forStep)); });
           } else if (item.frac) {
             var f = document.createElement("span");
             f.className = "frac";
@@ -1133,6 +1183,77 @@
         stage.appendChild(expr);
         fitOneLine(expr, stage);
         if (step.line !== undefined) stage.appendChild(numLine(step.line));
+        if (step.arcs) drawArcs(step.arcs, false);
+      }
+
+      // Flèches en arc, comme on les dessine à la main : du (−1) vers chaque
+      // terme qu'il touche. Le dernier arc d'une étape se trace lentement,
+      // puis reste affiché aux étapes suivantes.
+      function arcGeom(srcId, toIds) {
+        var base = stage.getBoundingClientRect();
+        var src = stage.querySelector('.tok[data-id="' + srcId + '"]');
+        if (!src) return null;
+        var rs = src.getBoundingClientRect();
+        var l = Infinity, r = -Infinity, t = Infinity;
+        toIds.forEach(function (id) {
+          var el = stage.querySelector('.tok[data-id="' + id + '"]');
+          if (!el) return;
+          var b = el.getBoundingClientRect();
+          l = Math.min(l, b.left); r = Math.max(r, b.right); t = Math.min(t, b.top);
+        });
+        if (!isFinite(l)) return null;
+        var x1 = rs.left + rs.width / 2 - base.left, y1 = rs.top - base.top + 2;
+        var x2 = (l + r) / 2 - base.left, y2 = t - base.top + 2;
+        var lift = Math.min(y1 - 6, 22 + Math.abs(x2 - x1) * 0.28);
+        var cy = Math.min(y1, y2) - lift * 2;
+        return "M" + x1 + "," + y1 + " Q" + (x1 + x2) / 2 + "," + cy + " " + x2 + "," + y2;
+      }
+
+      function arcSvg() {
+        var svg = stage.querySelector("svg.arcs");
+        if (!svg) {
+          svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          svg.setAttribute("class", "arcs");
+          svg.innerHTML = '<defs><marker id="arrowHead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--sign)"/></marker></defs>';
+          stage.appendChild(svg);
+        }
+        return svg;
+      }
+
+      function addArc(d) {
+        var path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        path.setAttribute("d", d);
+        path.setAttribute("marker-end", "url(#arrowHead)");
+        arcSvg().appendChild(path);
+        return path;
+      }
+
+      function drawArcs(list, skipLast) {
+        list.forEach(function (to, i) {
+          if (skipLast && i === list.length - 1) return;
+          var d = arcGeom("m", to);
+          if (d) addArc(d);
+        });
+      }
+
+      function fxArc(fx) {
+        var d = arcGeom(fx.src, fx.to);
+        if (!d) return Promise.resolve();
+        var path = addArc(d);
+        var len = path.getTotalLength();
+        path.style.strokeDasharray = len;
+        path.style.strokeDashoffset = len;
+        path.setAttribute("marker-end", "");
+        return done(path.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
+          { duration: ms(1800), easing: "cubic-bezier(.4,0,.3,1)", fill: "forwards" })).then(function () {
+          path.setAttribute("marker-end", "url(#arrowHead)");
+          fx.to.forEach(function (id) {
+            var el = stage.querySelector('.tok[data-id="' + id + '"]');
+            if (el) done(el.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }],
+              { duration: ms(700), easing: "ease-out" }));
+          });
+          return wait(700);
+        });
       }
 
       // Multiplier par −1 : la flèche tourne d'un demi-tour autour de 0,
@@ -1425,6 +1546,7 @@
           if (step.fx.type === "touch") pre = fxTouch(step.fx);
           if (step.fx.type === "meet") pre = fxMeet(step.fx, vanished);
           if (step.fx.type === "rotate") pre = fxRotate(step.fx);
+          if (step.fx.type === "arc") pre = fxArc(step.fx);
         }
 
         return pre.then(function () {
@@ -1474,7 +1596,7 @@
                 anims.push(done(n.el.animate([
                   { transform: "scale(0.5)", opacity: 0 },
                   { transform: "scale(1)", opacity: 1 }
-                ], { duration: ms(450), delay: ms(200), easing: "ease-out", fill: "backwards" })));
+                ], { duration: ms(step.stagger ? 700 : 450), delay: ms(step.stagger && forward ? (step.stagger[id] || 0) + 300 : 200), easing: "ease-out", fill: "backwards" })));
               }
             }
           });
@@ -1535,6 +1657,7 @@
         // Jamais désactivées : ← au tout début boucle vers la fin, → à la
         // fin boucle vers le début — de quoi comparer départ/résultat en
         // aller-retour sans rester bloqué à un bout.
+        if (demo.custom) return;
         prevBtn.disabled = busy;
         nextBtn.disabled = busy;
         nextBtn.textContent = cur === last ? "FIN" : "→";
@@ -1558,6 +1681,12 @@
       }
 
       function next() {
+        if (DEMOS[demoIndex].custom) {
+          // Singapour : la flèche lance la manche suivante, une fois le
+          // résultat affiché
+          if (sgState && sgState.ready) sgStart();
+          return;
+        }
         var last = DEMOS[demoIndex].steps.length - 1;
         if (cur === last) {
           if (busy) return;
@@ -1572,6 +1701,7 @@
 
       function prev() {
         var demo = DEMOS[demoIndex];
+        if (demo.custom) return;
         if (busy) return;
         if (cur === 0) {
           // Boucle vers la fin : voir le résultat, revenir au départ, sans
@@ -1593,7 +1723,8 @@
         var custom = !!DEMOS[i].custom;
         sgEl.hidden = !custom;
         stageWrap.hidden = custom;
-        document.getElementById("controls").hidden = custom;
+        document.getElementById("controls").hidden = false;
+        prevBtn.style.visibility = custom ? "hidden" : "";
         if (custom) { sgStart(); return; }
         buildDots(DEMOS[i]);
         build(DEMOS[i].steps[0]);
@@ -1614,7 +1745,10 @@
       prevBtn.addEventListener("click", prev);
 
       document.addEventListener("keydown", function (e) {
-        if (DEMOS[demoIndex].custom) return;
+        if (DEMOS[demoIndex].custom) {
+          if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
+          return;
+        }
         if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
         if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
       });
@@ -1673,8 +1807,8 @@
         return { x: left + c * SG_CELL + SG_CELL / 2, y: 12 + f * (2 * SG_CELL + 14) + r * SG_CELL + SG_CELL / 2 };
       }
 
-      function sgPlace(el, x, y) {
-        var d = SG_CELL - 10;
+      function sgPlace(el, x, y, size) {
+        var d = size || el._size || SG_CELL - 10;
         el.style.width = d + "px";
         el.style.height = d + "px";
         el.style.left = (x - d / 2) + "px";
@@ -1690,8 +1824,12 @@
         // Deux cadres + réserve ≈ 5 cases de haut : tout doit tenir dans
         // l'écran, sans jamais défiler
         SG_CELL = Math.max(20, Math.min(44, (sgBoard.clientHeight - 50) / 5, (sgBoard.clientWidth - 10) / 5));
-        sgEq.textContent = a + " + " + b;
+        sgEq.innerHTML = a + ' + <span class="sg-b" id="sgB">' + b + "</span>";
+        document.getElementById("sgB").addEventListener("click", sgAutoFill);
         sgMsg.textContent = "";
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
         sgRenderStreak();
         badgeChip.hidden = !hasBadge();
 
@@ -1716,63 +1854,151 @@
         }
         // Le second nombre attend dans la réserve, sous les cadres
         var trayY = sgSlot(10).y + 2 * SG_CELL + 20;
-        var gap = Math.min(SG_CELL, (sgBoard.clientWidth - 20) / b);
+        // Réserve : jamais de chevauchement — les jetons rétrécissent si
+        // la ligne est trop longue pour la largeur de l'écran
+        var gap = Math.min(SG_CELL, (sgBoard.clientWidth - 12) / b);
+        var traySize = Math.min(SG_CELL - 10, gap - 5);
         var trayLeft = sgBoard.clientWidth / 2 - (b - 1) * gap / 2;
         for (var j = 0; j < b; j++) {
           var dot = document.createElement("span");
           dot.className = "sg-dot free";
           var home = { x: trayLeft + j * gap, y: trayY };
+          dot._size = traySize;
           sgPlace(dot, home.x, home.y);
           sgBoard.appendChild(dot);
           sgDraggable(dot, home);
         }
       }
 
+      // Déplacement souple : le jeton part de là où il est et rebondit
+      // légèrement en arrivant (léger dépassement, puis retour)
+      function sgMove(dot, x, y, delay) {
+        var r0 = dot.getBoundingClientRect();
+        sgPlace(dot, x, y);
+        var r1 = dot.getBoundingClientRect();
+        var dx = r0.left + r0.width / 2 - (r1.left + r1.width / 2);
+        var dy = r0.top + r0.height / 2 - (r1.top + r1.height / 2);
+        var s0 = r0.width / (r1.width || 1);
+        return done(dot.animate([
+          { transform: "translate(" + dx + "px," + dy + "px) scale(" + s0 + ")" },
+          { transform: "translate(0,0) scale(1)" }
+        ], { duration: ms(520), delay: ms(delay || 0), easing: "cubic-bezier(.3,1.5,.5,1)", fill: "backwards" }));
+      }
+
+      function sgFirstFull() {
+        for (var i = 0; i < 10; i++) if (!sgState.filled[i]) return false;
+        return true;
+      }
+
+      // Prochaine case libre dans le bon ordre : on finit la dizaine d'abord
+      function sgNextFree() {
+        for (var k = 0; k < 20; k++) if (!sgState.filled[k]) return k;
+        return -1;
+      }
+
+      function sgPut(dot, k, delay) {
+        var s = sgSlot(k);
+        dot._size = 0;
+        dot.dataset.k = k;
+        sgState.filled[k] = true;
+        sgState.placed++;
+        return sgMove(dot, s.x, s.y, delay);
+      }
+
+      function sgTakeOut(dot) {
+        var k = Number(dot.dataset.k);
+        delete sgState.filled[k];
+        delete dot.dataset.k;
+        sgState.placed--;
+        dot._size = dot._traySize;
+        sgMove(dot, dot._home.x, dot._home.y);
+      }
+
+      function sgCheckWin() {
+        if (sgState.placed === sgState.b && !sgState.done) sgWin();
+      }
+
+      // Un appui bref pose le jeton dans la prochaine case libre (ou le
+      // retire s'il est déjà posé) ; un glissé le pose où on le lâche, ou
+      // le renvoie dans la réserve si on le lâche hors des cadres.
       function sgDraggable(dot, home) {
         var start = null;
+        dot._home = home;
+        dot._traySize = dot._size;
         dot.addEventListener("pointerdown", function (e) {
-          if (!sgState || sgState.done || dot.dataset.k) return;
+          if (!sgState || sgState.done) return;
           e.preventDefault();
           dot.setPointerCapture(e.pointerId);
-          dot.classList.add("drag");
           var r = sgBoard.getBoundingClientRect();
-          start = { ox: r.left, oy: r.top };
+          start = { ox: r.left, oy: r.top, x: e.clientX, y: e.clientY, moved: false };
         });
         dot.addEventListener("pointermove", function (e) {
           if (!start) return;
+          if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 8) return;
+          if (!start.moved) {
+            start.moved = true;
+            dot.classList.add("drag");
+            // Il quitte sa case dès qu'on commence à le tirer
+            if (dot.dataset.k !== undefined) {
+              delete sgState.filled[Number(dot.dataset.k)];
+              delete dot.dataset.k;
+              sgState.placed--;
+            }
+          }
           sgPlace(dot, e.clientX - start.ox, e.clientY - start.oy);
         });
         function drop(e) {
           if (!start) return;
-          var x = e.clientX - start.ox, y = e.clientY - start.oy;
+          var st = start;
           start = null;
           dot.classList.remove("drag");
-          var best = -1, bestD = SG_CELL * 0.8;
-          for (var k = 0; k < 20; k++) {
-            if (sgState.filled[k]) continue;
-            var s = sgSlot(k);
-            var d = Math.hypot(s.x - x, s.y - y);
-            if (d < bestD) { bestD = d; best = k; }
-          }
-          var firstFull = true;
-          for (var i = 0; i < 10; i++) if (!sgState.filled[i]) firstFull = false;
-          if (best < 0 || (best >= 10 && !firstFull)) {
-            if (best >= 10) sgWrong();
-            sgPlace(dot, home.x, home.y);
-            dot.animate([{ transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "none" }],
-              { duration: ms(260) });
+
+          if (!st.moved) {
+            if (dot.dataset.k !== undefined) { sgTakeOut(dot); return; }
+            var k = sgNextFree();
+            if (k >= 0) sgPut(dot, k).then(sgCheckWin);
             return;
           }
-          var s = sgSlot(best);
-          sgPlace(dot, s.x, s.y);
-          dot.dataset.k = best;
-          dot.classList.remove("free");
-          sgState.filled[best] = true;
-          sgState.placed++;
-          if (sgState.placed === sgState.b) sgWin();
+
+          var x = e.clientX - st.ox, y = e.clientY - st.oy;
+          var best = -1, bestD = SG_CELL * 0.8;
+          for (var k2 = 0; k2 < 20; k2++) {
+            if (sgState.filled[k2]) continue;
+            var s = sgSlot(k2);
+            var d = Math.hypot(s.x - x, s.y - y);
+            if (d < bestD) { bestD = d; best = k2; }
+          }
+          if (best < 0) {
+            dot._size = dot._traySize;
+            sgMove(dot, home.x, home.y);
+            return;
+          }
+          if (best >= 10 && !sgFirstFull()) {
+            sgWrong();
+            dot._size = dot._traySize;
+            sgMove(dot, home.x, home.y);
+            return;
+          }
+          sgPut(dot, best).then(sgCheckWin);
         }
         dot.addEventListener("pointerup", drop);
         dot.addEventListener("pointercancel", drop);
+      }
+
+      // Appui sur le 2e nombre : tous ses jetons partent se ranger d'un
+      // coup, dans l'ordre (la dizaine d'abord). Manche de démonstration :
+      // elle ne compte pas pour le badge.
+      function sgAutoFill() {
+        if (!sgState || sgState.done) return;
+        sgState.auto = true;
+        var dots = Array.prototype.filter.call(sgBoard.querySelectorAll(".sg-dot.free"), function (d) {
+          return d.dataset.k === undefined;
+        });
+        var moves = dots.map(function (d, i) {
+          var k = sgNextFree();
+          return sgPut(d, k, i * 140);
+        });
+        Promise.all(moves).then(sgCheckWin);
       }
 
       // Jeton lâché dans la 2e dizaine alors que la 1re n'est pas pleine :
@@ -1794,7 +2020,7 @@
         var seq = [
           a + " + " + fill + " + " + rest,
           "10 + " + rest,
-          String(a + b)
+          a + " + " + b + " = " + (a + b)
         ];
         var chain = wait(500);
         seq.forEach(function (txt) {
@@ -1804,18 +2030,20 @@
             return wait(1300);
           });
         });
+        // Le résultat reste affiché : on voit ce qu'on a fait. La flèche
+        // en bas à droite passe à la manche suivante.
         chain.then(function () {
-          if (!sgState.mistake) sgStreakN = Math.min(3, sgStreakN + 1);
+          if (sgState.auto) { /* manche montrée : ni gagnée ni perdue */ }
+          else if (!sgState.mistake) sgStreakN = Math.min(3, sgStreakN + 1);
           sgRenderStreak();
           if (sgStreakN >= 3 && !hasBadge()) {
             setBadge(true);
             sgMsg.textContent = "✦ 10";
             badgeChip.animate([{ transform: "scale(1.6)" }, { transform: "scale(1)" }], { duration: ms(700), easing: "ease-out" });
-            return wait(1800);
           }
-          return wait(600);
-        }).then(function () {
-          if (DEMOS[demoIndex].custom) sgStart();
+          sgState.ready = true;
+          nextBtn.disabled = false;
+          nextBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: ms(600) });
         });
       }
 
@@ -1838,6 +2066,9 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v12", text: "Opposés : la soustraction est posée en colonne — 3x, puis −3x dessous, la barre, et le 0 sous la barre (plus de « = 0 » à côté qui faisait croire à une fraction)." },
+        { v: "v11", text: "Singapour plus souple : un appui bref pose un jeton dans la bonne case (ou le retire s'il est posé), on peut aussi glisser pour poser et pour retirer, chaque déplacement rebondit un peu. Appuyer sur le 2e nombre range tous ses jetons d'un coup (manche montrée, ne compte pas pour le badge). À la fin, la somme reste affichée (7 + 9 = 16) et la flèche → passe à la suivante. Les jetons de la réserve ne se chevauchent plus." },
+        { v: "v10", text: "Distribution du −1 refaite : c'est toi qui déclenches chaque étape. Le (−1) trace une flèche en arc, lentement, vers chaque terme l'un après l'autre (le terme touché passe en jaune et reste marqué). Ensuite seulement, les produits s'écrivent un par un, puis on calcule." },
         { v: "v9", text: "Comportement d'application : la page tient dans l'écran, ne défile plus, ne se tire plus vers le bas, pas de zoom. Le défi Singapour s'adapte à la hauteur de l'écran." },
         { v: "v8", text: "Chapitre Singapour : défi « faire 10 » — on glisse soi-même les jetons dans des cadres de dix, la première dizaine avant la seconde. 3 réussites de suite débloquent le badge ✦ 10, qui fait apparaître le cadre de dix sous les additions des autres démos (7 + 5 = 10 + 2 dans Opposés)." },
         { v: "v7", text: "Nouvelles démos : Piège ((x + 3)/3 ≠ x), −×− (multiplier par −1 = demi-tour sur la droite des réels), Distribuer / Factoriser avec des formes (rond, carré) sans texte, Équation (le même geste des deux côtés)." },

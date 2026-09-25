@@ -13,6 +13,15 @@ Tri : priorité décroissante.
 
 ## À faire
 
+- [x] P1 — Distribution du −1 refaite après retour de Pierre : pas à pas
+  déclenché au toucher, flèches en arc tracées lentement une par une,
+  produits écrits un par un, calcul à part
+- [x] P1 — Singapour : appui bref pose/retire, glisser dans les deux sens,
+  animation souple, appui sur le 2e nombre = tout ranger, résultat qui
+  reste affiché, flèche → pour la suite
+- [x] P1 — Opposés : soustraction posée en colonne, 0 sous la barre
+- [ ] P1 — Chapitre décomposition en produit de facteurs premiers (vient
+  de la démo Fraction : 6 = 2 · 3, 9 = 3 · 3)
 - [ ] P1 — Retour sur la page d'essai : vitesse, lisibilité, clarté des explications
 - [x] P1 — Démo « piège » : (x + 3) / 3 ≠ x, montrer pourquoi on ne peut pas simplifier
 - [x] P2 — Démo dédiée « moins par moins = plus » : expliquée par une rotation à
