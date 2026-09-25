@@ -1040,5 +1040,38 @@
       selectDemo(0);
     })();
   </script>
+
+  <script>
+    // Mise à jour automatique (même principe que la page d'accueil du
+    // portfolio) : aucune progression n'est encore sauvegardée ici, donc
+    // rien à perdre en rechargeant dès qu'une nouvelle version est en ligne.
+    (function () {
+      async function checkForUpdate() {
+        try {
+          var res = await fetch(location.pathname || 'index.html', { cache: 'no-store' });
+          if (!res.ok) return;
+          var tag = res.headers.get('etag') || res.headers.get('last-modified');
+          if (!tag) return;
+          var key = 'pm_pageVersion_pas-a-pas';
+          var stored = localStorage.getItem(key);
+          if (stored === null) { localStorage.setItem(key, tag); return; }
+          if (tag !== stored) {
+            var now = Date.now();
+            var guard = 'pm_lastUpdateReload_pas-a-pas';
+            var lastReload = 0;
+            try { lastReload = Number(sessionStorage.getItem(guard)) || 0; } catch (e) {}
+            if (now - lastReload < 10000) return;
+            try {
+              localStorage.setItem(key, tag);
+              sessionStorage.setItem(guard, String(now));
+            } catch (e) {}
+            location.reload();
+          }
+        } catch (e) {}
+      }
+      checkForUpdate();
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) checkForUpdate(); });
+    })();
+  </script>
 </body>
 </html>

@@ -43,6 +43,14 @@ Un nouveau projet (jeu ou page d'essai) :
   - `-webkit-user-select: none; user-select: none;` (empêche la sélection
     de texte qui déclenche la loupe de grossissement)
   - `-webkit-touch-callout: none;` (empêche le menu/la loupe à l'appui long)
+- **a le script de mise à jour automatique**, copié de `index.html`
+  (vérification `fetch(..., {cache:'no-store'})` + comparaison d'ETag,
+  `localStorage`/`sessionStorage` namespacés au nom du projet pour ne pas
+  entrer en collision avec les autres pages du même domaine, rechargement
+  silencieux). Sans lui, Pierre teste une version périmée sans le savoir —
+  c'est arrivé une fois sur `pas-a-pas/` et `bulles-sonores/`, faute de
+  l'avoir ajouté dès leur création. Toujours présent dès le premier commit
+  d'un nouveau projet, jamais un ajout tardif.
 
 ## Fusion des PR
 
