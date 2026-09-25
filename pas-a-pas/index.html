@@ -1045,19 +1045,29 @@
     // Mise à jour automatique (même principe que la page d'accueil du
     // portfolio) : aucune progression n'est encore sauvegardée ici, donc
     // rien à perdre en rechargeant dès qu'une nouvelle version est en ligne.
+    // Le paramètre anti-cache dans l'URL de vérification est nécessaire :
+    // un simple `cache: 'no-store'` n'empêche que la mise en cache locale
+    // du navigateur, pas celle du CDN devant GitHub Pages, qui peut renvoyer
+    // une réponse périmée même à une requête "no-store".
     (function () {
+      var PAGE = "pas-a-pas";
+      var lastCheck = 0;
       async function checkForUpdate() {
+        var now0 = Date.now();
+        if (now0 - lastCheck < 1500) return; // évite les rafales de clics
+        lastCheck = now0;
         try {
-          var res = await fetch(location.pathname || 'index.html', { cache: 'no-store' });
+          var url = (location.pathname || "index.html") + "?_cb=" + now0;
+          var res = await fetch(url, { cache: "no-store" });
           if (!res.ok) return;
-          var tag = res.headers.get('etag') || res.headers.get('last-modified');
+          var tag = res.headers.get("etag") || res.headers.get("last-modified");
           if (!tag) return;
-          var key = 'pm_pageVersion_pas-a-pas';
+          var key = "pm_pageVersion_" + PAGE;
           var stored = localStorage.getItem(key);
           if (stored === null) { localStorage.setItem(key, tag); return; }
           if (tag !== stored) {
             var now = Date.now();
-            var guard = 'pm_lastUpdateReload_pas-a-pas';
+            var guard = "pm_lastUpdateReload_" + PAGE;
             var lastReload = 0;
             try { lastReload = Number(sessionStorage.getItem(guard)) || 0; } catch (e) {}
             if (now - lastReload < 10000) return;
@@ -1065,12 +1075,13 @@
               localStorage.setItem(key, tag);
               sessionStorage.setItem(guard, String(now));
             } catch (e) {}
-            location.reload();
+            location.replace(location.pathname + "?_r=" + now);
           }
         } catch (e) {}
       }
       checkForUpdate();
-      document.addEventListener('visibilitychange', function () { if (!document.hidden) checkForUpdate(); });
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) checkForUpdate(); });
+      document.addEventListener("pointerdown", checkForUpdate, { passive: true });
     })();
   </script>
 </body>

@@ -148,9 +148,17 @@
     if ('caches' in window) {
       caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {});
     }
+    // Le paramètre anti-cache dans l'URL de vérification est nécessaire :
+    // un simple `cache: 'no-store'` n'empêche que la mise en cache locale
+    // du navigateur, pas celle du CDN devant GitHub Pages, qui peut renvoyer
+    // une réponse périmée même à une requête "no-store".
+    let lastCheck = 0;
     async function checkForUpdate(){
+      const now0 = Date.now();
+      if (now0 - lastCheck < 1500) return; // évite les rafales de clics
+      lastCheck = now0;
       try {
-        const res = await fetch(location.pathname || 'index.html', { cache: 'no-store' });
+        const res = await fetch((location.pathname || 'index.html') + '?_cb=' + now0, { cache: 'no-store' });
         if (!res.ok) return;
         const tag = res.headers.get('etag') || res.headers.get('last-modified');
         if (!tag) return; // l'hébergeur n'envoie ni l'un ni l'autre — rien de fiable à comparer
@@ -165,12 +173,13 @@
             localStorage.setItem('pm_pageVersion', tag);
             sessionStorage.setItem('pm_lastUpdateReload', String(now));
           } catch (e) { /* ignore */ }
-          location.reload();
+          location.replace(location.pathname + '?_r=' + now);
         }
       } catch (e) { /* hors-ligne, ou requête bloquée — on ignore, on retentera plus tard */ }
     }
     checkForUpdate();
     document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+    document.addEventListener('pointerdown', checkForUpdate, { passive: true });
   </script>
 </body>
 </html>
