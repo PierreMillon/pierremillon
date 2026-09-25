@@ -25,6 +25,12 @@ Tri : priorité décroissante.
   ten frame + number bonds + stratégie « faire 10 », pas une ligne de
   carrés. Utilisé sur 2 + 5 (Opposés) et (−2) + (−1) (−( … )).
   Reste : nombres de signes contraires (annulation jeton à jeton).
+- [x] P1 — Chapitre Singapour : défi « faire 10 » (glisser les jetons,
+  1re dizaine avant la 2e), 3 réussites de suite = badge ✦ 10. Le badge
+  conditionne l'affichage du cadre de dix sous les additions des autres
+  démos. Premier badge de la vision long terme.
+- [ ] P2 — Défi soustraction façon Singapour (« retirer de 10 », ex. 13 − 5
+  = 10 − 5 + 3), même badge ou badge suivant
 - [x] P2 — Démo factorisation/distributivité avec des figures géométriques
   simples (ex. un rond + un carré = un groupe ; deux fois ce groupe = facteur
   2 devant), pensée pour être comprise sans lire le français, et réversible

@@ -562,6 +562,84 @@
     .arrow-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
 
     .arrow-btn:disabled { opacity: 0.3; cursor: default; }
+
+    [hidden] { display: none !important; }
+
+    .badge {
+      margin-left: auto;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      padding: 0.25rem 0.6rem;
+    }
+
+    /* Chapitre Singapour : défi « faire 10 » avec de vrais jetons à glisser */
+    .sg {
+      margin-top: 0.9rem;
+      border-top: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--hairline);
+      padding: 1rem 0 1.2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    .sg-eq {
+      min-height: 1.2em;
+      font-weight: 500;
+      font-size: clamp(1.9rem, 8vw, 2.6rem);
+      line-height: 1.2;
+      color: var(--ink);
+    }
+
+    .sg-board {
+      position: relative;
+      width: 100%;
+      max-width: 360px;
+      height: 260px;
+      touch-action: none;
+    }
+
+    .sg-cell {
+      position: absolute;
+      border: 1px solid var(--ink-soft);
+      margin: 0 -1px -1px 0;
+    }
+
+    .sg-cell.warn { border-color: var(--sign); }
+
+    .sg-dot {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: var(--accent-soft);
+      z-index: 2;
+    }
+
+    .sg-dot.given { border-color: var(--ink-soft); background: transparent; }
+    .sg-dot.free { cursor: grab; touch-action: none; z-index: 3; }
+    .sg-dot.drag { z-index: 5; transform: scale(1.15); }
+
+    .sg-streak { display: flex; gap: 0.4rem; }
+
+    .sg-streak span {
+      width: 10px;
+      height: 10px;
+      border: 1px solid var(--hairline);
+    }
+
+    .sg-streak span.on { background: var(--accent); border-color: var(--accent); }
+
+    .sg-msg {
+      margin: 0;
+      min-height: 1.4em;
+      font-size: 0.8rem;
+      text-align: center;
+      color: var(--ink-soft);
+    }
   </style>
 </head>
 <body>
@@ -569,11 +647,13 @@
     <header>
       <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false">☰</button>
       <h1>Pas à Pas</h1>
+      <span class="badge" id="badgeChip" title="Badge cadre de dix" hidden>✦ 10</span>
     </header>
 
     <div class="menu-panel" id="menuPanel" hidden>
       <a class="menu-item" href="../">← Portfolio</a>
       <button class="menu-item" id="histBtn">Historique</button>
+      <button class="menu-item" id="badgeReset">Effacer le badge</button>
     </div>
 
     <div class="overlay" id="histOverlay" hidden>
@@ -583,6 +663,13 @@
     </div>
 
     <div class="tabs" role="tablist" id="tabs"></div>
+
+    <section class="sg" id="sg" hidden>
+      <div class="sg-eq" id="sgEq"></div>
+      <div class="sg-board" id="sgBoard"></div>
+      <div class="sg-streak" id="sgStreak"><span></span><span></span><span></span></div>
+      <p class="sg-msg" id="sgMsg"></p>
+    </section>
 
     <div class="stage-wrap" id="stageWrap">
       <div class="stage-top" id="stageTop">
@@ -598,7 +685,7 @@
       </div>
     </div>
 
-    <div class="controls">
+    <div class="controls" id="controls">
       <button class="arrow-btn" id="prevBtn" aria-label="Retour">←</button>
       <button class="arrow-btn" id="nextBtn" aria-label="Suivant">→</button>
     </div>
@@ -618,6 +705,7 @@
       var X = "<i>x</i>";
 
       var DEMOS = [
+        { title: "Singapour", custom: true, steps: [{ expr: [] }] },
         {
           title: "−( … )",
           split: true,
@@ -678,37 +766,37 @@
           title: "Opposés",
           steps: [
             {
-              expr: [T("a", "3" + X), T("sb", "+", "op"), T("b", "2"), T("sc", "−", "op"), T("c", "3" + X), T("sd", "+", "op"), T("d", "5")],
+              expr: [T("a", "3" + X), T("sb", "+", "op"), T("b", "7"), T("sc", "−", "op"), T("c", "3" + X), T("sd", "+", "op"), T("d", "5")],
               note: "Point de départ."
             },
             {
-              expr: [T("a", "3" + X), T("sb", "+", "op"), T("b", "2"), T("sc", "−", "op"), T("c", "3" + X), T("sd", "+", "op"), T("d", "5")],
+              expr: [T("a", "3" + X), T("sb", "+", "op"), T("b", "7"), T("sc", "−", "op"), T("c", "3" + X), T("sd", "+", "op"), T("d", "5")],
               hl: ["a", "sc", "c"],
               note: "+3<i>x</i> et −3<i>x</i> sont <b>opposés</b> : même valeur, signes contraires."
             },
             {
-              expr: [T("a", "3" + X), T("sc", "−", "op"), T("c", "3" + X), T("sb", "+", "op"), T("b", "2"), T("sd", "+", "op"), T("d", "5")],
+              expr: [T("a", "3" + X), T("sc", "−", "op"), T("c", "3" + X), T("sb", "+", "op"), T("b", "7"), T("sd", "+", "op"), T("d", "5")],
               hl: ["a", "sc", "c"],
               note: "On les rapproche. L'ordre d'une somme ne change rien, tant que chacun garde son signe."
             },
             {
-              expr: [V([T("a", "3" + X)], [T("sc", "−", "op"), T("c", "3" + X)], [T("eq0", "=", "op"), T("z", "0")]), T("sb", "+", "op"), T("b", "2"), T("sd", "+", "op"), T("d", "5")],
+              expr: [V([T("a", "3" + X)], [T("sc", "−", "op"), T("c", "3" + X)], [T("eq0", "=", "op"), T("z", "0")]), T("sb", "+", "op"), T("b", "7"), T("sd", "+", "op"), T("d", "5")],
               hl: ["z"],
               note: "Posé comme une soustraction, comme à l'école : 3<i>x</i> au-dessus, −3<i>x</i> en dessous, une barre — ça fait 0."
             },
             {
-              expr: [T("z", "0", "", ["a", "sc", "c"]), T("sb", "+", "op"), T("b", "2"), T("sd", "+", "op"), T("d", "5")],
+              expr: [T("z", "0", "", ["a", "sc", "c"]), T("sb", "+", "op"), T("b", "7"), T("sd", "+", "op"), T("d", "5")],
               hl: ["z"],
               note: "3<i>x</i> − 3<i>x</i> = 0. Ils se touchent et s'annulent."
             },
             {
-              expr: [T("b", "2"), T("sd", "+", "op"), T("d", "5")],
-              note: "0 est neutre pour l'addition : 0 + 2 = 2. On peut l'effacer."
+              expr: [T("b", "7"), T("sd", "+", "op"), T("d", "5")],
+              note: "0 est neutre pour l'addition : 0 + 7 = 7. On peut l'effacer."
             },
             {
-              fx: { type: "meet", ids: ["b", "sd", "d"], blocks: [{ id: "b", n: 2 }, { id: "d", n: 5 }] },
-              expr: [T("n7", "7", "", ["b", "sd", "d"])],
-              note: "2 + 5 = 7. Résultat : <b>7</b>."
+              fx: { type: "meet", ids: ["b", "sd", "d"], blocks: [{ id: "b", n: 7 }, { id: "d", n: 5 }] },
+              expr: [T("n7", "12", "", ["b", "sd", "d"])],
+              note: "7 + 5 : on complète la dizaine (7 + 3), il reste 2 — 10 + 2 = <b>12</b>."
             }
           ]
         },
@@ -1272,7 +1360,7 @@
 
         var units = [];
         var pre = wait(350);
-        if (fx.blocks) pre = pre.then(function () { return fxBlocks(fx.blocks, snap, cx, units); });
+        if (fx.blocks && hasBadge()) pre = pre.then(function () { return fxBlocks(fx.blocks, snap, cx, units); });
 
         return pre.then(function () {
           // Les carrés rejoignent le point de fusion en même temps que les
@@ -1471,10 +1559,15 @@
         demoIndex = i;
         cur = 0;
         lastTopStep = null;
-        buildDots(DEMOS[i]);
         tabsEl.querySelectorAll(".tab").forEach(function (t, k) {
           t.setAttribute("aria-selected", k === i ? "true" : "false");
         });
+        var custom = !!DEMOS[i].custom;
+        sgEl.hidden = !custom;
+        stageWrap.hidden = custom;
+        document.getElementById("controls").hidden = custom;
+        if (custom) { sgStart(); return; }
+        buildDots(DEMOS[i]);
         build(DEMOS[i].steps[0]);
         refreshUi();
         syncTop(false);
@@ -1493,13 +1586,214 @@
       prevBtn.addEventListener("click", prev);
 
       document.addEventListener("keydown", function (e) {
+        if (DEMOS[demoIndex].custom) return;
         if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
         if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
       });
 
+      // ---------- Badge « cadre de dix » ----------
+      // Gagné dans le chapitre Singapour. Tant qu'on ne l'a pas, les
+      // additions des autres démos se font sans jetons ; une fois gagné,
+      // le cadre de dix réapparaît sous chaque addition pour rappeler
+      // visuellement 7 + 5 = 5 + 2 + 5 = 10 + 2.
+
+      var BADGE_KEY = "pasapas_badge_dix";
+      var badgeChip = document.getElementById("badgeChip");
+
+      function hasBadge() {
+        try { return localStorage.getItem(BADGE_KEY) === "1"; } catch (e) { return false; }
+      }
+
+      function setBadge(on) {
+        try {
+          if (on) localStorage.setItem(BADGE_KEY, "1");
+          else localStorage.removeItem(BADGE_KEY);
+        } catch (e) {}
+        badgeChip.hidden = !hasBadge();
+      }
+
+      document.getElementById("badgeReset").addEventListener("click", function () {
+        closeMenu();
+        setBadge(false);
+        sgStreakN = 0;
+        sgRenderStreak();
+      });
+
+      // ---------- Chapitre Singapour : défi « faire 10 » ----------
+      // Programme MOE (P1) : addition dans 20 par « make ten » sur des
+      // cadres de dix. Le premier nombre est déjà posé ; on glisse soi-même
+      // les jetons du second. Règle : on remplit la dizaine avant d'en
+      // commencer une autre — un jeton lâché dans le 2e cadre trop tôt
+      // revient. 3 réussites de suite sans erreur = badge.
+
+      var sgEl = document.getElementById("sg");
+      var sgEq = document.getElementById("sgEq");
+      var sgBoard = document.getElementById("sgBoard");
+      var sgMsg = document.getElementById("sgMsg");
+      var SG_CELL = 36;
+      var sgStreakN = 0;
+      var sgState = null;
+
+      function sgRenderStreak() {
+        var d = document.getElementById("sgStreak").children;
+        for (var i = 0; i < d.length; i++) d[i].classList.toggle("on", i < sgStreakN);
+      }
+
+      function sgSlot(k) {
+        var f = Math.floor(k / 10), r = Math.floor((k % 10) / 5), c = k % 5;
+        var left = (sgBoard.clientWidth - 5 * SG_CELL) / 2;
+        return { x: left + c * SG_CELL + SG_CELL / 2, y: 12 + f * (2 * SG_CELL + 14) + r * SG_CELL + SG_CELL / 2 };
+      }
+
+      function sgPlace(el, x, y) {
+        var d = SG_CELL - 10;
+        el.style.width = d + "px";
+        el.style.height = d + "px";
+        el.style.left = (x - d / 2) + "px";
+        el.style.top = (y - d / 2) + "px";
+      }
+
+      function sgStart() {
+        var a = 6 + Math.floor(Math.random() * 4);           // 6..9
+        var bMin = 11 - a;                                     // dépasse 10
+        var b = bMin + Math.floor(Math.random() * (10 - bMin)); // ..9
+        sgState = { a: a, b: b, filled: {}, placed: 0, mistake: false, done: false };
+        sgBoard.innerHTML = "";
+        sgEq.textContent = a + " + " + b;
+        sgMsg.textContent = "";
+        sgRenderStreak();
+        badgeChip.hidden = !hasBadge();
+
+        for (var k = 0; k < 20; k++) {
+          var s = sgSlot(k);
+          var c = document.createElement("span");
+          c.className = "sg-cell";
+          c.dataset.k = k;
+          c.style.left = (s.x - SG_CELL / 2) + "px";
+          c.style.top = (s.y - SG_CELL / 2) + "px";
+          c.style.width = SG_CELL + "px";
+          c.style.height = SG_CELL + "px";
+          sgBoard.appendChild(c);
+        }
+        for (var i = 0; i < a; i++) {
+          var g = document.createElement("span");
+          g.className = "sg-dot given";
+          var gs = sgSlot(i);
+          sgPlace(g, gs.x, gs.y);
+          sgBoard.appendChild(g);
+          sgState.filled[i] = true;
+        }
+        // Le second nombre attend dans la réserve, sous les cadres
+        var trayY = sgSlot(10).y + 2 * SG_CELL + 20;
+        var gap = Math.min(SG_CELL, (sgBoard.clientWidth - 20) / b);
+        var trayLeft = sgBoard.clientWidth / 2 - (b - 1) * gap / 2;
+        for (var j = 0; j < b; j++) {
+          var dot = document.createElement("span");
+          dot.className = "sg-dot free";
+          var home = { x: trayLeft + j * gap, y: trayY };
+          sgPlace(dot, home.x, home.y);
+          sgBoard.appendChild(dot);
+          sgDraggable(dot, home);
+        }
+      }
+
+      function sgDraggable(dot, home) {
+        var start = null;
+        dot.addEventListener("pointerdown", function (e) {
+          if (!sgState || sgState.done || dot.dataset.k) return;
+          e.preventDefault();
+          dot.setPointerCapture(e.pointerId);
+          dot.classList.add("drag");
+          var r = sgBoard.getBoundingClientRect();
+          start = { ox: r.left, oy: r.top };
+        });
+        dot.addEventListener("pointermove", function (e) {
+          if (!start) return;
+          sgPlace(dot, e.clientX - start.ox, e.clientY - start.oy);
+        });
+        function drop(e) {
+          if (!start) return;
+          var x = e.clientX - start.ox, y = e.clientY - start.oy;
+          start = null;
+          dot.classList.remove("drag");
+          var best = -1, bestD = SG_CELL * 0.8;
+          for (var k = 0; k < 20; k++) {
+            if (sgState.filled[k]) continue;
+            var s = sgSlot(k);
+            var d = Math.hypot(s.x - x, s.y - y);
+            if (d < bestD) { bestD = d; best = k; }
+          }
+          var firstFull = true;
+          for (var i = 0; i < 10; i++) if (!sgState.filled[i]) firstFull = false;
+          if (best < 0 || (best >= 10 && !firstFull)) {
+            if (best >= 10) sgWrong();
+            sgPlace(dot, home.x, home.y);
+            dot.animate([{ transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "none" }],
+              { duration: ms(260) });
+            return;
+          }
+          var s = sgSlot(best);
+          sgPlace(dot, s.x, s.y);
+          dot.dataset.k = best;
+          dot.classList.remove("free");
+          sgState.filled[best] = true;
+          sgState.placed++;
+          if (sgState.placed === sgState.b) sgWin();
+        }
+        dot.addEventListener("pointerup", drop);
+        dot.addEventListener("pointercancel", drop);
+      }
+
+      // Jeton lâché dans la 2e dizaine alors que la 1re n'est pas pleine :
+      // la 1re s'allume en jaune, le jeton revient, la série repart de 0.
+      function sgWrong() {
+        sgState.mistake = true;
+        sgStreakN = 0;
+        sgRenderStreak();
+        var cells = sgBoard.querySelectorAll(".sg-cell");
+        for (var i = 0; i < 10; i++) cells[i].classList.add("warn");
+        setTimeout(function () {
+          for (var i = 0; i < 10; i++) cells[i].classList.remove("warn");
+        }, ms(900));
+      }
+
+      function sgWin() {
+        sgState.done = true;
+        var a = sgState.a, b = sgState.b, fill = 10 - a, rest = b - fill;
+        var seq = [
+          a + " + " + fill + " + " + rest,
+          "10 + " + rest,
+          String(a + b)
+        ];
+        var chain = wait(500);
+        seq.forEach(function (txt) {
+          chain = chain.then(function () {
+            sgEq.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: ms(400) });
+            sgEq.textContent = txt;
+            return wait(1300);
+          });
+        });
+        chain.then(function () {
+          if (!sgState.mistake) sgStreakN = Math.min(3, sgStreakN + 1);
+          sgRenderStreak();
+          if (sgStreakN >= 3 && !hasBadge()) {
+            setBadge(true);
+            sgMsg.textContent = "✦ 10";
+            badgeChip.animate([{ transform: "scale(1.6)" }, { transform: "scale(1)" }], { duration: ms(700), easing: "ease-out" });
+            return wait(1800);
+          }
+          return wait(600);
+        }).then(function () {
+          if (DEMOS[demoIndex].custom) sgStart();
+        });
+      }
+
+      badgeChip.hidden = !hasBadge();
+
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v8", text: "Chapitre Singapour : défi « faire 10 » — on glisse soi-même les jetons dans des cadres de dix, la première dizaine avant la seconde. 3 réussites de suite débloquent le badge ✦ 10, qui fait apparaître le cadre de dix sous les additions des autres démos (7 + 5 = 10 + 2 dans Opposés)." },
         { v: "v7", text: "Nouvelles démos : Piège ((x + 3)/3 ≠ x), −×− (multiplier par −1 = demi-tour sur la droite des réels), Distribuer / Factoriser avec des formes (rond, carré) sans texte, Équation (le même geste des deux côtés)." },
         { v: "v6", text: "Méthode de Singapour : au moment où deux nombres fusionnent (2 + 5, (−2) + (−1)), un cadre de dix (2 rangées de 5, comme à Singapour) apparaît et chaque nombre vient le remplir de jetons, puis tout se referme sur le résultat. Jetons jaunes = négatifs." },
         { v: "v5", text: "Distribution du −1 terme par terme, écrite en toutes lettres (−1)·(terme), avant de la simplifier. Phrases magiques sur la ligne du haut. Contrôles réduits à deux flèches." },
