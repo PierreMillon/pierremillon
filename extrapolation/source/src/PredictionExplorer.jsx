@@ -171,6 +171,18 @@ const METHODS = [
 
 const DRAW_COLOR = "#FF6B8B";
 const DRAW_YEARS = [1826, 1866, 1906, 1946, 1986, 2026];
+const DRAW_FUTURE = [2076, 2126];
+// points verrouillés horizontalement : début, frontière passé/futur, fin
+const isLocked = (year) => year === X0 || year === X_NOW || year === X1;
+
+// Prolonge une courbe dessinée (ancienne sauvegarde, ou nouvelle courbe)
+// jusqu'en 2126, dans la pente des 40 dernières années.
+function withFuture(pts) {
+  if (pts[pts.length - 1].year === X1) return pts;
+  const f = monotoneInterp(pts);
+  const slope = (f(X_NOW) - f(X_NOW - 40)) / 40;
+  return [...pts, ...DRAW_FUTURE.map((year) => ({ year, value: f(X_NOW) + slope * (year - X_NOW) }))];
+}
 
 // Bruit fixe (même tirage à chaque fois) pour la courbe dessinée :
 // le curseur « Bruit » ne fait qu'en régler l'amplitude.
@@ -202,9 +214,9 @@ const T = {
       sigmoid:
         "Courbe en S : elle accélère, puis ralentit sous un plafond L que l'on suppose. Très bonne si un plafond existe vraiment, trompeuse sinon — tout dépend du L choisi.",
       draw:
-        "Les données sont maintenant ta courbe. Glisse un point ● pour la déformer : les méthodes se recalculent en direct. Touche une zone vide (avant 2026) pour ajouter un point. Les deux extrémités ne bougent que verticalement. Le curseur « Bruit » ajoute des petites irrégularités, comme dans des vraies mesures.",
+        "Les données sont maintenant ta courbe. Avant 2026, c'est ce que les méthodes voient ; après 2026 (en pointillé), c'est la « vérité » qu'elles doivent deviner — la colonne « futur » dit laquelle s'en approche le plus. Glisse un point ● pour déformer la courbe : tout se recalcule en direct. Touche une zone vide pour ajouter un point. Les points de 1826, 2026 et 2126 ne bougent que verticalement. Le curseur « Bruit » ajoute des petites irrégularités, comme dans des vraies mesures.",
       score:
-        "Écart moyen = moyenne des distances verticales, une mesure tous les 2 ans. « Passé » : écart de la méthode aux données, sur la période choisie (elle colle bien ou pas). « Futur » : écart à la vraie mécanique sur 2026 → 2126, seulement pour une série aléatoire, après la révélation.",
+        "Écart moyen = moyenne des distances verticales, une mesure tous les 2 ans. « Passé » : écart de la méthode aux données, sur la période choisie (elle colle bien ou pas). « Futur » : écart sur 2026 → 2126, à ta courbe dessinée, ou à la vraie mécanique d'une série aléatoire une fois révélée.",
     },
     history: "Historique",
     close: "Fermer",
@@ -253,9 +265,9 @@ const T = {
       sigmoid:
         "An S-curve: it speeds up, then slows down under an assumed ceiling L. Great if a ceiling really exists, misleading otherwise — it all depends on the chosen L.",
       draw:
-        "The data is now your curve. Drag a point ● to reshape it: the methods update live. Tap an empty spot (before 2026) to add a point. Both ends only move vertically. The « Noise » slider adds small irregularities, like real measurements.",
+        "The data is now your curve. Before 2026 is what the methods see; after 2026 (dotted) is the « truth » they must guess — the « future » column shows which one gets closest. Drag a point ● to reshape the curve: everything updates live. Tap an empty spot to add a point. The 1826, 2026 and 2126 points only move vertically. The « Noise » slider adds small irregularities, like real measurements.",
       score:
-        "Mean error = average vertical distance, measured every 2 years. « Past »: distance from the method to the data over the chosen period (does it fit?). « Future »: distance to the actual mechanism over 2026 → 2126, random series only, after revealing.",
+        "Mean error = average vertical distance, measured every 2 years. « Past »: distance from the method to the data over the chosen period (does it fit?). « Future »: distance over 2026 → 2126, to your drawn curve, or to the actual mechanism of a random series once revealed.",
     },
     history: "History",
     close: "Close",
@@ -285,6 +297,12 @@ const T = {
 };
 
 const HISTORY = [
+  {
+    v: "v6",
+    date: "25/09/2026",
+    fr: "Ta courbe se dessine aussi dans le futur, jusqu'en 2126 (en pointillé) : c'est la « vérité » à deviner. Les méthodes ne voient que la partie avant 2026, et la colonne « futur » dit laquelle s'en approche le plus.",
+    en: "Your curve now extends into the future, up to 2126 (dotted): that's the « truth » to guess. Methods only see the part before 2026, and the « future » column shows which one gets closest.",
+  },
   {
     v: "v5",
     date: "25/09/2026",
@@ -331,10 +349,11 @@ function loadSaved() {
   const maxIdx = Math.floor((X_NOW - X0) / STEP) - 4;
   let drawPts = null;
   if (Array.isArray(raw.drawPts) && raw.drawPts.length >= 2 && raw.drawPts.length <= 60) {
-    const pts = raw.drawPts.map((p) => ({ year: num(p && p.year, X0, X_NOW, NaN), value: num(p && p.value, -1e6, 1e6, NaN) }));
+    const pts = raw.drawPts.map((p) => ({ year: num(p && p.year, X0, X1, NaN), value: num(p && p.value, -1e6, 1e6, NaN) }));
+    const last = pts[pts.length - 1] && pts[pts.length - 1].year;
     const ok = pts.every((p, i) => !isNaN(p.year) && !isNaN(p.value) && (i === 0 || p.year > pts[i - 1].year))
-      && pts[0].year === X0 && pts[pts.length - 1].year === X_NOW;
-    if (ok) drawPts = pts;
+      && pts[0].year === X0 && pts.some((p) => p.year === X_NOW) && (last === X_NOW || last === X1);
+    if (ok) drawPts = withFuture(pts);
   }
   const active = { secant: true, linreg: true, weighted: false, sigmoid: false };
   if (raw.active && typeof raw.active === "object") {
@@ -441,29 +460,32 @@ export default function PredictionExplorer() {
     const r = hi - lo || 4;
     lo -= 0.4 * r;
     hi += 1.2 * r;
-    if (revealTrue && !drawn) {
+    const future = drawn ? drawFn : revealTrue ? random.trueFn : null;
+    if (future) {
       for (let t = X_NOW; t <= X1; t += STEP) {
-        hi = Math.max(hi, random.trueFn(t) + 0.1 * r);
-        lo = Math.min(lo, random.trueFn(t) - 0.1 * r);
+        hi = Math.max(hi, future(t) + 0.1 * r);
+        lo = Math.min(lo, future(t) - 0.1 * r);
       }
     }
     return [lo, hi];
-  }, [historical, revealTrue, drawn, random]);
+  }, [historical, revealTrue, drawn, random, drawFn]);
   // Au lâcher, on garde l'échelle actuelle tant que les données y tiennent
   // encore largement : sinon le point « sauterait » sous le doigt.
   if (!dragging) {
     const prev = frozenDomain.current;
     const vals = historical.map((p) => p.value);
+    if (drawn) for (let t = X_NOW; t <= X1; t += STEP) vals.push(drawFn(t));
     const dMin = Math.min(...vals), dMax = Math.max(...vals);
     const keep = prev && drawn
-      && dMin >= prev[0] && dMax <= prev[1]
+      && dMin >= prev[0] + 0.05 * (prev[1] - prev[0])
+      && dMax <= prev[1] - 0.05 * (prev[1] - prev[0])
       && (prev[1] - prev[0]) <= 4 * ((liveDomain[1] - liveDomain[0]) || 1);
     if (!keep) frozenDomain.current = liveDomain;
   }
   const yDomain = frozenDomain.current;
 
   const startDrawing = () => {
-    setDrawPts(DRAW_YEARS.map((year) => ({ year, value: localMean(historical, year) })));
+    setDrawPts(withFuture(DRAW_YEARS.map((year) => ({ year, value: localMean(historical, year) }))));
     setRevealTrue(false);
     setSelectedPt(null);
     setInfo("draw");
@@ -478,7 +500,7 @@ export default function PredictionExplorer() {
   };
 
   const removeSelectedPoint = () => {
-    if (selectedPt == null || selectedPt === 0 || selectedPt === drawPts.length - 1) return;
+    if (selectedPt == null || isLocked(drawPts[selectedPt].year)) return;
     setDrawPts(drawPts.filter((_, i) => i !== selectedPt));
     setSelectedPt(null);
   };
@@ -493,14 +515,16 @@ export default function PredictionExplorer() {
     return METHODS.filter((m) => active[m.id]).map((m) => ({
       id: m.id, color: m.color,
       past: meanAbs(models[m.id], dataFn, pointAYear, X_NOW),
-      future: drawn ? null : meanAbs(models[m.id], random.trueFn, X_NOW + STEP, X1),
+      future: meanAbs(models[m.id], drawn ? drawFn : random.trueFn, X_NOW + STEP, X1),
     }));
-  }, [active, models, historical, pointAYear, drawn, random]);
+  }, [active, models, historical, pointAYear, drawn, random, drawFn]);
 
   const showFuture = revealTrue && !drawn;
+  // colonne « futur » : ta courbe après 2026, ou la vraie mécanique révélée
+  const futureKnown = drawn || showFuture;
   const bestPast = scores.slice().sort((a, b) => a.past - b.past)[0];
-  const bestFuture = showFuture ? scores.slice().sort((a, b) => a.future - b.future)[0] : null;
-  const canRemove = drawn && selectedPt != null && selectedPt > 0 && selectedPt < drawPts.length - 1;
+  const bestFuture = futureKnown ? scores.slice().sort((a, b) => a.future - b.future)[0] : null;
+  const canRemove = drawn && selectedPt != null && drawPts[selectedPt] && !isLocked(drawPts[selectedPt].year);
 
   return (
     <div
@@ -678,7 +702,7 @@ export default function PredictionExplorer() {
               <div style={{ display: "flex", color: "#5c6577", padding: "0 0 4px" }}>
                 <span style={{ flex: 1 }} />
                 <span style={{ width: 62, textAlign: "right" }}>{t.past}</span>
-                {!drawn && <span style={{ width: 62, textAlign: "right" }}>{t.future}</span>}
+                <span style={{ width: 62, textAlign: "right" }}>{t.future}</span>
               </div>
               {scores.map((s) => (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", padding: "3px 0" }}>
@@ -687,11 +711,9 @@ export default function PredictionExplorer() {
                   <span style={{ width: 62, textAlign: "right" }}>
                     {fmt(s.past)}{scores.length > 1 && bestPast.id === s.id ? " ★" : ""}
                   </span>
-                  {!drawn && (
-                    <span style={{ width: 62, textAlign: "right", color: showFuture ? "#EDEAE3" : "#5c6577" }}>
-                      {showFuture ? fmt(s.future) + (scores.length > 1 && bestFuture.id === s.id ? " ★" : "") : "?"}
-                    </span>
-                  )}
+                  <span style={{ width: 62, textAlign: "right", color: futureKnown ? "#EDEAE3" : "#5c6577" }}>
+                    {futureKnown ? fmt(s.future) + (scores.length > 1 && bestFuture.id === s.id ? " ★" : "") : "?"}
+                  </span>
                 </div>
               ))}
             </div>
@@ -843,9 +865,9 @@ function Chart({
     setDrawPts((prev) => {
       const pts = prev.slice();
       const last = pts.length - 1;
-      // les extrémités 1826 et 2026 ne bougent que verticalement
+      // 1826, 2026 (frontière passé/futur) et 2126 ne bougent que verticalement
       let year = pts[idx].year;
-      if (idx > 0 && idx < last) {
+      if (idx > 0 && idx < last && !isLocked(year)) {
         const minY = pts[idx - 1].year + STEP;
         const maxY = pts[idx + 1].year - STEP;
         year = Math.round(Math.min(maxY, Math.max(minY, ix(x))));
@@ -886,7 +908,7 @@ function Chart({
     const p = local(e);
     if (Math.hypot(p.x - start.x, p.y - start.y) > 10 || Date.now() - start.t > 500) return;
     const year = Math.round(ix(p.x));
-    if (year <= X0 || year >= X_NOW) return;
+    if (year <= X0 || year >= X1) return;
     if (drawPts.some((q) => Math.abs(q.year - year) < 4)) return;
     const pts = [...drawPts, { year, value: iy(p.y) }].sort((a, b) => a.year - b.year);
     setDrawPts(pts);
@@ -938,7 +960,10 @@ function Chart({
           <line x1={sx(pointAYear)} x2={sx(pointAYear)} y1={M.top} y2={M.top + ph} stroke="#5c6577" strokeDasharray="1 3" />
 
           {drawFn && (
-            <path d={path(drawFn, X0, X_NOW, 1)} fill="none" stroke={DRAW_COLOR} strokeWidth="2.4" strokeOpacity="0.55" />
+            <>
+              <path d={path(drawFn, X0, X_NOW, 1)} fill="none" stroke={DRAW_COLOR} strokeWidth="2.4" strokeOpacity="0.55" />
+              <path d={path(drawFn, X_NOW, X1, 1)} fill="none" stroke={DRAW_COLOR} strokeWidth="2.4" strokeOpacity="0.8" strokeDasharray="2 3" />
+            </>
           )}
           <path d={histPath} fill="none" stroke="#EDEAE3" strokeWidth="1.6" />
 
