@@ -66,6 +66,15 @@ Tri : priorité décroissante.
   pour gagner un badge, même après le ralenti. Remplace « D'un coup »
 - [x] v6 — Réussite en bandeau en haut : le boulier reste visible
 
+- [x] v7 — Réponses de Pierre (2e série de questions) : menu ☰ (bac à
+  sable, langue, historique, effacer les badges en deux appuis, compteur
+  de perles déplacées depuis toujours — tous les gestes, badges et ralenti
+  compris) ; petits nombres d'abord (3 réussites → 2 chiffres, 6 → 3) ;
+  son encore plus grave ; paysage en deux colonnes avec autant de tiges
+  que possible (tige ≥ 56 px), 5 en portrait. Gardés tels quels, à sa
+  demande : vitesse du ralenti (0,85 s) et des badges (0,26 s), passage au
+  niveau suivant après un badge, erreur = message + surbrillance, cran
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?

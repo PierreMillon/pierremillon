@@ -96,12 +96,11 @@
       margin-top: 0.3rem;
     }
 
-    .tabs, .levels {
+    .levels {
       display: flex;
       gap: 0.4rem;
       padding: 0 16px;
     }
-    .tabs { margin-top: 0.7rem; }
     .levels { margin-top: 0.5rem; flex-wrap: wrap; justify-content: center; }
     /* Même en mode Libre, les niveaux gardent leur place (invisibles) :
        le boulier a la même taille dans les deux modes */
@@ -375,6 +374,66 @@
     .win.show .big { animation: pop 0.5s cubic-bezier(.3, 1.6, .5, 1) both; }
     @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
+    .menu-list {
+      width: 100%;
+      max-width: 20rem;
+      display: flex;
+      flex-direction: column;
+    }
+    .menu-item {
+      font-family: inherit;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--ink);
+      background: none;
+      border: none;
+      border-top: 1px solid var(--hairline);
+      padding: 0.95rem 0.2rem;
+      text-align: left;
+      cursor: pointer;
+    }
+    .menu-item:last-child { border-bottom: 1px solid var(--hairline); }
+    .menu-item:active { background: var(--accent-soft); }
+    .menu-item.danger { color: var(--ink-soft); }
+    .menu-item.armed { color: var(--accent); }
+    .counter { font-variant-numeric: tabular-nums; }
+    .counter b { color: var(--accent); font-weight: 500; }
+
+    /* Téléphone couché : deux colonnes — textes et boutons à gauche, le
+       boulier (avec plus de tiges) à droite, sur toute la hauteur */
+    @media (orientation: landscape) and (max-height: 600px) {
+      body {
+        display: grid;
+        grid-template-columns: minmax(250px, 40%) 1fr;
+        grid-template-rows: auto auto auto 1fr auto auto;
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+      .topbar, .levels, .readout, .badgebar, .bottombar { grid-column: 1; }
+      .topbar { grid-row: 1; padding-top: 0.5rem; }
+      .levels { grid-row: 2; margin-top: 0.3rem; }
+      .readout { grid-row: 3; margin-top: 0.2rem; }
+      .badgebar { grid-row: 5; }
+      .bottombar { grid-row: 6; padding-bottom: 0.5rem; }
+      .stage { grid-column: 2; grid-row: 1 / -1; padding: 0.5rem 16px; }
+      h1 { font-size: 1.4rem; }
+      .levels .chip { font-size: 0.6rem; padding: 0.2rem 0.45rem; }
+      .value { font-size: 2rem; }
+      .task { font-size: 0.9rem; }
+      .split { font-size: 0.78rem; }
+      .badgebar { flex-wrap: wrap; height: auto; max-height: 4.6rem; }
+      /* Réussite : dans la colonne de gauche, le boulier reste entier à droite */
+      .overlay.win {
+        inset: 0 auto 0 0;
+        width: max(250px, 40%);
+        justify-content: center;
+        padding: 0.8rem 16px;
+        border-bottom: none;
+        border-right: 1px solid var(--accent);
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .bead polygon { transition: none; }
       .bead.hint polygon { animation: none; }
@@ -388,14 +447,8 @@
       <h1>Soroban</h1>
     </header>
     <div class="subline">
-      <button class="link-btn" id="langBtn">EN</button>
-      <button class="link-btn" id="histBtn" data-t="hist">Historique</button>
+      <button class="link-btn" id="menuBtn" aria-label="Menu">☰ Menu</button>
     </div>
-  </div>
-
-  <div class="tabs" role="tablist">
-    <button class="chip" id="tabFree" data-t="free">Libre</button>
-    <button class="chip" id="tabOps" data-t="ops">Opérations</button>
   </div>
   <div class="levels" id="levels" hidden></div>
 
@@ -424,6 +477,19 @@
     <button class="btn" id="nextBtn" data-t="next">Suivant</button>
   </div>
 
+  <!-- Menu ☰ : tout ce qui n'est pas le boulier lui-même -->
+  <div class="overlay" id="menuOverlay" hidden>
+    <div class="big">Menu</div>
+    <div class="menu-list">
+      <button class="menu-item" id="mSandbox"></button>
+      <button class="menu-item" id="mLang"></button>
+      <button class="menu-item" id="mHist" data-t="hist">Historique</button>
+      <button class="menu-item danger" id="mErase" data-t="erase">Effacer les badges</button>
+    </div>
+    <p class="counter" id="mCounter"></p>
+    <button class="btn" id="menuClose" data-t="close">Fermer</button>
+  </div>
+
   <div class="overlay" id="histOverlay" hidden>
     <div class="big" data-t="hist">Historique</div>
     <p data-t="install"></p>
@@ -445,7 +511,9 @@
 
       // ---------- Réglages ----------
 
-      var RODS = 5;              // tiges : de 0 à 99 999
+      var RODS = 5;              // tiges : 5 en portrait, plus en paysage (voir fitRods)
+      var MIN_ROD_PX = 56;       // en paysage, jamais une tige plus étroite que ça
+      var MAX_RODS = 13;
       var STORE = "soroban-";    // préfixe localStorage
       var SVGNS = "http://www.w3.org/2000/svg";
 
@@ -492,6 +560,9 @@
       var TXT = {
         fr: {
           back: "← Portfolio", hist: "Historique", free: "Libre", ops: "Opérations",
+          sandboxOn: "Bac à sable", sandboxOff: "Retour aux opérations", sandbox: "Bac à sable : bouge les perles librement.",
+          langItem: "English", erase: "Effacer les badges", eraseSure: "Sûr ? Appuie encore pour effacer", erased: "Badges effacés.",
+          moved: "Perles déplacées depuis le début : {n}",
           reset: "Remettre à zéro", slow: "Voir au ralenti",
           next: "Suivant", close: "Fermer", empty: " — tige vide",
           install: "Pour l'avoir comme une appli : Partager → « Sur l'écran d'accueil ». Si tu n'entends rien, monte le volume.",
@@ -523,6 +594,9 @@
         },
         en: {
           back: "← Portfolio", hist: "History", free: "Free", ops: "Operations",
+          sandboxOn: "Sandbox", sandboxOff: "Back to operations", sandbox: "Sandbox: move the beads freely.",
+          langItem: "Français", erase: "Clear badges", eraseSure: "Sure? Tap again to clear", erased: "Badges cleared.",
+          moved: "Beads moved since the start: {n}",
           reset: "Clear", slow: "Show slowly",
           next: "Next", close: "Close", empty: " — empty rod",
           install: "To use it like an app: Share → “Add to Home Screen”. If you hear nothing, turn the volume up.",
@@ -567,7 +641,7 @@
         document.documentElement.lang = lang;
         var els = document.querySelectorAll("[data-t]");
         for (var i = 0; i < els.length; i++) els[i].textContent = t(els[i].getAttribute("data-t"));
-        document.getElementById("langBtn").textContent = lang === "fr" ? "EN" : "FR";
+        refreshMenu();
         buildLevels();
         showTask();
         render();
@@ -576,16 +650,15 @@
       // ---------- État ----------
       // Un chiffre par tige, de gauche (grands ordres) à droite (unités).
 
-      var digits = (function () {
-        var d = [];
-        for (var i = 0; i < RODS; i++) d.push(0);
+      // Sauvegarde : seulement une chaîne de 1 à MAX_RODS chiffres
+      // (REGLES-JEUX.md, Sécurité) — relue comme un nombre, puis étalée
+      // sur le nombre de tiges du moment
+      var savedValue = (function () {
         var raw = load("state");
-        // Seulement une chaîne de RODS chiffres (REGLES-JEUX.md, Sécurité)
-        if (raw && /^[0-9]+$/.test(raw) && raw.length === RODS) {
-          for (var j = 0; j < RODS; j++) d[j] = raw.charCodeAt(j) - 48;
-        }
-        return d;
+        if (raw && /^[0-9]{1,13}$/.test(raw)) return Number(raw);
+        return 0;
       })();
+      var digits = [];
       var lastRod = -1;
       var busy = false;          // démo en cours : le doigt n'agit plus
       var caption = null;        // légende de démo, sinon décomposition
@@ -599,8 +672,8 @@
       // ---------- Dessin ----------
 
       var svg = document.getElementById("soroban");
-      var W = COL * RODS;
-      svg.setAttribute("viewBox", "-6 -6 " + (W + 12) + " " + (LABEL_Y + 22));
+      var rods = [];
+      var allBeads = [];
 
       function el(name, attrs, parent) {
         var n = document.createElementNS(SVGNS, name);
@@ -609,36 +682,63 @@
         return n;
       }
 
-      // Halo phosphore des perles actives (filtre SVG : plus fiable sur
-      // Safari iOS qu'un filtre CSS sur des éléments SVG)
-      var defs = el("defs", {}, svg);
-      var filter = el("filter", { id: "glow", x: "-30%", y: "-60%", width: "160%", height: "220%" }, defs);
-      el("feGaussianBlur", { stdDeviation: "3", result: "b" }, filter);
-      var merge = el("feMerge", {}, filter);
-      el("feMergeNode", { "in": "b" }, merge);
-      el("feMergeNode", { "in": "SourceGraphic" }, merge);
+      // (Re)construit le boulier avec n tiges, en gardant le nombre posé
+      function buildBoard(n, keepValue) {
+        RODS = n;
+        drag = null;
+        digits = digitsOf(keepValue >= Math.pow(10, n) ? 0 : keepValue);
+        lastRod = -1;
+        svg.textContent = "";
+        rods = [];
+        allBeads = [];
+        var W = COL * RODS;
+        svg.setAttribute("viewBox", "-6 -6 " + (W + 12) + " " + (LABEL_Y + 22));
 
-      for (var r0 = 0; r0 < RODS; r0++) {
-        var cx0 = COL * r0 + COL / 2;
-        el("line", { "class": "rod", x1: cx0, y1: TOP, x2: cx0, y2: BOTTOM }, svg);
-      }
-      el("rect", { "class": "frame", x: 0, y: TOP, width: W, height: BOTTOM - TOP, rx: 6 }, svg);
-      el("line", { "class": "beam", x1: 0, y1: BEAM, x2: W, y2: BEAM }, svg);
-      // Repère sur la barre : unités, puis tous les trois rangs
-      for (var p0 = 0; p0 < RODS; p0++) {
-        if ((RODS - 1 - p0) % 3 === 0) el("circle", { "class": "dot", cx: COL * p0 + COL / 2, cy: BEAM, r: 3.5 }, svg);
+        // Halo phosphore des perles actives (filtre SVG : plus fiable sur
+        // Safari iOS qu'un filtre CSS sur des éléments SVG)
+        var defs = el("defs", {}, svg);
+        var filter = el("filter", { id: "glow", x: "-30%", y: "-60%", width: "160%", height: "220%" }, defs);
+        el("feGaussianBlur", { stdDeviation: "3", result: "b" }, filter);
+        var merge = el("feMerge", {}, filter);
+        el("feMergeNode", { "in": "b" }, merge);
+        el("feMergeNode", { "in": "SourceGraphic" }, merge);
+
+        for (var r0 = 0; r0 < RODS; r0++) {
+          var cx0 = COL * r0 + COL / 2;
+          el("line", { "class": "rod", x1: cx0, y1: TOP, x2: cx0, y2: BOTTOM }, svg);
+        }
+        el("rect", { "class": "frame", x: 0, y: TOP, width: W, height: BOTTOM - TOP, rx: 6 }, svg);
+        el("line", { "class": "beam", x1: 0, y1: BEAM, x2: W, y2: BEAM }, svg);
+        // Repère sur la barre : unités, puis tous les trois rangs
+        for (var p0 = 0; p0 < RODS; p0++) {
+          if ((RODS - 1 - p0) % 3 === 0) el("circle", { "class": "dot", cx: COL * p0 + COL / 2, cy: BEAM, r: 3.5 }, svg);
+        }
+
+        // Une perle = un petit objet physique
+        // { g, rod, kind, idx, x, y, v, target, held, base }
+        for (var r1 = 0; r1 < RODS; r1++) {
+          var x1 = COL * r1 + COL / 2;
+          var rodObj = { heaven: makeBead(x1, r1, "h", 0), earth: [], label: null };
+          for (var i1 = 0; i1 < 4; i1++) rodObj.earth.push(makeBead(x1, r1, "e", i1));
+          rodObj.label = el("text", { "class": "digit", x: x1, y: LABEL_Y }, svg);
+          rods.push(rodObj);
+        }
+        render(true);
       }
 
-      // Une perle = un petit objet physique
-      // { g, rod, kind, idx, x, y, v, target, held, base }
-      var rods = [];
-      var allBeads = [];
-      for (var r1 = 0; r1 < RODS; r1++) {
-        var x1 = COL * r1 + COL / 2;
-        var rodObj = { heaven: makeBead(x1, r1, "h", 0), earth: [], label: null };
-        for (var i1 = 0; i1 < 4; i1++) rodObj.earth.push(makeBead(x1, r1, "e", i1));
-        rodObj.label = el("text", { "class": "digit", x: x1, y: LABEL_Y }, svg);
-        rods.push(rodObj);
+      // Combien de tiges : 5 en portrait ; en paysage, autant que la
+      // largeur le permet sans que les perles deviennent trop petites
+      function fitRods() {
+        var stage = document.querySelector(".stage");
+        var w = stage.clientWidth - 32, h = stage.clientHeight - 12;
+        if (window.innerHeight >= window.innerWidth || w <= 0 || h <= 0) return 5;
+        var n = 5;
+        while (n < MAX_RODS) {
+          var scale = Math.min(w / (COL * (n + 1) + 12), h / (LABEL_Y + 22));
+          if (COL * scale < MIN_ROD_PX) break;
+          n++;
+        }
+        return n;
       }
 
       function makeBead(x, rod, kind, idx) {
@@ -837,10 +937,24 @@
         userSet(b.rod, five + ones, b.kind === "h");
       }
 
+      // Compteur de perles déplacées (tout : mes gestes, badges, ralenti)
+      var moved = (function () {
+        var raw = load("moved");
+        return raw && /^[0-9]{1,15}$/.test(raw) ? Number(raw) : 0;
+      })();
+      function beadDelta(a, b) { return ((a >= 5) !== (b >= 5) ? 1 : 0) + Math.abs(a % 5 - b % 5); }
+      function countMove(a, b) {
+        var d = beadDelta(a, b);
+        if (!d) return;
+        moved += d;
+        save("moved", String(moved));
+      }
+
       function setDigit(rod, v) {
+        countMove(digits[rod], v);
         digits[rod] = v;
         lastRod = rod;
-        save("state", digits.join(""));
+        save("state", String(value()));
       }
 
       function userSet(rod, v, heavy) {
@@ -922,7 +1036,7 @@
           // Grave, comme une perle de bois épaisse : le corps est bas, et
           // c'est l'onde triangle (ses harmoniques) plus un petit claquement
           // qui le rendent audible sur le haut-parleur d'un téléphone
-          var f = (heavy ? 150 : 200) * (0.97 + Math.random() * 0.06);
+          var f = (heavy ? 105 : 140) * (0.97 + Math.random() * 0.06);
           tone(f, f * 0.8, 0.6 * vol, 0.16, w, "triangle");      // corps de la perle
           tone(f * 3.1, f * 2.8, 0.07 * vol, 0.03, w);           // petit claquement boisé
         } catch (e) {}
@@ -1162,28 +1276,51 @@
         return true;
       }
 
+      // Petits nombres d'abord : le palier (0, 1, 2) monte avec le nombre
+      // de réussites sur ce niveau — 3 réussites → 2 chiffres, 6 → 3 chiffres
+      var wins = (function () {
+        var o = {};
+        (load("wins") || "").split(",").forEach(function (pair) {
+          var m = /^([a-z0-9]+):([0-9]{1,6})$/.exec(pair);
+          if (m && LEVELS.indexOf(m[1]) >= 0) o[m[1]] = Number(m[2]);
+        });
+        return o;
+      })();
+      function saveWins() {
+        save("wins", Object.keys(wins).map(function (k) { return k + ":" + wins[k]; }).join(","));
+      }
+      function tierOf(lv) { var w = wins[lv] || 0; return w < 3 ? 0 : (w < 6 ? 1 : 2); }
+
       function candidate(lv, tries) {
-        var hi = tries < 300 ? 9 : (tries < 600 ? 99 : 999);
+        var tier = tierOf(lv);
+        // si aucun exercice ne convient à ce palier (ex. un emprunt demande
+        // au moins 2 chiffres), on autorise un chiffre de plus
+        var hi = [9, 99, 999][Math.min(2, tier + Math.floor(tries / 300))];
         switch (lv) {
-          case "mul": var m = rnd(12, 99), k = rnd(2, 9); return { op: "×", a: m, b: k, result: m * k };
+          case "mul":
+            var m = tier === 0 ? rnd(2, 9) : (tier === 1 ? rnd(12, 99) : rnd(101, 999)), k = rnd(2, 9);
+            return { op: "×", a: m, b: k, result: m * k };
           case "div":
-            // Une fois sur deux, la division ne tombe pas juste : il reste
-            // sur le boulier ce qu'on ne peut plus retirer
-            var b = rnd(2, 9), rem = Math.random() < 0.5 ? rnd(1, b - 1) : 0;
-            var q = rnd(11, Math.floor((999 - rem) / b));
+            // À partir du 2e palier, une fois sur deux la division ne tombe
+            // pas juste : il reste sur le boulier ce qu'on ne peut plus retirer
+            var b = rnd(2, 9), rem = tier > 0 && Math.random() < 0.5 ? rnd(1, b - 1) : 0;
+            // palier 0 : table (≤ 81) ; 1 : dividende ≤ 99 ; 2 : ≤ 999
+            var q = tier === 0 ? rnd(2, 9) : (tier === 1 ? rnd(2, Math.floor((99 - rem) / b)) : rnd(11, Math.floor((999 - rem) / b)));
             return { op: "÷", a: b * q + rem, b: b, result: q, rem: rem };
           case "pow":
-            var base = rnd(2, 9), n = base <= 3 ? rnd(2, 5) : (base <= 6 ? rnd(2, 3) : 2);
+            var base = rnd(2, tier === 0 ? 5 : 9);
+            var n = tier === 0 ? 2 : (base <= 3 ? rnd(2, 5) : (base <= 6 ? rnd(2, 3) : 2));
             return { op: "^", a: base, b: n, result: Math.pow(base, n) };
           case "sqrt":
-            if (tries % 3 === 0) {
+            if (tier === 0) { var r0 = rnd(2, 9); return { op: "√", a: r0 * r0, b: 0, result: r0 }; }
+            if (tier === 2 && tries % 2 === 0) {
               // Racine approchée à un chiffre après la virgule : √N ≈ √(N × 100) / 10
               var N = rnd(2, 99);
               if (Math.sqrt(N) % 1 === 0) N++;
               var M = N * 100;
               return { op: "√", a: M, n: N, b: 0, result: Math.floor(Math.sqrt(M)), approx: true };
             }
-            var rt = tries % 4 === 1 ? rnd(2, 9) : rnd(11, 99);
+            var rt = rnd(11, 99);
             return { op: "√", a: rt * rt, b: 0, result: rt };
         }
         var a = rnd(1, hi), c = rnd(1, hi), op = lv.charAt(0) === "s" ? "−" : "+";
@@ -1268,7 +1405,12 @@
 
       function showTask() {
         var task = document.getElementById("task");
-        if (mode !== "ops" || !ex) { task.hidden = true; return; }
+        if (mode !== "ops" || !ex) {
+          // Bac à sable : une seule ligne pour dire où on est
+          task.hidden = mode === "ops";
+          task.textContent = mode === "ops" ? "" : t("sandbox");
+          return;
+        }
         task.hidden = false;
         task.textContent = "";
         task.appendChild(document.createTextNode(exprOf(ex)));
@@ -1287,6 +1429,8 @@
         updateButtons();
         renderSplit();
         var earned = false;
+        wins[level] = (wins[level] || 0) + 1;
+        saveWins();
         // Une réussite suffit, même après avoir regardé l'exemple au
         // ralenti (choix de Pierre) : on gagne le badge du niveau en cours
         if (!badges[level]) {
@@ -1323,9 +1467,9 @@
       }
 
       function clearBoard() {
-        for (var i = 0; i < RODS; i++) digits[i] = 0;
+        for (var i = 0; i < RODS; i++) { countMove(digits[i], 0); digits[i] = 0; }
         lastRod = -1;
-        save("state", digits.join(""));
+        save("state", "0");
         render();
       }
 
@@ -1464,16 +1608,67 @@
         if (busy) return;
         mode = m;
         save("mode", m);
-        document.getElementById("tabFree").setAttribute("aria-pressed", m === "free" ? "true" : "false");
-        document.getElementById("tabOps").setAttribute("aria-pressed", m === "ops" ? "true" : "false");
         buildLevels();
+        refreshMenu();
         caption = null;
         if (m === "ops") newExercise();
         else { ex = null; guideShow(); render(); }
       }
 
-      document.getElementById("tabFree").addEventListener("click", function () { setMode("free"); });
-      document.getElementById("tabOps").addEventListener("click", function () { setMode("ops"); });
+      // ---------- Menu ☰ ----------
+
+      var menuOverlay = document.getElementById("menuOverlay");
+      var eraseArmed = 0;
+      function refreshMenu() {
+        document.getElementById("mSandbox").textContent = mode === "ops" ? t("sandboxOn") : t("sandboxOff");
+        document.getElementById("mLang").textContent = t("langItem");
+        var er = document.getElementById("mErase");
+        er.textContent = eraseArmed ? t("eraseSure") : t("erase");
+        er.className = "menu-item danger" + (eraseArmed ? " armed" : "");
+        var c = document.getElementById("mCounter");
+        c.textContent = "";
+        var parts = t("moved", { n: "\u0000" }).split("\u0000");
+        c.appendChild(document.createTextNode(parts[0]));
+        var bEl = document.createElement("b");
+        bEl.textContent = numStr(moved);
+        c.appendChild(bEl);
+        c.appendChild(document.createTextNode(parts[1] || ""));
+      }
+      document.getElementById("menuBtn").addEventListener("click", function () {
+        if (busy) return;
+        eraseArmed = 0;
+        refreshMenu();
+        menuOverlay.hidden = false;
+      });
+      document.getElementById("menuClose").addEventListener("click", function () { menuOverlay.hidden = true; });
+      document.getElementById("mSandbox").addEventListener("click", function () {
+        menuOverlay.hidden = true;
+        setMode(mode === "ops" ? "free" : "ops");
+      });
+      document.getElementById("mHist").addEventListener("click", function () {
+        menuOverlay.hidden = true;
+        histOverlay.hidden = false;
+      });
+      document.getElementById("mErase").addEventListener("click", function () {
+        // Deux appuis pour effacer : pas de fausse manœuvre
+        if (!eraseArmed) {
+          eraseArmed = setTimeout(function () { eraseArmed = 0; refreshMenu(); }, 3500);
+          refreshMenu();
+          return;
+        }
+        clearTimeout(eraseArmed);
+        eraseArmed = 0;
+        badges = {};
+        wins = {};
+        saveBadges();
+        saveWins();
+        level = "direct";
+        save("level", level);
+        refreshMenu();
+        document.getElementById("mErase").textContent = t("erased");
+        buildLevels();
+        if (mode === "ops") newExercise();
+      });
       document.getElementById("slowBtn").addEventListener("click", demo);
       document.getElementById("nextBtn").addEventListener("click", function () {
         document.getElementById("winOverlay").hidden = true;
@@ -1493,7 +1688,7 @@
         if (ex && !ex.solved) { ex.k = 0; guideShow(); }
         if (any) { toc(false, 0.7); setTimeout(function () { toc(true, 0.7); }, 70); }
       });
-      document.getElementById("langBtn").addEventListener("click", function () {
+      document.getElementById("mLang").addEventListener("click", function () {
         if (busy) return;
         lang = lang === "fr" ? "en" : "fr";
         save("lang", lang);
@@ -1525,6 +1720,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v7", text: "Menu ☰ : bac à sable (manipuler librement), langue, historique, effacer les badges (deux appuis), et le compteur de perles déplacées depuis le début. Petits nombres d'abord : ils grandissent avec les réussites (3 → deux chiffres, 6 → trois). Son encore plus grave. Téléphone couché : deux colonnes et autant de tiges que possible sans perles trop petites." },
         { v: "v6", text: "Les badges deviennent des outils : chaque badge gagné apparaît en bas ; appuyer dessus fait tout seul, en accéléré, les gestes qu'il connaît, et s'arrête au premier geste qu'il ne connaît pas — c'est alors à toi. Chaque badge inclut ceux d'avant (le badge × fait aussi les additions). Remplace le bouton « D'un coup ». « Voir au ralenti » reste : l'exemple complet, pour savoir quoi faire. Un badge se gagne en réussissant une fois, même après avoir regardé le ralenti. Le message de réussite s'affiche en bandeau en haut : le boulier reste visible avec le résultat." },
         { v: "v5", text: "Le boulier garde toujours la même taille : les lignes de texte, les niveaux et les boutons ont une place fixe, il ne zoome plus ni ne dézoome tout seul pendant une opération. Sons beaucoup plus graves. Une perle touchée glisse toujours jusqu'à sa place, plus lentement, sans jamais se téléporter (même avec « Réduire les animations »). Légende « chiffre par chiffre » retirée. Français par défaut." },
         { v: "v4", text: "Division avec reste (ce qu'on ne peut plus retirer reste sur le boulier : 351 ÷ 4 = 87, reste 3). Racines approchées à un chiffre après la virgule (√2 ≈ 1,4 : on pose 200 et on calcule √200 ≈ 14). Le badge ✦ 10 de Pas à Pas s'affiche sur « + avec 10 » (même geste : faire 10). Utilisable hors ligne une fois ouvert (police comprise)." },
@@ -1543,14 +1739,33 @@
         li.appendChild(document.createTextNode(entry.text));
         histList.appendChild(li);
       });
-      document.getElementById("histBtn").addEventListener("click", function () { histOverlay.hidden = false; });
       document.getElementById("histClose").addEventListener("click", function () { histOverlay.hidden = true; });
 
       // ---------- Démarrage ----------
 
-      render(true);
+      buildBoard(fitRods(), savedValue);
       applyLang();
       setMode(mode);
+
+      // Téléphone tourné : on recompte les tiges, on garde le nombre posé
+      // et, en plein exercice, l'étape où on en était
+      var resizeT = 0;
+      window.addEventListener("resize", function () {
+        clearTimeout(resizeT);
+        resizeT = setTimeout(function () {
+          var n = fitRods();
+          if (n === RODS || busy) return;
+          buildBoard(n, value());
+          if (ex && !ex.solved) {
+            buildPlan(ex);
+            var cur = digits.join(""), k = 0;
+            for (var j = 0; j < ex.states.length; j++) if (ex.states[j].join("") === cur) k = j;
+            ex.k = Math.min(k, ex.states.length - 2);
+            guideShow();
+          }
+          renderSplit();
+        }, 150);
+      });
 
       // Installable et utilisable hors ligne : service worker « réseau
       // d'abord », comme Pas à Pas — toujours la version en ligne si
