@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <title>Oscilloscope</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+  <style>
+    /* Planche de test façon Jerobeam Fenderson (oscilloscope music) :
+       le son stéréo pilote le faisceau — gauche = X, droite = Y — et du
+       texte CRT tapé par-dessus. Tout le rendu du faisceau est en WebGL. */
+    :root {
+      --label: #8f9690;
+      --label-dim: #5b615c;
+      --knob: #3be08a;
+      --line: #1f2421;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: #000;
+      color: var(--label);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: max(12px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    main {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    header a, header button {
+      color: var(--label-dim);
+      text-decoration: none;
+      font: inherit;
+      letter-spacing: inherit;
+      background: none;
+      border: none;
+      padding: 0.3rem 0;
+      cursor: pointer;
+    }
+
+    header a:hover, header button:hover { color: var(--knob); }
+    .head-right { display: flex; gap: 1rem; }
+
+    /* L'écran : carré, noir profond, verre à peine visible */
+    .screen {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      box-shadow: 0 0 0 1px var(--line);
+    }
+
+    .screen canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Lignes de balayage + bande de rafraîchissement : le côté « CRT »
+       mélangé au tracé vectoriel */
+    .scan {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, transparent 0%, rgba(120,255,170,0.035) 48%, rgba(120,255,170,0.06) 50%, transparent 56%) 0 0 / 100% 300% no-repeat,
+        repeating-linear-gradient(180deg, rgba(0,0,0,0.16) 0 1px, transparent 1px 3px);
+      animation: roll 8s linear infinite;
+    }
+
+    @keyframes roll {
+      from { background-position: 0 100%, 0 0; }
+      to   { background-position: 0 0%, 0 0; }
+    }
+
+    .glass {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(110% 110% at 50% 50%, transparent 60%, rgba(0,0,0,0.6) 100%),
+        radial-gradient(50% 35% at 28% 14%, rgba(220,255,235,0.05), transparent 70%);
+    }
+
+    @media (prefers-reduced-motion: reduce) { .scan { animation: none; } }
+
+    .scenes {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .btn {
+      font: inherit;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--label);
+      background: #0b0d0c;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.7rem 0.2rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .btn[aria-pressed="true"] { color: var(--knob); border-color: var(--knob); }
+    .btn.wide { width: 100%; }
+
+    .sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 16px;
+    }
+
+    .sliders label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--knob);
+      touch-action: none;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: rgba(0, 0, 0, 0.95);
+    }
+
+    .overlay[hidden] { display: none; }
+
+    .overlay ul {
+      width: 100%;
+      max-width: 22rem;
+      max-height: 60vh;
+      overflow-y: auto;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .overlay li { padding: 0.6rem 0; border-top: 1px solid var(--line); }
+    .overlay b { display: block; color: var(--knob); }
+
+    .overlay button {
+      font: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--knob);
+      background: none;
+      border: 1px solid var(--knob);
+      border-radius: 999px;
+      padding: 0.7rem 1.6rem;
+      cursor: pointer;
+    }
+
+    .nogl {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--knob);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <a href="../" data-t="back">← Portfolio</a>
+      <div class="head-right">
+        <button id="langBtn">EN</button>
+        <button id="histBtn" data-t="hist">Historique</button>
+      </div>
+    </header>
+
+    <div class="screen" id="screen">
+      <canvas id="gl"></canvas>
+      <canvas id="crt"></canvas>
+      <div class="scan"></div>
+      <div class="glass"></div>
+    </div>
+
+    <div class="scenes" id="scenes"></div>
+    <button class="btn wide" id="soundBtn">▶ Son</button>
+
+    <div class="sliders">
+      <label><span data-t="persist">Rémanence</span><input type="range" id="sPersist" min="0" max="100" value="60"></label>
+      <label><span data-t="intensity">Intensité</span><input type="range" id="sInt" min="0" max="100" value="55"></label>
+      <label><span data-t="focus">Focus</span><input type="range" id="sFocus" min="0" max="100" value="75"></label>
+      <label><span data-t="halo">Halo</span><input type="range" id="sHalo" min="0" max="100" value="45"></label>
+    </div>
+  </main>
+
+  <div class="overlay" id="histOverlay" hidden>
+    <ul id="histList"></ul>
+    <button id="histClose" data-t="close">Fermer</button>
+  </div>
+
+  <script>
+    (function () {
+      // ---------- Langue, historique, sauvegarde ----------
+      var TXT = {
+        fr: { back: "← Portfolio", hist: "Historique", persist: "Rémanence", intensity: "Intensité", focus: "Focus", halo: "Halo", close: "Fermer",
+              scenes: ["Spirale", "Cube", "Nom", "Planète"], soundOn: "▶ Son", soundOff: "■ Son",
+              nogl: "WebGL indisponible sur cet appareil." },
+        en: { back: "← Portfolio", hist: "History", persist: "Persistence", intensity: "Intensity", focus: "Focus", halo: "Glow", close: "Close",
+              scenes: ["Spiral", "Cube", "Name", "Planet"], soundOn: "▶ Sound", soundOff: "■ Sound",
+              nogl: "WebGL is not available on this device." }
+      };
+      var VERSIONS = [
+        { v: "v4", fr: "Son réparé sur iPhone : il sort même en mode silencieux, et le générateur démarre bien sous Safari.",
+                   en: "Sound fixed on iPhone: it plays even in silent mode, and the generator starts properly in Safari." },
+        { v: "v3", fr: "Refaite façon Jerobeam Fenderson (oscilloscope music) : le son stéréo pilote le faisceau (gauche = X, droite = Y), ce qu'on voit est ce qu'on entend. Faisceau gaussien calculé en WebGL (intégrale le long de chaque segment, comme woscope), quatre scènes qui se métamorphosent l'une en l'autre, texte CRT tapé par-dessus avec lignes de balayage.",
+                   en: "Redone Jerobeam Fenderson style (oscilloscope music): stereo sound drives the beam (left = X, right = Y), what you see is what you hear. Gaussian beam computed in WebGL (integrated along each segment, like woscope), four scenes morphing into each other, CRT text typed on top with scanlines." },
+        { v: "v2", fr: "Trois styles : vectoriel, terminal, musique X-Y.", en: "Three styles: vector, terminal, X-Y music." },
+        { v: "v1", fr: "Page de test : tube cathodique réaliste.", en: "Test page: realistic CRT." }
+      ];
+
+      var store = {
+        get: function (k) { try { return localStorage.getItem("oscilloscope_" + k); } catch (e) { return null; } },
+        set: function (k, v) { try { localStorage.setItem("oscilloscope_" + k, v); } catch (e) {} }
+      };
+
+      var lang = store.get("lang") === "en" ? "en" : "fr";
+      var soundBtn = document.getElementById("soundBtn");
+      var sceneBtns = [];
+      var scenesEl = document.getElementById("scenes");
+      for (var i = 0; i < 4; i++) {
+        (function (k) {
+          var b = document.createElement("button");
+          b.className = "btn";
+          b.addEventListener("click", function () { gen.go(k); });
+          scenesEl.appendChild(b);
+          sceneBtns.push(b);
+        })(i);
+      }
+
+      function applyLang() {
+        document.documentElement.lang = lang;
+        document.querySelectorAll("[data-t]").forEach(function (el) { el.textContent = TXT[lang][el.dataset.t]; });
+        sceneBtns.forEach(function (b, k) { b.textContent = TXT[lang].scenes[k]; });
+        document.getElementById("langBtn").textContent = lang === "fr" ? "EN" : "FR";
+        soundBtn.textContent = audioOn ? TXT[lang].soundOff : TXT[lang].soundOn;
+        var list = document.getElementById("histList");
+        list.innerHTML = "";
+        VERSIONS.forEach(function (e) {
+          var li = document.createElement("li");
+          var b = document.createElement("b");
+          b.textContent = e.v;
+          li.appendChild(b);
+          li.appendChild(document.createTextNode(e[lang]));
+          list.appendChild(li);
+        });
+      }
+
+      document.getElementById("langBtn").addEventListener("click", function () {
+        lang = lang === "fr" ? "en" : "fr";
+        store.set("lang", lang);
+        applyLang();
+        crtType = 0;
+      });
+      document.getElementById("histBtn").addEventListener("click", function () { document.getElementById("histOverlay").hidden = false; });
+      document.getElementById("histClose").addEventListener("click", function () { document.getElementById("histOverlay").hidden = true; });
+
+      var sliders = ["sPersist", "sInt", "sFocus", "sHalo"].map(function (id) {
+        var el = document.getElementById(id);
+        var saved = store.get(id + "3");
+        if (saved !== null) el.value = saved;
+        el.addEventListener("input", function () { store.set(id + "3", el.value); });
+        return el;
+      });
+      function val(k) { return sliders[k].value / 100; }
+
+      var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // ---------- Scènes : chaque scène est un trajet X-Y parcouru à une
+      // fréquence audible. La fréquence du trajet = la note qu'on entend.
+      // Coordonnées : −1..1, y vers le haut.
+
+      function frac(x) { return x - Math.floor(x); }
+
+      function project(x, y, z, s) {
+        var d = 2.6 / (3.4 + z);
+        return [x * d * s, y * d * s];
+      }
+
+      function rotY(p, a) { var c = Math.cos(a), s = Math.sin(a); return [p[0] * c + p[2] * s, p[1], -p[0] * s + p[2] * c]; }
+      function rotX(p, a) { var c = Math.cos(a), s = Math.sin(a); return [p[0], p[1] * c - p[2] * s, p[1] * s + p[2] * c]; }
+
+      // 1. Spirale qui respire et bascule (La, 110 Hz)
+      function spiral(t) {
+        var ph = frac(110 * t);
+        var turns = 6 + 2 * Math.sin(t * 0.21);
+        var ang = 2 * Math.PI * turns * ph + t * 0.9;
+        var r = Math.sqrt(ph) * 0.9;
+        var p = [r * Math.cos(ang), r * Math.sin(ang), 0];
+        p = rotX(p, 0.9 + 0.5 * Math.sin(t * 0.33));
+        return project(p[0], p[1], p[2], 1.1);
+      }
+
+      // 2. Cube qui tourne sur deux axes (Mi, 82,4 Hz). Le trajet repasse
+      // sur certaines arêtes : elles sont plus brillantes, comme sur les
+      // vrais morceaux.
+      var CUBE = [[-1,-1,-1],[1,-1,-1],[1,1,-1],[-1,1,-1],[-1,-1,1],[1,-1,1],[1,1,1],[-1,1,1]];
+      var CPATH = [0,1,2,3,0,4,5,6,7,4,5,1,2,6,7,3,0];
+      function cube(t) {
+        var u = frac(82.41 * t) * (CPATH.length - 1);
+        var k = Math.floor(u), f = u - k;
+        var a = CUBE[CPATH[k]], b = CUBE[CPATH[k + 1]];
+        var p = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
+        p = rotY(p, t * 0.7);
+        p = rotX(p, 0.5 + 0.4 * Math.sin(t * 0.37));
+        return project(p[0], p[1], p[2], 0.45);
+      }
+
+      // 3. Nom tracé au faisceau, sur deux lignes, qui ondule en 3D
+      // (≈ 32 Hz : trajet long). Pas d'extinction du faisceau sur un
+      // oscilloscope : les sauts entre lettres sont visibles, très pâles,
+      // parce que parcourus très vite.
+      var FONT = {
+        E: [[[4,0],[0,0],[0,6],[4,6]], [[0,3],[3,3]]],
+        I: [[[1,0],[3,0]], [[2,0],[2,6]], [[1,6],[3,6]]],
+        L: [[[0,0],[0,6],[4,6]]],
+        M: [[[0,6],[0,0],[2,3],[4,0],[4,6]]],
+        N: [[[0,6],[0,0],[4,6],[4,0]]],
+        O: [[[0,0],[4,0],[4,6],[0,6],[0,0]]],
+        P: [[[0,6],[0,0],[4,0],[4,3],[0,3]]],
+        R: [[[0,6],[0,0],[4,0],[4,3],[0,3],[4,6]]]
+      };
+      var NAME = (function () {
+        var pts = [];
+        function line(str, y0) {
+          var unit = 0.052, adv = 6 * unit;
+          var x0 = -(str.length * adv - 2 * unit) / 2;
+          for (var i = 0; i < str.length; i++) {
+            FONT[str[i]].forEach(function (pl) {
+              pl.forEach(function (p, j) {
+                pts.push({ x: x0 + i * adv + p[0] * unit, y: y0 - p[1] * unit, jump: j === 0 });
+              });
+            });
+          }
+        }
+        line("PIERRE", 0.42);
+        line("MILLON", -0.1);
+        pts.push({ x: pts[0].x, y: pts[0].y, jump: true });
+        // Temps alloué à chaque segment : proportionnel à sa longueur, sauf
+        // les sauts, parcourus 20 fois plus vite
+        var cum = [0];
+        for (var i = 1; i < pts.length; i++) {
+          var L = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y);
+          cum.push(cum[i - 1] + (pts[i].jump ? L / 20 : L) + 0.002);
+        }
+        return { pts: pts, cum: cum, total: cum[cum.length - 1] };
+      })();
+      function name(t) {
+        var target = frac(32 * t) * NAME.total;
+        var lo = 0, hi = NAME.cum.length - 1;
+        while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (NAME.cum[mid] <= target) lo = mid; else hi = mid; }
+        var f = (target - NAME.cum[lo]) / (NAME.cum[hi] - NAME.cum[lo]);
+        var a = NAME.pts[lo], b = NAME.pts[hi];
+        var x = a.x + (b.x - a.x) * f, y = a.y + (b.y - a.y) * f;
+        var p = [x, y, 0.35 * Math.sin(x * 3 + t * 1.3) * 0.3];
+        p = rotY(p, 0.45 * Math.sin(t * 0.4));
+        return project(p[0], p[1], p[2], 1.25);
+      }
+
+      // 4. Planète : trois parallèles, trois méridiens qui tournent, un
+      // anneau (Ré, 73,4 Hz)
+      function planet(t) {
+        var u = frac(73.42 * t) * 7;
+        var k = Math.floor(u), a = 2 * Math.PI * (u - k);
+        var p;
+        if (k < 3) {
+          var th = (k - 1) * 0.6;
+          p = [Math.cos(th) * Math.cos(a), Math.sin(th), Math.cos(th) * Math.sin(a)];
+        } else if (k < 6) {
+          var ps = (k - 3) * Math.PI / 3 + t * 0.6;
+          p = [Math.sin(a) * Math.cos(ps), Math.cos(a), Math.sin(a) * Math.sin(ps)];
+        } else {
+          p = [1.75 * Math.cos(a), 0, 1.75 * Math.sin(a)];
+        }
+        p = rotX(p, 0.42);
+        p = [p[0] * Math.cos(0.25) - p[1] * Math.sin(0.25), p[0] * Math.sin(0.25) + p[1] * Math.cos(0.25), p[2]];
+        return project(p[0], p[1], p[2], 0.5);
+      }
+
+      var SCENES = [spiral, cube, name, planet];
+      var NOTES = ["A2 110 Hz", "E2 82 Hz", "C1 32 Hz", "D2 73 Hz"];
+
+      // ---------- Générateur : une seule source d'échantillons pour le son
+      // et pour l'image. Enchaîne les scènes toutes les 12 s avec une
+      // métamorphose de 2,5 s (interpolation des deux trajets).
+      var RATE = 48000;
+      var gen = {
+        t: 0, a: 0, b: 0, m: 1, hold: 0,
+        go: function (k) { if (k === this.b && this.m >= 1) return; this.a = this.b; this.b = k; this.m = 0; this.hold = 0; markScene(); },
+        next: function (n, out) {
+          var dt = 1 / RATE;
+          for (var i = 0; i < n; i++) {
+            this.t += dt;
+            if (this.m < 1) { this.m = Math.min(1, this.m + dt / 2.5); }
+            else {
+              this.hold += dt;
+              if (this.hold > 12 && !reduced) this.go((this.b + 1) % SCENES.length);
+            }
+            var s = this.m * this.m * (3 - 2 * this.m);
+            var p = SCENES[this.b](this.t);
+            if (s < 1) {
+              var q = SCENES[this.a](this.t);
+              p = [q[0] + (p[0] - q[0]) * s, q[1] + (p[1] - q[1]) * s];
+            }
+            out.push(p[0], p[1]);
+          }
+        }
+      };
+
+      function markScene() {
+        sceneBtns.forEach(function (b, j) { b.setAttribute("aria-pressed", j === gen.b ? "true" : "false"); });
+        crtType = 0;
+      }
+
+      // ---------- Son : ScriptProcessor (partout, y compris iOS). Chaque
+      // bloc généré part dans les haut-parleurs ET dans la file de l'image.
+      var audio = null, proc = null, audioOn = false;
+      var queue = [];
+
+      // iPhone : en mode silencieux (bouton sur le côté), Web Audio est
+      // coupé. On passe la session audio en « lecture » (Safari 16.4+) et,
+      // pour les versions plus anciennes, on joue en boucle un <audio>
+      // muet, ce qui fait basculer la page dans la même catégorie qu'une
+      // vidéo ou une musique : le son sort même en mode silencieux.
+      var unlockEl = null;
+      function silentWav() {
+        var n = 800, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+        function str(o, t) { for (var i = 0; i < t.length; i++) v.setUint8(o + i, t.charCodeAt(i)); }
+        str(0, "RIFF"); v.setUint32(4, 36 + n, true); str(8, "WAVE"); str(12, "fmt ");
+        v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+        v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+        str(36, "data"); v.setUint32(40, n, true);
+        for (var i = 0; i < n; i++) v.setUint8(44 + i, 128);
+        return URL.createObjectURL(new Blob([buf], { type: "audio/wav" }));
+      }
+      function unlockIOS() {
+        try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+        try {
+          if (!unlockEl) {
+            unlockEl = document.createElement("audio");
+            unlockEl.setAttribute("playsinline", "");
+            unlockEl.setAttribute("x-webkit-airplay", "deny");
+            unlockEl.loop = true;
+            unlockEl.src = silentWav();
+          }
+          var p = unlockEl.play();
+          if (p && p.catch) p.catch(function () {});
+        } catch (e) {}
+      }
+
+      function startAudio() {
+        try {
+          unlockIOS();
+          if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+          RATE = audio.sampleRate;
+          // Au moins 1 entrée : Safari n'appelle jamais onaudioprocess sur
+          // un ScriptProcessor déclaré sans entrée
+          proc = audio.createScriptProcessor(1024, 1, 2);
+          var gain = audio.createGain();
+          gain.gain.value = 0.35;
+          proc.onaudioprocess = function (e) {
+            var L = e.outputBuffer.getChannelData(0), R = e.outputBuffer.getChannelData(1);
+            var buf = [];
+            gen.next(L.length, buf);
+            for (var i = 0; i < L.length; i++) {
+              L[i] = buf[2 * i] * 0.8;
+              R[i] = buf[2 * i + 1] * 0.8;
+            }
+            if (queue.length < RATE * 2) Array.prototype.push.apply(queue, buf);
+          };
+          proc.connect(gain).connect(audio.destination);
+          audio.resume();
+          audioOn = true;
+        } catch (e) { audioOn = false; }
+        applyLang();
+      }
+
+      function stopAudio() {
+        if (proc) { try { proc.disconnect(); } catch (e) {} proc.onaudioprocess = null; proc = null; }
+        if (unlockEl) { try { unlockEl.pause(); } catch (e) {} }
+        audioOn = false;
+        RATE = 48000;
+        queue = [];
+        applyLang();
+      }
+
+      soundBtn.addEventListener("click", function () { if (audioOn) stopAudio(); else startAudio(); });
+      document.addEventListener("visibilitychange", function () { if (document.hidden && audioOn) stopAudio(); });
+
+      // ---------- WebGL : faisceau gaussien ----------
+      // Chaque échantillon → segment. L'énergie déposée par segment est
+      // constante (même durée) : répartie sur sa longueur, elle rend les
+      // passages lents brillants et les sauts rapides presque invisibles.
+      // L'intensité en un point est l'intégrale d'une gaussienne le long du
+      // segment : g(d) · (erf((L − s)/√2σ) + erf(s/√2σ)) / 2L.
+      var canvas = document.getElementById("gl");
+      var gl = canvas.getContext("webgl2", { antialias: false, alpha: false, premultipliedAlpha: false });
+      if (!gl) {
+        var msg = document.createElement("div");
+        msg.className = "nogl";
+        msg.textContent = TXT[lang].nogl;
+        document.getElementById("screen").appendChild(msg);
+      }
+
+      var W = 0, H = 0, dpr = 1;
+      var prog, fadeProg, showProg, quad, segBuf, cornerBuf, vao, fvao;
+      var fbo = [], tex = [], cur = 0, texType, texFmt, texInt;
+
+      function sh(type, src) {
+        var s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+        return s;
+      }
+      function program(vs, fs) {
+        var p = gl.createProgram();
+        gl.attachShader(p, sh(gl.VERTEX_SHADER, vs));
+        gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+        gl.linkProgram(p);
+        if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+        return p;
+      }
+
+      var SEG_VS = "#version 300 es\n" +
+        "in vec2 aCorner; in vec4 aSeg;\n" +
+        "uniform vec2 uRes; uniform float uSigma;\n" +
+        "out vec2 vLocal; out float vLen;\n" +
+        "void main(){\n" +
+        "  vec2 a=aSeg.xy, b=aSeg.zw, d=b-a; float L=length(d);\n" +
+        "  vec2 dir = L>1e-4 ? d/L : vec2(1.0,0.0); vec2 n=vec2(-dir.y,dir.x);\n" +
+        "  float e=uSigma*4.0;\n" +
+        "  vec2 p=(aCorner.x<0.5 ? a-dir*e : b+dir*e)+n*aCorner.y*e;\n" +
+        "  vLocal=vec2(dot(p-a,dir),dot(p-a,n)); vLen=L;\n" +
+        "  gl_Position=vec4(p/uRes*2.0-1.0,0.0,1.0);\n" +
+        "}";
+      var SEG_FS = "#version 300 es\nprecision highp float;\n" +
+        "in vec2 vLocal; in float vLen; uniform float uSigma; uniform float uE; out vec4 o;\n" +
+        "float erf1(float x){ float s=sign(x), a=abs(x); float t=1.0/(1.0+0.3275911*a);\n" +
+        "  float y=1.0-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*exp(-a*a); return s*y; }\n" +
+        "void main(){\n" +
+        "  float s=vLocal.x, d=vLocal.y, k=0.70710678/uSigma;\n" +
+        "  float g=exp(-d*d/(2.0*uSigma*uSigma)); float I;\n" +
+        "  if (vLen<0.05) I=g*exp(-s*s/(2.0*uSigma*uSigma))/(2.5066283*uSigma);\n" +
+        "  else I=g*(erf1((vLen-s)*k)+erf1(s*k))/(2.0*vLen);\n" +
+        "  o=vec4(I*uE,0.0,0.0,1.0);\n" +
+        "}";
+      var FULL_VS = "#version 300 es\nin vec2 aPos; out vec2 vUv;\n" +
+        "void main(){ vUv=aPos*0.5+0.5; gl_Position=vec4(aPos,0.0,1.0); }";
+      // Rémanence : on garde une fraction de l'image précédente, moins un
+      // plancher pour que les faibles traces finissent vraiment par s'éteindre
+      var FADE_FS = "#version 300 es\nprecision highp float;\nin vec2 vUv; uniform sampler2D uTex; uniform float uKeep; uniform float uFloor; out vec4 o;\n" +
+        "void main(){ float v=texture(uTex,vUv).r; o=vec4(max(v*uKeep-uFloor,0.0),0.0,0.0,1.0); }";
+      // Affichage : tonalité phosphore (vert, cœur qui blanchit), halo par
+      // flou à deux rayons
+      var SHOW_FS = "#version 300 es\nprecision highp float;\nin vec2 vUv; uniform sampler2D uTex; uniform vec2 uPx; uniform float uGain; uniform float uHalo; out vec4 o;\n" +
+        "void main(){\n" +
+        "  float I=texture(uTex,vUv).r; float b=0.0;\n" +
+        "  for(int i=0;i<12;i++){ float a=float(i)*0.5235988; vec2 d=vec2(cos(a),sin(a));\n" +
+        "    b+=texture(uTex,vUv+d*uPx*4.0).r*0.6+texture(uTex,vUv+d*uPx*11.0).r*0.4; }\n" +
+        "  b/=12.0;\n" +
+        "  float v=1.0-exp(-I*uGain); float h=1.0-exp(-b*uGain*0.6);\n" +
+        "  vec3 c=vec3(0.18,1.0,0.42)*v + vec3(0.75,1.0,0.82)*pow(v,3.0)*0.9 + vec3(0.05,0.8,0.28)*h*uHalo;\n" +
+        "  o=vec4(c,1.0);\n" +
+        "}";
+
+      function makeTarget() {
+        var t = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, t);
+        gl.texImage2D(gl.TEXTURE_2D, 0, texInt, W, H, 0, texFmt, texType, null);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        var f = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+        var ok = gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        return ok ? { t: t, f: f } : null;
+      }
+
+      function setupTargets() {
+        tex.forEach(function (t) { gl.deleteTexture(t); });
+        fbo.forEach(function (f) { gl.deleteFramebuffer(f); });
+        tex = []; fbo = [];
+        // Accumulation en flottant 16 bits si possible (traînées lisses),
+        // sinon 8 bits
+        var modes = [];
+        if (gl.getExtension("EXT_color_buffer_float") || gl.getExtension("EXT_color_buffer_half_float"))
+          modes.push([gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT]);
+        modes.push([gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE]);
+        for (var m = 0; m < modes.length; m++) {
+          texInt = modes[m][0]; texFmt = modes[m][1]; texType = modes[m][2];
+          var a = makeTarget(), b = makeTarget();
+          if (a && b) { tex = [a.t, b.t]; fbo = [a.f, b.f]; lowPrecision = texType === gl.UNSIGNED_BYTE; return; }
+        }
+      }
+      var lowPrecision = false;
+
+      function initGL() {
+        prog = program(SEG_VS, SEG_FS);
+        fadeProg = program(FULL_VS, FADE_FS);
+        showProg = program(FULL_VS, SHOW_FS);
+
+        vao = gl.createVertexArray();
+        gl.bindVertexArray(vao);
+        cornerBuf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, cornerBuf);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, -1, 1, -1, 0, 1, 1, 1]), gl.STATIC_DRAW);
+        var locC = gl.getAttribLocation(prog, "aCorner");
+        gl.enableVertexAttribArray(locC);
+        gl.vertexAttribPointer(locC, 2, gl.FLOAT, false, 0, 0);
+        segBuf = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, segBuf);
+        var locS = gl.getAttribLocation(prog, "aSeg");
+        gl.enableVertexAttribArray(locS);
+        gl.vertexAttribPointer(locS, 4, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribDivisor(locS, 1);
+
+        fvao = gl.createVertexArray();
+        gl.bindVertexArray(fvao);
+        quad = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+        [fadeProg, showProg].forEach(function (p) {
+          var l = gl.getAttribLocation(p, "aPos");
+          gl.enableVertexAttribArray(l);
+          gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0);
+        });
+        gl.bindVertexArray(null);
+      }
+
+      var crt = document.getElementById("crt");
+      var cctx = crt.getContext("2d");
+
+      function resize() {
+        dpr = Math.min(2, window.devicePixelRatio || 1);
+        var r = canvas.getBoundingClientRect();
+        W = Math.max(2, Math.round(r.width * dpr));
+        H = Math.max(2, Math.round(r.height * dpr));
+        canvas.width = W; canvas.height = H;
+        crt.width = Math.round(W / 2); crt.height = Math.round(H / 2);
+        if (gl) setupTargets();
+      }
+
+      var last = [0, 0];
+      var segs = new Float32Array(0);
+
+      function drawBeam(samples, dt) {
+        var n = samples.length / 2;
+        var sc = Math.min(W, H) * 0.46;
+        var cx = W / 2, cy = H / 2;
+        if (segs.length < n * 4) segs = new Float32Array(n * 4 + 1024);
+        var px = last[0], py = last[1];
+        for (var i = 0; i < n; i++) {
+          // Petit bruit du faisceau (quelques millièmes)
+          var x = cx + (samples[2 * i] + (Math.random() - 0.5) * 0.002) * sc;
+          var y = cy + (samples[2 * i + 1] + (Math.random() - 0.5) * 0.002) * sc;
+          segs[4 * i] = px; segs[4 * i + 1] = py; segs[4 * i + 2] = x; segs[4 * i + 3] = y;
+          px = x; py = y;
+        }
+        last = [px, py];
+
+        var src = cur, dst = 1 - cur;
+        gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[dst]);
+        gl.viewport(0, 0, W, H);
+        gl.disable(gl.BLEND);
+        gl.useProgram(fadeProg);
+        gl.bindVertexArray(fvao);
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, tex[src]);
+        gl.uniform1i(gl.getUniformLocation(fadeProg, "uTex"), 0);
+        var keep = Math.pow(0.35 + val(0) * 0.6, dt * 60);
+        gl.uniform1f(gl.getUniformLocation(fadeProg, "uKeep"), keep);
+        gl.uniform1f(gl.getUniformLocation(fadeProg, "uFloor"), lowPrecision ? 1.5 / 255 : 0.0015);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+        if (n > 0) {
+          gl.enable(gl.BLEND);
+          gl.blendFunc(gl.ONE, gl.ONE);
+          gl.useProgram(prog);
+          gl.bindVertexArray(vao);
+          gl.bindBuffer(gl.ARRAY_BUFFER, segBuf);
+          gl.bufferData(gl.ARRAY_BUFFER, segs.subarray(0, n * 4), gl.STREAM_DRAW);
+          var sigma = (0.55 + (1 - val(2)) * 2.2) * dpr;
+          gl.uniform2f(gl.getUniformLocation(prog, "uRes"), W, H);
+          gl.uniform1f(gl.getUniformLocation(prog, "uSigma"), sigma);
+          // Énergie par échantillon : ramenée au taux d'échantillonnage pour
+          // que la luminosité ne dépende pas de la carte son
+          gl.uniform1f(gl.getUniformLocation(prog, "uE"), 1.6 * dpr * 48000 / RATE);
+          gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, n);
+          gl.disable(gl.BLEND);
+        }
+        cur = dst;
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, W, H);
+        gl.useProgram(showProg);
+        gl.bindVertexArray(fvao);
+        gl.bindTexture(gl.TEXTURE_2D, tex[cur]);
+        gl.uniform1i(gl.getUniformLocation(showProg, "uTex"), 0);
+        gl.uniform2f(gl.getUniformLocation(showProg, "uPx"), 1 / W, 1 / H);
+        gl.uniform1f(gl.getUniformLocation(showProg, "uGain"), 0.4 + val(1) * 2.6);
+        gl.uniform1f(gl.getUniformLocation(showProg, "uHalo"), val(3) * 1.6);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+
+      // ---------- Texte CRT par-dessus : rendu en demi-résolution (pixels
+      // doux), tapé lettre à lettre, halo, léger scintillement ----------
+      var crtType = 0;
+      function drawCrt(dt, now) {
+        var cw = crt.width, ch = crt.height;
+        cctx.clearRect(0, 0, cw, ch);
+        var fs = Math.max(7, Math.round(cw / 34));
+        cctx.font = fs + "px ui-monospace, Menlo, Consolas, monospace";
+        cctx.textBaseline = "top";
+        cctx.shadowColor = "rgba(60,255,130,0.9)";
+        cctx.shadowBlur = fs * 0.6;
+        var alpha = 0.72 + Math.random() * 0.06;
+        cctx.fillStyle = "rgba(120,255,170," + alpha.toFixed(3) + ")";
+        var pad = cw * 0.045;
+
+        var head = lang === "fr" ? "OSCILLOSCOPE MUSIC  X=G  Y=D" : "OSCILLOSCOPE MUSIC  X=L  Y=R";
+        var sc = (gen.b + 1) + "/4 " + TXT[lang].scenes[gen.b].toUpperCase() + "  " + NOTES[gen.b];
+        var line2 = "> " + (lang === "fr" ? "SCÈNE " : "SCENE ") + sc;
+        crtType = reduced ? 999 : Math.min(999, crtType + dt * 30);
+        var shown = Math.floor(crtType);
+        cctx.fillText(head.slice(0, shown), pad, pad);
+        var l2 = line2.slice(0, Math.max(0, shown - head.length));
+        cctx.fillText(l2, pad, pad + fs * 1.4);
+        if (Math.floor(now * 2) % 2 === 0) {
+          var w = cctx.measureText(l2).width;
+          cctx.fillRect(pad + w + 2, pad + fs * 1.4, fs * 0.55, fs);
+        }
+
+        var secs = Math.floor(gen.t);
+        var clock = ("0" + Math.floor(secs / 60)).slice(-2) + ":" + ("0" + (secs % 60)).slice(-2);
+        var foot = (audioOn ? "AUDIO " + Math.round(RATE / 100) / 10 + "k" : (lang === "fr" ? "MUET" : "MUTE")) + "   " + clock;
+        cctx.fillText(foot, pad, ch - pad - fs);
+        if (gen.m < 1) {
+          var morph = "MORPH " + Math.round(gen.m * 100) + "%";
+          cctx.fillText(morph, cw - pad - cctx.measureText(morph).width, ch - pad - fs);
+        }
+      }
+
+      // ---------- Boucle ----------
+      var lastMs = performance.now();
+      function frame(ms) {
+        var dt = Math.min(0.05, (ms - lastMs) / 1000);
+        lastMs = ms;
+        var samples;
+        if (audioOn) {
+          samples = queue;
+          queue = [];
+        } else {
+          samples = [];
+          gen.next(Math.round(dt * RATE), samples);
+        }
+        if (gl) drawBeam(samples, dt);
+        drawCrt(dt, ms / 1000);
+        requestAnimationFrame(frame);
+      }
+
+      window.addEventListener("resize", resize);
+      if (gl) {
+        try { initGL(); } catch (e) { gl = null; }
+      }
+      resize();
+      applyLang();
+      markScene();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+
+  <script>
+    // Mise à jour automatique (copié de la page d'accueil du portfolio).
+    // Le paramètre anti-cache contourne le CDN devant GitHub Pages.
+    (function () {
+      var PAGE = "oscilloscope";
+      var lastCheck = 0;
+      async function checkForUpdate() {
+        var now0 = Date.now();
+        if (now0 - lastCheck < 1500) return;
+        lastCheck = now0;
+        try {
+          var url = (location.pathname || "index.html") + "?_cb=" + now0;
+          var res = await fetch(url, { cache: "no-store" });
+          if (!res.ok) return;
+          var tag = res.headers.get("etag") || res.headers.get("last-modified");
+          if (!tag) return;
+          var key = "pm_pageVersion_" + PAGE;
+          var stored = localStorage.getItem(key);
+          if (stored === null) { localStorage.setItem(key, tag); return; }
+          if (tag !== stored) {
+            var now = Date.now();
+            var guard = "pm_lastUpdateReload_" + PAGE;
+            var lastReload = 0;
+            try { lastReload = Number(sessionStorage.getItem(guard)) || 0; } catch (e) {}
+            if (now - lastReload < 10000) return;
+            try {
+              localStorage.setItem(key, tag);
+              sessionStorage.setItem(guard, String(now));
+            } catch (e) {}
+            location.replace(location.pathname + "?_r=" + now);
+          }
+        } catch (e) {}
+      }
+      checkForUpdate();
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) checkForUpdate(); });
+      document.addEventListener("pointerdown", checkForUpdate, { passive: true });
+    })();
+  </script>
+</body>
+</html>

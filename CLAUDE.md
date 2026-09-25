@@ -43,6 +43,13 @@ Un nouveau projet (jeu ou page d'essai) :
   - `-webkit-user-select: none; user-select: none;` (empêche la sélection
     de texte qui déclenche la loupe de grossissement)
   - `-webkit-touch-callout: none;` (empêche le menu/la loupe à l'appui long)
+- **se comporte comme une application, écran figé** : jamais de défilement
+  ni de rebond, on ne peut pas tirer la page vers le bas (vide en haut sur
+  iPhone). `html, body { height: 100%; overflow: hidden;
+  overscroll-behavior: none; }`, `body { position: fixed; inset: 0; }`,
+  mise en page en flex qui tient dans la hauteur de l'écran (tailles
+  calculées selon la place), `touchmove` et `gesturestart/change/end`
+  bloqués en JS (iOS ignore `user-scalable=no` pour le pincement)
 - **a le script de mise à jour automatique**, copié de `index.html`
   (vérification `fetch(..., {cache:'no-store'})` + comparaison d'ETag,
   `localStorage`/`sessionStorage` namespacés au nom du projet pour ne pas
@@ -59,6 +66,10 @@ que depuis `main`. Donc : **toujours fusionner la PR directement après le
 push**, sans attendre une demande explicite — ne pas la laisser en
 brouillon en attente. S'il y a un conflit ou un échec CI, le signaler
 plutôt que de fusionner en l'état.
+
+**Pas d'Artifact claude.ai pour tester l'application** : Pierre teste
+sur le site hébergé, pas ailleurs. Un Artifact seulement quand il demande
+explicitement une page de test à part (ex. l'effet oscilloscope).
 
 ## Historique utile
 
