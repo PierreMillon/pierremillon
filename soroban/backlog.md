@@ -75,6 +75,12 @@ Tri : priorité décroissante.
   demande : vitesse du ralenti (0,85 s) et des badges (0,26 s), passage au
   niveau suivant après un badge, erreur = message + surbrillance, cran
 
+- [x] v8 — Perle tenue qui suit le doigt dans les deux sens, pousse ses
+  voisines, qui reviennent avec elle pendant le même geste ; chiffre mis à
+  jour en direct. Son recréé après un retour sur la page (iOS le laissait
+  « interrompu »). « Réinitialiser la progression » : badges, paliers et
+  compteur
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
