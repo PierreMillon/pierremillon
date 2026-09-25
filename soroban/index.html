@@ -2,8 +2,14 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
   <title>Soroban</title>
+  <meta name="theme-color" content="#05100a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Soroban">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
   <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=2">
   <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
@@ -23,31 +29,37 @@
       --accent-soft: rgba(61, 224, 138, 0.16);
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      touch-action: manipulation;
+    }
 
-    html, body { height: 100%; }
+    /* Comportement d'application : la page tient dans l'écran, ne défile
+       pas, ne rebondit pas, ne se tire pas vers le bas, ne zoome pas. */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
 
     body {
+      position: fixed;
+      inset: 0;
       margin: 0;
-      height: 100vh;
-      height: 100dvh;
       display: flex;
       flex-direction: column;
       background: var(--bg);
       color: var(--ink);
       font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
       -webkit-font-smoothing: antialiased;
-      overflow: hidden;
-      touch-action: manipulation;
+      padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
       -webkit-user-select: none;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
       -webkit-touch-callout: none;
     }
 
-    .topbar {
-      padding: 1rem 16px 0;
-    }
+    .topbar { padding: 1rem 16px 0; }
 
     header {
       display: flex;
@@ -56,14 +68,19 @@
       gap: 1rem;
     }
 
-    .back {
+    .back, .link-btn {
+      font-family: inherit;
       color: var(--ink-soft);
       font-size: 0.68rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
       text-decoration: none;
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
     }
-    .back:hover { color: var(--accent); }
+    .back:hover, .link-btn:hover { color: var(--accent); }
 
     h1 {
       margin: 0;
@@ -75,48 +92,75 @@
     .subline {
       display: flex;
       justify-content: flex-end;
+      gap: 1.2rem;
       margin-top: 0.3rem;
     }
 
-    .hist-btn {
-      font-family: inherit;
-      color: var(--ink-soft);
-      font-size: 0.68rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      background: none;
-      border: none;
-      padding: 0;
-      cursor: pointer;
-      touch-action: manipulation;
+    .tabs, .levels {
+      display: flex;
+      gap: 0.4rem;
+      padding: 0 16px;
     }
-    .hist-btn:hover { color: var(--accent); }
+    .tabs { margin-top: 0.7rem; }
+    .levels { margin-top: 0.5rem; flex-wrap: wrap; justify-content: center; }
 
-    /* Lecture : le nombre formé, puis la décomposition du dernier chiffre
-       touché par rapport à 5 (7 = 5 + 2) — c'est tout le principe du
-       boulier, et celui des compléments à 5 (voir VISION.md) */
+    .chip {
+      flex: 1;
+      font-family: inherit;
+      font-size: 0.66rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      padding: 0.5rem 0.3rem;
+      cursor: pointer;
+      transition: border-color 0.25s ease, color 0.25s ease;
+    }
+    .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
+    .levels .chip {
+      flex: 0 0 auto;
+      padding: 0.35rem 0.6rem;
+      text-transform: none;
+      letter-spacing: 0.04em;
+      font-size: 0.7rem;
+    }
+    .levels .chip.earned::after { content: " ✓"; color: var(--accent); }
+
+    /* Lecture : le nombre formé, puis une ligne d'explication — la
+       décomposition par rapport à 5 en libre (7 = 5 + 2), la légende de
+       chaque geste pendant une démo au ralenti */
     .readout {
       text-align: center;
-      margin-top: 0.6rem;
+      margin-top: 0.5rem;
+      padding: 0 16px;
     }
+    .task {
+      min-height: 1.5em;
+      font-size: 1.05rem;
+      letter-spacing: 0.06em;
+      color: var(--ink);
+    }
+    .task[hidden] { display: none; }
+    .task .step { color: var(--ink-soft); font-size: 0.85rem; }
     .value {
-      font-size: clamp(2.4rem, 12vw, 3.4rem);
+      font-size: clamp(2.2rem, 11vw, 3.2rem);
       font-weight: 300;
       letter-spacing: 0.08em;
+      line-height: 1.15;
       color: var(--accent);
       text-shadow: 0 0 10px rgba(61, 224, 138, 0.45);
       font-variant-numeric: tabular-nums;
     }
     .split {
       min-height: 1.4em;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
       color: var(--ink-soft);
-      letter-spacing: 0.06em;
+      letter-spacing: 0.04em;
     }
-    .split b {
-      font-weight: 500;
-      color: var(--ink);
-    }
+    .split b { font-weight: 500; color: var(--ink); }
+    .split.good { color: var(--accent); }
 
     .stage {
       flex: 1;
@@ -124,8 +168,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 0.6rem 16px;
-      touch-action: none; /* le glissé sur les perles ne fait pas défiler */
+      padding: 0.4rem 16px;
     }
 
     svg.soroban {
@@ -133,7 +176,9 @@
       height: 100%;
       max-width: 520px;
       overflow: visible;
+      touch-action: none; /* le glissé sur les perles ne fait ni défiler ni zoomer */
     }
+    svg.soroban * { touch-action: none; }
 
     .frame, .beam, .rod {
       fill: none;
@@ -144,22 +189,20 @@
     .beam { stroke: var(--ink); }
     .dot { fill: var(--accent); }
 
-    .bead {
-      cursor: pointer;
-      transition: transform 0.16s cubic-bezier(.3, 1.35, .5, 1);
-    }
+    .bead { cursor: grab; outline: none; }
     .bead polygon {
-      fill: rgba(0, 0, 0, 0); /* peint, donc cliquable, mais invisible */
+      fill: rgba(0, 0, 0, 0); /* peint, donc touchable, mais invisible */
       stroke: var(--ink-soft);
       stroke-width: 2;
       stroke-linejoin: round;
-      transition: stroke 0.16s ease, fill 0.16s ease;
+      transition: stroke 0.2s ease, fill 0.2s ease;
     }
     .bead.on polygon {
       stroke: var(--accent);
       fill: var(--accent-soft);
       filter: url(#glow);
     }
+    .bead:focus-visible polygon { stroke: var(--accent); stroke-dasharray: 5 4; }
     .digit {
       fill: var(--ink-soft);
       font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -171,23 +214,28 @@
     .bottombar {
       display: flex;
       justify-content: center;
-      padding: 0 16px calc(1.2rem + env(safe-area-inset-bottom));
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0 16px 1rem;
     }
 
     .btn {
       font-family: inherit;
-      font-size: 0.75rem;
-      letter-spacing: 0.2em;
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
       color: var(--ink);
       background: transparent;
       border: 1px solid var(--accent);
       border-radius: 999px;
-      padding: 0.8rem 1.8rem;
+      padding: 0.75rem 1.2rem;
       cursor: pointer;
-      touch-action: manipulation;
     }
     .btn:active { background: var(--accent-soft); }
+    .btn[hidden] { display: none; }
+    .btn.quiet { border-color: var(--hairline); color: var(--ink-soft); }
+
+    body.busy .bead { cursor: default; }
 
     .overlay {
       position: fixed;
@@ -199,14 +247,17 @@
       gap: 1rem;
       padding: 1.5rem 16px;
       text-align: center;
-      background: rgba(5, 16, 10, 0.94);
+      background: rgba(5, 16, 10, 0.95);
       z-index: 6;
     }
     .overlay[hidden] { display: none; }
-    .overlay .big {
-      font-weight: 300;
-      font-size: 1.8rem;
-      color: var(--ink);
+    .overlay .big { font-weight: 300; font-size: 1.8rem; color: var(--ink); }
+    .overlay p {
+      margin: 0;
+      max-width: 22rem;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--ink-soft);
     }
     .hist-list {
       width: 100%;
@@ -217,6 +268,7 @@
       text-align: left;
       max-height: 50vh;
       overflow-y: auto;
+      touch-action: pan-y;
     }
     .hist-list li {
       padding: 0.7rem 0;
@@ -234,65 +286,88 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .bead, .bead polygon { transition: none; }
+      .bead polygon { transition: none; }
     }
   </style>
 </head>
 <body>
   <div class="topbar">
     <header>
-      <a class="back" href="../">← Portfolio</a>
+      <a class="back" href="../" data-t="back">← Portfolio</a>
       <h1>Soroban</h1>
     </header>
     <div class="subline">
-      <button class="hist-btn" id="histBtn">Historique</button>
+      <button class="link-btn" id="langBtn">EN</button>
+      <button class="link-btn" id="histBtn" data-t="hist">Historique</button>
     </div>
   </div>
 
+  <div class="tabs" role="tablist">
+    <button class="chip" id="tabFree" data-t="free">Libre</button>
+    <button class="chip" id="tabOps" data-t="ops">Opérations</button>
+  </div>
+  <div class="levels" id="levels" hidden></div>
+
   <div class="readout" aria-live="polite">
+    <div class="task" id="task" hidden></div>
     <div class="value" id="value">0</div>
     <div class="split" id="split"></div>
   </div>
 
   <div class="stage">
-    <svg class="soroban" id="soroban" role="group" aria-label="Boulier"></svg>
+    <svg class="soroban" id="soroban" role="group" aria-label="Soroban"></svg>
   </div>
 
   <div class="bottombar">
-    <button class="btn" id="resetBtn">Remettre à zéro</button>
+    <button class="btn quiet" id="slowBtn" data-t="slow" hidden>Voir au ralenti</button>
+    <button class="btn quiet" id="instantBtn" data-t="instant" hidden>D'un coup</button>
+    <button class="btn" id="nextBtn" data-t="next" hidden>Suivant</button>
+    <button class="btn quiet" id="resetBtn" data-t="reset">Remettre à zéro</button>
   </div>
 
   <div class="overlay" id="histOverlay" hidden>
-    <div class="big">Historique</div>
+    <div class="big" data-t="hist">Historique</div>
+    <p data-t="install"></p>
     <ul class="hist-list" id="histList"></ul>
-    <button class="btn" id="histClose">Fermer</button>
+    <button class="btn" id="histClose" data-t="close">Fermer</button>
   </div>
 
   <script>
     (function () {
       // Un soroban : chaque tige porte une perle du haut (vaut 5) et quatre
       // perles du bas (valent 1 chacune). Une perle compte quand elle touche
-      // la barre du milieu. Une seule mécanique : toucher une perle la fait
-      // glisser vers la barre (ou l'en éloigne), avec celles qui la séparent
-      // de la barre — exactement comme les doigts sur un vrai boulier.
+      // la barre du milieu. Une seule mécanique : pousser des perles.
+      //
+      // Les perles sont des ressorts, pas des animations CSS : elles
+      // résistent un peu sous le doigt, basculent d'un coup passé un seuil
+      // (comme un cran), et reviennent en rebondissant si on les lâche
+      // avant. Tout est recalculé image par image, seulement tant que
+      // quelque chose bouge (batterie).
 
       // ---------- Réglages ----------
 
       var RODS = 5;              // tiges : de 0 à 99 999
-      var STORE_KEY = "soroban-state";
-      var SWIPE_PX = 10;         // au-delà, un appui devient un glissé
+      var STORE = "soroban-";    // préfixe localStorage
       var SVGNS = "http://www.w3.org/2000/svg";
+
+      var TAP_PX = 6;            // en deçà, un appui reste un toucher
+      var STICK = 9;             // unités à vaincre avant que la perle suive
+      var STICK_GIVE = 0.12;     // elle ne bouge presque pas tant qu'elle colle
+      var FOLLOW = 0.85;         // ensuite elle suit le doigt, un peu en retard
+      var SNAP = 0.55;           // fraction de la course qui fait basculer
+      var SPRING_K = 380;        // raideur du ressort
+      var SPRING_C = 24;         // amortissement (< 39 : léger rebond)
+      var DEMO_STEP_MS = 850;    // un geste de la démo au ralenti
 
       // Géométrie (unités du viewBox). Une tige tous les 100.
       var COL = 100;
-      var BEAD_H = 40;           // hauteur d'une perle
-      var PAD = 8;               // marge perle / cadre ou barre
-      var TOP = 0;               // haut du cadre
-      var BEAM = 120;            // barre du milieu
-      var BOTTOM = 364;          // bas du cadre
-      var LABEL_Y = 410;         // chiffre sous chaque tige
+      var BEAD_H = 40;
+      var PAD = 8;
+      var TOP = 0;
+      var BEAM = 120;
+      var BOTTOM = 364;
+      var LABEL_Y = 410;
 
-      // Centre vertical de chaque perle, position repos / position active
       var HEAVEN_OFF = TOP + PAD + BEAD_H / 2;
       var HEAVEN_ON = BEAM - PAD - BEAD_H / 2;
       function earthOn(i) { return BEAM + PAD + BEAD_H / 2 + i * (BEAD_H + 2); }
@@ -301,28 +376,88 @@
       // Perle vue de profil : un losange aplati aux pointes coupées
       var BEAD_POINTS = "-42,0 -15,-20 15,-20 42,0 15,20 -15,20";
 
+      var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      // ---------- Stockage (toujours en try/catch, jamais interprété) ----------
+
+      function load(key) { try { return localStorage.getItem(STORE + key); } catch (e) { return null; } }
+      function save(key, v) { try { localStorage.setItem(STORE + key, v); } catch (e) {} }
+
+      // ---------- Langue ----------
+
+      var TXT = {
+        fr: {
+          back: "← Portfolio", hist: "Historique", free: "Libre", ops: "Opérations",
+          reset: "Remettre à zéro", slow: "Voir au ralenti", instant: "D'un coup",
+          next: "Suivant", close: "Fermer", empty: " — tige vide",
+          install: "Pour l'avoir comme une appli : Partager → « Sur l'écran d'accueil ».",
+          pose: "pose {n}", add: "ajoute {n}", sub: "retire {n}", mul: "calcule-le",
+          yourTurn: "À toi : refais-le à la main.", good: "Juste !", badge: "Badge gagné : {b}. « D'un coup » est débloqué.",
+          levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×" },
+          cap: {
+            zero: "on remet à zéro", pose: "on pose {n}",
+            direct: "+{a} : direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "retenue : +1 à gauche",
+            sdirect: "−{a} : direct", s5: "−{a} = −5 + {b}", s10: "−{a} = −10 + {b}", borrow: "emprunt : −1 à gauche",
+            partial: "{x} × {y} = {p}"
+          }
+        },
+        en: {
+          back: "← Portfolio", hist: "History", free: "Free", ops: "Operations",
+          reset: "Clear", slow: "Show slowly", instant: "Instantly",
+          next: "Next", close: "Close", empty: " — empty rod",
+          install: "To use it like an app: Share → “Add to Home Screen”.",
+          pose: "set {n}", add: "add {n}", sub: "take away {n}", mul: "work it out",
+          yourTurn: "Your turn: do it by hand.", good: "Correct!", badge: "Badge earned: {b}. “Instantly” is unlocked.",
+          levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×" },
+          cap: {
+            zero: "clearing the board", pose: "setting {n}",
+            direct: "+{a}: direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "carry: +1 on the left",
+            sdirect: "−{a}: direct", s5: "−{a} = −5 + {b}", s10: "−{a} = −10 + {b}", borrow: "borrow: −1 on the left",
+            partial: "{x} × {y} = {p}"
+          }
+        }
+      };
+
+      var lang = load("lang");
+      if (lang !== "fr" && lang !== "en") lang = /^fr/i.test(navigator.language || "fr") ? "fr" : "en";
+
+      function fmt(s, o) {
+        return s.replace(/\{(\w+)\}/g, function (m, k) { return o && k in o ? o[k] : m; });
+      }
+      function t(key, o) { return fmt(TXT[lang][key], o); }
+      function numStr(n) { return n.toLocaleString(lang === "fr" ? "fr-FR" : "en-US"); }
+
+      function applyLang() {
+        document.documentElement.lang = lang;
+        var els = document.querySelectorAll("[data-t]");
+        for (var i = 0; i < els.length; i++) els[i].textContent = t(els[i].getAttribute("data-t"));
+        document.getElementById("langBtn").textContent = lang === "fr" ? "EN" : "FR";
+        buildLevels();
+        showTask();
+        render();
+      }
+
       // ---------- État ----------
       // Un chiffre par tige, de gauche (grands ordres) à droite (unités).
 
-      var digits = loadDigits();
-      var lastRod = -1;
-
-      function loadDigits() {
+      var digits = (function () {
         var d = [];
         for (var i = 0; i < RODS; i++) d.push(0);
-        try {
-          var raw = localStorage.getItem(STORE_KEY);
-          if (!raw) return d;
-          // Jamais interprété comme du code : on n'accepte qu'une chaîne de
-          // RODS chiffres, rien d'autre (voir REGLES-JEUX.md, Sécurité).
-          if (!/^[0-9]+$/.test(raw) || raw.length !== RODS) return d;
+        var raw = load("state");
+        // Seulement une chaîne de RODS chiffres (REGLES-JEUX.md, Sécurité)
+        if (raw && /^[0-9]+$/.test(raw) && raw.length === RODS) {
           for (var j = 0; j < RODS; j++) d[j] = raw.charCodeAt(j) - 48;
-        } catch (e) {}
+        }
         return d;
-      }
+      })();
+      var lastRod = -1;
+      var busy = false;          // démo en cours : le doigt n'agit plus
+      var caption = null;        // légende de démo, sinon décomposition
 
-      function saveDigits() {
-        try { localStorage.setItem(STORE_KEY, digits.join("")); } catch (e) {}
+      function value() {
+        var n = 0;
+        for (var j = 0; j < RODS; j++) n = n * 10 + digits[j];
+        return n;
       }
 
       // ---------- Dessin ----------
@@ -338,8 +473,8 @@
         return n;
       }
 
-      // Halo phosphore des perles actives (filtre SVG plutôt que CSS : plus
-      // fiable sur Safari iOS pour des éléments SVG)
+      // Halo phosphore des perles actives (filtre SVG : plus fiable sur
+      // Safari iOS qu'un filtre CSS sur des éléments SVG)
       var defs = el("defs", {}, svg);
       var filter = el("filter", { id: "glow", x: "-30%", y: "-60%", width: "160%", height: "220%" }, defs);
       el("feGaussianBlur", { stdDeviation: "3", result: "b" }, filter);
@@ -347,165 +482,241 @@
       el("feMergeNode", { "in": "b" }, merge);
       el("feMergeNode", { "in": "SourceGraphic" }, merge);
 
-      for (var r = 0; r < RODS; r++) {
-        var cx = COL * r + COL / 2;
-        el("line", { "class": "rod", x1: cx, y1: TOP, x2: cx, y2: BOTTOM }, svg);
+      for (var r0 = 0; r0 < RODS; r0++) {
+        var cx0 = COL * r0 + COL / 2;
+        el("line", { "class": "rod", x1: cx0, y1: TOP, x2: cx0, y2: BOTTOM }, svg);
       }
       el("rect", { "class": "frame", x: 0, y: TOP, width: W, height: BOTTOM - TOP, rx: 6 }, svg);
       el("line", { "class": "beam", x1: 0, y1: BEAM, x2: W, y2: BEAM }, svg);
-
-      // Point de repère sur la barre : tige des unités, puis tous les trois
-      // rangs (milliers…), comme sur un vrai soroban
-      for (var p = 0; p < RODS; p++) {
-        var rank = RODS - 1 - p;
-        if (rank % 3 === 0) el("circle", { "class": "dot", cx: COL * p + COL / 2, cy: BEAM, r: 3.5 }, svg);
+      // Repère sur la barre : unités, puis tous les trois rangs
+      for (var p0 = 0; p0 < RODS; p0++) {
+        if ((RODS - 1 - p0) % 3 === 0) el("circle", { "class": "dot", cx: COL * p0 + COL / 2, cy: BEAM, r: 3.5 }, svg);
       }
 
-      // beads[r] = { heaven: <g>, earth: [<g> ×4], label: <text> }
-      var beads = [];
-      for (var rr = 0; rr < RODS; rr++) {
-        var x = COL * rr + COL / 2;
-        var rodBeads = { heaven: null, earth: [], label: null };
-
-        rodBeads.heaven = makeBead(x, rr, "h", 0);
-        for (var i = 0; i < 4; i++) rodBeads.earth.push(makeBead(x, rr, "e", i));
-
-        rodBeads.label = el("text", { "class": "digit", x: x, y: LABEL_Y }, svg);
-        beads.push(rodBeads);
+      // Une perle = un petit objet physique
+      // { g, rod, kind, idx, x, y, v, target, held, base }
+      var rods = [];
+      var allBeads = [];
+      for (var r1 = 0; r1 < RODS; r1++) {
+        var x1 = COL * r1 + COL / 2;
+        var rodObj = { heaven: makeBead(x1, r1, "h", 0), earth: [], label: null };
+        for (var i1 = 0; i1 < 4; i1++) rodObj.earth.push(makeBead(x1, r1, "e", i1));
+        rodObj.label = el("text", { "class": "digit", x: x1, y: LABEL_Y }, svg);
+        rods.push(rodObj);
       }
 
       function makeBead(x, rod, kind, idx) {
-        var g = el("g", { "class": "bead" }, svg);
-        g.dataset.x = x;
+        var g = el("g", { "class": "bead", tabindex: "0" }, svg);
         el("polygon", { points: BEAD_POINTS }, g);
-        // Deux gestes : un toucher bref bascule la perle ; un glissé
-        // vertical la pousse dans la direction du doigt (vers le haut ou
-        // le bas), comme le pouce et l'index sur un vrai soroban.
-        var startY = null;
-        var swiped = false;
-        g.addEventListener("pointerdown", function (ev) {
-          ev.preventDefault();
-          startY = ev.clientY;
-          swiped = false;
-          try { g.setPointerCapture(ev.pointerId); } catch (e) {}
+        var b = { g: g, rod: rod, kind: kind, idx: idx, x: x, y: 0, v: 0, target: 0, held: false, base: 0 };
+        allBeads.push(b);
+        g.addEventListener("pointerdown", function (ev) { onDown(b, ev); });
+        g.addEventListener("keydown", function (ev) {
+          if (busy) return;
+          if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); toggleBead(b); }
+          else if (ev.key === "ArrowUp") { ev.preventDefault(); pushBead(b, -1); }
+          else if (ev.key === "ArrowDown") { ev.preventDefault(); pushBead(b, 1); }
         });
-        g.addEventListener("pointermove", function (ev) {
-          if (startY === null || swiped) return;
-          var dy = ev.clientY - startY;
-          if (Math.abs(dy) < SWIPE_PX) return;
-          swiped = true;
-          pushBead(rod, kind, idx, dy < 0 ? "up" : "down");
-        });
-        g.addEventListener("pointerup", function () {
-          if (startY !== null && !swiped) touchBead(rod, kind, idx);
-          startY = null;
-        });
-        g.addEventListener("pointercancel", function () { startY = null; });
-        return g;
+        return b;
       }
 
-      function place(g, y, on) {
-        g.style.transform = "translate(" + g.dataset.x + "px," + y + "px)";
-        g.setAttribute("class", on ? "bead on" : "bead");
+      function draw(b) {
+        // Léger écrasement selon la vitesse : la perle a de la matière
+        var s = Math.min(0.14, Math.abs(b.v) / 3500);
+        b.g.setAttribute("transform",
+          "translate(" + b.x + "," + b.y.toFixed(2) + ") scale(" + (1 + s * 0.6).toFixed(3) + "," + (1 - s).toFixed(3) + ")");
       }
 
-      function render() {
+      // Cibles et classes d'après l'état ; la physique fait le reste
+      function render(instant) {
         for (var r = 0; r < RODS; r++) {
           var d = digits[r];
-          var five = d >= 5;
-          var ones = d % 5;
-          place(beads[r].heaven, five ? HEAVEN_ON : HEAVEN_OFF, five);
+          var five = d >= 5, ones = d % 5;
+          setTarget(rods[r].heaven, five ? HEAVEN_ON : HEAVEN_OFF, five, instant);
           for (var i = 0; i < 4; i++) {
             var on = i < ones;
-            place(beads[r].earth[i], on ? earthOn(i) : earthOff(i), on);
+            setTarget(rods[r].earth[i], on ? earthOn(i) : earthOff(i), on, instant);
           }
-          beads[r].label.textContent = d;
-          beads[r].label.setAttribute("class", d ? "digit on" : "digit");
+          rods[r].label.textContent = d;
+          rods[r].label.setAttribute("class", d ? "digit on" : "digit");
         }
-
-        var n = 0;
-        for (var j = 0; j < RODS; j++) n = n * 10 + digits[j];
-        document.getElementById("value").textContent = n.toLocaleString("fr-FR");
-
-        var split = document.getElementById("split");
-        split.textContent = "";
-        if (lastRod >= 0) {
-          var dd = digits[lastRod];
-          var b = document.createElement("b");
-          b.textContent = dd;
-          split.appendChild(b);
-          split.appendChild(document.createTextNode(
-            dd >= 5 ? " = 5 + " + (dd - 5) : (dd === 0 ? " — tige vide" : dd === 1 ? "" : " = " + ones1(dd))
-          ));
-        }
+        document.getElementById("value").textContent = numStr(value());
+        renderSplit();
+        kick();
       }
 
-      // 3 → « 1 + 1 + 1 » : en dessous de 5, on compte les perles une à une
-      function ones1(k) {
-        var parts = [];
-        for (var i = 0; i < k; i++) parts.push("1");
-        return parts.join(" + ");
+      function setTarget(b, y, on, instant) {
+        b.target = y;
+        b.g.setAttribute("class", on ? "bead on" : "bead");
+        if (instant || reduceMotion) { b.y = y; b.v = 0; draw(b); }
+      }
+
+      function renderSplit() {
+        var split = document.getElementById("split");
+        split.textContent = "";
+        split.className = "split";
+        if (caption) {
+          split.textContent = caption.text;
+          if (caption.good) split.className = "split good";
+          return;
+        }
+        if (lastRod < 0) return;
+        var dd = digits[lastRod];
+        var bEl = document.createElement("b");
+        bEl.textContent = dd;
+        split.appendChild(bEl);
+        var rest;
+        if (dd >= 5) rest = " = 5 + " + (dd - 5);
+        else if (dd === 0) rest = t("empty");
+        else if (dd === 1) rest = "";
+        else rest = " = " + new Array(dd + 1).join("1 + ").slice(0, -3);
+        split.appendChild(document.createTextNode(rest));
+      }
+
+      // ---------- Physique ----------
+
+      var running = false, lastT = 0;
+      function kick() {
+        if (running) return;
+        running = true;
+        lastT = performance.now();
+        requestAnimationFrame(step);
+      }
+      function step(now) {
+        var dt = Math.min(1 / 30, (now - lastT) / 1000);
+        lastT = now;
+        var moving = false;
+        for (var i = 0; i < allBeads.length; i++) {
+          var b = allBeads[i];
+          if (b.held) { moving = true; continue; }
+          var a = SPRING_K * (b.target - b.y) - SPRING_C * b.v;
+          b.v += a * dt;
+          b.y += b.v * dt;
+          if (Math.abs(b.target - b.y) < 0.05 && Math.abs(b.v) < 0.5) { b.y = b.target; b.v = 0; }
+          else moving = true;
+          draw(b);
+        }
+        if (moving) requestAnimationFrame(step);
+        else running = false;
       }
 
       // ---------- Geste ----------
 
-      function touchBead(rod, kind, idx) {
-        var d = digits[rod];
-        var five = d >= 5 ? 5 : 0;
-        var ones = d % 5;
-
-        if (kind === "h") {
-          five = five ? 0 : 5;
-          clack(true);
-        } else {
-          // Perle du bas n° idx (0 = la plus proche de la barre). Si elle est
-          // déjà contre la barre, on la redescend avec toutes celles qui sont
-          // sous elle ; sinon on la monte avec toutes celles au-dessus.
-          ones = idx < ones ? idx : idx + 1;
-          clack(false);
+      // Ce qu'un geste sur la perle b ferait : dans quel sens (+1 = vers le
+      // bas), quelles perles l'accompagnent, sur quelle course.
+      function groupFor(b) {
+        var d = digits[b.rod], ones = d % 5, rod = rods[b.rod];
+        if (b.kind === "h") {
+          return { dir: d >= 5 ? -1 : 1, beads: [rod.heaven], travel: HEAVEN_ON - HEAVEN_OFF };
         }
-
-        setDigit(rod, five + ones);
+        var list = [], lo, hi, dir;
+        if (b.idx < ones) { dir = 1; lo = b.idx; hi = ones - 1; }   // contre la barre : on l'éloigne
+        else { dir = -1; lo = ones; hi = b.idx; }                   // loin : on la monte
+        for (var i = lo; i <= hi; i++) list.push(rod.earth[i]);
+        return { dir: dir, beads: list, travel: earthOff(0) - earthOn(0) };
       }
 
-      function pushBead(rod, kind, idx, dir) {
-        var d = digits[rod];
-        var five = d >= 5 ? 5 : 0;
-        var ones = d % 5;
-        if (kind === "h") {
-          five = dir === "down" ? 5 : 0;         // vers la barre = compte
-        } else if (dir === "up") {
-          ones = Math.max(ones, idx + 1);        // monte avec celles au-dessus
-        } else {
-          ones = Math.min(ones, idx);            // descend avec celles en dessous
+      var drag = null;
+
+      function onDown(b, ev) {
+        ev.preventDefault();
+        if (busy || drag) return;
+        unlockAudio();
+        var grp = groupFor(b);
+        var ctm = svg.getScreenCTM();
+        drag = {
+          b: b, pid: ev.pointerId, startY: ev.clientY, moved: false, done: false,
+          grp: grp, unitsPerPx: ctm ? 1 / ctm.d : 1
+        };
+        grp.beads.forEach(function (x) { x.held = true; x.base = x.target; x.v = 0; });
+        try { b.g.setPointerCapture(ev.pointerId); } catch (e) {}
+        kick();
+      }
+
+      function onMove(ev) {
+        if (!drag || ev.pointerId !== drag.pid || drag.done) return;
+        var dyPx = ev.clientY - drag.startY;
+        if (Math.abs(dyPx) > TAP_PX) drag.moved = true;
+        var along = dyPx * drag.unitsPerPx * drag.grp.dir;
+        var off;
+        if (along < 0) off = -5 * (1 - Math.exp(along / 30));        // mauvais sens : élastique, presque rien
+        else if (along < STICK) off = along * STICK_GIVE;              // collée : elle résiste
+        else off = STICK * STICK_GIVE + (along - STICK) * FOLLOW;     // décollée : elle suit
+        var travel = drag.grp.travel;
+        drag.grp.beads.forEach(function (x) {
+          x.y = x.base + drag.grp.dir * Math.min(off, travel);
+          draw(x);
+        });
+        if (off >= travel * SNAP) {
+          // Le cran : la perle bascule et file vers sa nouvelle place
+          drag.done = true;
+          release(drag.grp.dir * 700);
+          pushBead(drag.b, drag.grp.dir);
         }
-        if (five + ones === d) return;           // rien ne bouge : pas de son
-        clack(kind === "h");
-        setDigit(rod, five + ones);
       }
 
-      function setDigit(rod, value) {
-        digits[rod] = value;
-        lastRod = rod;
-        saveDigits();
-        render();
+      function onUp(ev) {
+        if (!drag || ev.pointerId !== drag.pid) return;
+        var d = drag;
+        if (!d.done) {
+          release(0); // retour élastique à la place d'origine
+          if (!d.moved) toggleBead(d.b);
+        }
+        drag = null;
       }
 
-      document.getElementById("resetBtn").addEventListener("click", function () {
-        var any = false;
-        for (var i = 0; i < RODS; i++) { if (digits[i]) any = true; digits[i] = 0; }
-        lastRod = -1;
-        saveDigits();
-        render();
-        if (any) { clack(false); setTimeout(function () { clack(true); }, 60); }
+      function release(v) {
+        if (!drag) return;
+        drag.grp.beads.forEach(function (x) { x.held = false; x.v = v; });
+        kick();
+      }
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", function (ev) {
+        if (drag && ev.pointerId === drag.pid) { release(0); drag = null; }
       });
 
+      // Toucher : la perle bascule avec celles qui la séparent de la barre
+      function toggleBead(b) {
+        var d = digits[b.rod], five = d >= 5 ? 5 : 0, ones = d % 5;
+        if (b.kind === "h") five = five ? 0 : 5;
+        else ones = b.idx < ones ? b.idx : b.idx + 1;
+        userSet(b.rod, five + ones, b.kind === "h");
+      }
+
+      // Glissé (ou flèches) : la perle va dans le sens du geste, sinon rien
+      function pushBead(b, dir) {
+        var d = digits[b.rod], five = d >= 5 ? 5 : 0, ones = d % 5;
+        if (b.kind === "h") five = dir > 0 ? 5 : 0;
+        else if (dir < 0) ones = Math.max(ones, b.idx + 1);
+        else ones = Math.min(ones, b.idx);
+        if (five + ones === d) return;
+        userSet(b.rod, five + ones, b.kind === "h");
+      }
+
+      function setDigit(rod, v) {
+        digits[rod] = v;
+        lastRod = rod;
+        save("state", digits.join(""));
+      }
+
+      function userSet(rod, v, heavy) {
+        toc(heavy, 1);
+        buzz(8);
+        caption = null;
+        setDigit(rod, v);
+        render();
+        checkStep();
+      }
+
       // ---------- Son ----------
-      // Web Audio, débloqué au premier geste. Un « tac » bref : bruit filtré
-      // très court, un peu plus grave pour la perle du haut.
+      // Web Audio, débloqué au premier geste. Un « toc » de bois doux :
+      // une sinusoïde qui descend un peu, filtrée, avec une harmonique
+      // brève par-dessus — plus grave pour la perle du haut.
 
       var actx = null;
-      function clack(heavy) {
+      function unlockAudio() {
         try {
           if (!actx) {
             var AC = window.AudioContext || window.webkitAudioContext;
@@ -513,29 +724,419 @@
             actx = new AC();
           }
           if (actx.state === "suspended") actx.resume();
-          var t = actx.currentTime;
-          var len = Math.floor(actx.sampleRate * 0.05);
-          var buf = actx.createBuffer(1, len, actx.sampleRate);
-          var data = buf.getChannelData(0);
-          for (var i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 4);
-          var src = actx.createBufferSource();
-          src.buffer = buf;
-          var bp = actx.createBiquadFilter();
-          bp.type = "bandpass";
-          bp.frequency.value = heavy ? 1300 : 2100;
-          bp.Q.value = 6;
-          var gain = actx.createGain();
-          gain.gain.setValueAtTime(0.9, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-          src.connect(bp); bp.connect(gain); gain.connect(actx.destination);
-          src.start(t);
         } catch (e) {}
       }
+
+      function tone(f0, f1, peak, decay, when) {
+        var o = actx.createOscillator();
+        var g = actx.createGain();
+        o.type = "sine";
+        o.frequency.setValueAtTime(f0, when);
+        o.frequency.exponentialRampToValueAtTime(f1, when + decay * 0.6);
+        g.gain.setValueAtTime(0.0001, when);
+        g.gain.exponentialRampToValueAtTime(peak, when + 0.004);
+        g.gain.exponentialRampToValueAtTime(0.0001, when + decay);
+        o.connect(g);
+        g.connect(lowpass());
+        o.start(when);
+        o.stop(when + decay + 0.02);
+      }
+      var lp = null;
+      function lowpass() {
+        if (!lp) {
+          lp = actx.createBiquadFilter();
+          lp.type = "lowpass";
+          lp.frequency.value = 2200;
+          lp.connect(actx.destination);
+        }
+        return lp;
+      }
+
+      function toc(heavy, vol) {
+        try {
+          unlockAudio();
+          if (!actx) return;
+          var w = actx.currentTime + 0.005;
+          var f = (heavy ? 290 : 400) * (0.97 + Math.random() * 0.06);
+          tone(f, f * 0.78, 0.32 * vol, 0.16, w);
+          tone(f * 2.76, f * 2.5, 0.05 * vol, 0.045, w);
+        } catch (e) {}
+      }
+
+      function chime() {
+        try {
+          unlockAudio();
+          if (!actx) return;
+          var w = actx.currentTime + 0.01;
+          tone(523, 520, 0.14, 0.9, w);
+          tone(784, 780, 0.1, 0.9, w + 0.12);
+        } catch (e) {}
+      }
+
+      function buzz(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
+
+      // ---------- Méthode du soroban ----------
+      // Pour un chiffre à ajouter ou retirer sur une tige, la suite exacte
+      // des gestes : direct, complément à 5, ou complément à 10 (avec
+      // retenue / emprunt sur la tige de gauche). Chaque geste = une tige
+      // qui change de valeur, avec sa légende. Sert à la fois à classer un
+      // exercice (quelles techniques il demande) et à le jouer au ralenti.
+
+      function planner(start) {
+        var D = start.slice(), moves = [], tech = {};
+        function cap(k, o) { return fmt(TXT[lang].cap[k], o); }
+        function set(r, v, c) {
+          if (r < 0) throw new Error("overflow");
+          D[r] = v;
+          moves.push({ rod: r, to: v, cap: c });
+        }
+        function add(r, a, ctx) {
+          if (!a) return;
+          if (r < 0) throw new Error("overflow");
+          var d = D[r], five = d >= 5, ones = d % 5;
+          if (a < 5 && ones + a <= 4) { tech.direct = 1; set(r, d + a, ctx || cap("direct", { a: a })); }
+          else if (a < 5 && !five) {
+            tech.c5 = 1;
+            var c = ctx || cap("c5", { a: a, b: 5 - a });
+            set(r, d + 5, c);
+            set(r, d + a, c);
+          }
+          else if (a >= 5 && !five && d + a <= 9) { tech.direct = 1; set(r, d + a, ctx || cap("direct", { a: a })); }
+          else {
+            tech.c10 = 1;
+            var c2 = ctx || cap("c10", { a: a, b: 10 - a });
+            sub(r, 10 - a, c2);
+            add(r - 1, 1, c2 + " · " + cap("carry"));
+          }
+        }
+        function sub(r, a, ctx) {
+          if (!a) return;
+          if (r < 0) throw new Error("overflow");
+          var d = D[r], five = d >= 5, ones = d % 5;
+          if (a < 5 && ones >= a) { tech.sdirect = 1; set(r, d - a, ctx || cap("sdirect", { a: a })); }
+          else if (a < 5 && five) {
+            tech.s5 = 1;
+            var c = ctx || cap("s5", { a: a, b: 5 - a });
+            set(r, d - 5, c);
+            set(r, d - a, c);
+          }
+          else if (a >= 5 && d >= a) { tech.sdirect = 1; set(r, d - a, ctx || cap("sdirect", { a: a })); }
+          else {
+            tech.s10 = 1;
+            var c2 = ctx || cap("s10", { a: a, b: 10 - a });
+            sub(r - 1, 1, c2 + " · " + cap("borrow"));
+            add(r, 10 - a, c2);
+          }
+        }
+        // Un nombre entier, chiffre par chiffre, de gauche à droite comme
+        // sur un vrai soroban. shift = décalage vers la gauche (dizaines…)
+        function number(n, fn, shift, ctx) {
+          var s = String(n);
+          for (var i = 0; i < s.length; i++) {
+            var place = s.length - 1 - i + (shift || 0);
+            fn(RODS - 1 - place, s.charCodeAt(i) - 48, ctx);
+          }
+        }
+        return {
+          D: D, moves: moves, tech: tech, cap: cap, set: set,
+          addN: function (n, shift, ctx) { number(n, add, shift, ctx); },
+          subN: function (n, shift, ctx) { number(n, sub, shift, ctx); }
+        };
+      }
+
+      function digitsOf(n) {
+        var d = [];
+        for (var i = RODS - 1; i >= 0; i--) { d[i] = n % 10; n = Math.floor(n / 10); }
+        return d;
+      }
+
+      // ---------- Opérations ----------
+
+      var LEVELS = ["direct", "c5", "c10", "sdirect", "s5", "s10", "mul"];
+      var badges = (function () {
+        var o = {};
+        var raw = load("badges") || "";
+        // Seulement des noms de niveaux connus, séparés par des virgules
+        raw.split(",").forEach(function (k) { if (LEVELS.indexOf(k) >= 0) o[k] = 1; });
+        return o;
+      })();
+      function saveBadges() { save("badges", Object.keys(badges).join(",")); }
+
+      var mode = load("mode") === "ops" ? "ops" : "free";
+      var level = LEVELS.indexOf(load("level")) >= 0 ? load("level") : "direct";
+      var ex = null;             // { op, a, b, steps:[{target, label}], stage, watched, solved }
+
+      function rnd(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
+
+      function techsOf(op, a, b) {
+        try {
+          var p = planner(digitsOf(op === "×" ? 0 : a));
+          if (op === "+") p.addN(b);
+          else if (op === "−") p.subN(b);
+          return p.tech;
+        } catch (e) { return null; }
+      }
+
+      function fits(lv, tech) {
+        if (!tech) return false;
+        var k = Object.keys(tech);
+        switch (lv) {
+          case "direct": return k.length === 1 && tech.direct;
+          case "c5": return tech.c5 && !tech.c10;
+          case "c10": return !!tech.c10;
+          case "sdirect": return k.length === 1 && tech.sdirect;
+          case "s5": return tech.s5 && !tech.s10;
+          case "s10": return !!tech.s10;
+        }
+        return false;
+      }
+
+      function makeExercise(lv) {
+        if (lv === "mul") {
+          var m = rnd(12, 99), k = rnd(2, 9);
+          return { op: "×", a: m, b: k, result: m * k };
+        }
+        var op = lv.charAt(0) === "s" ? "−" : "+";
+        for (var tries = 0; tries < 800; tries++) {
+          // Petits nombres d'abord, un peu plus grands si rien ne convient
+          var hi = tries < 300 ? 9 : (tries < 600 ? 99 : 999);
+          var a = rnd(1, hi), b = rnd(1, hi);
+          if (op === "−" && b > a) { var tmp = a; a = b; b = tmp; }
+          if (op === "−" && a === b) continue;
+          if (fits(lv, techsOf(op, a, b))) return { op: op, a: a, b: b, result: op === "+" ? a + b : a - b };
+        }
+        return { op: "+", a: 1, b: 1, result: 2 };
+      }
+
+      function newExercise() {
+        ex = makeExercise(level);
+        ex.stage = 0;
+        ex.watched = false;
+        ex.solved = false;
+        caption = null;
+        clearBoard();
+        showTask();
+        updateButtons();
+      }
+
+      // Étapes : poser le premier nombre, puis faire l'opération (la
+      // multiplication se construit directement à partir de zéro)
+      function stepsOf(e) {
+        if (e.op === "×") return [{ target: e.result, verb: "mul" }];
+        return [
+          { target: e.a, verb: "pose", n: e.a },
+          { target: e.result, verb: e.op === "+" ? "add" : "sub", n: e.b }
+        ];
+      }
+
+      function showTask() {
+        var task = document.getElementById("task");
+        if (mode !== "ops" || !ex) { task.hidden = true; return; }
+        task.hidden = false;
+        task.textContent = "";
+        task.appendChild(document.createTextNode(numStr(ex.a) + " " + ex.op + " " + numStr(ex.b) + "  "));
+        var st = stepsOf(ex)[Math.min(ex.stage, stepsOf(ex).length - 1)];
+        var span = document.createElement("span");
+        span.className = "step";
+        span.textContent = ex.solved ? "= " + numStr(ex.result) : "→ " + t(st.verb, { n: numStr(st.n || 0) });
+        task.appendChild(span);
+      }
+
+      function checkStep() {
+        if (mode !== "ops" || !ex || ex.solved || busy) return;
+        var steps = stepsOf(ex);
+        // On accepte d'avancer d'une ou plusieurs étapes d'un coup
+        while (ex.stage < steps.length && value() === steps[ex.stage].target) ex.stage++;
+        if (ex.stage >= steps.length) solved(true);
+        else showTask();
+      }
+
+      function solved(byHand) {
+        ex.solved = true;
+        var text = t("good");
+        if (byHand && !ex.watched && !badges[level]) {
+          badges[level] = 1;
+          saveBadges();
+          buildLevels();
+          text += " " + t("badge", { b: TXT[lang].levels[level] });
+        }
+        caption = { text: text, good: true };
+        chime();
+        buzz(20);
+        showTask();
+        renderSplit();
+        updateButtons();
+      }
+
+      function updateButtons() {
+        var ops = mode === "ops" && ex;
+        document.getElementById("slowBtn").hidden = !ops || ex.solved;
+        document.getElementById("instantBtn").hidden = !ops || ex.solved || !badges[level];
+        document.getElementById("nextBtn").hidden = !ops || !ex.solved;
+      }
+
+      function clearBoard() {
+        for (var i = 0; i < RODS; i++) digits[i] = 0;
+        lastRod = -1;
+        save("state", digits.join(""));
+        render();
+      }
+
+      // ---------- Démo au ralenti ----------
+
+      function wait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
+
+      function playMoves(moves) {
+        var chain = Promise.resolve();
+        moves.forEach(function (m) {
+          chain = chain.then(function () {
+            if (digits[m.rod] === m.to) return;
+            var heavy = (digits[m.rod] >= 5) !== (m.to >= 5);
+            toc(heavy, 0.8);
+            caption = { text: m.cap };
+            setDigit(m.rod, m.to);
+            render();
+            return wait(DEMO_STEP_MS);
+          });
+        });
+        return chain;
+      }
+
+      function demo() {
+        if (busy || !ex) return;
+        busy = true;
+        document.body.classList.add("busy");
+        ex.watched = true;
+        var p = planner(digits);
+        // 1. on remet à zéro
+        for (var r = 0; r < RODS; r++) if (p.D[r]) p.set(r, 0, p.cap("zero"));
+        // 2. on pose le premier nombre (sauf ×, qui part de zéro)
+        if (ex.op !== "×") {
+          var start = digitsOf(ex.a);
+          for (var r2 = 0; r2 < RODS; r2++) if (start[r2]) p.set(r2, start[r2], p.cap("pose", { n: numStr(ex.a) }));
+        }
+        // 3. l'opération, geste par geste
+        try {
+          if (ex.op === "+") p.addN(ex.b);
+          else if (ex.op === "−") p.subN(ex.b);
+          else {
+            // × : un produit partiel par chiffre, ajouté au bon rang
+            var s = String(ex.a);
+            for (var i = 0; i < s.length; i++) {
+              var dgt = s.charCodeAt(i) - 48;
+              var place = s.length - 1 - i;
+              var part = dgt * ex.b;
+              if (part) p.addN(part, place, p.cap("partial", { x: dgt * Math.pow(10, place), y: ex.b, p: part * Math.pow(10, place) }));
+            }
+          }
+        } catch (e) {}
+        playMoves(p.moves).then(function () { return wait(900); }).then(function () {
+          // Puis la main revient à Pierre : on repart de zéro
+          busy = false;
+          document.body.classList.remove("busy");
+          ex.stage = 0;
+          caption = { text: t("yourTurn") };
+          clearBoard();
+          showTask();
+        });
+      }
+
+      function instant() {
+        if (busy || !ex || !badges[level]) return;
+        var target = digitsOf(ex.result);
+        for (var r = 0; r < RODS; r++) digits[r] = target[r];
+        save("state", digits.join(""));
+        toc(true, 1);
+        render();
+        solved(false);
+      }
+
+      // ---------- Interface ----------
+
+      function buildLevels() {
+        var box = document.getElementById("levels");
+        box.textContent = "";
+        box.hidden = mode !== "ops";
+        LEVELS.forEach(function (lv) {
+          var b = document.createElement("button");
+          b.className = "chip" + (badges[lv] ? " earned" : "");
+          b.textContent = TXT[lang].levels[lv];
+          b.setAttribute("aria-pressed", lv === level ? "true" : "false");
+          b.addEventListener("click", function () {
+            if (busy) return;
+            level = lv;
+            save("level", lv);
+            buildLevels();
+            newExercise();
+          });
+          box.appendChild(b);
+        });
+      }
+
+      function setMode(m) {
+        if (busy) return;
+        mode = m;
+        save("mode", m);
+        document.getElementById("tabFree").setAttribute("aria-pressed", m === "free" ? "true" : "false");
+        document.getElementById("tabOps").setAttribute("aria-pressed", m === "ops" ? "true" : "false");
+        buildLevels();
+        caption = null;
+        if (m === "ops") newExercise();
+        else { ex = null; showTask(); updateButtons(); render(); }
+      }
+
+      document.getElementById("tabFree").addEventListener("click", function () { setMode("free"); });
+      document.getElementById("tabOps").addEventListener("click", function () { setMode("ops"); });
+      document.getElementById("slowBtn").addEventListener("click", demo);
+      document.getElementById("instantBtn").addEventListener("click", instant);
+      document.getElementById("nextBtn").addEventListener("click", function () {
+        // Badge tout juste gagné : on passe au niveau suivant pas encore acquis
+        if (badges[level]) {
+          for (var i = LEVELS.indexOf(level) + 1; i < LEVELS.length; i++) {
+            if (!badges[LEVELS[i]]) { level = LEVELS[i]; save("level", level); buildLevels(); break; }
+          }
+        }
+        newExercise();
+      });
+      document.getElementById("resetBtn").addEventListener("click", function () {
+        if (busy) return;
+        var any = value() !== 0;
+        caption = null;
+        if (ex && !ex.solved) { ex.stage = 0; showTask(); }
+        clearBoard();
+        if (any) { toc(false, 0.7); setTimeout(function () { toc(true, 0.7); }, 70); }
+      });
+      document.getElementById("langBtn").addEventListener("click", function () {
+        lang = lang === "fr" ? "en" : "fr";
+        save("lang", lang);
+        caption = null;
+        applyLang();
+      });
+
+      // ---------- Écran figé ----------
+      // iOS ignore user-scalable=no : on bloque aussi le glissement de
+      // page, le pincement (événements « gesture ») et le double-tap.
+
+      document.addEventListener("touchmove", function (e) {
+        if (e.target.closest && e.target.closest(".hist-list")) return;
+        e.preventDefault();
+      }, { passive: false });
+      ["gesturestart", "gesturechange", "gestureend"].forEach(function (ty) {
+        document.addEventListener(ty, function (e) { e.preventDefault(); }, { passive: false });
+      });
+      var lastTouchEnd = 0;
+      document.addEventListener("touchend", function (e) {
+        var now = Date.now();
+        if (now - lastTouchEnd < 350) e.preventDefault();
+        lastTouchEnd = now;
+      }, { passive: false });
+      document.addEventListener("dblclick", function (e) { e.preventDefault(); }, { passive: false });
 
       // ---------- Historique ----------
 
       var VERSIONS = [
-        { v: "v1", text: "Premier boulier : 5 tiges (jusqu'à 99 999), une perle du haut qui vaut 5, quatre du bas qui valent 1. Deux gestes : toucher une perle la fait basculer (vers la barre ou loin d'elle), la glisser au doigt la pousse dans le sens du geste. Le nombre s'affiche au-dessus, avec la décomposition du dernier chiffre touché par rapport à 5 (7 = 5 + 2). Son de perle, état gardé d'une visite à l'autre, bouton de remise à zéro." }
+        { v: "v2", text: "Perles souples : elles résistent un peu sous le doigt, basculent d'un coup passé un cran, reviennent en rebondissant si on les lâche trop tôt, s'écrasent légèrement en arrivant. Son de bois plus doux, petite vibration (Android). Zoom et double-tap vraiment bloqués. Mode Opérations : poser un nombre puis ajouter, retirer ou multiplier ; « Voir au ralenti » montre chaque geste (compléments à 5 et à 10, retenues) ; un exercice réussi à la main sans avoir regardé gagne un badge qui débloque « D'un coup ». Français / anglais, installable sur l'écran d'accueil, perles utilisables au clavier." },
+        { v: "v1", text: "Premier boulier : 5 tiges (jusqu'à 99 999), une perle du haut qui vaut 5, quatre du bas qui valent 1. Deux gestes : toucher une perle la fait basculer, la glisser au doigt la pousse dans le sens du geste. Nombre affiché avec la décomposition du dernier chiffre par rapport à 5 (7 = 5 + 2). Son de perle, état gardé d'une visite à l'autre, bouton de remise à zéro." }
       ];
 
       var histOverlay = document.getElementById("histOverlay");
@@ -552,25 +1153,16 @@
       document.getElementById("histClose").addEventListener("click", function () { histOverlay.hidden = true; });
 
       // ---------- Démarrage ----------
-      // Premier placement sans animation (sinon toutes les perles
-      // « tombent » depuis le coin au chargement)
 
-      svg.style.visibility = "hidden";
-      var all = svg.querySelectorAll(".bead");
-      for (var a = 0; a < all.length; a++) all[a].style.transition = "none";
-      render();
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () {
-          for (var a = 0; a < all.length; a++) all[a].style.transition = "";
-          svg.style.visibility = "";
-        });
-      });
+      render(true);
+      applyLang();
+      setMode(mode);
     })();
   </script>
 
   <script>
     // Mise à jour automatique (même principe que la page d'accueil du
-    // portfolio). Le seul état — la position des perles — est dans
+    // portfolio). L'état — perles, badges, niveau, langue — est dans
     // localStorage et survit au rechargement, donc rien à perdre à
     // recharger dès qu'une nouvelle version est en ligne. Le paramètre
     // anti-cache dans l'URL de vérification est nécessaire : un simple
