@@ -758,7 +758,32 @@
     .pf-node.sel { border-color: var(--accent); background: var(--accent-soft); }
     .pf-node.prime { color: var(--sign); border-color: var(--sign); border-radius: 50%; cursor: default; }
 
-    .pf-primes { display: flex; gap: 0.6rem; justify-content: center; }
+    .pf-primes {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.35rem;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #pf { position: relative; }
+
+    .pf-tip {
+      position: absolute;
+      z-index: 10;
+      max-width: min(20rem, 92%);
+      padding: 0.6rem 0.8rem;
+      font-size: 0.78rem;
+      line-height: 1.45;
+      color: var(--ink);
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      border-radius: 10px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6);
+      pointer-events: none;
+    }
+
+    .pf-tip[hidden] { display: none; }
 
     .pf-primes button {
       font-family: inherit;
@@ -767,9 +792,19 @@
       background: transparent;
       border: 1px solid var(--hairline);
       border-radius: 999px;
-      width: 3.2rem;
-      height: 2.6rem;
+      height: 2.4rem;
+      padding: 0;
       cursor: pointer;
+      border-color: var(--accent);
+      font-size: 0.85rem;
+      touch-action: none;
+      -webkit-touch-callout: none;
+    }
+
+    .pf-primes button.dim {
+      color: var(--ink-soft);
+      border-color: var(--hairline);
+      opacity: 0.45;
     }
 
     .pf-primes button:disabled { opacity: 0.3; }
@@ -824,6 +859,7 @@
       <div class="sg-eq pf-eq" id="pfEq"></div>
       <div class="sg-board pf-board" id="pfBoard"></div>
       <div class="pf-primes" id="pfPrimes"></div>
+      <div class="pf-tip" id="pfTip" hidden></div>
     </section>
 
     <div class="stage-wrap" id="stageWrap">
@@ -2340,8 +2376,9 @@
       var pfEq = document.getElementById("pfEq");
       var pfBoard = document.getElementById("pfBoard");
       var pfPrimes = document.getElementById("pfPrimes");
-      var PRIMES = [2, 3, 5, 7];
+      var PRIMES = [2, 3, 5, 7, 11, 13];
       var pfState = null;
+      var PF_R = 19; // rayon d'un nœud (2.4rem / 2)
 
       function isPrime(n) {
         if (n < 2) return false;
@@ -2349,12 +2386,69 @@
         return true;
       }
 
-      PRIMES.forEach(function (p) {
-        var b = document.createElement("button");
-        b.textContent = "÷" + p;
-        b.addEventListener("click", function () { pfDivide(p, b); });
-        pfPrimes.appendChild(b);
+      // Les diviseurs de 0 à 13. Les premiers sont vifs ; les autres sont
+      // estompés, avec la raison : interdit (0), inutile (1), ou pas premier
+      // (déjà un produit de premiers : 4 = 2 × 2…).
+      var DIV_INFO = {
+        0: "÷0 est interdit : aucun nombre multiplié par 0 ne redonne ton nombre. On ne divise jamais par zéro.",
+        1: "÷1 est inutile : n ÷ 1 = n, rien ne se décompose.",
+        2: "÷2 : le nombre se termine par 0, 2, 4, 6 ou 8.",
+        3: "÷3 : la somme des chiffres est dans la table de 3 (ex. 87 : 8 + 7 = 15 ✓).",
+        4: "4 n'est pas premier : 4 = 2 × 2. Divise deux fois par 2.",
+        5: "÷5 : le nombre se termine par 0 ou 5.",
+        6: "6 n'est pas premier : 6 = 2 × 3. Divise par 2, puis par 3.",
+        7: "÷7 : enlève 2 fois le dernier chiffre au reste du nombre ; le résultat est dans la table de 7 (ex. 91 : 9 − 2 = 7 ✓).",
+        8: "8 n'est pas premier : 8 = 2 × 2 × 2. Divise trois fois par 2.",
+        9: "9 n'est pas premier : 9 = 3 × 3. Divise deux fois par 3.",
+        10: "10 n'est pas premier : 10 = 2 × 5. Divise par 2, puis par 5.",
+        11: "÷11 : somme alternée des chiffres (+ − + …) dans la table de 11 (ex. 143 : 1 − 4 + 3 = 0 ✓).",
+        12: "12 n'est pas premier : 12 = 2 × 2 × 3. Divise deux fois par 2, puis par 3.",
+        13: "÷13 : ajoute 4 fois le dernier chiffre au reste du nombre ; le résultat est dans la table de 13 (ex. 91 : 9 + 4 = 13 ✓)."
+      };
+      var pfTip = document.getElementById("pfTip");
+      function pfShowTip(d, btn) {
+        pfTip.textContent = DIV_INFO[d];
+        pfTip.hidden = false;
+        var rb = btn.getBoundingClientRect(), rs = pfEl.getBoundingClientRect();
+        pfTip.style.left = Math.max(4, Math.min(rs.width - pfTip.offsetWidth - 4, rb.left - rs.left + rb.width / 2 - pfTip.offsetWidth / 2)) + "px";
+        // Au-dessus de toute la grille des diviseurs, jamais sur un bouton
+        var rg = pfPrimes.getBoundingClientRect();
+        pfTip.style.top = (rg.top - rs.top - pfTip.offsetHeight - 8) + "px";
+        pfTip.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: ms(220), easing: "ease-out" });
+      }
+      function pfHideTip() { pfTip.hidden = true; }
+      document.addEventListener("pointerdown", function (e) {
+        if (!pfTip.hidden && !e.target.closest("#pfPrimes")) pfHideTip();
       });
+
+      for (var dv = 0; dv <= 13; dv++) (function (d) {
+        var b = document.createElement("button");
+        var prime = PRIMES.indexOf(d) >= 0;
+        b.textContent = "÷" + d;
+        if (!prime) b.className = "dim";
+        var timer = null, longDone = false;
+        // Appui long : la règle de divisibilité dans une fenêtre flottante.
+        // Appui bref : divise (premiers) ou explique (les autres).
+        b.addEventListener("pointerdown", function (e) {
+          e.preventDefault();
+          longDone = false;
+          pfHideTip();
+          timer = setTimeout(function () { longDone = true; pfShowTip(d, b); }, 450);
+        });
+        function release() {
+          if (timer) { clearTimeout(timer); timer = null; }
+        }
+        b.addEventListener("pointerup", function () {
+          release();
+          if (longDone) return;
+          if (prime) pfDivide(d, b);
+          else pfShowTip(d, b);
+        });
+        b.addEventListener("pointerleave", release);
+        b.addEventListener("pointercancel", release);
+        b.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+        pfPrimes.appendChild(b);
+      })(dv);
 
       function pfPick() {
         var n = 1;
@@ -2362,8 +2456,9 @@
           n = 1;
           var k = 2 + Math.floor(Math.random() * 3);
           for (var i = 0; i < k; i++) {
-            var p = PRIMES[Math.floor(Math.random() * (i === 0 ? 4 : 3))];
-            if (n * p <= 120) n *= p;
+            // Surtout 2, 3, 5, 7 ; parfois 11 ou 13
+            var p = Math.random() < 0.18 ? PRIMES[4 + Math.floor(Math.random() * 2)] : PRIMES[Math.floor(Math.random() * 4)];
+            if (n * p <= 200) n *= p;
           }
         }
         return n;
@@ -2385,7 +2480,7 @@
         var w = pfBoard.clientWidth, h = pfBoard.clientHeight;
         var maxDepth = 1;
         pfState.nodes.forEach(function (nd) { maxDepth = Math.max(maxDepth, nd.depth); });
-        var row = Math.min(64, (h - 40) / Math.max(4, maxDepth + 1));
+        var row = Math.max(2 * PF_R + 14, Math.min(64, (h - 40) / Math.max(4, maxDepth + 1)));
         var dx = Math.min(56, w / 8);
         pfState.nodes.forEach(function (nd, i) {
           if (nd.parent < 0) { nd.x = w / 2 - dx * 1.2; nd.y = 26; }
@@ -2406,8 +2501,11 @@
           if (nd.parent >= 0) {
             var pa = pfState.nodes[nd.parent];
             var l = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            l.setAttribute("x1", pa.x); l.setAttribute("y1", pa.y + 16);
-            l.setAttribute("x2", nd.x); l.setAttribute("y2", nd.y - 16);
+            // Le trait s'arrête au bord des deux nœuds, jamais à l'intérieur
+            var vx = nd.x - pa.x, vy = nd.y - pa.y, vl = Math.hypot(vx, vy) || 1;
+            var rr = PF_R + 3;
+            l.setAttribute("x1", pa.x + vx / vl * rr); l.setAttribute("y1", pa.y + vy / vl * rr);
+            l.setAttribute("x2", nd.x - vx / vl * rr); l.setAttribute("y2", nd.y - vy / vl * rr);
             svg.appendChild(l);
           }
           var el = document.createElement("span");
@@ -2502,6 +2600,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v17", text: "Premiers : diviseurs de ÷0 à ÷13 — les premiers (2, 3, 5, 7, 11, 13) sont vifs, les autres estompés avec la raison (0 interdit, 1 inutile, 4 = 2 × 2, 6 = 2 × 3…). Appui long sur un diviseur : la règle de divisibilité s'affiche dans une fenêtre. Les traits de l'arbre s'arrêtent au bord des cercles. Nombres jusqu'à 200, avec parfois 11 ou 13." },
         { v: "v16", text: "Équation : le « + » manquant est rétabli (2x + 0 = 7 − 3). Nouveau : chaque étape de chaque démo est recalculée au chargement (valeurs au hasard pour x, ○, □) ; une étape fausse est signalée à l'écran." },
         { v: "v15", text: "−×− : la rotation se voit vraiment — la flèche tourne dans le plan autour de 0, sa pointe trace un demi-cercle en pointillés et l'angle défile jusqu'à 180°. Le 2e demi-tour passe en dessous : à la fin, un tour complet." },
         { v: "v14", text: "Distribuer / Factoriser : 2(○ + □) s'écrit sans le point de multiplication. Dernière étape : toutes les écritures sur une seule page, l'une sous l'autre, reliées par « = » — c'est le même objet." },
