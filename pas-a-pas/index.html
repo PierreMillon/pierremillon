@@ -797,6 +797,35 @@
 
     .sg-streak { display: flex; gap: 0.4rem; }
 
+    /* Chapitre Calcul : calcul mental animé en continu */
+    .calc-eq {
+      min-height: 1.3em;
+      font-size: clamp(1.5rem, 7vw, 2.3rem);
+      font-weight: 500;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .calc-scene { position: relative; width: 100%; max-width: 380px; flex: 1; min-height: 0; }
+
+    .cm-rod {
+      position: absolute;
+      border: 1.5px solid var(--accent);
+      border-radius: 3px;
+      background:
+        repeating-linear-gradient(180deg, transparent 0 calc(10% - 1px), var(--accent-soft) calc(10% - 1px) 10%);
+    }
+
+    .cm-dot {
+      position: absolute;
+      border-radius: 50%;
+      border: 1.5px solid var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .cm-dot.b { border-color: var(--sign); background: rgba(255, 209, 102, 0.14); }
+    .cm-dot.gone { opacity: 0; }
+
     /* Chapitre Solutions : la réponse dépend de l'ensemble choisi */
     #sol { justify-content: center; gap: 1.2rem; }
     .sol-q { font-size: clamp(1.8rem, 9vw, 2.8rem); font-weight: 500; }
@@ -985,6 +1014,11 @@
       <div class="pf-tip" id="pfTip" hidden></div>
     </section>
 
+    <section class="sg" id="calc" hidden>
+      <div class="calc-eq" id="calcEq"></div>
+      <div class="calc-scene" id="calcScene"></div>
+    </section>
+
     <section class="sg" id="sol" hidden>
       <div class="sol-q" id="solQ"></div>
       <div class="sol-in" id="solIn"></div>
@@ -1046,6 +1080,7 @@
         { title: "Premiers", custom: "pf", steps: [{ expr: [] }] },
         { title: "Ensembles", custom: "ens", steps: [{ expr: [] }] },
         { title: "Solutions", custom: "sol", steps: [{ expr: [] }] },
+        { title: "Calcul", custom: "calc", steps: [{ expr: [] }] },
         {
           title: "−( … )",
           split: true,
@@ -2391,6 +2426,7 @@
           // résultat affiché
           if (DEMOS[demoIndex].custom === "pf") { if (pfState && pfState.ready) pfStart(); return; }
           if (DEMOS[demoIndex].custom === "ens") { if (ensState && ensState.ready) ensStart(); return; }
+          if (DEMOS[demoIndex].custom === "calc") { calcStart(); return; }
           if (DEMOS[demoIndex].custom === "sol") { solIndex = (solIndex + 1) % SOL.length; solRender(false); return; }
           if (sgState && sgState.ready) sgStart();
           return;
@@ -2535,6 +2571,8 @@
         pfEl.hidden = custom !== "pf";
         ensEl.hidden = custom !== "ens";
         solEl.hidden = custom !== "sol";
+        calcEl.hidden = custom !== "calc";
+        if (custom !== "calc") calcRun++;
         stageWrap.hidden = !!custom;
         document.getElementById("controls").hidden = false;
         prevBtn.style.visibility = custom ? "hidden" : "";
@@ -2542,6 +2580,7 @@
         if (custom === "pf") { pfStart(); return; }
         if (custom === "ens") { ensStart(); return; }
         if (custom === "sol") { solStart(); return; }
+        if (custom === "calc") { calcStart(); return; }
         buildDots(DEMOS[i]);
         build(DEMOS[i].steps[0]);
         refreshUi();
@@ -3240,6 +3279,174 @@
         });
       }
 
+      // ---------- Chapitre Calcul : calcul mental en continu ----------
+      // Pas de clics : l'animation se déroule seule, comme un raisonnement
+      // qu'on regarderait au ralenti. Dizaines = barres de 10, unités =
+      // jetons rangés par 5 (le cadre de dix = 2 rangées de 5).
+      //   16 + 27 → 10 + 6 + 20 + 7 → 6 = 5 + 1, 7 = 5 + 2
+      //   → 5 + 5 = 10 : une dizaine de plus → 40 + 3 → 43
+      // Si un seul des deux dépasse 5, on « fait 10 » (complément à 10).
+      var calcEl = document.getElementById("calc");
+      var calcEq = document.getElementById("calcEq");
+      var calcScene = document.getElementById("calcScene");
+      var calcRun = 0;
+
+      function calcPick() {
+        var r = Math.random(), t1 = 1 + Math.floor(Math.random() * 3), t2 = 1 + Math.floor(Math.random() * 3);
+        var u1, u2;
+        if (r < 0.6) { u1 = 5 + Math.floor(Math.random() * 5); u2 = 5 + Math.floor(Math.random() * 5); }
+        else if (r < 0.85) { u1 = 6 + Math.floor(Math.random() * 4); u2 = 11 - u1 + Math.floor(Math.random() * (u1 - 6 + 1)); if (u2 >= 5) u2 = 4; if (u1 + u2 < 10) u2 = 10 - u1 + 0; }
+        else { u1 = 1 + Math.floor(Math.random() * 4); u2 = 1 + Math.floor(Math.random() * (8 - u1)); }
+        return { t1: t1, u1: u1, t2: t2, u2: u2 };
+      }
+
+      function cmEl(cls, x, y, w, h) {
+        var e = document.createElement("div");
+        e.className = cls;
+        e.style.left = x + "px"; e.style.top = y + "px";
+        e.style.width = w + "px"; e.style.height = h + "px";
+        e._x = x; e._y = y;
+        calcScene.appendChild(e);
+        return e;
+      }
+
+      function cmMove(e, x, y, dur, delay) {
+        var dx = e._x - x, dy = e._y - y;
+        e.style.left = x + "px"; e.style.top = y + "px";
+        e._x = x; e._y = y;
+        return done(e.animate([{ transform: "translate(" + dx + "px," + dy + "px)" }, { transform: "none" }],
+          { duration: ms(dur || 1100), delay: ms(delay || 0), easing: "cubic-bezier(.45,0,.25,1)", fill: "backwards" }));
+      }
+
+      function cmText(t) {
+        calcEq.animate([{ opacity: 1 }, { opacity: 0.15 }, { opacity: 1 }], { duration: ms(700) });
+        setTimeout(function () { calcEq.textContent = t; }, ms(300));
+      }
+
+      function calcStart() {
+        var run = ++calcRun;
+        var p = calcPick();
+        var a = 10 * p.t1 + p.u1, b = 10 * p.t2 + p.u2;
+        calcScene.innerHTML = "";
+        calcEq.textContent = a + " + " + b;
+        nextBtn.disabled = false;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        var W = calcScene.clientWidth, H = calcScene.clientHeight;
+        var c = Math.max(12, Math.min(22, H / 14, W / 16));   // taille d'un jeton
+        var g = c * 0.25, rodW = c, rodH = c * 10 * 0.62;
+        var rodY = 8, dotY = rodY + rodH + c * 0.8;
+        var gx = [W * 0.27, W * 0.73];
+
+        function rodsAt(n, cx) { var w = n * rodW + (n - 1) * g; return function (k) { return cx - w / 2 + k * (rodW + g); }; }
+        function dotPos(cx, k, row) { return { x: cx - (5 * c + 4 * g) / 2 + (k % 5) * (c + g), y: dotY + (row + Math.floor(k / 5)) * (c + g) }; }
+
+        var rods = [], dots = [[], []];
+        [[p.t1, p.u1], [p.t2, p.u2]].forEach(function (tu, side) {
+          var rx = rodsAt(tu[0], gx[side]);
+          for (var k = 0; k < tu[0]; k++) rods.push(cmEl("cm-rod", rx(k), rodY, rodW, rodH));
+          for (var j = 0; j < tu[1]; j++) {
+            var q = dotPos(gx[side], j, 0);
+            dots[side].push(cmEl("cm-dot" + (side ? " b" : ""), q.x, q.y, c, c));
+          }
+        });
+        calcScene.querySelectorAll("div").forEach(function (e, i) {
+          e.animate([{ opacity: 0, transform: "scale(0.6)" }, { opacity: 1, transform: "none" }], { duration: ms(500), delay: ms(i * 30), fill: "backwards" });
+        });
+
+        function alive() { return run === calcRun && DEMOS[demoIndex].custom === "calc"; }
+        var u1 = p.u1, u2 = p.u2, T1 = 10 * p.t1, T2 = 10 * p.t2;
+        var chain = wait(1600).then(function () {
+          if (!alive()) return;
+          cmText(T1 + " + " + u1 + " + " + T2 + " + " + u2);
+          return wait(1800);
+        });
+
+        // Toutes les dizaines se regroupent à gauche
+        function gatherRods(extra) {
+          var n = rods.length;
+          var rx = rodsAt(n, W * 0.3);
+          return Promise.all(rods.map(function (r, k) { return cmMove(r, rx(k), rodY, 1200, k * 80); }));
+        }
+
+        // Une dizaine faite de jetons devient une barre
+        function tenToRod(tenDots) {
+          // Assemblée au milieu, sous les barres (place libre), puis la
+          // barre de 10 naît juste au-dessus
+          var cx = W / 2, y0 = dotY + 2 * (c + g) + c * 0.4;
+          var moves = tenDots.map(function (d, k) {
+            return cmMove(d, cx - (5 * c + 4 * g) / 2 + (k % 5) * (c + g), y0 + Math.floor(k / 5) * (c + g), 1200, k * 60);
+          });
+          return Promise.all(moves).then(function () { return wait(900); }).then(function () {
+            if (!alive()) return;
+            var rod = cmEl("cm-rod", cx - rodW / 2, rodY, rodW, rodH);
+            rod.animate([{ opacity: 0, transform: "scaleY(0.2)" }, { opacity: 1, transform: "none" }], { duration: ms(700), easing: "ease-out" });
+            tenDots.forEach(function (d) {
+              d.animate([{ opacity: 1 }, { opacity: 0, transform: "scale(0.3)" }], { duration: ms(600), fill: "forwards" });
+            });
+            rods.push(rod);
+            return wait(900);
+          });
+        }
+
+        var left = [];
+        if (u1 >= 5 && u2 >= 5) {
+          chain = chain.then(function () {
+            if (!alive()) return;
+            cmText(T1 + " + " + T2 + " + 5 + " + (u1 - 5) + " + 5 + " + (u2 - 5));
+            // Les rangées de 5 s'allument
+            dots[0].slice(0, 5).concat(dots[1].slice(0, 5)).forEach(function (d) {
+              d.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: ms(800) });
+            });
+            return wait(2000);
+          }).then(function () {
+            if (!alive()) return;
+            cmText(T1 + " + " + T2 + " + 10 + " + (u1 - 5) + " + " + (u2 - 5));
+            left = dots[0].slice(5).concat(dots[1].slice(5));
+            return tenToRod(dots[0].slice(0, 5).concat(dots[1].slice(0, 5)));
+          });
+        } else if (u1 + u2 >= 10) {
+          var big = u1 >= u2 ? 0 : 1, small = 1 - big, need = 10 - Math.max(u1, u2);
+          chain = chain.then(function () {
+            if (!alive()) return;
+            var ub = Math.max(u1, u2), us = Math.min(u1, u2);
+            cmText(T1 + " + " + T2 + " + " + ub + " + " + need + " + " + (us - need));
+            // Complément à 10 : on prend juste ce qu'il faut à l'autre nombre
+            var give = dots[small].slice(0, need);
+            var gxb = gx[big];
+            return Promise.all(give.map(function (d, k) {
+              var q = dotPos(gxb, dots[big].length + k, 0);
+              return cmMove(d, q.x, q.y, 1300, k * 150);
+            })).then(function () { return wait(1200); }).then(function () {
+              if (!alive()) return;
+              cmText(T1 + " + " + T2 + " + 10 + " + (us - need));
+              left = dots[small].slice(need);
+              return tenToRod(dots[big].concat(give));
+            });
+          });
+        }
+        chain = chain.then(function () {
+          if (!alive()) return;
+          if (!left.length && u1 + u2 < 10) left = dots[0].concat(dots[1]);
+          return gatherRods();
+        }).then(function () {
+          if (!alive()) return;
+          var tens = rods.length * 10, units = (a + b) % 10;
+          cmText(tens + " + " + units);
+          var lx = rodsAt(rods.length, W * 0.3)(rods.length - 1) + rodW + c * 1.2;
+          return Promise.all(left.map(function (d, k) {
+            return cmMove(d, lx + (k % 5) * (c + g), rodY + rodH - c - Math.floor(k / 5) * (c + g), 1200, k * 80);
+          })).then(function () { return wait(1600); });
+        }).then(function () {
+          if (!alive()) return;
+          cmText(a + " + " + b + " = " + (a + b));
+          return wait(4500);
+        }).then(function () {
+          // Et on enchaîne tout seul sur un autre calcul
+          if (alive()) calcStart();
+        });
+      }
+
       // ---------- Chapitre Solutions ----------
       // Un même problème, plusieurs réponses selon l'ensemble où on cherche :
       // 2 − 3 n'existe pas dans ℕ (∅), vaut −1 dans ℤ. On change d'ensemble
@@ -3495,6 +3702,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v26", text: "Nouveau chapitre Calcul : calcul mental animé en continu, sans clics. Dizaines en barres, unités en jetons rangés par 5. 16 + 27 → 10 + 6 + 20 + 7 → 5 + 1 et 5 + 2 → les deux 5 font une dizaine → 40 + 3 → 43. Si un seul nombre dépasse 5 : complément à 10. Enchaîne tout seul ; → pour passer au suivant." },
         { v: "v25", text: "Notation : pendant les calculs, chaque produit a son point (2·x, a·b, 2·(○ + □)) ; une dernière étape passe à l'écriture usuelle (2x, ab, 2(○ + □)) — le même produit, écrit plus court." },
         { v: "v24", text: "Mode jeu (menu ☰) : à chaque étape qui change l'écriture, deux propositions — la vraie étape et une fausse (un signe ou un nombre changé, vérifiée fausse par le calcul). Bonne réponse : l'animation continue ; erreur : la bonne réponse s'allume." },
         { v: "v23", text: "Barre des ensembles toujours visible en bas : ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ, on choisit où l'on travaille (tout ce qui est plus petit est inclus). Nouveau chapitre Solutions : la réponse dépend de l'ensemble — 2 − 3 donne ∅ dans ℕ et { −1 } dans ℤ ; x² = 4 donne { 2 } dans ℕ et { −2 ; 2 } dans ℤ ; x² = −1 n'a de solution que dans ℂ." },
