@@ -26,9 +26,18 @@
 
     * { box-sizing: border-box; }
 
+    /* Comportement d'application : la page tient exactement dans l'écran,
+       ne défile pas, ne rebondit pas, ne se tire pas vers le bas. */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
     body {
+      position: fixed;
+      inset: 0;
       margin: 0;
-      min-height: 100vh;
       background: var(--bg);
       background-image: radial-gradient(circle at 50% 0%, var(--bg-soft), var(--bg) 60%);
       color: var(--ink);
@@ -36,7 +45,7 @@
       -webkit-font-smoothing: antialiased;
       display: flex;
       justify-content: center;
-      padding: 1.4rem 16px 2rem;
+      padding: max(0.8rem, env(safe-area-inset-top)) 16px max(0.8rem, env(safe-area-inset-bottom));
       touch-action: manipulation;
       -webkit-user-select: none;
       user-select: none;
@@ -46,6 +55,8 @@
     main {
       width: 100%;
       max-width: 640px;
+      height: 100%;
+      min-height: 0;
       display: flex;
       flex-direction: column;
     }
@@ -218,20 +229,21 @@
     .tabs {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.5rem;
-      margin: 1.2rem 0 0.4rem;
+      gap: 0.35rem;
+      margin: 0.7rem 0 0.2rem;
+      flex: none;
     }
 
     .tab {
       font-family: inherit;
-      font-size: 0.7rem;
-      letter-spacing: 0.14em;
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--ink-soft);
       background: transparent;
       border: 1px solid var(--hairline);
       border-radius: 999px;
-      padding: 0.55rem 1rem;
+      padding: 0.45rem 0.75rem;
       cursor: pointer;
       transition: border-color 0.25s ease, color 0.25s ease;
     }
@@ -240,7 +252,11 @@
     .tab[aria-selected="true"] { border-color: var(--accent); color: var(--ink); }
 
     .stage-wrap {
-      margin-top: 0.9rem;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      margin-top: 0.6rem;
       border-top: 1px solid var(--hairline);
       border-bottom: 1px solid var(--hairline);
     }
@@ -252,8 +268,9 @@
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      min-height: 120px;
-      padding: 1.6rem 0.5rem 0.8rem;
+      flex: none;
+      min-height: 100px;
+      padding: 1.4rem 0.5rem 0.6rem;
       overflow: hidden;
     }
 
@@ -281,11 +298,18 @@
     }
     .stage-wrap.final .stage-divider::after { content: attr(data-sign); }
 
-    .stage-bottom { position: relative; }
+    .stage-bottom {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
 
     .stage {
       position: relative;
-      min-height: 240px;
+      flex: 1;
+      min-height: 150px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -294,7 +318,7 @@
     }
 
     .stage-wrap.split .stage {
-      min-height: 190px;
+      min-height: 130px;
       padding: 1.4rem 0.5rem 1.8rem;
     }
 
@@ -533,6 +557,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex: none;
       height: 3.6rem;
       margin-top: 0.4rem;
     }
@@ -577,7 +602,9 @@
 
     /* Chapitre Singapour : défi « faire 10 » avec de vrais jetons à glisser */
     .sg {
-      margin-top: 0.9rem;
+      flex: 1;
+      min-height: 0;
+      margin-top: 0.6rem;
       border-top: 1px solid var(--hairline);
       border-bottom: 1px solid var(--hairline);
       padding: 1rem 0 1.2rem;
@@ -599,7 +626,8 @@
       position: relative;
       width: 100%;
       max-width: 360px;
-      height: 260px;
+      flex: 1;
+      min-height: 0;
       touch-action: none;
     }
 
@@ -1630,7 +1658,7 @@
       var sgEq = document.getElementById("sgEq");
       var sgBoard = document.getElementById("sgBoard");
       var sgMsg = document.getElementById("sgMsg");
-      var SG_CELL = 36;
+      var SG_CELL = 36; // recalculé à chaque manche selon la place disponible
       var sgStreakN = 0;
       var sgState = null;
 
@@ -1659,6 +1687,9 @@
         var b = bMin + Math.floor(Math.random() * (10 - bMin)); // ..9
         sgState = { a: a, b: b, filled: {}, placed: 0, mistake: false, done: false };
         sgBoard.innerHTML = "";
+        // Deux cadres + réserve ≈ 5 cases de haut : tout doit tenir dans
+        // l'écran, sans jamais défiler
+        SG_CELL = Math.max(20, Math.min(44, (sgBoard.clientHeight - 50) / 5, (sgBoard.clientWidth - 10) / 5));
         sgEq.textContent = a + " + " + b;
         sgMsg.textContent = "";
         sgRenderStreak();
@@ -1790,9 +1821,24 @@
 
       badgeChip.hidden = !hasBadge();
 
+      // ---------- Écran figé ----------
+      // Aucun glissement de page, aucun zoom (iOS ignore user-scalable=no
+      // pour le pincement : on bloque aussi ses événements « gesture »).
+      document.addEventListener("touchmove", function (e) {
+        if (e.target.closest && e.target.closest(".hist-list")) return;
+        e.preventDefault();
+      }, { passive: false });
+      ["gesturestart", "gesturechange", "gestureend"].forEach(function (t) {
+        document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+      });
+      window.addEventListener("resize", function () {
+        if (DEMOS[demoIndex].custom && sgState && !sgState.done) sgStart();
+      });
+
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v9", text: "Comportement d'application : la page tient dans l'écran, ne défile plus, ne se tire plus vers le bas, pas de zoom. Le défi Singapour s'adapte à la hauteur de l'écran." },
         { v: "v8", text: "Chapitre Singapour : défi « faire 10 » — on glisse soi-même les jetons dans des cadres de dix, la première dizaine avant la seconde. 3 réussites de suite débloquent le badge ✦ 10, qui fait apparaître le cadre de dix sous les additions des autres démos (7 + 5 = 10 + 2 dans Opposés)." },
         { v: "v7", text: "Nouvelles démos : Piège ((x + 3)/3 ≠ x), −×− (multiplier par −1 = demi-tour sur la droite des réels), Distribuer / Factoriser avec des formes (rond, carré) sans texte, Équation (le même geste des deux côtés)." },
         { v: "v6", text: "Méthode de Singapour : au moment où deux nombres fusionnent (2 + 5, (−2) + (−1)), un cadre de dix (2 rangées de 5, comme à Singapour) apparaît et chaque nombre vient le remplir de jetons, puis tout se referme sur le résultat. Jetons jaunes = négatifs." },

@@ -43,6 +43,13 @@ Un nouveau projet (jeu ou page d'essai) :
   - `-webkit-user-select: none; user-select: none;` (empêche la sélection
     de texte qui déclenche la loupe de grossissement)
   - `-webkit-touch-callout: none;` (empêche le menu/la loupe à l'appui long)
+- **se comporte comme une application, écran figé** : jamais de défilement
+  ni de rebond, on ne peut pas tirer la page vers le bas (vide en haut sur
+  iPhone). `html, body { height: 100%; overflow: hidden;
+  overscroll-behavior: none; }`, `body { position: fixed; inset: 0; }`,
+  mise en page en flex qui tient dans la hauteur de l'écran (tailles
+  calculées selon la place), `touchmove` et `gesturestart/change/end`
+  bloqués en JS (iOS ignore `user-scalable=no` pour le pincement)
 - **a le script de mise à jour automatique**, copié de `index.html`
   (vérification `fetch(..., {cache:'no-store'})` + comparaison d'ETag,
   `localStorage`/`sessionStorage` namespacés au nom du projet pour ne pas
