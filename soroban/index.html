@@ -433,8 +433,10 @@
             div: "{b} × {m} = {v} → retire {v}",
             pow: "× {a} : ajoute {k} × {v}",
             sqrt1: "{t}² = {q} → retire {q}",
-            sqrt2: "({d} + {u}) × {u} = {x} → retire {x}"
+            sqrt2: "({d} + {u}) × {u} = {x} → retire {x}",
+            sqrtPose: "pose {m} (= {n},00 : un chiffre après la virgule)"
           },
+          rest: "reste {r}", pasapas: "Même idée que le badge ✦ 10 de Pas à Pas (faire 10).",
           cap: {
             zero: "on remet à zéro", pose: "chiffre par chiffre, de gauche à droite",
             direct: "+{a} : direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "retenue : +1 à gauche",
@@ -460,8 +462,10 @@
             div: "{b} × {m} = {v} → take away {v}",
             pow: "× {a}: add {k} × {v}",
             sqrt1: "{t}² = {q} → take away {q}",
-            sqrt2: "({d} + {u}) × {u} = {x} → take away {x}"
+            sqrt2: "({d} + {u}) × {u} = {x} → take away {x}",
+            sqrtPose: "set {m} (= {n}.00: one digit after the point)"
           },
+          rest: "remainder {r}", pasapas: "Same idea as the ✦ 10 badge in Pas à Pas (making ten).",
           cap: {
             zero: "clearing the board", pose: "digit by digit, left to right",
             direct: "+{a}: direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "carry: +1 on the left",
@@ -953,7 +957,17 @@
         raw.split(",").forEach(function (k) { if (LEVELS.indexOf(k) >= 0) o[k] = 1; });
         return o;
       })();
-      function saveBadges() { save("badges", Object.keys(badges).join(",")); }
+      function saveBadges() {
+        save("badges", Object.keys(badges).join(","));
+        // Registre commun aux projets (voir ../VISION.md, « Badges partagés ») :
+        // chaque projet publie ses badges sous pm_badges_<projet>
+        try { localStorage.setItem("pm_badges_soroban", Object.keys(badges).join(",")); } catch (e) {}
+      }
+      // Badge ✦ 10 de Pas à Pas (« faire 10 ») : même geste que le
+      // complément à 10 du soroban — on le montre sur ce niveau
+      function pasapasTen() {
+        try { return localStorage.getItem("pasapas_badge_dix") === "1"; } catch (e) { return false; }
+      }
 
       var mode = load("mode") === "ops" ? "ops" : "free";
       var level = LEVELS.indexOf(load("level")) >= 0 ? load("level") : "direct";
@@ -965,7 +979,10 @@
       function buildPlan(e) {
         var B = TXT[lang].blk;
         var p = planner(digitsOf(0));
-        if (e.op !== "×") {
+        if (e.op === "√" && e.approx) {
+          p.block(fmt(B.sqrtPose, { m: numStr(e.a), n: numStr(e.n) }));
+          p.pose(e.a);
+        } else if (e.op !== "×") {
           p.block(fmt(B.pose, { n: numStr(e.a) }));
           p.pose(e.a);
         }
@@ -1032,8 +1049,16 @@
 
       function exprOf(e) {
         if (e.op === "^") return numStr(e.a) + sup(e.b);
-        if (e.op === "√") return "√" + numStr(e.a);
+        if (e.op === "√") return "√" + numStr(e.approx ? e.n : e.a);
         return numStr(e.a) + " " + e.op + " " + numStr(e.b);
+      }
+
+      // Le résultat tel qu'on l'écrit : reste de la division, virgule de
+      // la racine approchée (√2 ≈ 1,4 : on a calculé √200 ≈ 14)
+      function answerOf(e) {
+        if (e.op === "÷" && e.rem) return "= " + numStr(e.result) + ", " + t("rest", { r: e.rem });
+        if (e.op === "√" && e.approx) return "≈ " + (e.result / 10).toLocaleString(lang === "fr" ? "fr-FR" : "en-US", { minimumFractionDigits: 1 });
+        return "= " + numStr(e.result);
       }
 
       function fits(lv, tech) {
@@ -1054,11 +1079,25 @@
         var hi = tries < 300 ? 9 : (tries < 600 ? 99 : 999);
         switch (lv) {
           case "mul": var m = rnd(12, 99), k = rnd(2, 9); return { op: "×", a: m, b: k, result: m * k };
-          case "div": var b = rnd(2, 9), q = rnd(11, Math.floor(999 / b)); return { op: "÷", a: b * q, b: b, result: q };
+          case "div":
+            // Une fois sur deux, la division ne tombe pas juste : il reste
+            // sur le boulier ce qu'on ne peut plus retirer
+            var b = rnd(2, 9), rem = Math.random() < 0.5 ? rnd(1, b - 1) : 0;
+            var q = rnd(11, Math.floor((999 - rem) / b));
+            return { op: "÷", a: b * q + rem, b: b, result: q, rem: rem };
           case "pow":
             var base = rnd(2, 9), n = base <= 3 ? rnd(2, 5) : (base <= 6 ? rnd(2, 3) : 2);
             return { op: "^", a: base, b: n, result: Math.pow(base, n) };
-          case "sqrt": var rt = tries % 4 === 0 ? rnd(2, 9) : rnd(11, 99); return { op: "√", a: rt * rt, b: 0, result: rt };
+          case "sqrt":
+            if (tries % 3 === 0) {
+              // Racine approchée à un chiffre après la virgule : √N ≈ √(N × 100) / 10
+              var N = rnd(2, 99);
+              if (Math.sqrt(N) % 1 === 0) N++;
+              var M = N * 100;
+              return { op: "√", a: M, n: N, b: 0, result: Math.floor(Math.sqrt(M)), approx: true };
+            }
+            var rt = tries % 4 === 1 ? rnd(2, 9) : rnd(11, 99);
+            return { op: "√", a: rt * rt, b: 0, result: rt };
         }
         var a = rnd(1, hi), c = rnd(1, hi), op = lv.charAt(0) === "s" ? "−" : "+";
         if (op === "−" && c > a) { var tmp = a; a = c; c = tmp; }
@@ -1148,7 +1187,7 @@
         task.appendChild(document.createTextNode(exprOf(ex)));
         var span = document.createElement("span");
         span.className = "step";
-        if (ex.solved) span.textContent = "  = " + numStr(ex.result);
+        if (ex.solved) span.textContent = "  " + answerOf(ex);
         else if (ex.moves[ex.k]) span.textContent = "  → " + ex.moves[ex.k].blk;
         task.appendChild(span);
       }
@@ -1172,10 +1211,12 @@
         setTimeout(function () {
           var cheers = TXT[lang].cheers;
           document.getElementById("winTitle").textContent = cheers[Math.floor(Math.random() * cheers.length)];
-          document.getElementById("winAnswer").textContent = exprOf(ex) + " = " + numStr(ex.result);
+          document.getElementById("winAnswer").textContent = exprOf(ex) + " " + answerOf(ex);
           var names = Object.keys(ex.tech).map(function (k) { return TXT[lang].techs[k]; });
           document.getElementById("winUsed").textContent = names.length ? t("used", { list: names.join(", ") }) : "";
-          document.getElementById("winBadge").textContent = earned ? t("badge", { b: TXT[lang].levels[level] }) : "";
+          var badgeLine = earned ? t("badge", { b: TXT[lang].levels[level] }) : "";
+          if (ex.tech.c10 && pasapasTen()) badgeLine = (badgeLine ? badgeLine + " " : "") + t("pasapas");
+          document.getElementById("winBadge").textContent = badgeLine;
           var win = document.getElementById("winOverlay");
           win.hidden = false;
           win.classList.remove("show");
@@ -1257,7 +1298,7 @@
         LEVELS.forEach(function (lv) {
           var b = document.createElement("button");
           b.className = "chip" + (badges[lv] ? " earned" : "");
-          b.textContent = TXT[lang].levels[lv];
+          b.textContent = TXT[lang].levels[lv] + (lv === "c10" && pasapasTen() ? " ✦" : "");
           b.setAttribute("aria-pressed", lv === level ? "true" : "false");
           b.addEventListener("click", function () {
             if (busy) return;
@@ -1336,6 +1377,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v4", text: "Division avec reste (ce qu'on ne peut plus retirer reste sur le boulier : 351 ÷ 4 = 87, reste 3). Racines approchées à un chiffre après la virgule (√2 ≈ 1,4 : on pose 200 et on calcule √200 ≈ 14). Le badge ✦ 10 de Pas à Pas s'affiche sur « + avec 10 » (même geste : faire 10). Utilisable hors ligne une fois ouvert (police comprise)." },
         { v: "v3", text: "Son réparé sur iPhone (débloqué à la fin du toucher, joue même en mode silencieux, placé dans des fréquences que le haut-parleur rend) et plus doux. Guidage pas à pas : les perles à bouger clignotent, la ligne du haut dit l'étape du calcul, celle du bas la technique ; une perle bougée par erreur est signalée. Réussite : une seconde de pause, puis un écran de félicitations qui reste jusqu'à « Suivant », avec les techniques utilisées. Nouvelles opérations : division (on retire le diviseur par paquets), puissances (multiplier = ajouter plusieurs fois), racines carrées (on retire (10t)², puis (20t + u) × u)." },
         { v: "v2", text: "Perles souples : elles résistent un peu sous le doigt, basculent d'un coup passé un cran, reviennent en rebondissant si on les lâche trop tôt, s'écrasent légèrement en arrivant. Son de bois plus doux, petite vibration (Android). Zoom et double-tap vraiment bloqués. Mode Opérations : poser un nombre puis ajouter, retirer ou multiplier ; « Voir au ralenti » montre chaque geste (compléments à 5 et à 10, retenues) ; un exercice réussi à la main sans avoir regardé gagne un badge qui débloque « D'un coup ». Français / anglais, installable sur l'écran d'accueil, perles utilisables au clavier." },
         { v: "v1", text: "Premier boulier : 5 tiges (jusqu'à 99 999), une perle du haut qui vaut 5, quatre du bas qui valent 1. Deux gestes : toucher une perle la fait basculer, la glisser au doigt la pousse dans le sens du geste. Nombre affiché avec la décomposition du dernier chiffre par rapport à 5 (7 = 5 + 2). Son de perle, état gardé d'une visite à l'autre, bouton de remise à zéro." }
@@ -1359,6 +1401,14 @@
       render(true);
       applyLang();
       setMode(mode);
+
+      // Installable et utilisable hors ligne : service worker « réseau
+      // d'abord », comme Pas à Pas — toujours la version en ligne si
+      // possible (la mise à jour automatique reste maître), la dernière
+      // copie connue sinon
+      if ("serviceWorker" in navigator && location.protocol === "https:") {
+        navigator.serviceWorker.register("sw.js").catch(function () {});
+      }
     })();
   </script>
 
