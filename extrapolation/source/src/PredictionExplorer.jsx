@@ -298,6 +298,12 @@ export const T = {
 
 export const HISTORY = [
   {
+    v: "v8",
+    date: "25/09/2026",
+    fr: "Bourse recentrée sur Bitcoin (jour / semaine / mois, mis à jour en direct) et le S&P 500. 4 nouvelles méthodes : lissage exponentiel, momentum, moyennes croisées, autorégression AR(2). Horizon de 1 à 12 pas avec points à glisser. Prédictions des méthodes cachées jusqu'à « Valider ». Parties de 10, 25 ou 50 manches. Fonds fictif de 10 000 $ (achat ou vente à découvert, 0,1 % de frais) comparé à « acheter et garder ». Écran figé, sans rebond.",
+    en: "Markets now focus on Bitcoin (day / week / month, updated live) and the S&P 500. 4 new methods: exponential smoothing, momentum, moving-average cross, AR(2) autoregression. Horizon of 1 to 12 steps with draggable points. Method predictions hidden until « Check ». Games of 10, 25 or 50 rounds. Virtual $10,000 fund (long or short, 0.1% fees) compared with « buy and hold ». Fixed screen, no bounce.",
+  },
+  {
     v: "v7",
     date: "25/09/2026",
     fr: "Nouvel onglet Bourse : vrais cours mensuels (S&P 500 depuis 1871, or, pétrole Brent, Apple, Microsoft, Amazon, Google, IBM) ou tes propres valeurs collées. Tu places au doigt le cours du mois suivant, les méthodes aussi, puis on révèle : erreur en % et « sens juste ». Méthode naïve (= dernier cours) comme référence, calcul en %, test sur toute la série.",
@@ -574,7 +580,7 @@ export default function PredictionExplorer({ lang }) {
       </div>
 
       {/* CONTROLS — bottom half, scrollable */}
-      <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "10px 12px max(24px, env(safe-area-inset-bottom))" }}>
+      <div className="scroll" style={{ flex: "1 1 auto", overflowY: "auto", overscrollBehavior: "contain", padding: "10px 12px max(24px, env(safe-area-inset-bottom))" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <button onClick={newSeries} style={btnStyle("#EDEAE3", "#1c222c")}>
             {t.randomSeries}
