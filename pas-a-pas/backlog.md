@@ -52,7 +52,8 @@ Tri : priorité décroissante.
   2 devant), pensée pour être comprise sans lire le français, et réversible
   (factoriser ↔ distribuer, dans les deux sens)
 - [x] P1 — Identités remarquables (3) sous forme générale + chapitre ℂ (a² + b²), ensembles ℕ ℤ ℚ ℝ ℂ à cocher dans le menu
-- [ ] P1 — Quiz Ensembles : ranger un nombre dans le bon ensemble (glisser ou toucher)
+- [x] P1 — Quiz Ensembles : ranger un nombre dans le bon ensemble (glisser ou toucher), 11 ensembles, définitions en appui long
+- [x] P1 — Barre des ensembles toujours visible (univers emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ) + chapitre Solutions : la réponse change avec l'ensemble
 - [ ] P2 — Mode jeu : l'élève choisit la transformation, l'animation valide ou montre l'erreur
 - [x] P2 — Équations (même opération des deux côtés, ⇔ à la fin)
 - [x] P2 — Plus d'exemples : double distributivité (Double), identité remarquable (Identité), avec page récapitulative
