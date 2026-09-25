@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#030604">
+  <title>Oscilloscope</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+  <style>
+    /* Page de test : à quoi ressemble un vrai tube cathodique d'oscilloscope.
+       Tout se joue dans le canvas — le CSS ne fait que le boîtier et le verre. */
+    :root {
+      --case: #1a1c1b;
+      --case-edge: #2a2d2b;
+      --label: #8f9690;
+      --label-dim: #5b615c;
+      --knob: #3be08a;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: #0b0c0c;
+      color: var(--label);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: max(12px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    main {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    header a, header button {
+      color: var(--label-dim);
+      text-decoration: none;
+      font: inherit;
+      letter-spacing: inherit;
+      background: none;
+      border: none;
+      padding: 0.3rem 0;
+      cursor: pointer;
+    }
+
+    header a:hover, header button:hover { color: var(--knob); }
+    .head-right { display: flex; gap: 1rem; }
+
+    /* Boîtier : façade grise, lunette sombre autour du tube */
+    .case {
+      background: linear-gradient(180deg, var(--case-edge), var(--case));
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.06) inset, 0 10px 30px rgba(0,0,0,0.6);
+    }
+
+    .bezel {
+      position: relative;
+      border-radius: 18px / 14px;
+      background: #000;
+      padding: 10px;
+      box-shadow: 0 0 0 2px #000, 0 2px 6px rgba(0,0,0,0.8) inset;
+    }
+
+    .tube {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 5 / 4;
+      border-radius: 14px / 11px;
+      overflow: hidden;
+      background: #030604;
+    }
+
+    .tube canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Verre bombé : vignettage + reflet diffus en haut à gauche */
+    .glass {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(120% 90% at 50% 50%, transparent 55%, rgba(0,0,0,0.55) 100%),
+        radial-gradient(60% 40% at 25% 12%, rgba(220,255,235,0.07), transparent 70%),
+        linear-gradient(160deg, rgba(255,255,255,0.035) 0%, transparent 35%);
+    }
+
+    .readout {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.66rem;
+      letter-spacing: 0.08em;
+      color: var(--label);
+      padding: 8px 4px 0;
+    }
+
+    .modes {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .mode {
+      font: inherit;
+      font-size: 0.64rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--label);
+      background: #111312;
+      border: 1px solid #262927;
+      border-radius: 6px;
+      padding: 0.7rem 0.2rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    .mode[aria-pressed="true"] { color: var(--knob); border-color: var(--knob); }
+
+    .sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 16px;
+    }
+
+    .sliders label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.6rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    input[type=range] {
+      width: 100%;
+      accent-color: var(--knob);
+      touch-action: none;
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: rgba(5, 8, 6, 0.96);
+    }
+
+    .overlay[hidden] { display: none; }
+
+    .overlay ul {
+      width: 100%;
+      max-width: 22rem;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+
+    .overlay li { padding: 0.6rem 0; border-top: 1px solid #262927; }
+    .overlay b { display: block; color: var(--knob); }
+
+    .overlay button {
+      font: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--knob);
+      background: none;
+      border: 1px solid var(--knob);
+      border-radius: 999px;
+      padding: 0.7rem 1.6rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <a href="../" data-t="back">← Portfolio</a>
+      <div class="head-right">
+        <button id="langBtn">EN</button>
+        <button id="histBtn" data-t="hist">Historique</button>
+      </div>
+    </header>
+
+    <div class="case">
+      <div class="bezel">
+        <div class="tube">
+          <canvas id="scope"></canvas>
+          <canvas id="grat"></canvas>
+          <div class="glass"></div>
+        </div>
+      </div>
+      <div class="readout">
+        <span id="roCh">CH1 1V/div</span>
+        <span id="roTime">1ms/div</span>
+        <span id="roTrig">TRIG ↑ AUTO</span>
+      </div>
+    </div>
+
+    <div class="modes" id="modes"></div>
+
+    <div class="sliders">
+      <label><span data-t="persist">Rémanence</span><input type="range" id="sPersist" min="0" max="100" value="72"></label>
+      <label><span data-t="intensity">Intensité</span><input type="range" id="sInt" min="0" max="100" value="60"></label>
+      <label><span data-t="focus">Focus</span><input type="range" id="sFocus" min="0" max="100" value="70"></label>
+      <label><span data-t="halo">Halo</span><input type="range" id="sHalo" min="0" max="100" value="50"></label>
+    </div>
+  </main>
+
+  <div class="overlay" id="histOverlay" hidden>
+    <ul id="histList"></ul>
+    <button id="histClose" data-t="close">Fermer</button>
+  </div>
+
+  <script>
+    (function () {
+      // ---------- Langue ----------
+      var TXT = {
+        fr: { back: "← Portfolio", hist: "Historique", persist: "Rémanence", intensity: "Intensité", focus: "Focus", halo: "Halo", close: "Fermer",
+              modes: ["Sinus", "Carré", "Lissajous", "Rosace"] },
+        en: { back: "← Portfolio", hist: "History", persist: "Persistence", intensity: "Intensity", focus: "Focus", halo: "Glow", close: "Close",
+              modes: ["Sine", "Square", "Lissajous", "Rose"] }
+      };
+      var VERSIONS = [
+        { v: "v1", fr: "Page de test : tube cathodique réaliste — faisceau plus lumineux là où il ralentit, rémanence du phosphore P31, halo, graticule gravé devant l'écran, verre bombé. Quatre signaux, quatre réglages.",
+                   en: "Test page: realistic CRT — beam brighter where it slows down, P31 phosphor persistence, glow, graticule etched in front of the screen, curved glass. Four signals, four knobs." }
+      ];
+
+      var store = {
+        get: function (k) { try { return localStorage.getItem("oscilloscope_" + k); } catch (e) { return null; } },
+        set: function (k, v) { try { localStorage.setItem("oscilloscope_" + k, v); } catch (e) {} }
+      };
+
+      var lang = store.get("lang") === "en" ? "en" : "fr";
+      var mode = Math.min(3, Math.max(0, parseInt(store.get("mode"), 10) || 0));
+
+      var modesEl = document.getElementById("modes");
+      var modeBtns = [];
+      for (var i = 0; i < 4; i++) {
+        (function (k) {
+          var b = document.createElement("button");
+          b.className = "mode";
+          b.addEventListener("click", function () { setMode(k); });
+          modesEl.appendChild(b);
+          modeBtns.push(b);
+        })(i);
+      }
+
+      function applyLang() {
+        document.documentElement.lang = lang;
+        document.querySelectorAll("[data-t]").forEach(function (el) { el.textContent = TXT[lang][el.dataset.t]; });
+        modeBtns.forEach(function (b, k) { b.textContent = TXT[lang].modes[k]; });
+        document.getElementById("langBtn").textContent = lang === "fr" ? "EN" : "FR";
+        var list = document.getElementById("histList");
+        list.innerHTML = "";
+        VERSIONS.forEach(function (e) {
+          var li = document.createElement("li");
+          var b = document.createElement("b");
+          b.textContent = e.v;
+          li.appendChild(b);
+          li.appendChild(document.createTextNode(e[lang]));
+          list.appendChild(li);
+        });
+      }
+
+      document.getElementById("langBtn").addEventListener("click", function () {
+        lang = lang === "fr" ? "en" : "fr";
+        store.set("lang", lang);
+        applyLang();
+      });
+      document.getElementById("histBtn").addEventListener("click", function () { document.getElementById("histOverlay").hidden = false; });
+      document.getElementById("histClose").addEventListener("click", function () { document.getElementById("histOverlay").hidden = true; });
+
+      // ---------- Réglages ----------
+      var sliders = ["sPersist", "sInt", "sFocus", "sHalo"].map(function (id) {
+        var el = document.getElementById(id);
+        var saved = store.get(id);
+        if (saved !== null) el.value = saved;
+        el.addEventListener("input", function () { store.set(id, el.value); });
+        return el;
+      });
+      function val(k) { return sliders[k].value / 100; }
+
+      var READOUT = [
+        ["CH1 1V/div", "1ms/div", "TRIG ↑ AUTO"],
+        ["CH1 1V/div", "2ms/div", "TRIG ↑ AUTO"],
+        ["X-Y  CH1 CH2", "3:2", "—"],
+        ["X-Y  CH1 CH2", "5:4", "—"]
+      ];
+
+      function setMode(k) {
+        mode = k;
+        store.set("mode", String(k));
+        modeBtns.forEach(function (b, j) { b.setAttribute("aria-pressed", j === k ? "true" : "false"); });
+        document.getElementById("roCh").textContent = READOUT[k][0];
+        document.getElementById("roTime").textContent = READOUT[k][1];
+        document.getElementById("roTrig").textContent = READOUT[k][2];
+      }
+
+      // ---------- Tube ----------
+      var scope = document.getElementById("scope");
+      var grat = document.getElementById("grat");
+      var ctx = scope.getContext("2d");
+      var gctx = grat.getContext("2d");
+      var W = 0, H = 0, dpr = 1;
+
+      function resize() {
+        dpr = Math.min(2, window.devicePixelRatio || 1);
+        var r = scope.getBoundingClientRect();
+        W = Math.round(r.width * dpr);
+        H = Math.round(r.height * dpr);
+        [scope, grat].forEach(function (c) { c.width = W; c.height = H; });
+        ctx.fillStyle = "#030604";
+        ctx.fillRect(0, 0, W, H);
+        drawGraticule();
+      }
+
+      // Graticule 10 × 8 divisions, gravé sur la face avant : il est devant
+      // le phosphore, donc jamais lumineux ni flou, juste un peu éclairé.
+      function drawGraticule() {
+        gctx.clearRect(0, 0, W, H);
+        var m = W * 0.04;
+        var gw = W - 2 * m, gh = H - 2 * m;
+        var dx = gw / 10, dy = gh / 8;
+        gctx.strokeStyle = "rgba(150, 190, 165, 0.22)";
+        gctx.lineWidth = Math.max(1, dpr * 0.8);
+        gctx.beginPath();
+        for (var i = 0; i <= 10; i++) { gctx.moveTo(m + i * dx, m); gctx.lineTo(m + i * dx, m + gh); }
+        for (var j = 0; j <= 8; j++) { gctx.moveTo(m, m + j * dy); gctx.lineTo(m + gw, m + j * dy); }
+        gctx.stroke();
+        // Petites graduations (5 par division) sur les axes centraux
+        gctx.strokeStyle = "rgba(150, 190, 165, 0.3)";
+        gctx.beginPath();
+        var cx = m + gw / 2, cy = m + gh / 2, t = 4 * dpr;
+        for (var a = 0; a <= 50; a++) { var x = m + a * dx / 5; gctx.moveTo(x, cy - t); gctx.lineTo(x, cy + t); }
+        for (var b = 0; b <= 40; b++) { var y = m + b * dy / 5; gctx.moveTo(cx - t, y); gctx.lineTo(cx + t, y); }
+        gctx.stroke();
+        geom = { m: m, gw: gw, gh: gh, cx: cx, cy: cy, dx: dx, dy: dy };
+      }
+      var geom = null;
+
+      // Position du faisceau en fonction du temps, en divisions (x : −5..5,
+      // y : −4..4). Balayage temporel pour les deux premiers, X-Y ensuite.
+      var SWEEP = 1 / 30; // durée d'un balayage, en secondes
+      function beam(t, now) {
+        var u, x, y;
+        switch (mode) {
+          case 0:
+            u = (t % SWEEP) / SWEEP;
+            x = -5 + 10 * u;
+            y = 2.6 * Math.sin(2 * Math.PI * (2 * u) + 0.4 * Math.sin(now * 0.3));
+            return { x: x, y: y, retrace: u > 0.985 };
+          case 1:
+            u = (t % SWEEP) / SWEEP;
+            x = -5 + 10 * u;
+            // Carré à bande passante limitée : fronts raides mais pas
+            // instantanés, léger dépassement — comme sur un vrai appareil
+            var ph = (u * 3) % 1;
+            var edge = function (p) { return 1 - Math.exp(-p * 90) * Math.cos(p * 120); };
+            y = ph < 0.5 ? -2 + 4 * edge(ph) : 2 - 4 * edge(ph - 0.5);
+            return { x: x, y: y, retrace: u > 0.985 };
+          case 2:
+            var d = reduced ? 0 : now * 0.35;
+            x = 4 * Math.sin(2 * Math.PI * 3 * t * 10 + d);
+            y = 3.2 * Math.sin(2 * Math.PI * 2 * t * 10);
+            return { x: x, y: y, retrace: false };
+          default:
+            var w = 2 * Math.PI * t * 8;
+            var r = 3.3 * Math.cos(5 / 4 * w + now * 0.2);
+            return { x: r * Math.cos(w) * 1.15, y: r * Math.sin(w), retrace: false };
+        }
+      }
+
+      var simT = 0;
+      var last = performance.now();
+      var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      function frame(nowMs) {
+        var dt = Math.min(0.05, (nowMs - last) / 1000);
+        last = nowMs;
+        var now = nowMs / 1000;
+        if (!geom) { requestAnimationFrame(frame); return; }
+
+        // Rémanence : le phosphore P31 s'éteint vite mais pas instantanément.
+        // On assombrit l'image précédente au lieu de l'effacer.
+        var persist = val(0);
+        var keep = 0.35 + persist * 0.62;
+        var fade = 1 - Math.pow(keep, dt * 60);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = "rgba(3, 6, 4, " + fade.toFixed(3) + ")";
+        ctx.fillRect(0, 0, W, H);
+
+        // Échantillonne le trajet du faisceau pendant cette image. La
+        // luminosité d'un segment est inversement proportionnelle à sa
+        // longueur : le faisceau dépose plus d'énergie là où il ralentit
+        // (sommets du sinus lumineux, fronts du carré presque invisibles).
+        // Chaque image retrace un cycle complet. En balayage, le
+        // déclenchement (trigger) repart toujours de la même phase : image
+        // stable. En X-Y, on laisse le temps courir pour que la figure vive.
+        var N = 1400;
+        var PERIOD = [SWEEP, SWEEP, 0.1, 0.5];
+        var span = PERIOD[mode];
+        var base = mode < 2 ? 0 : simT;
+        var intensity = val(1);
+        var focus = val(2);
+        var halo = val(3);
+        var sx = geom.dx, sy = geom.dy;
+        var core = (0.6 + (1 - focus) * 2.4) * dpr;
+
+        ctx.globalCompositeOperation = "lighter";
+        ctx.lineCap = "round";
+        var prev = beam(base, now);
+        var px = geom.cx + prev.x * sx, py = geom.cy - prev.y * sy;
+        for (var i = 1; i <= N; i++) {
+          var t = base + span * i / N;
+          var p = beam(t, now);
+          // Bruit du faisceau : quelques centièmes de division
+          var jx = (Math.random() - 0.5) * 0.02, jy = (Math.random() - 0.5) * 0.02;
+          var x = geom.cx + (p.x + jx) * sx, y = geom.cy - (p.y + jy) * sy;
+          if (!p.retrace && !prev.retrace) {
+            var len = Math.hypot(x - px, y - py) / dpr + 0.25;
+            var e = Math.min(1, (0.9 * intensity + 0.1) * 0.9 / len);
+            if (halo > 0.02) {
+              ctx.strokeStyle = "rgba(40, 255, 120, " + (e * 0.07 * halo).toFixed(4) + ")";
+              ctx.lineWidth = core * 7;
+              ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+            }
+            ctx.strokeStyle = "rgba(70, 255, 140, " + (e * 0.35).toFixed(4) + ")";
+            ctx.lineWidth = core * 2.2;
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+            // Cœur presque blanc : le phosphore saturé tire vers le blanc
+            ctx.strokeStyle = "rgba(210, 255, 225, " + (e * 0.5).toFixed(4) + ")";
+            ctx.lineWidth = core;
+            ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+          }
+          prev = p; px = x; py = y;
+        }
+        if (!reduced) simT += dt * 0.01;
+        requestAnimationFrame(frame);
+      }
+
+      window.addEventListener("resize", resize);
+      applyLang();
+      setMode(mode);
+      resize();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+
+  <script>
+    // Mise à jour automatique (copié de la page d'accueil du portfolio).
+    // Le paramètre anti-cache contourne le CDN devant GitHub Pages.
+    (function () {
+      var PAGE = "oscilloscope";
+      var lastCheck = 0;
+      async function checkForUpdate() {
+        var now0 = Date.now();
+        if (now0 - lastCheck < 1500) return;
+        lastCheck = now0;
+        try {
+          var url = (location.pathname || "index.html") + "?_cb=" + now0;
+          var res = await fetch(url, { cache: "no-store" });
+          if (!res.ok) return;
+          var tag = res.headers.get("etag") || res.headers.get("last-modified");
+          if (!tag) return;
+          var key = "pm_pageVersion_" + PAGE;
+          var stored = localStorage.getItem(key);
+          if (stored === null) { localStorage.setItem(key, tag); return; }
+          if (tag !== stored) {
+            var now = Date.now();
+            var guard = "pm_lastUpdateReload_" + PAGE;
+            var lastReload = 0;
+            try { lastReload = Number(sessionStorage.getItem(guard)) || 0; } catch (e) {}
+            if (now - lastReload < 10000) return;
+            try {
+              localStorage.setItem(key, tag);
+              sessionStorage.setItem(guard, String(now));
+            } catch (e) {}
+            location.replace(location.pathname + "?_r=" + now);
+          }
+        } catch (e) {}
+      }
+      checkForUpdate();
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) checkForUpdate(); });
+      document.addEventListener("pointerdown", checkForUpdate, { passive: true });
+    })();
+  </script>
+</body>
+</html>
