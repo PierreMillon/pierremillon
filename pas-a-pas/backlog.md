@@ -17,7 +17,7 @@ Tri : priorité décroissante.
 - [ ] P1 — Démo « piège » : (x + 3) / 3 ≠ x, montrer pourquoi on ne peut pas simplifier
 - [ ] P2 — Mode jeu : l'élève choisit la transformation, l'animation valide ou montre l'erreur
 - [ ] P2 — Plus d'exemples : double distributivité, identités remarquables, équations (même opération des deux côtés)
-- [ ] P2 — Ajouter au menu du portfolio (groupe maths)
+- [x] P2 — Ajouter au menu du portfolio (groupe maths)
 - [ ] P3 — Saisie libre d'une expression (moteur de calcul formel, gros chantier)
 
 ## Migration future

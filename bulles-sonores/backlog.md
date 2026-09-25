@@ -16,7 +16,7 @@ Tri : priorité décroissante.
 - [ ] P1 — Réglage de la vitesse de dérive (facile / normal / difficile)
 - [ ] P2 — Mode « oreille » : bulles toutes de la même couleur, seul le son guide
 - [ ] P2 — Mode entraînement sans vies
-- [ ] P2 — Ajouter au menu du portfolio (X)
+- [x] P2 — Ajouter au menu du portfolio (XIII)
 - [ ] P3 — Timbres différents (piano, cloche, bulle)
 - [ ] P3 — Mélodies connues à reconnaître (Au clair de la lune…)
 
