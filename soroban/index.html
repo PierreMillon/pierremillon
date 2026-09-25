@@ -238,6 +238,34 @@
     }
     .digit.on { fill: var(--ink); }
 
+    /* Badges gagnés = outils. Hauteur fixe, même vide ou en mode Libre,
+       pour que le boulier ne change jamais de taille */
+    .badgebar {
+      display: flex;
+      justify-content: center;
+      gap: 0.3rem;
+      height: 2.6rem;
+      padding: 0 16px 0.4rem;
+      overflow: hidden;
+    }
+    .badgebar[hidden] { display: flex; visibility: hidden; }
+    .bchip {
+      flex: 0 1 auto;
+      min-width: 0;
+      height: 2.2rem;
+      padding: 0 0.55rem;
+      font-family: inherit;
+      font-size: 0.72rem;
+      white-space: nowrap;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .bchip:active { background: rgba(61, 224, 138, 0.35); }
+    .bchip:disabled { opacity: 0.35; cursor: default; }
+
     .bottombar {
       display: flex;
       justify-content: center;
@@ -323,13 +351,27 @@
       margin-bottom: 0.1rem;
     }
 
+    /* Réussite : un bandeau en haut, pas un écran entier — le boulier
+       reste visible en dessous, avec le résultat posé dessus */
+    .overlay.win {
+      bottom: auto;
+      justify-content: flex-start;
+      gap: 0.35rem;
+      padding: calc(0.8rem + env(safe-area-inset-top)) 16px 0.9rem;
+      background: rgba(5, 16, 10, 0.97);
+      border-bottom: 1px solid var(--accent);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+    }
+    .win p { font-size: 0.78rem; line-height: 1.45; }
+    .win p:empty { display: none; }
+    .win .btn { margin-top: 0.3rem; padding: 0.6rem 1.8rem; }
     .win .answer {
       font-size: 1.4rem;
       color: var(--accent);
       text-shadow: 0 0 10px rgba(61, 224, 138, 0.45);
       font-variant-numeric: tabular-nums;
     }
-    .win .big { font-size: 2.2rem; color: var(--accent); }
+    .win .big { font-size: 1.6rem; color: var(--accent); }
     .win.show .big { animation: pop 0.5s cubic-bezier(.3, 1.6, .5, 1) both; }
     @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
@@ -367,9 +409,10 @@
     <svg class="soroban" id="soroban" role="group" aria-label="Soroban"></svg>
   </div>
 
+  <div class="badgebar" id="badgeBar" hidden></div>
+
   <div class="bottombar">
     <button class="btn quiet" id="slowBtn" data-t="slow" hidden>Voir au ralenti</button>
-    <button class="btn quiet" id="instantBtn" data-t="instant" hidden>D'un coup</button>
     <button class="btn quiet" id="resetBtn" data-t="reset">Remettre à zéro</button>
   </div>
 
@@ -449,7 +492,7 @@
       var TXT = {
         fr: {
           back: "← Portfolio", hist: "Historique", free: "Libre", ops: "Opérations",
-          reset: "Remettre à zéro", slow: "Voir au ralenti", instant: "D'un coup",
+          reset: "Remettre à zéro", slow: "Voir au ralenti",
           next: "Suivant", close: "Fermer", empty: " — tige vide",
           install: "Pour l'avoir comme une appli : Partager → « Sur l'écran d'accueil ». Si tu n'entends rien, monte le volume.",
           yourTurn: "À toi : suis les perles qui clignotent.",
@@ -457,7 +500,9 @@
           oops: "Pas celle-là : remets-la, puis suis les perles qui clignotent.",
           cheers: ["Bravo !", "Bien joué !", "C'est compris !", "Parfait !", "Superbe !"],
           used: "Tu as utilisé : {list}.",
-          badge: "Badge gagné : {b}. « D'un coup » est débloqué pour ce niveau.",
+          badge: "Badge gagné : {b}. Il apparaît en bas : appuie dessus et il fait ces gestes tout seul.",
+          badgeCant: "Le badge {b} ne sait pas faire ce geste : à toi !",
+          badgeDone: "Le badge {b} a fait sa part. À toi :",
           levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×", div: "÷", pow: "puissance", sqrt: "√" },
           techs: { direct: "l'ajout direct", c5: "le complément à 5", c10: "le complément à 10 (retenue)", sdirect: "le retrait direct", s5: "le complément à 5 en retirant", s10: "le complément à 10 (emprunt)" },
           blk: {
@@ -478,7 +523,7 @@
         },
         en: {
           back: "← Portfolio", hist: "History", free: "Free", ops: "Operations",
-          reset: "Clear", slow: "Show slowly", instant: "Instantly",
+          reset: "Clear", slow: "Show slowly",
           next: "Next", close: "Close", empty: " — empty rod",
           install: "To use it like an app: Share → “Add to Home Screen”. If you hear nothing, turn the volume up.",
           yourTurn: "Your turn: follow the blinking beads.",
@@ -486,7 +531,9 @@
           oops: "Not that one: put it back, then follow the blinking beads.",
           cheers: ["Well done!", "Nice!", "You got it!", "Perfect!", "Superb!"],
           used: "You used: {list}.",
-          badge: "Badge earned: {b}. “Instantly” is unlocked for this level.",
+          badge: "Badge earned: {b}. It shows up at the bottom: tap it and it does these moves by itself.",
+          badgeCant: "The {b} badge can't do this move: your turn!",
+          badgeDone: "The {b} badge did its part. Your turn:",
           levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×", div: "÷", pow: "power", sqrt: "√" },
           techs: { direct: "direct adding", c5: "the 5-complement", c10: "the 10-complement (carry)", sdirect: "direct taking away", s5: "the 5-complement when taking away", s10: "the 10-complement (borrow)" },
           blk: {
@@ -903,49 +950,53 @@
       // ralenti et à dire quelles techniques un exercice demande.
 
       function planner(start) {
-        var D = start.slice(), moves = [], tech = {}, blk = "";
+        // Chaque geste porte aussi sa technique (tech : celle du niveau
+        // qui l'enseigne — les gestes internes d'un complément à 10 restent
+        // « c10 ») et l'opération dont il fait partie (op : ×, ÷… ou rien).
+        // C'est ce qui dit quel badge sait le faire tout seul.
+        var D = start.slice(), moves = [], tech = {}, blk = "", op = null;
         function cap(k, o) { return fmt(TXT[lang].cap[k], o); }
-        function set(r, v, c) {
+        function set(r, v, c, tg) {
           if (r < 0) throw new Error("overflow");
           D[r] = v;
-          moves.push({ rod: r, to: v, cap: c, blk: blk });
+          moves.push({ rod: r, to: v, cap: c, blk: blk, tech: tg || "direct", op: op });
         }
-        function add(r, a, ctx) {
+        function add(r, a, ctx, tg) {
           if (!a) return;
           if (r < 0) throw new Error("overflow");
           var d = D[r], five = d >= 5, ones = d % 5;
-          if (a < 5 && ones + a <= 4) { tech.direct = 1; set(r, d + a, ctx || cap("direct", { a: a })); }
+          if (a < 5 && ones + a <= 4) { tech.direct = 1; set(r, d + a, ctx || cap("direct", { a: a }), tg || "direct"); }
           else if (a < 5 && !five) {
             tech.c5 = 1;
             var c = ctx || cap("c5", { a: a, b: 5 - a });
-            set(r, d + 5, c);
-            set(r, d + a, c);
+            set(r, d + 5, c, tg || "c5");
+            set(r, d + a, c, tg || "c5");
           }
-          else if (a >= 5 && !five && d + a <= 9) { tech.direct = 1; set(r, d + a, ctx || cap("direct", { a: a })); }
+          else if (a >= 5 && !five && d + a <= 9) { tech.direct = 1; set(r, d + a, ctx || cap("direct", { a: a }), tg || "direct"); }
           else {
             tech.c10 = 1;
             var c2 = ctx || cap("c10", { a: a, b: 10 - a });
-            sub(r, 10 - a, c2);
-            add(r - 1, 1, c2 + " · " + cap("carry"));
+            sub(r, 10 - a, c2, tg || "c10");
+            add(r - 1, 1, c2 + " · " + cap("carry"), tg || "c10");
           }
         }
-        function sub(r, a, ctx) {
+        function sub(r, a, ctx, tg) {
           if (!a) return;
           if (r < 0) throw new Error("overflow");
           var d = D[r], five = d >= 5, ones = d % 5;
-          if (a < 5 && ones >= a) { tech.sdirect = 1; set(r, d - a, ctx || cap("sdirect", { a: a })); }
+          if (a < 5 && ones >= a) { tech.sdirect = 1; set(r, d - a, ctx || cap("sdirect", { a: a }), tg || "sdirect"); }
           else if (a < 5 && five) {
             tech.s5 = 1;
             var c = ctx || cap("s5", { a: a, b: 5 - a });
-            set(r, d - 5, c);
-            set(r, d - a, c);
+            set(r, d - 5, c, tg || "s5");
+            set(r, d - a, c, tg || "s5");
           }
-          else if (a >= 5 && d >= a) { tech.sdirect = 1; set(r, d - a, ctx || cap("sdirect", { a: a })); }
+          else if (a >= 5 && d >= a) { tech.sdirect = 1; set(r, d - a, ctx || cap("sdirect", { a: a }), tg || "sdirect"); }
           else {
             tech.s10 = 1;
             var c2 = ctx || cap("s10", { a: a, b: 10 - a });
-            sub(r - 1, 1, c2 + " · " + cap("borrow"));
-            add(r, 10 - a, c2);
+            sub(r - 1, 1, c2 + " · " + cap("borrow"), tg || "s10");
+            add(r, 10 - a, c2, tg || "s10");
           }
         }
         // Un nombre entier, chiffre par chiffre, de gauche à droite comme
@@ -959,12 +1010,12 @@
         }
         return {
           D: D, moves: moves, tech: tech, cap: cap, set: set,
-          block: function (text) { blk = text; },
+          block: function (text, o) { blk = text; op = o || null; },
           addN: function (n, shift) { number(n, add, shift); },
           subN: function (n, shift) { number(n, sub, shift); },
           pose: function (n) {
             var d = digitsOf(n);
-            for (var r = 0; r < RODS; r++) if (d[r] !== D[r]) set(r, d[r], cap("pose"));
+            for (var r = 0; r < RODS; r++) if (d[r] !== D[r]) set(r, d[r], cap("pose"), "direct");
           }
         };
       }
@@ -1031,7 +1082,7 @@
             var place = s.length - 1 - i;
             var d = (s.charCodeAt(i) - 48) * Math.pow(10, place);
             if (!d) continue;
-            p.block(fmt(B.mul, { d: numStr(d), b: e.b, p: numStr(d * e.b) }));
+            p.block(fmt(B.mul, { d: numStr(d), b: e.b, p: numStr(d * e.b) }), "mul");
             p.addN((s.charCodeAt(i) - 48) * e.b, place);
           }
         }
@@ -1042,7 +1093,7 @@
             var pl = q.length - 1 - j, qd = q.charCodeAt(j) - 48;
             if (!qd) continue;
             var m = qd * Math.pow(10, pl);
-            p.block(fmt(B.div, { b: e.b, m: numStr(m), v: numStr(m * e.b) }));
+            p.block(fmt(B.div, { b: e.b, m: numStr(m), v: numStr(m * e.b) }), "div");
             p.subN(qd * e.b, pl);
           }
         }
@@ -1050,7 +1101,7 @@
           // a × a × … : multiplier v par a, c'est ajouter (a − 1) fois v
           var v = e.a;
           for (var k = 2; k <= e.b; k++) {
-            p.block(fmt(B.pow, { a: e.a, k: e.a - 1, v: numStr(v) }));
+            p.block(fmt(B.pow, { a: e.a, k: e.a - 1, v: numStr(v) }), "pow");
             var sv = String(v);
             for (var i2 = 0; i2 < sv.length; i2++) {
               var part = (sv.charCodeAt(i2) - 48) * (e.a - 1);
@@ -1064,14 +1115,14 @@
           // on retire d'abord (10t)², puis (20t + u) × u — il reste 0
           var r = e.result, tt = Math.floor(r / 10), u = r % 10;
           if (tt) {
-            p.block(fmt(B.sqrt1, { t: numStr(tt * 10), q: numStr(tt * tt * 100) }));
+            p.block(fmt(B.sqrt1, { t: numStr(tt * 10), q: numStr(tt * tt * 100) }), "sqrt");
             p.subN(tt * tt, 2);
           }
           if (u && !tt) {
-            p.block(fmt(B.sqrt1, { t: u, q: numStr(u * u) }));
+            p.block(fmt(B.sqrt1, { t: u, q: numStr(u * u) }), "sqrt");
             p.subN(u * u);
           } else if (u) {
-            p.block(fmt(B.sqrt2, { d: numStr(20 * tt), u: u, x: numStr((20 * tt + u) * u) }));
+            p.block(fmt(B.sqrt2, { d: numStr(20 * tt), u: u, x: numStr((20 * tt + u) * u) }), "sqrt");
             p.subN((20 * tt + u) * u);
           }
         }
@@ -1236,7 +1287,9 @@
         updateButtons();
         renderSplit();
         var earned = false;
-        if (byHand && !ex.watched && !badges[level]) {
+        // Une réussite suffit, même après avoir regardé l'exemple au
+        // ralenti (choix de Pierre) : on gagne le badge du niveau en cours
+        if (!badges[level]) {
           badges[level] = 1;
           saveBadges();
           buildLevels();
@@ -1266,7 +1319,7 @@
       function updateButtons() {
         var ops = mode === "ops" && ex;
         document.getElementById("slowBtn").hidden = !ops || ex.solved;
-        document.getElementById("instantBtn").hidden = !ops || ex.solved || !badges[level];
+        buildBadgeBar();
       }
 
       function clearBoard() {
@@ -1280,33 +1333,43 @@
 
       function wait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
 
-      function demo() {
-        if (busy || !ex) return;
-        busy = true;
-        document.body.classList.add("busy");
-        ex.watched = true;
-        setHints(null);
-        var zero = planner(digits);
-        zero.pose(0);
-        var moves = zero.moves.map(function (m) { m.cap = zero.cap("zero"); m.blk = ""; return m; }).concat(ex.moves);
+      // Joue une suite de gestes sur le boulier, un toutes les `ms`
+      function playSeq(moves, ms, vol) {
         var chain = Promise.resolve();
-        moves.forEach(function (m, i) {
+        moves.forEach(function (m) {
           chain = chain.then(function () {
             if (digits[m.rod] === m.to) return;
             var heavy = (digits[m.rod] >= 5) !== (m.to >= 5);
-            toc(heavy, 0.8);
+            toc(heavy, vol);
             caption = { text: m.cap };
             var task = document.getElementById("task");
             if (task.lastChild && m.blk) task.lastChild.textContent = "  → " + m.blk;
             setDigit(m.rod, m.to);
             render();
-            return wait(DEMO_STEP_MS);
+            return wait(ms);
           });
         });
-        chain.then(function () { return wait(1000); }).then(function () {
-          // Puis la main revient : on repart de zéro, guidé
-          busy = false;
-          document.body.classList.remove("busy");
+        return chain;
+      }
+
+      function setBusy(on) {
+        busy = on;
+        document.body.classList.toggle("busy", on);
+        buildBadgeBar();
+      }
+
+      // « Voir au ralenti » : l'exemple complet, geste par geste, puis la
+      // main revient pour le refaire soi-même
+      function demo() {
+        if (busy || !ex) return;
+        setBusy(true);
+        ex.watched = true;
+        setHints(null);
+        var zero = planner(digits);
+        zero.pose(0);
+        var moves = zero.moves.map(function (m) { m.cap = zero.cap("zero"); m.blk = ""; return m; }).concat(ex.moves);
+        playSeq(moves, DEMO_STEP_MS, 0.8).then(function () { return wait(1000); }).then(function () {
+          setBusy(false);
           ex.k = 0;
           clearBoard();
           guideShow();
@@ -1315,14 +1378,64 @@
         });
       }
 
-      function instant() {
-        if (busy || !ex || !badges[level]) return;
-        var target = ex.states[ex.states.length - 1];
-        for (var r = 0; r < RODS; r++) digits[r] = target[r];
-        save("state", digits.join(""));
-        toc(true, 1);
-        render();
-        finish(false);
+      // ---------- Badges-outils ----------
+      // Un badge gagné devient un bouton : il fait tout seul, en accéléré,
+      // les gestes qu'il connaît, et s'arrête au premier geste qu'il ne
+      // connaît pas — c'est alors à toi. Chaque badge inclut ceux d'avant :
+      // le badge × fait aussi toutes les additions et soustractions.
+
+      var TECH_ORDER = ["direct", "c5", "c10", "sdirect", "s5", "s10"];
+      var BADGE_STEP_MS = 260;
+      var SHORT = { direct: "+", c5: "+5", c10: "+10", sdirect: "−", s5: "−5", s10: "−10", mul: "×", div: "÷", pow: "xⁿ", sqrt: "√" };
+
+      function covers(lv, mv) {
+        var i = LEVELS.indexOf(lv);
+        if (TECH_ORDER.indexOf(mv.tech) > Math.min(i, TECH_ORDER.length - 1)) return false;
+        return !mv.op || LEVELS.indexOf(mv.op) <= i;
+      }
+
+      function buildBadgeBar() {
+        var bar = document.getElementById("badgeBar");
+        bar.textContent = "";
+        bar.hidden = mode !== "ops";
+        LEVELS.forEach(function (lv) {
+          if (!badges[lv]) return;
+          var b = document.createElement("button");
+          b.className = "bchip";
+          b.textContent = "✦ " + SHORT[lv];
+          b.title = TXT[lang].levels[lv];
+          b.disabled = busy || !ex || ex.solved;
+          b.addEventListener("click", function () { useBadge(lv); });
+          bar.appendChild(b);
+        });
+      }
+
+      function useBadge(lv) {
+        if (busy || !ex || ex.solved || !badges[lv]) return;
+        var name = TXT[lang].levels[lv];
+        // D'abord, remettre en place une perle bougée par erreur
+        var S = ex.states[ex.k], moves = [];
+        for (var r = 0; r < RODS; r++) {
+          if (digits[r] !== S[r]) moves.push({ rod: r, to: S[r], cap: "", blk: "" });
+        }
+        var k = ex.k;
+        while (k < ex.moves.length && covers(lv, ex.moves[k])) { moves.push(ex.moves[k]); k++; }
+        if (k === ex.k) {
+          // Ce badge ne sait pas faire le prochain geste
+          caption = { text: t("badgeCant", { b: name }) };
+          renderSplit();
+          return;
+        }
+        setBusy(true);
+        setHints(null);
+        playSeq(moves, BADGE_STEP_MS, 0.6).then(function () {
+          setBusy(false);
+          ex.k = k;
+          if (ex.k >= ex.states.length - 1) { finish(false); return; }
+          guideShow();
+          caption = { text: t("badgeDone", { b: name }) + " " + ex.moves[ex.k].cap };
+          renderSplit();
+        });
       }
 
       // ---------- Interface ----------
@@ -1362,7 +1475,6 @@
       document.getElementById("tabFree").addEventListener("click", function () { setMode("free"); });
       document.getElementById("tabOps").addEventListener("click", function () { setMode("ops"); });
       document.getElementById("slowBtn").addEventListener("click", demo);
-      document.getElementById("instantBtn").addEventListener("click", instant);
       document.getElementById("nextBtn").addEventListener("click", function () {
         document.getElementById("winOverlay").hidden = true;
         // Badge tout juste gagné : on passe au niveau suivant pas encore acquis
@@ -1413,6 +1525,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v6", text: "Les badges deviennent des outils : chaque badge gagné apparaît en bas ; appuyer dessus fait tout seul, en accéléré, les gestes qu'il connaît, et s'arrête au premier geste qu'il ne connaît pas — c'est alors à toi. Chaque badge inclut ceux d'avant (le badge × fait aussi les additions). Remplace le bouton « D'un coup ». « Voir au ralenti » reste : l'exemple complet, pour savoir quoi faire. Un badge se gagne en réussissant une fois, même après avoir regardé le ralenti. Le message de réussite s'affiche en bandeau en haut : le boulier reste visible avec le résultat." },
         { v: "v5", text: "Le boulier garde toujours la même taille : les lignes de texte, les niveaux et les boutons ont une place fixe, il ne zoome plus ni ne dézoome tout seul pendant une opération. Sons beaucoup plus graves. Une perle touchée glisse toujours jusqu'à sa place, plus lentement, sans jamais se téléporter (même avec « Réduire les animations »). Légende « chiffre par chiffre » retirée. Français par défaut." },
         { v: "v4", text: "Division avec reste (ce qu'on ne peut plus retirer reste sur le boulier : 351 ÷ 4 = 87, reste 3). Racines approchées à un chiffre après la virgule (√2 ≈ 1,4 : on pose 200 et on calcule √200 ≈ 14). Le badge ✦ 10 de Pas à Pas s'affiche sur « + avec 10 » (même geste : faire 10). Utilisable hors ligne une fois ouvert (police comprise)." },
         { v: "v3", text: "Son réparé sur iPhone (débloqué à la fin du toucher, joue même en mode silencieux, placé dans des fréquences que le haut-parleur rend) et plus doux. Guidage pas à pas : les perles à bouger clignotent, la ligne du haut dit l'étape du calcul, celle du bas la technique ; une perle bougée par erreur est signalée. Réussite : une seconde de pause, puis un écran de félicitations qui reste jusqu'à « Suivant », avec les techniques utilisées. Nouvelles opérations : division (on retire le diviseur par paquets), puissances (multiplier = ajouter plusieurs fois), racines carrées (on retire (10t)², puis (20t + u) × u)." },
