@@ -797,6 +797,67 @@
 
     .sg-streak { display: flex; gap: 0.4rem; }
 
+    /* Accueil : les ensembles emboîtés, on touche une zone */
+    .home {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.6rem;
+    }
+
+    .home-map { width: 100%; max-width: 420px; flex: 1; min-height: 0; }
+    .home-map ellipse { fill: rgba(61, 224, 138, 0.04); stroke: var(--ink-soft); stroke-width: 1.2; cursor: pointer; }
+    .home-map ellipse.sel { stroke: var(--accent); stroke-width: 2; fill: rgba(61, 224, 138, 0.1); }
+    .home-map ellipse.lock { stroke-dasharray: 4 5; fill: transparent; }
+    .home-map ellipse.done { stroke: var(--accent); }
+    .home-map text { fill: var(--ink); font-family: inherit; font-size: 20px; pointer-events: none; text-anchor: middle; }
+    .home-map text.lock { fill: var(--ink-soft); font-size: 16px; }
+    .home-info { margin: 0; font-size: 0.78rem; color: var(--ink-soft); text-align: center; min-height: 1.2em; }
+
+    .home-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.4rem;
+      min-height: 2.4rem;
+    }
+
+    .home-list button {
+      font-family: inherit;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--ink-soft);
+      border-radius: 999px;
+      padding: 0.5rem 0.8rem;
+      cursor: pointer;
+    }
+
+    .home-list button.done { border-color: var(--accent); color: var(--accent); }
+    .home-list button:disabled { opacity: 0.35; cursor: default; }
+    .home-list small { opacity: 0.7; margin-left: 0.35rem; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      top: max(4rem, env(safe-area-inset-top));
+      transform: translateX(-50%);
+      z-index: 40;
+      padding: 0.6rem 1rem;
+      font-size: 0.85rem;
+      color: var(--bg);
+      background: var(--accent);
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .univ button:disabled { opacity: 0.3; }
+    .tabs { display: none !important; }
+
     /* Chapitre Calcul : calcul mental animé en continu */
     .calc-eq {
       min-height: 1.3em;
@@ -980,7 +1041,8 @@
   <main>
     <header>
       <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false">☰</button>
-      <h1>Pas à Pas</h1>
+      <button class="menu-btn" id="homeBtn" aria-label="Accueil">⌂</button>
+      <h1 id="title">Pas à Pas</h1>
       <span class="badge" id="badgeChip" title="Badge cadre de dix" hidden>✦ 10</span>
     </header>
 
@@ -990,6 +1052,8 @@
       <button class="menu-item" id="badgeReset" data-tr="Effacer le badge">Effacer le badge</button>
       <button class="menu-item" id="langBtn" data-tr="English">English</button>
       <button class="menu-item" id="gameBtn"></button>
+      <button class="menu-item" id="soundBtn"></button>
+      <button class="menu-item" id="profBtn"></button>
     </div>
 
     <div class="overlay" id="histOverlay" hidden>
@@ -1013,6 +1077,14 @@
       <div class="pf-primes" id="pfPrimes"></div>
       <div class="pf-tip" id="pfTip" hidden></div>
     </section>
+
+    <section class="home" id="home" hidden>
+      <svg class="home-map" id="homeMap" viewBox="0 0 360 300" aria-label="Ensembles de nombres"></svg>
+      <p class="home-info" id="homeInfo"></p>
+      <div class="home-list" id="homeList"></div>
+    </section>
+
+    <div class="toast" id="toast" hidden></div>
 
     <section class="sg" id="calc" hidden>
       <div class="calc-eq" id="calcEq"></div>
@@ -2238,6 +2310,7 @@
       }
 
       function fxMeet(fx, vanished) {
+        setTimeout(SND.meet, ms(900));
         var snap = snapshot();
         var parts = fx.ids.map(function (id) { return snap[id]; }).filter(Boolean);
         if (!parts.length) return Promise.resolve();
@@ -2417,6 +2490,14 @@
         transition(to, forward).then(function () {
           busy = false;
           refreshUi();
+          // Démo parcourue jusqu'au bout en mode jeu, sans faute : une réussite
+          var st = demo.steps;
+          var lastExpr = st.length - 1;
+          while (lastExpr > 0 && st[lastExpr].summary) lastExpr--;
+          if (gameMode && to >= lastExpr && gameRun.demo === demo.title && !gameRun.counted) {
+            gameRun.counted = true;
+            if (gameRun.faults === 0) progressDemo(demo.title);
+          }
         });
       }
 
@@ -2435,6 +2516,7 @@
         if (gameMode && cur < last && !busy && !choiceEl && gameChoice(cur + 1)) return;
         if (cur === last) {
           if (busy) return;
+          gameRun = { demo: DEMOS[demoIndex].title, faults: 0, counted: false };
           cur = 0;
           build(DEMOS[demoIndex].steps[0]);
           refreshUi();
@@ -2444,6 +2526,40 @@
         }
       }
 
+      // ---------- Bips (style oscilloscope) ----------
+      // Sons courts synthétisés : fusion, juste, faux, badge. Débloqués au
+      // premier geste (règle des navigateurs), coupables dans le menu.
+      var soundOn = true;
+      try { soundOn = localStorage.getItem("pasapas_sound") !== "0"; } catch (e) {}
+      var actx = null;
+      function bip(freq, dur, type, when, vol) {
+        if (!soundOn) return;
+        try {
+          if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+          if (actx.state === "suspended") actx.resume();
+          var t0 = actx.currentTime + (when || 0);
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.type = type || "square";
+          o.frequency.setValueAtTime(freq, t0);
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(vol || 0.05, t0 + 0.01);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + (dur || 0.12));
+          o.connect(g).connect(actx.destination);
+          o.start(t0);
+          o.stop(t0 + (dur || 0.12) + 0.02);
+        } catch (e) {}
+      }
+      var SND = {
+        meet: function () { bip(330, 0.09, "sine", 0, 0.08); bip(495, 0.12, "sine", 0.08, 0.06); },
+        ok: function () { bip(660, 0.08); bip(990, 0.12, "square", 0.08); },
+        bad: function () { bip(150, 0.25, "sawtooth", 0, 0.04); },
+        tick: function () { bip(1200, 0.03, "square", 0, 0.02); },
+        badge: function () { [523, 659, 784, 1047].forEach(function (f, i) { bip(f, 0.14, "square", i * 0.1, 0.05); }); }
+      };
+      document.addEventListener("pointerdown", function () {
+        if (soundOn && !actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} }
+      }, { once: true });
+
       // ---------- Mode jeu ----------
       // À chaque étape qui change l'écriture, deux propositions : la vraie
       // étape suivante et une fausse, fabriquée en changeant un signe ou un
@@ -2451,6 +2567,7 @@
       // bonne réponse lance l'animation ; une erreur secoue la proposition
       // et montre la bonne.
       var gameMode = false;
+      var gameRun = { demo: "", faults: 0, counted: true };
       try { gameMode = localStorage.getItem("pasapas_game") === "1"; } catch (e) {}
       var choiceEl = null;
 
@@ -2516,14 +2633,18 @@
         opts.forEach(function (o) {
           var b = document.createElement("button");
           b.className = "choice";
+          b.dataset.ok = o.ok ? "1" : "0"; // pour les tests automatiques
           var e = buildExprEl(o.step, true);
           b.appendChild(e);
           b.addEventListener("click", function () {
             if (!choiceEl) return;
             if (o.ok) {
+              SND.ok();
               b.classList.add("good");
               setTimeout(function () { closeChoice(); go(to); }, ms(350));
             } else {
+              SND.bad();
+              gameRun.faults++;
               b.classList.add("bad");
               b.animate([{ transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "none" }], { duration: ms(300) });
               choiceEl.querySelectorAll(".choice").forEach(function (c) { if (c !== b) c.classList.add("good"); });
@@ -2558,6 +2679,9 @@
 
       function selectDemo(i) {
         if (busy) return;
+        gameRun = { demo: DEMOS[i].title, faults: 0, counted: false };
+        hideHome();
+        document.getElementById("title").textContent = tr(DEMOS[i].title);
         demoIndex = i;
         cur = 0;
         lastTopStep = null;
@@ -3033,7 +3157,9 @@
           if (sgState.auto) { /* manche montrée : ni gagnée ni perdue */ }
           else if (!sgState.mistake) sgStreakN = Math.min(3, sgStreakN + 1);
           sgRenderStreak();
+          if (sgStreakN >= 3) markDone("Singapour");
           if (sgStreakN >= 3 && !hasBadge()) {
+            SND.badge();
             setBadge(true);
             sgMsg.textContent = "✦ 10";
             badgeChip.animate([{ transform: "scale(1.6)" }, { transform: "scale(1)" }], { duration: ms(700), easing: "ease-out" });
@@ -3225,6 +3351,8 @@
         if (!pfState || pfState.ready || pfState.sel < 0) return;
         var i = pfState.sel, nd = pfState.nodes[i];
         if (nd.v % p !== 0) {
+          pfState.mistake = true;
+          SND.bad();
           // Ne divise pas : le bouton tremble, rien ne change
           btn.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
           if (nd.el) nd.el.animate([{ color: "var(--sign)" }, { color: "var(--ink)" }], { duration: ms(600) });
@@ -3251,7 +3379,11 @@
         if (pfState.sel < 0) pfFinish();
       }
 
+      var pfStreak = 0;
       function pfFinish() {
+        SND.ok();
+        pfStreak = pfState.mistake ? 0 : pfStreak + 1;
+        if (pfStreak >= 3) markDone("Premiers");
         pfState.ready = true;
         var ps = [];
         pfState.nodes.forEach(function (c, k) {
@@ -3289,7 +3421,7 @@
       var calcEl = document.getElementById("calc");
       var calcEq = document.getElementById("calcEq");
       var calcScene = document.getElementById("calcScene");
-      var calcRun = 0;
+      var calcRun = 0, calcSeen = 0;
 
       function calcPick() {
         var r = Math.random(), t1 = 1 + Math.floor(Math.random() * 3), t2 = 1 + Math.floor(Math.random() * 3);
@@ -3443,7 +3575,11 @@
           return wait(4500);
         }).then(function () {
           // Et on enchaîne tout seul sur un autre calcul
-          if (alive()) calcStart();
+          if (alive()) {
+            calcSeen++;
+            if (calcSeen >= 3) markDone("Calcul");
+            calcStart();
+          }
         });
       }
 
@@ -3478,8 +3614,11 @@
 
       function solStart() { solRender(false); }
 
+      var solSeen = {};
       function solRender(animate) {
         var p = SOL[solIndex];
+        solSeen[solIndex] = true;
+        if (Object.keys(solSeen).length >= 6) markDone("Solutions");
         var qEl = document.getElementById("solQ"), aEl = document.getElementById("solA");
         qEl.textContent = p.q;
         document.getElementById("solIn").textContent = (LANG === "en" ? "in " : "dans ") + SYM[universe];
@@ -3511,7 +3650,7 @@
       var ensMsg = document.getElementById("ensMsg");
       var ensTip = document.getElementById("ensTip");
       var ensScoreEl = document.getElementById("ensScore");
-      var ensState = null, ensScore = { ok: 0, n: 0 };
+      var ensState = null, ensScore = { ok: 0, n: 0 }, ensStreak = 0;
 
       // Chaque case : symbole, ensemble de base (pour les cases à cocher du
       // menu), appartenance, définition.
@@ -3625,7 +3764,8 @@
         ensState.ready = true;
         var z = ensState.z, ok = b._e.has(z);
         ensScore.n++;
-        if (ok) ensScore.ok++;
+        if (ok) { ensScore.ok++; ensStreak++; SND.ok(); } else { ensStreak = 0; SND.bad(); }
+        if (ensStreak >= 3) markDone("Ensembles");
         // Toutes les cases qui contiennent le nombre s'allument, une à une
         ensBoxes.forEach(function (bb, k) {
           if (bb.hidden || !bb._e.has(z)) return;
@@ -3702,6 +3842,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v27", text: "Écran d'accueil (⌂) : les ensembles emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ, on touche une zone pour voir ses chapitres. Déblocage : tous les chapitres d'un ensemble réussis ouvrent le suivant (démo animée = 3 fois sans faute en mode jeu). Mode prof dans le menu : tout ouvert. ℍ en teaser verrouillé. Petits bips (fusion, juste, faux, badge), coupables dans le menu." },
         { v: "v26", text: "Nouveau chapitre Calcul : calcul mental animé en continu, sans clics. Dizaines en barres, unités en jetons rangés par 5. 16 + 27 → 10 + 6 + 20 + 7 → 5 + 1 et 5 + 2 → les deux 5 font une dizaine → 40 + 3 → 43. Si un seul nombre dépasse 5 : complément à 10. Enchaîne tout seul ; → pour passer au suivant." },
         { v: "v25", text: "Notation : pendant les calculs, chaque produit a son point (2·x, a·b, 2·(○ + □)) ; une dernière étape passe à l'écriture usuelle (2x, ab, 2(○ + □)) — le même produit, écrit plus court." },
         { v: "v24", text: "Mode jeu (menu ☰) : à chaque étape qui change l'écriture, deux propositions — la vraie étape et une fausse (un signe ou un nombre changé, vérifiée fausse par le calcul). Bonne réponse : l'animation continue ; erreur : la bonne réponse s'allume." },
@@ -3819,7 +3960,7 @@
       try { var su = localStorage.getItem("pasapas_universe"); if (UNIV.indexOf(su) >= 0) universe = su; } catch (e) {}
       var sets = {};
       function computeSets() {
-        UNIV.forEach(function (k) { sets[k] = UNIV.indexOf(k) <= UNIV.indexOf(universe); });
+        UNIV.forEach(function (k) { sets[k] = UNIV.indexOf(k) <= UNIV.indexOf(universe) && (typeof unlocked !== "function" || unlocked(k)); });
       }
       computeSets();
       function setOf(d) { return d.set || SET_OF[d.title] || "N"; }
@@ -3856,15 +3997,166 @@
         }
       }
 
+      // ---------- Progression : déblocage des ensembles ----------
+      // Un ensemble s'ouvre quand tous les chapitres du précédent sont
+      // réussis. Réussir : Singapour (badge), Premiers / Ensembles (3 de
+      // suite), Calcul (3 regardés), Solutions (6 vus), une démo animée
+      // (3 fois sans faute en mode jeu). Le mode prof ouvre tout.
+      var doneMap = {}, runs = {}, prof = false;
+      try {
+        doneMap = JSON.parse(localStorage.getItem("pasapas_done") || "{}");
+        runs = JSON.parse(localStorage.getItem("pasapas_runs") || "{}");
+        prof = localStorage.getItem("pasapas_prof") === "1";
+      } catch (e) {}
+      if (hasBadge()) doneMap["Singapour"] = true;
+
+      function chaptersOf(k) { return DEMOS.filter(function (d) { return setOf(d) === k; }); }
+      function setDone(k) { return chaptersOf(k).every(function (d) { return doneMap[d.title]; }); }
+      function unlocked(k) {
+        if (prof || !doneMap) return true;
+        var i = UNIV.indexOf(k);
+        return i === 0 || (unlocked(UNIV[i - 1]) && setDone(UNIV[i - 1]));
+      }
+      function toast(t) {
+        var el = document.getElementById("toast");
+        el.textContent = t;
+        el.hidden = false;
+        el.animate([{ opacity: 0, transform: "translate(-50%, -8px)" }, { opacity: 1, transform: "translate(-50%, 0)" }], { duration: ms(300) });
+        clearTimeout(toast._t);
+        toast._t = setTimeout(function () { el.hidden = true; }, 2600);
+      }
+      function markDone(title) {
+        if (doneMap[title]) return;
+        var before = UNIV.filter(unlocked).length;
+        doneMap[title] = true;
+        try { localStorage.setItem("pasapas_done", JSON.stringify(doneMap)); } catch (e) {}
+        var after = UNIV.filter(unlocked).length;
+        SND.badge();
+        computeSets(); applySets();
+        toast("✓ " + tr(title) + (after > before ? "  —  " + SYM_OF[UNIV[after - 1]] + (LANG === "en" ? " unlocked" : " ouvert") : ""));
+        renderUniv();
+      }
+      function progressDemo(title) {
+        runs[title] = (runs[title] || 0) + 1;
+        try { localStorage.setItem("pasapas_runs", JSON.stringify(runs)); } catch (e) {}
+        if (runs[title] >= 3) markDone(title);
+        else toast("✓ " + runs[title] + " / 3");
+      }
+      var SYM_OF = { N: "ℕ", Z: "ℤ", Q: "ℚ", R: "ℝ", C: "ℂ" };
+
+      // Les ensembles verrouillés ne peuvent pas être choisis en bas
+      var renderUnivBase = renderUniv;
+      renderUniv = function () {
+        renderUnivBase();
+        univEl.querySelectorAll("button").forEach(function (b) { b.disabled = !unlocked(b.dataset.k); });
+      };
+      renderUniv();
+
+      // ---------- Accueil ----------
+      var homeEl = document.getElementById("home");
+      var homeMap = document.getElementById("homeMap");
+      var homeSel = "N";
+      var ZONES = [
+        { k: "H", rx: 176, ry: 146, lab: "ℍ", ly: 22 },
+        { k: "C", rx: 150, ry: 124, lab: "ℂ", ly: 44 },
+        { k: "R", rx: 124, ry: 102, lab: "ℝ", ly: 66 },
+        { k: "Q", rx: 98, ry: 80, lab: "ℚ", ly: 88 },
+        { k: "Z", rx: 72, ry: 58, lab: "ℤ", ly: 110 },
+        { k: "N", rx: 46, ry: 36, lab: "ℕ", ly: 150 }
+      ];
+      function renderHome() {
+        homeMap.innerHTML = "";
+        ZONES.forEach(function (z) {
+          var e = svgEl("ellipse", { cx: 180, cy: 150 + (z.k === "N" ? 8 : 0), rx: z.rx, ry: z.ry }, homeMap);
+          var isLock = z.k === "H" || !unlocked(z.k);
+          if (isLock) e.classList.add("lock");
+          if (z.k !== "H" && setDone(z.k)) e.classList.add("done");
+          if (z.k === homeSel) e.classList.add("sel");
+          e.addEventListener("click", function () { homeSel = z.k; SND.tick(); renderHome(); });
+          var t = svgEl("text", { x: 180, y: z.ly + 8 + (z.k === "N" ? 0 : 0), class: isLock ? "lock" : "" }, homeMap);
+          t.textContent = z.lab;
+        });
+        var info = document.getElementById("homeInfo"), list = document.getElementById("homeList");
+        list.innerHTML = "";
+        if (homeSel === "H") {
+          info.textContent = LANG === "en" ? "ℍ quaternions: i² = j² = k² = ijk = −1 — coming soon." : "ℍ, les quaternions : i² = j² = k² = ijk = −1 — bientôt.";
+          return;
+        }
+        var open = unlocked(homeSel);
+        var prevK = UNIV[UNIV.indexOf(homeSel) - 1];
+        info.textContent = open ? SYM_OF[homeSel] : (LANG === "en" ? "Locked — pass every chapter of " : "Verrouillé — réussis tous les chapitres de ") + SYM_OF[prevK];
+        chaptersOf(homeSel).forEach(function (d) {
+          var b = document.createElement("button");
+          b.textContent = tr(d.title);
+          if (/[()²]/.test(d.title)) b.style.textTransform = "none";
+          if (doneMap[d.title]) { b.classList.add("done"); b.textContent = "✓ " + b.textContent; }
+          else if (!d.custom && runs[d.title]) {
+            var sm = document.createElement("small");
+            sm.textContent = runs[d.title] + "/3";
+            b.appendChild(sm);
+          }
+          b.disabled = !open;
+          b.addEventListener("click", function () {
+            // L'univers de travail monte au moins jusqu'à l'ensemble du chapitre
+            if (UNIV.indexOf(universe) < UNIV.indexOf(homeSel)) {
+              universe = homeSel;
+              try { localStorage.setItem("pasapas_universe", universe); } catch (e) {}
+              computeSets(); renderUniv(); applySets();
+            }
+            selectDemo(DEMOS.indexOf(d));
+          });
+          list.appendChild(b);
+        });
+      }
+      function showHome() {
+        calcRun++;
+        closeChoice();
+        [sgEl, pfEl, ensEl, solEl, calcEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
+        univEl.hidden = true;
+        homeEl.hidden = false;
+        document.getElementById("title").textContent = "Pas à Pas";
+        try { localStorage.setItem("pasapas_demo", ""); } catch (e) {}
+        renderHome();
+      }
+      function hideHome() {
+        if (!homeEl.hidden) { homeEl.hidden = true; univEl.hidden = false; }
+      }
+      document.getElementById("homeBtn").addEventListener("click", function () { if (!busy) showHome(); });
+
+      var profBtn = document.getElementById("profBtn");
+      var soundBtn = document.getElementById("soundBtn");
+      function renderToggles() {
+        profBtn.textContent = (LANG === "en" ? "Teacher mode: " : "Mode prof : ") + (prof ? "✓" : "—");
+        soundBtn.textContent = (LANG === "en" ? "Sound: " : "Son : ") + (soundOn ? "✓" : "—");
+      }
+      profBtn.addEventListener("click", function () {
+        prof = !prof;
+        try { localStorage.setItem("pasapas_prof", prof ? "1" : "0"); } catch (e) {}
+        renderToggles(); renderUniv(); applySets();
+        if (!homeEl.hidden) renderHome();
+      });
+      soundBtn.addEventListener("click", function () {
+        soundOn = !soundOn;
+        try { localStorage.setItem("pasapas_sound", soundOn ? "1" : "0"); } catch (e) {}
+        renderToggles();
+        SND.tick();
+      });
+      document.getElementById("langBtn").addEventListener("click", function () { renderToggles(); if (!homeEl.hidden) renderHome(); });
+      renderToggles();
+
       // Reprend là où on s'était arrêté (même démo qu'à la dernière visite)
       var startDemo = 0;
       try {
         var savedTitle = localStorage.getItem("pasapas_demo");
         DEMOS.forEach(function (d, k) { if (d.title === savedTitle) startDemo = k; });
       } catch (e) {}
-      if (!sets[setOf(DEMOS[startDemo])]) startDemo = 0;
+      computeSets(); renderUniv();
+      var hadDemo = false;
+      try { hadDemo = !!localStorage.getItem("pasapas_demo"); } catch (e) {}
+      if (!sets[setOf(DEMOS[startDemo])]) hadDemo = false;
       selectDemo(startDemo);
       applySets();
+      if (!hadDemo) showHome();
 
       // Installable (PWA) : manifeste + service worker « réseau d'abord » —
       // toujours la version en ligne si possible, la copie locale hors ligne

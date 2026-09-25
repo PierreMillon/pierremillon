@@ -31,6 +31,8 @@ Tri : priorité décroissante.
   **5 et à 10** (le cadre de dix = 2 rangées de 5)
 - Dépôt séparé : **plus tard**
 - [x] Notation point explicite + étape finale « écriture usuelle » (v25)
+- [x] Chapitre Calcul : calcul mental continu (v26)
+- [x] Accueil ensembles emboîtés, déblocage, mode prof, teaser ℍ, bips (v27)
 - Rapports : courts + liens
 
 
