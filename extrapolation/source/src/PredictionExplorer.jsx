@@ -169,7 +169,15 @@ const METHODS = [
   { id: "sigmoid", label: "Logistique (plafond L)", color: "#F2994A" },
 ];
 
-const USER_COLORS = ["#FF6B8B", "#F2D45C", "#4FD1C5", "#E5E5E5"];
+const DRAW_COLOR = "#FF6B8B";
+const DRAW_YEARS = [1826, 1866, 1906, 1946, 1986, 2026];
+
+// Bruit fixe (même tirage à chaque fois) pour la courbe dessinée :
+// le curseur « Bruit » ne fait qu'en régler l'amplitude.
+const FIXED_NOISE = (() => {
+  const r = mulberry32(99);
+  return Array.from({ length: Math.floor((X_NOW - X0) / STEP) + 1 }, () => (r() - 0.5) * 2);
+})();
 
 const INFO = {
   secant:
@@ -180,17 +188,22 @@ const INFO = {
     "Même idée que la régression linéaire, mais un point ancien pèse moins qu'un point récent (son poids est divisé par 2 à chaque demi-vie). Suit mieux un changement de rythme récent, au prix de plus de bruit.",
   sigmoid:
     "Courbe en S : elle accélère, puis ralentit sous un plafond L que l'on suppose. Très bonne si un plafond existe vraiment, trompeuse sinon — tout dépend du L choisi.",
-  user:
-    "Ta courbe passe exactement par tes points, reliés en douceur (interpolation cubique monotone : pas de bosse que tu n'as pas placée). Glisse un point pour le déplacer. Touche une zone vide du graphique pour ajouter un point. Le chiffre « passé » mesure l'écart moyen aux données : plus il est petit, mieux ta courbe colle à l'histoire.",
+  draw:
+    "Les données sont maintenant ta courbe. Glisse un point ● pour la déformer : les méthodes se recalculent en direct. Touche une zone vide (avant 2026) pour ajouter un point. Les deux extrémités ne bougent que verticalement. Le curseur « Bruit » ajoute des petites irrégularités, comme dans des vraies mesures.",
   score:
-    "Écart moyen = moyenne des distances verticales entre une courbe et la vraie mécanique, une mesure tous les 2 ans. « Passé » : sur les données déjà connues. « Futur » : sur 2026 → 2126, visible seulement après la révélation.",
+    "Écart moyen = moyenne des distances verticales, une mesure tous les 2 ans. « Passé » : écart de la méthode aux données, sur la période choisie (elle colle bien ou pas). « Futur » : écart à la vraie mécanique sur 2026 → 2126, seulement pour une série aléatoire, après la révélation.",
 };
 
 const HISTORY = [
   {
+    v: "v3",
+    date: "25/09/2026",
+    text: "Une seule courbe de données : aléatoire, ou dessinée par toi (« ✎ Dessiner ma courbe »). Les méthodes et l'écart moyen se calculent toujours sur cette courbe, en direct pendant que tu glisses les points. Curseur de bruit. Remplace les « courbes perso » de la v2.",
+  },
+  {
     v: "v2",
     date: "25/09/2026",
-    text: "Tes propres courbes : points à glisser au doigt, ajout d'un point en touchant le graphique, plusieurs courbes. Petit ⓘ explicatif sur chaque méthode. Écart moyen de chaque courbe (passé, puis futur après révélation). La vraie mécanique se prolonge dans le futur. Graphique redessiné pour le tactile.",
+    text: "Courbes perso à points déplaçables, petit ⓘ explicatif par méthode, écart moyen, vraie mécanique prolongée dans le futur, graphique tactile.",
   },
   {
     v: "v1",
@@ -198,15 +211,6 @@ const HISTORY = [
     text: "Explorateur initial : série synthétique, 4 méthodes (sécante, régression, pondérée, logistique), bouton « Révéler la mécanique ».",
   },
 ];
-
-function defaultUserPoints(historical) {
-  const years = [1876, 1951, X_NOW];
-  const pts = years.map((year) => ({ year, value: localMean(historical, year) }));
-  const slope = (pts[2].value - pts[1].value) / (X_NOW - 1951);
-  pts.push({ year: 2076, value: pts[2].value + slope * 50 });
-  pts.push({ year: X1, value: pts[2].value + slope * 100 });
-  return pts;
-}
 
 // ---------- component ----------
 
@@ -216,20 +220,28 @@ export default function PredictionExplorer() {
   const [halfLife, setHalfLife] = useState(20);
   const [capMultiplier, setCapMultiplier] = useState(1.6);
   const [active, setActive] = useState({
-    secant: true, linreg: false, weighted: false, sigmoid: false,
+    secant: true, linreg: true, weighted: false, sigmoid: false,
   });
   const [revealTrue, setRevealTrue] = useState(false);
-  const [curves, setCurves] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [drawPts, setDrawPts] = useState(null); // null = série aléatoire
+  const [noise, setNoise] = useState(0);
   const [selectedPt, setSelectedPt] = useState(null);
+  const [dragging, setDragging] = useState(false);
   const [info, setInfo] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
-  const nextId = useRef(1);
 
-  const { pts: historical, label: hiddenLabel, trueFn } = useMemo(
-    () => generateSeries(seed),
-    [seed]
-  );
+  const drawn = drawPts != null;
+
+  const random = useMemo(() => generateSeries(seed), [seed]);
+  const drawFn = useMemo(() => (drawn ? monotoneInterp(drawPts) : null), [drawn, drawPts]);
+
+  const historical = useMemo(() => {
+    if (!drawn) return random.pts;
+    return FIXED_NOISE.map((z, i) => {
+      const year = X0 + i * STEP;
+      return { year, value: drawFn(year) + z * noise };
+    });
+  }, [drawn, random, drawFn, noise]);
 
   const pointAYear = historical[pointAIdx].year;
   const fitRange = useMemo(
@@ -259,102 +271,66 @@ export default function PredictionExplorer() {
     return out;
   }, [historical, pointAIdx, pointAYear, fitRange, halfLife, capMultiplier]);
 
-  const userFns = useMemo(() => {
-    const out = {};
-    curves.forEach((c) => { out[c.id] = monotoneInterp(c.points); });
-    return out;
-  }, [curves]);
-
-  // Domaine vertical fixe pendant le glissé (ne dépend pas des courbes
-  // de l'utilisateur), sinon les points « fuiraient » sous le doigt.
-  const yDomain = useMemo(() => {
+  // Domaine vertical : figé pendant un glissé, sinon les points
+  // « fuiraient » sous le doigt ; recalculé au lâcher.
+  const frozenDomain = useRef(null);
+  const liveDomain = useMemo(() => {
     const vals = historical.map((p) => p.value);
     let lo = Math.min(...vals);
     let hi = Math.max(...vals);
-    const r = hi - lo || 1;
-    lo -= 0.3 * r;
+    const r = hi - lo || 4;
+    lo -= 0.4 * r;
     hi += 1.2 * r;
-    if (revealTrue) {
+    if (revealTrue && !drawn) {
       for (let t = X_NOW; t <= X1; t += STEP) {
-        hi = Math.max(hi, trueFn(t) + 0.1 * r);
-        lo = Math.min(lo, trueFn(t) - 0.1 * r);
+        hi = Math.max(hi, random.trueFn(t) + 0.1 * r);
+        lo = Math.min(lo, random.trueFn(t) - 0.1 * r);
       }
     }
     return [lo, hi];
-  }, [historical, revealTrue, trueFn]);
+  }, [historical, revealTrue, drawn, random]);
+  if (!dragging) frozenDomain.current = liveDomain;
+  const yDomain = frozenDomain.current;
 
-  const addCurve = useCallback(() => {
-    if (curves.length >= USER_COLORS.length) return;
-    const used = new Set(curves.map((c) => c.color));
-    const color = USER_COLORS.find((c) => !used.has(c));
-    const id = nextId.current++;
-    setCurves([...curves, { id, name: "Courbe " + id, color, points: defaultUserPoints(historical) }]);
-    setSelectedId(id);
+  const startDrawing = () => {
+    setDrawPts(DRAW_YEARS.map((year) => ({ year, value: localMean(historical, year) })));
+    setRevealTrue(false);
     setSelectedPt(null);
-  }, [curves, historical]);
-
-  const removeCurve = useCallback((id) => {
-    setCurves((prev) => prev.filter((c) => c.id !== id));
-    setSelectedId((s) => (s === id ? null : s));
-    setSelectedPt(null);
-  }, []);
-
-  const removeSelectedPoint = useCallback(() => {
-    if (selectedPt == null) return;
-    setCurves((prev) => prev.map((c) => {
-      if (c.id !== selectedId || c.points.length <= 2) return c;
-      return { ...c, points: c.points.filter((_, i) => i !== selectedPt) };
-    }));
-    setSelectedPt(null);
-  }, [selectedId, selectedPt]);
+    setInfo("draw");
+  };
 
   const newSeries = () => {
     setSeed((s) => s + 1);
-    setCurves([]);
-    setSelectedId(null);
+    setDrawPts(null);
     setSelectedPt(null);
     setRevealTrue(false);
+    if (info === "draw") setInfo(null);
+  };
+
+  const removeSelectedPoint = () => {
+    if (selectedPt == null || selectedPt === 0 || selectedPt === drawPts.length - 1) return;
+    setDrawPts(drawPts.filter((_, i) => i !== selectedPt));
+    setSelectedPt(null);
   };
 
   const toggle = useCallback((id) => {
     setActive((prev) => ({ ...prev, [id]: !prev[id] }));
   }, []);
 
-  // écarts moyens
   const scores = useMemo(() => {
-    const dataFn = (t) => {
-      const p = historical.find((q) => q.year === t);
-      return p ? p.value : trueFn(t);
-    };
-    const rows = [];
-    METHODS.forEach((m) => {
-      if (!active[m.id]) return;
-      rows.push({
-        id: m.id, label: m.label, color: m.color,
-        past: meanAbs(models[m.id], dataFn, pointAYear, X_NOW),
-        future: meanAbs(models[m.id], trueFn, X_NOW + STEP, X1),
-      });
-    });
-    curves.forEach((c) => {
-      const fn = userFns[c.id];
-      const first = c.points[0].year;
-      const last = c.points[c.points.length - 1].year;
-      const pastFrom = Math.max(X0, Math.ceil(first / STEP) * STEP);
-      const pastTo = Math.min(X_NOW, last);
-      rows.push({
-        id: "u" + c.id, label: c.name, color: c.color,
-        past: pastTo >= pastFrom ? meanAbs(fn, dataFn, pastFrom, pastTo) : null,
-        future: last > X_NOW ? meanAbs(fn, trueFn, X_NOW + STEP, Math.min(X1, last)) : null,
-      });
-    });
-    return rows;
-  }, [active, models, curves, userFns, historical, trueFn, pointAYear]);
+    const dataAt = new Map(historical.map((p) => [p.year, p.value]));
+    const dataFn = (t) => dataAt.get(t);
+    return METHODS.filter((m) => active[m.id]).map((m) => ({
+      id: m.id, label: m.label, color: m.color,
+      past: meanAbs(models[m.id], dataFn, pointAYear, X_NOW),
+      future: drawn ? null : meanAbs(models[m.id], random.trueFn, X_NOW + STEP, X1),
+    }));
+  }, [active, models, historical, pointAYear, drawn, random]);
 
-  const bestFuture = revealTrue
-    ? scores.filter((s) => s.future != null).sort((a, b) => a.future - b.future)[0]
-    : null;
-
-  const selectedCurve = curves.find((c) => c.id === selectedId);
+  const showFuture = revealTrue && !drawn;
+  const bestPast = scores.slice().sort((a, b) => a.past - b.past)[0];
+  const bestFuture = showFuture ? scores.slice().sort((a, b) => a.future - b.future)[0] : null;
+  const canRemove = drawn && selectedPt != null && selectedPt > 0 && selectedPt < drawPts.length - 1;
 
   return (
     <div
@@ -391,23 +367,22 @@ export default function PredictionExplorer() {
             </button>
           </span>
           <span style={{ fontSize: 10, color: "#5c6577", fontFamily: "monospace" }}>
-            {pointAYear} → {X_NOW} → {X1}
+            {drawn ? "ta courbe · " : ""}{pointAYear} → {X_NOW} → {X1}
           </span>
         </div>
         <Chart
           historical={historical}
-          trueFn={trueFn}
-          revealTrue={revealTrue}
+          trueFn={showFuture ? random.trueFn : null}
           models={models}
           active={active}
           pointAYear={pointAYear}
           yDomain={yDomain}
-          curves={curves}
-          userFns={userFns}
-          selectedId={selectedId}
+          drawPts={drawPts}
+          drawFn={drawFn}
+          setDrawPts={setDrawPts}
           selectedPt={selectedPt}
           setSelectedPt={setSelectedPt}
-          setCurves={setCurves}
+          setDragging={setDragging}
         />
       </div>
 
@@ -415,71 +390,63 @@ export default function PredictionExplorer() {
       <div style={{ flex: "1 1 auto", overflowY: "auto", padding: "10px 12px 24px" }}>
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <button onClick={newSeries} style={btnStyle("#EDEAE3", "#1c222c")}>
-            ↻ Nouvelle série
+            ↻ Série aléatoire
           </button>
-          <button
-            onClick={() => setRevealTrue((r) => !r)}
-            style={btnStyle(revealTrue ? "#12161d" : "#EDEAE3", revealTrue ? "#EDEAE3" : "#1c222c")}
-          >
-            {revealTrue ? "Masquer la mécanique" : "Révéler la mécanique"}
-          </button>
-        </div>
-
-        {revealTrue && (
-          <div style={{ fontSize: 11, color: "#8A93A3", fontFamily: "monospace", marginBottom: 10 }}>
-            mécanique réelle : {hiddenLabel}
-          </div>
-        )}
-
-        {/* MES COURBES */}
-        <SectionTitle>
-          Mes courbes
-          <button onClick={() => setInfo(info === "user" ? null : "user")} style={iconBtn} aria-label="Explication">ⓘ</button>
-        </SectionTitle>
-        {info === "user" && <InfoBox>{INFO.user}</InfoBox>}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-          {curves.map((c) => (
-            <div
-              key={c.id}
-              style={{
-                display: "flex", alignItems: "center", gap: 6,
-                background: "#1c222c", borderRadius: 8, padding: "6px 8px",
-                border: "1px solid " + (c.id === selectedId ? c.color : "transparent"),
-              }}
-            >
-              <button
-                onClick={() => { setSelectedId(c.id); setSelectedPt(null); }}
-                style={{ ...plainBtn, display: "flex", alignItems: "center", gap: 6 }}
-              >
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.color }} />
-                <span style={{ fontSize: 11.5, fontFamily: "monospace" }}>{c.name}</span>
-              </button>
-              <button onClick={() => removeCurve(c.id)} style={iconBtn} aria-label={"Supprimer " + c.name}>✕</button>
-            </div>
-          ))}
-          {curves.length < USER_COLORS.length && (
-            <button onClick={addCurve} style={{ ...btnStyle("#EDEAE3", "#1c222c"), flex: "0 0 auto" }}>
-              + Ma courbe
+          {drawn ? (
+            <button onClick={startDrawing} style={btnStyle("#EDEAE3", "#1c222c")}>
+              ✎ Recommencer
+            </button>
+          ) : (
+            <button onClick={startDrawing} style={btnStyle(DRAW_COLOR, "#1c222c")}>
+              ✎ Dessiner ma courbe
             </button>
           )}
         </div>
-        {selectedCurve ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, fontSize: 11, fontFamily: "monospace", color: "#8A93A3" }}>
-            <span style={{ flex: 1 }}>
-              {selectedPt != null
-                ? "point " + selectedCurve.points[selectedPt].year.toFixed(0) + " sélectionné"
-                : "glisse un point ● · touche le graphique pour en ajouter"}
-            </span>
-            {selectedPt != null && selectedCurve.points.length > 2 && (
-              <button onClick={removeSelectedPoint} style={{ ...btnStyle("#EDEAE3", "#1c222c"), flex: "0 0 auto", padding: "5px 9px" }}>
-                Retirer le point
-              </button>
-            )}
+
+        {!drawn && (
+          <button
+            onClick={() => setRevealTrue((r) => !r)}
+            style={{ ...btnStyle(revealTrue ? "#12161d" : "#EDEAE3", revealTrue ? "#EDEAE3" : "#1c222c"), width: "100%", marginBottom: 10 }}
+          >
+            {revealTrue ? "Masquer la mécanique" : "Révéler la mécanique"}
+          </button>
+        )}
+
+        {showFuture && (
+          <div style={{ fontSize: 11, color: "#8A93A3", fontFamily: "monospace", marginBottom: 10 }}>
+            mécanique réelle : {random.label}
           </div>
-        ) : (
-          <div style={{ fontSize: 11, fontFamily: "monospace", color: "#8A93A3", marginBottom: 16 }}>
-            Dessine ta propre prédiction, puis compare-la aux méthodes.
-          </div>
+        )}
+
+        {drawn && (
+          <>
+            <SectionTitle>
+              Ma courbe
+              <button onClick={() => setInfo(info === "draw" ? null : "draw")} style={iconBtn} aria-label="Explication">ⓘ</button>
+            </SectionTitle>
+            {info === "draw" && <InfoBox>{INFO.draw}</InfoBox>}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, fontSize: 11, fontFamily: "monospace", color: "#8A93A3" }}>
+              <span style={{ flex: 1 }}>
+                {selectedPt != null
+                  ? "point " + drawPts[selectedPt].year + " sélectionné"
+                  : "glisse un point ● · touche le graphique pour en ajouter"}
+              </span>
+              {canRemove && (
+                <button onClick={removeSelectedPoint} style={{ ...btnStyle("#EDEAE3", "#1c222c"), flex: "0 0 auto", padding: "5px 9px" }}>
+                  Retirer le point
+                </button>
+              )}
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <SliderRow
+                label={"Bruit — ±" + noise.toFixed(1)}
+                min={0}
+                max={30}
+                value={Math.round(noise * 10)}
+                onChange={(v) => setNoise(v / 10)}
+              />
+            </div>
+          </>
         )}
 
         {/* MÉTHODES */}
@@ -518,7 +485,7 @@ export default function PredictionExplorer() {
             </div>
           ))}
         </div>
-        {info && INFO[info] && info !== "user" && info !== "score" && <InfoBox>{INFO[info]}</InfoBox>}
+        {METHODS.some((m) => m.id === info) && <InfoBox>{INFO[info]}</InfoBox>}
 
         {/* ÉCARTS */}
         {scores.length > 0 && (
@@ -532,19 +499,20 @@ export default function PredictionExplorer() {
               <div style={{ display: "flex", color: "#5c6577", padding: "0 0 4px" }}>
                 <span style={{ flex: 1 }} />
                 <span style={{ width: 62, textAlign: "right" }}>passé</span>
-                <span style={{ width: 62, textAlign: "right" }}>futur</span>
+                {!drawn && <span style={{ width: 62, textAlign: "right" }}>futur</span>}
               </div>
               {scores.map((s) => (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", padding: "3px 0" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, marginRight: 7 }} />
-                  <span style={{ flex: 1 }}>
-                    {s.label}
-                    {bestFuture && bestFuture.id === s.id ? " ★" : ""}
+                  <span style={{ flex: 1 }}>{s.label}</span>
+                  <span style={{ width: 62, textAlign: "right" }}>
+                    {fmt(s.past)}{scores.length > 1 && bestPast.id === s.id ? " ★" : ""}
                   </span>
-                  <span style={{ width: 62, textAlign: "right" }}>{fmt(s.past)}</span>
-                  <span style={{ width: 62, textAlign: "right", color: revealTrue ? "#EDEAE3" : "#5c6577" }}>
-                    {revealTrue ? fmt(s.future) : "?"}
-                  </span>
+                  {!drawn && (
+                    <span style={{ width: 62, textAlign: "right", color: showFuture ? "#EDEAE3" : "#5c6577" }}>
+                      {showFuture ? fmt(s.future) + (scores.length > 1 && bestFuture.id === s.id ? " ★" : "") : "?"}
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
@@ -624,8 +592,8 @@ function niceTicks(lo, hi, count) {
 }
 
 function Chart({
-  historical, trueFn, revealTrue, models, active, pointAYear, yDomain,
-  curves, userFns, selectedId, selectedPt, setSelectedPt, setCurves,
+  historical, trueFn, models, active, pointAYear, yDomain,
+  drawPts, drawFn, setDrawPts, selectedPt, setSelectedPt, setDragging,
 }) {
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
@@ -664,52 +632,54 @@ function Chart({
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
 
-  const selectedCurve = curves.find((c) => c.id === selectedId);
-
   const onPointDown = (e, idx) => {
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { id: selectedId, idx };
+    drag.current = idx;
     setSelectedPt(idx);
+    setDragging(true);
   };
 
   const onPointMove = (e) => {
-    const dg = drag.current;
-    if (!dg) return;
+    const idx = drag.current;
+    if (idx == null) return;
     const { x, y } = local(e);
-    setCurves((prev) => prev.map((c) => {
-      if (c.id !== dg.id) return c;
-      const pts = c.points.slice();
-      const prevPt = pts[dg.idx - 1];
-      const nextPt = pts[dg.idx + 1];
-      const minY = prevPt ? prevPt.year + STEP : X0;
-      const maxY = nextPt ? nextPt.year - STEP : X1;
-      const year = Math.round(Math.min(maxY, Math.max(minY, ix(x))));
+    setDrawPts((prev) => {
+      const pts = prev.slice();
+      const last = pts.length - 1;
+      // les extrémités 1826 et 2026 ne bougent que verticalement
+      let year = pts[idx].year;
+      if (idx > 0 && idx < last) {
+        const minY = pts[idx - 1].year + STEP;
+        const maxY = pts[idx + 1].year - STEP;
+        year = Math.round(Math.min(maxY, Math.max(minY, ix(x))));
+      }
       const value = Math.min(yHi, Math.max(yLo, iy(y)));
-      pts[dg.idx] = { year, value };
-      return { ...c, points: pts };
-    }));
+      pts[idx] = { year, value };
+      return pts;
+    });
   };
 
-  const onPointUp = () => { drag.current = null; };
+  const onPointUp = () => {
+    drag.current = null;
+    setDragging(false);
+  };
 
   const onBgDown = (e) => {
-    const p = local(e);
-    tap.current = { ...p, t: Date.now() };
+    tap.current = { ...local(e), t: Date.now() };
   };
 
   const onBgUp = (e) => {
     const start = tap.current;
     tap.current = null;
-    if (!start || !selectedCurve) return;
+    if (!start || !drawPts) return;
     const p = local(e);
     if (Math.hypot(p.x - start.x, p.y - start.y) > 10 || Date.now() - start.t > 500) return;
     const year = Math.round(ix(p.x));
-    const value = iy(p.y);
-    if (year < X0 || year > X1) return;
-    if (selectedCurve.points.some((q) => Math.abs(q.year - year) < 4)) return;
-    const pts = [...selectedCurve.points, { year, value }].sort((a, b) => a.year - b.year);
-    setCurves((prev) => prev.map((c) => (c.id === selectedCurve.id ? { ...c, points: pts } : c)));
+    if (year <= X0 || year >= X_NOW) return;
+    if (drawPts.some((q) => Math.abs(q.year - year) < 4)) return;
+    const pts = [...drawPts, { year, value: iy(p.y) }].sort((a, b) => a.year - b.year);
+    setDrawPts(pts);
     setSelectedPt(pts.findIndex((q) => q.year === year));
   };
 
@@ -733,7 +703,6 @@ function Chart({
           </clipPath>
         </defs>
 
-        {/* axes et grille */}
         {yTicks.map((v) => (
           <g key={"y" + v}>
             <line x1={M.left} x2={M.left + pw} y1={sy(v)} y2={sy(v)} stroke="#2a313d" strokeDasharray="2 4" />
@@ -758,9 +727,12 @@ function Chart({
           <line x1={sx(X_NOW)} x2={sx(X_NOW)} y1={M.top} y2={M.top + ph} stroke="#5c6577" strokeDasharray="3 3" />
           <line x1={sx(pointAYear)} x2={sx(pointAYear)} y1={M.top} y2={M.top + ph} stroke="#5c6577" strokeDasharray="1 3" />
 
+          {drawFn && (
+            <path d={path(drawFn, X0, X_NOW, 1)} fill="none" stroke={DRAW_COLOR} strokeWidth="2.4" strokeOpacity="0.55" />
+          )}
           <path d={histPath} fill="none" stroke="#EDEAE3" strokeWidth="1.6" />
 
-          {revealTrue && (
+          {trueFn && (
             <path d={path(trueFn, X0, X1)} fill="none" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="1.4" strokeDasharray="2 2" />
           )}
 
@@ -770,27 +742,9 @@ function Chart({
               <path d={path(models[m.id], X_NOW, X1)} fill="none" stroke={m.color} strokeWidth="1.8" strokeDasharray="6 4" />
             </g>
           ))}
-
-          {curves.map((c) => {
-            const fn = userFns[c.id];
-            const first = c.points[0].year;
-            const last = c.points[c.points.length - 1].year;
-            const sel = c.id === selectedId;
-            return (
-              <path
-                key={c.id}
-                d={path(fn, first, last, 1)}
-                fill="none"
-                stroke={c.color}
-                strokeWidth={sel ? 2.4 : 1.6}
-                strokeOpacity={sel ? 1 : 0.6}
-              />
-            );
-          })}
         </g>
 
-        {/* points déplaçables de la courbe sélectionnée */}
-        {selectedCurve && selectedCurve.points.map((p, i) => (
+        {drawPts && drawPts.map((p, i) => (
           <g
             key={i}
             onPointerDown={(e) => onPointDown(e, i)}
@@ -802,8 +756,8 @@ function Chart({
             <circle cx={sx(p.year)} cy={sy(p.value)} r="20" fill="transparent" />
             <circle
               cx={sx(p.year)} cy={sy(p.value)} r={i === selectedPt ? 7.5 : 6}
-              fill={i === selectedPt ? selectedCurve.color : "#12161d"}
-              stroke={selectedCurve.color} strokeWidth="2"
+              fill={i === selectedPt ? DRAW_COLOR : "#12161d"}
+              stroke={DRAW_COLOR} strokeWidth="2"
             />
           </g>
         ))}
