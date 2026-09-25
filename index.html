@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="bubbles" aria-hidden="true"></div>
   <main>
     <header class="hero">
       <p class="eyebrow">Portfolio</p>
@@ -85,5 +86,21 @@
       </ul>
     </nav>
   </main>
+
+  <script>
+    (function () {
+      var box = document.querySelector('.bubbles');
+      for (var i = 0; i < 16; i++) {
+        var b = document.createElement('span');
+        var size = 8 + Math.random() * 46;
+        b.style.width = b.style.height = size + 'px';
+        b.style.left = Math.random() * 100 + '%';
+        b.style.animationDuration = 14 + Math.random() * 16 + 's';
+        b.style.animationDelay = -Math.random() * 30 + 's';
+        b.style.setProperty('--drift', (Math.random() * 60 - 30) + 'px');
+        box.appendChild(b);
+      }
+    })();
+  </script>
 </body>
 </html>

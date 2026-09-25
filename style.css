@@ -147,3 +147,36 @@ footer a {
 footer a:hover {
   color: var(--accent);
 }
+
+.bubbles {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bubbles span {
+  position: absolute;
+  bottom: -60px;
+  border-radius: 50%;
+  border: 1px solid rgba(176, 141, 87, 0.35);
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.7), rgba(176, 141, 87, 0.06) 70%);
+  animation: float linear infinite;
+}
+
+@keyframes float {
+  0%   { transform: translate(0, 0); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate(var(--drift), -110vh); opacity: 0; }
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubbles { display: none; }
+}
