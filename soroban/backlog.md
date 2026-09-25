@@ -79,7 +79,8 @@ Tri : priorité décroissante.
   voisines, qui reviennent avec elle pendant le même geste ; chiffre mis à
   jour en direct. Son recréé après un retour sur la page (iOS le laissait
   « interrompu »). « Réinitialiser la progression » : badges, paliers et
-  compteur
+  compteur. Perles à bouger qui clignotent vraiment (minuteur JS, pas une
+  animation CSS coupée par « Réduire les animations »)
 
 ## À faire
 
