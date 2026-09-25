@@ -268,6 +268,19 @@
 
     .stage-wrap.split .stage-divider { display: block; }
 
+    /* Dernière étape : plus de séparateur entre les deux rangées — on
+       montre directement départ = résultat, même objet, même fond. */
+    .stage-wrap.final .stage-divider {
+      background: none;
+      height: auto;
+      margin: 0.2rem 0;
+      display: flex;
+      justify-content: center;
+      font-size: 1.3rem;
+      color: var(--accent);
+    }
+    .stage-wrap.final .stage-divider::after { content: "="; }
+
     .stage-bottom { position: relative; }
 
     .stage {
@@ -300,6 +313,27 @@
 
     .stage-wrap.split .row-tag { opacity: 0.65; }
 
+    .dots {
+      display: none;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.5rem;
+    }
+
+    .stage-wrap.split .dots { display: flex; }
+
+    .dots span {
+      width: 6px;
+      height: 6px;
+      border: 1px solid var(--hairline);
+      background: transparent;
+    }
+
+    .dots span.done { background: var(--ink-soft); border-color: var(--ink-soft); }
+    .dots span.now { background: var(--accent); border-color: var(--accent); }
+    .dots span.anchor { border-color: var(--accent); }
+
     .magic {
       margin: 0;
       min-height: 2.4em;
@@ -317,7 +351,8 @@
 
     .expr {
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
+      white-space: nowrap;
       align-items: center;
       justify-content: center;
       gap: 0.1em;
@@ -325,6 +360,7 @@
       font-weight: 500;
       font-size: clamp(1.9rem, 8vw, 3rem);
       line-height: 1;
+      transform-origin: center center;
     }
 
     .tok {
@@ -367,6 +403,29 @@
       margin: 0.08em 0;
     }
 
+    /* Soustraction posée : un terme au-dessus de son opposé, une barre,
+       comme à l'école — avant de disparaître, on voit d'où vient le 0 */
+    .cancel {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-end;
+      margin: 0 0.12em;
+    }
+
+    .cancel .crow {
+      display: flex;
+      align-items: center;
+      gap: 0.05em;
+      padding: 0.02em 0.1em;
+    }
+
+    .cancel .cbar {
+      align-self: stretch;
+      height: 2px;
+      background: var(--ink);
+      margin: 0.06em 0;
+    }
+
     .ghost {
       position: absolute;
       margin: 0;
@@ -406,6 +465,11 @@
       transition: border-color 0.25s ease, color 0.25s ease, opacity 0.25s ease;
     }
 
+    .arrow-btn.text {
+      font-size: 0.68rem;
+      letter-spacing: 0.06em;
+    }
+
     .arrow-btn:hover:not(:disabled),
     .arrow-btn:focus-visible { border-color: var(--accent); color: var(--accent); }
 
@@ -436,11 +500,13 @@
       <div class="stage-top" id="stageTop">
         <span class="row-tag">sauter des étapes</span>
         <p class="magic" id="magic"></p>
+        <div class="dots" id="dotsTop"></div>
       </div>
       <div class="stage-divider"></div>
       <div class="stage-bottom">
         <span class="row-tag">pas à pas</span>
         <div class="stage" id="stage"></div>
+        <div class="dots" id="dotsBottom"></div>
       </div>
     </div>
 
@@ -459,6 +525,7 @@
 
       function T(id, t, k, from) { return { id: id, t: t, k: k || "", from: from || null }; }
       function F(num, den) { return { frac: true, num: num, den: den }; }
+      function V(top, bottom, eq) { return { cancel: true, top: top, bottom: bottom, eq: eq || null }; }
 
       var X = "<i>x</i>";
 
@@ -471,6 +538,7 @@
               top: true,
               expr: [T("m", "−", "op"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
               hl: ["m"],
+              magic: "« On change les signes à l'intérieur de la parenthèse. »",
               note: "Point de départ, réduit à ce qui compte pour cet exercice : un signe <b>−</b> devant une parenthèse. C'est ici qu'on se trompe le plus souvent."
             },
             {
@@ -492,7 +560,6 @@
               top: true,
               expr: [T("sa", "−", "op", ["m"]), T("a", "2" + X), T("sb", "+", "op"), T("b", "3"), T("sc", "−", "op", ["m3"]), T("c", X)],
               hl: ["sa", "sb", "sc"],
-              magic: "« On change les signes à l'intérieur de la parenthèse. »<br>« Moins par moins, ça fait plus. »",
               note: "Chaque produit se calcule : (−1)·2<i>x</i> = −2<i>x</i>, (−1)·(−3) = +3, (−1)·<i>x</i> = −<i>x</i>. C'est là que la phrase magique prend racine — vraie comme résultat, pas comme méthode."
             },
             {
@@ -506,11 +573,16 @@
               note: "<i>x</i> tout seul, c'est <b>1</b><i>x</i> : le facteur devant <i>x</i> est bien 1, même quand on ne l'écrit pas. Ce sont ces deux facteurs, 2 et 1, qu'on va combiner."
             },
             {
+              expr: [T("lp2", "(", "par"), T("sa2", "−", "op"), T("n2", "2"), T("sc2", "−", "op"), T("n1", "1"), T("rp2", ")", "par"), T("xf", X, "", ["a", "c"]), T("sb", "+", "op"), T("b", "3")],
+              hl: ["sa2", "n2", "sc2", "n1"],
+              note: "On sort <i>x</i> en facteur commun : −2<i>x</i> − 1<i>x</i> = (−2 − 1)·<i>x</i>. Il ne reste plus qu'une addition de deux nombres négatifs à faire."
+            },
+            {
               top: true,
-              fx: { type: "meet", ids: ["a", "sc", "c"] },
-              expr: [T("sa", "−", "op"), T("x3", "3" + X, "", ["a", "sc", "c"]), T("sb", "+", "op"), T("b", "3")],
+              fx: { type: "meet", ids: ["sa2", "n2", "sc2", "n1"] },
+              expr: [T("m3", "−3", "", ["sa2", "n2", "sc2", "n1"]), T("xf", X), T("sb", "+", "op"), T("b", "3")],
               magic: "« On regroupe et on calcule. »",
-              note: "−2<i>x</i> − 1<i>x</i> = −3<i>x</i>, car (−2) + (−1) = −3. Résultat : <b>−3<i>x</i> + 3</b>, sans sauter d'étape."
+              note: "(−2) + (−1) = −3. Résultat : <b>−3<i>x</i> + 3</b>, sans sauter d'étape."
             }
           ]
         },
@@ -532,7 +604,11 @@
               note: "On les rapproche. L'ordre d'une somme ne change rien, tant que chacun garde son signe."
             },
             {
-              fx: { type: "meet", ids: ["a", "sc", "c"] },
+              expr: [V([T("a", "3" + X)], [T("sc", "−", "op"), T("c", "3" + X)], [T("eq0", "=", "op"), T("z", "0")]), T("sb", "+", "op"), T("b", "2"), T("sd", "+", "op"), T("d", "5")],
+              hl: ["z"],
+              note: "Posé comme une soustraction, comme à l'école : 3<i>x</i> au-dessus, −3<i>x</i> en dessous, une barre — ça fait 0."
+            },
+            {
               expr: [T("z", "0", "", ["a", "sc", "c"]), T("sb", "+", "op"), T("b", "2"), T("sd", "+", "op"), T("d", "5")],
               hl: ["z"],
               note: "3<i>x</i> − 3<i>x</i> = 0. Ils se touchent et s'annulent."
@@ -624,26 +700,42 @@
 
       // plain = true : rendu simple sans surbrillance (utilisé en haut,
       // "écrit normalement" — l'accent visuel appartient au détail du bas)
-      // Réduit la taille quand l'expression a beaucoup de jetons, pour
-      // éviter qu'un seul symbole (souvent une parenthèse fermante) se
-      // retrouve orphelin, seul sur sa ligne, au passage à la ligne.
-      function shrinkFor(step) {
-        var weight = step.expr.reduce(function (n, item) {
-          return n + (item.frac ? Math.max(item.num.length, item.den.length) : 1);
-        }, 0);
-        if (weight >= 10) return "clamp(1.4rem, 6.2vw, 2.2rem)";
-        if (weight >= 7) return "clamp(1.7rem, 7.5vw, 2.7rem)";
-        return "";
+      // Ne coupe jamais une expression sur deux lignes (illisible) : elle
+      // reste sur une seule ligne et se rétrécit dynamiquement, mesurée
+      // une fois posée dans la page, pour tenir exactement dans la largeur
+      // disponible.
+      function fitOneLine(expr, container) {
+        expr.style.transform = "scale(1)";
+        var avail = container.clientWidth - 16; // petite marge de sécurité
+        var w = expr.scrollWidth;
+        if (avail > 0 && w > avail) {
+          var scale = Math.max(0.42, avail / w);
+          expr.style.transform = "scale(" + scale.toFixed(3) + ")";
+        }
       }
 
       function buildExprEl(step, plain) {
         var expr = document.createElement("div");
         expr.className = "expr";
-        var shrink = shrinkFor(step);
-        if (shrink) expr.style.fontSize = shrink;
         var forStep = plain ? {} : step;
         step.expr.forEach(function (item) {
-          if (item.frac) {
+          if (item.cancel) {
+            var cv = document.createElement("span");
+            cv.className = "cancel";
+            var topRow = document.createElement("span");
+            topRow.className = "crow";
+            item.top.forEach(function (t) { topRow.appendChild(tokenEl(t, forStep)); });
+            var cbar = document.createElement("span");
+            cbar.className = "cbar";
+            var botRow = document.createElement("span");
+            botRow.className = "crow";
+            item.bottom.forEach(function (t) { botRow.appendChild(tokenEl(t, forStep)); });
+            cv.appendChild(topRow);
+            cv.appendChild(cbar);
+            cv.appendChild(botRow);
+            expr.appendChild(cv);
+            if (item.eq) item.eq.forEach(function (t) { expr.appendChild(tokenEl(t, forStep)); });
+          } else if (item.frac) {
             var f = document.createElement("span");
             f.className = "frac";
             var num = document.createElement("span");
@@ -662,26 +754,14 @@
             expr.appendChild(tokenEl(item, forStep));
           }
         });
-        // Empêche un symbole isolé (souvent une parenthèse fermante) de se
-        // retrouver seul en bout de ligne : les deux derniers jetons sont
-        // solidaires, ils passent à la ligne ensemble ou pas du tout.
-        if (shrink && expr.children.length >= 3) {
-          var last = expr.lastElementChild;
-          var prev = last.previousElementSibling;
-          var pair = document.createElement("span");
-          pair.style.display = "inline-flex";
-          pair.style.alignItems = "center";
-          pair.style.gap = "0.1em";
-          expr.insertBefore(pair, prev);
-          pair.appendChild(prev);
-          pair.appendChild(last);
-        }
         return expr;
       }
 
       function build(step) {
         stage.innerHTML = "";
-        stage.appendChild(buildExprEl(step, false));
+        var expr = buildExprEl(step, false);
+        stage.appendChild(expr);
+        fitOneLine(expr, stage);
       }
 
       // ---------- Rangée du haut ("écrit normalement") ----------
@@ -692,20 +772,22 @@
         var old = stageTop.querySelector(".expr");
         var expr = buildExprEl(step, true);
         if (animate && old) {
-          expr.style.opacity = "0";
-          expr.style.transform = "translateY(6px)";
           stageTop.insertBefore(expr, magicEl);
+          fitOneLine(expr, stageTop);
+          var target = expr.style.transform || "scale(1)";
+          expr.style.opacity = "0";
           var outA = old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms(200), easing: "ease-in", fill: "forwards" });
           done(outA).then(function () { old.remove(); });
           requestAnimationFrame(function () {
             done(expr.animate([
-              { opacity: 0, transform: "translateY(6px)" },
-              { opacity: 1, transform: "translateY(0)" }
+              { opacity: 0, transform: target + " translateY(6px)" },
+              { opacity: 1, transform: target + " translateY(0)" }
             ], { duration: ms(380), delay: ms(160), easing: "ease-out", fill: "both" }));
           });
         } else {
           if (old) old.remove();
           stageTop.insertBefore(expr, magicEl);
+          fitOneLine(expr, stageTop);
         }
 
         // La « phrase magique » : ce qu'on entend classiquement, pas
@@ -725,13 +807,26 @@
         return anchor;
       }
 
+      var stageTopTag = document.querySelector(".stage-top .row-tag");
+      var stageBottomTag = document.querySelector(".stage-bottom .row-tag");
+
+      function updateRowTags(isFinal) {
+        if (stageTopTag) stageTopTag.textContent = isFinal ? "départ" : "sauter des étapes";
+        if (stageBottomTag) stageBottomTag.textContent = isFinal ? "résultat" : "pas à pas";
+      }
+
       // Aligne la rangée du haut sur l'étape-ancre la plus proche : elle ne
-      // bouge qu'à certaines étapes, pendant que le bas détaille tout.
+      // bouge qu'à certaines étapes, pendant que le bas détaille tout. À la
+      // toute dernière étape, plus de séparateur : le haut revient montrer
+      // la formule de départ, le bas montre le résultat — même objet.
       function syncTop(animate) {
         var demo = DEMOS[demoIndex];
         stageWrap.classList.toggle("split", !!demo.split);
-        if (!demo.split) return;
-        var anchor = topAnchorStep(demo, cur);
+        if (!demo.split) { stageWrap.classList.remove("final"); return; }
+        var isFinal = cur === demo.steps.length - 1;
+        stageWrap.classList.toggle("final", isFinal);
+        updateRowTags(isFinal);
+        var anchor = isFinal ? demo.steps[0] : topAnchorStep(demo, cur);
         if (anchor !== lastTopStep) {
           renderTop(anchor, animate);
           lastTopStep = anchor;
@@ -781,8 +876,12 @@
         var src = snap[fx.src];
         if (!src) return Promise.resolve();
 
+        // Très lent, volontairement : c'est la troisième fois que la
+        // vitesse de cette animation est signalée trop rapide. Chaque −1
+        // doit se voir clairement se développer et voyager, pas juste
+        // clignoter d'un état à l'autre.
         var extraTargets = fx.targets.slice(1);
-        var chain = wait(400);
+        var chain = wait(700);
         extraTargets.forEach(function (id) {
           var t = snap[id];
           if (!t) return;
@@ -798,7 +897,7 @@
               { transform: "translate(0,0) scale(0.7)" },
               { transform: "translate(" + mid.x + "px," + mid.y + "px) scale(0.7)" },
               { transform: "translate(" + to.x + "px," + to.y + "px) scale(0.7)" }
-            ], { duration: ms(1300), easing: "ease-in-out", fill: "forwards" });
+            ], { duration: ms(2200), easing: "ease-in-out", fill: "forwards" });
             // Le fantôme reste affiché, posé à l'arrivée — il ne s'efface
             // pas : c'est lui qui deviendra visuellement le jeton final.
             return done(a).then(function () {
@@ -806,9 +905,9 @@
                 { transform: "scale(1)", color: "var(--ink)" },
                 { transform: "scale(1.3)", color: "var(--sign)" },
                 { transform: "scale(1)", color: "var(--sign)" }
-              ], { duration: ms(500), easing: "ease-out", fill: "forwards" });
+              ], { duration: ms(700), easing: "ease-out", fill: "forwards" });
               return done(hit);
-            }).then(function () { return wait(450); });
+            }).then(function () { return wait(800); });
           });
         });
 
@@ -920,13 +1019,52 @@
 
       // ---------- Navigation ----------
 
+      var dotsTopEl = document.getElementById("dotsTop");
+      var dotsBottomEl = document.getElementById("dotsBottom");
+
+      function buildDots(demo) {
+        dotsBottomEl.innerHTML = "";
+        demo.steps.forEach(function (s) {
+          var d = document.createElement("span");
+          if (s.top) d.classList.add("anchor");
+          dotsBottomEl.appendChild(d);
+        });
+        dotsTopEl.innerHTML = "";
+        demo.steps.forEach(function (s) {
+          if (!s.top) return;
+          dotsTopEl.appendChild(document.createElement("span"));
+        });
+      }
+
+      function updateDots(demo, to) {
+        var bDots = dotsBottomEl.children;
+        for (var i = 0; i < bDots.length; i++) {
+          bDots[i].classList.toggle("done", i < to);
+          bDots[i].classList.toggle("now", i === to);
+        }
+        var anchorIdx = -1, seen = 0;
+        for (var j = 0; j <= to && j < demo.steps.length; j++) {
+          if (demo.steps[j].top) { anchorIdx = seen; seen++; }
+        }
+        var tDots = dotsTopEl.children;
+        for (var k = 0; k < tDots.length; k++) {
+          tDots[k].classList.toggle("done", k < anchorIdx);
+          tDots[k].classList.toggle("now", k === anchorIdx);
+        }
+      }
+
       function refreshUi() {
         var demo = DEMOS[demoIndex];
         var last = demo.steps.length - 1;
-        prevBtn.disabled = busy || cur === 0;
+        // Jamais désactivées : ← au tout début boucle vers la fin, → à la
+        // fin boucle vers le début — de quoi comparer départ/résultat en
+        // aller-retour sans rester bloqué à un bout.
+        prevBtn.disabled = busy;
         nextBtn.disabled = busy;
-        nextBtn.textContent = cur === last ? "↺" : "→";
-        nextBtn.setAttribute("aria-label", cur === last ? "Recommencer" : "Suivant");
+        nextBtn.textContent = cur === last ? "FIN" : "→";
+        nextBtn.classList.toggle("text", cur === last);
+        nextBtn.setAttribute("aria-label", cur === last ? "Revenir au début" : "Suivant");
+        if (demo.split) updateDots(demo, cur);
       }
 
       function go(to) {
@@ -956,11 +1094,24 @@
         }
       }
 
+      function prev() {
+        var demo = DEMOS[demoIndex];
+        if (busy) return;
+        if (cur === 0) {
+          // Boucle vers la fin : voir le résultat, revenir au départ, sans
+          // jamais rester coincé à une extrémité.
+          go(demo.steps.length - 1);
+        } else {
+          go(cur - 1);
+        }
+      }
+
       function selectDemo(i) {
         if (busy) return;
         demoIndex = i;
         cur = 0;
         lastTopStep = null;
+        buildDots(DEMOS[i]);
         tabsEl.querySelectorAll(".tab").forEach(function (t, k) {
           t.setAttribute("aria-selected", k === i ? "true" : "false");
         });
@@ -979,11 +1130,11 @@
       });
 
       nextBtn.addEventListener("click", next);
-      prevBtn.addEventListener("click", function () { go(cur - 1); });
+      prevBtn.addEventListener("click", prev);
 
       document.addEventListener("keydown", function (e) {
         if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); next(); }
-        if (e.key === "ArrowLeft") { e.preventDefault(); go(cur - 1); }
+        if (e.key === "ArrowLeft") { e.preventDefault(); prev(); }
       });
 
       // ---------- Historique ----------
