@@ -399,6 +399,7 @@
     .tok.op { padding: 0.08em 0.22em; }
     .tok.par { font-weight: 300; }
     .tok.dot { padding: 0.08em 0.05em; }
+    .tok.sup { font-size: 0.55em; align-self: flex-start; padding: 0; margin-left: -0.2em; }
 
     .tok.hl {
       background: var(--accent-soft);
@@ -717,6 +718,7 @@
     .sg-dot.given { border-color: var(--ink-soft); background: transparent; }
     .sg-dot.free { cursor: grab; touch-action: none; z-index: 3; }
     .sg-dot.drag { z-index: 5; transform: scale(1.15); }
+    .sg-dot.out { opacity: 0.35; border-style: dashed; }
 
     .sg-b {
       cursor: pointer;
@@ -1162,6 +1164,72 @@
           ]
         },
         {
+          title: "Double",
+          steps: [
+            {
+              expr: [T("l1", "(", "par"), T("x1", X), T("p1", "+", "op"), T("o1", "1"), T("r1", ")", "par"), T("l2", "(", "par"), T("x2", X), T("p2", "+", "op"), T("t2", "2"), T("r2", ")", "par")],
+              note: "Deux parenthèses côte à côte : un produit."
+            },
+            {
+              expr: [T("l1", "(", "par"), T("x1", X), T("p1", "+", "op"), T("o1", "1"), T("r1", ")", "par"), T("l2", "(", "par"), T("x2", X), T("p2", "+", "op"), T("t2", "2"), T("r2", ")", "par")],
+              hl: ["x1", "o1"],
+              note: "Chaque terme de la première parenthèse va multiplier toute la seconde."
+            },
+            {
+              expr: [T("x1", X), T("la", "(", "par"), T("x2", X), T("p2", "+", "op"), T("t2", "2"), T("ra", ")", "par"), T("p1", "+", "op"), T("o1", "1"), T("lb", "(", "par"), T("x2b", X, "", ["x2"]), T("p2b", "+", "op", ["p2"]), T("t2b", "2", "", ["t2"]), T("rb", ")", "par")],
+              stagger: { la: 0, ra: 0, lb: 1400, x2b: 1400, p2b: 1400, t2b: 1400, rb: 1400 },
+              note: "<i>x</i>(<i>x</i> + 2) + 1(<i>x</i> + 2) : la seconde parenthèse est recopiée pour chacun."
+            },
+            {
+              expr: [T("x1", X), T("m1", "·", "op dot"), T("x2", X), T("p2", "+", "op"), T("x1b", X, "", ["x1"]), T("m2", "·", "op dot"), T("t2", "2"), T("p1", "+", "op"), T("o1", "1"), T("m3", "·", "op dot"), T("x2b", X), T("p2b", "+", "op"), T("o1b", "1", "", ["o1"]), T("m4", "·", "op dot"), T("t2b", "2")],
+              stagger: { m1: 0, x1b: 1200, m2: 1200, m3: 2400, o1b: 3600, m4: 3600 },
+              note: "Puis chaque parenthèse simple se distribue : quatre produits en tout."
+            },
+            {
+              expr: [T("sq", X + "²", "", ["x1", "m1", "x2"]), T("p2", "+", "op"), T("dx", "2" + X, "", ["x1b", "m2", "t2"]), T("p1", "+", "op"), T("ox", X, "", ["o1", "m3", "x2b"]), T("p2b", "+", "op"), T("two", "2", "", ["o1b", "m4", "t2b"])],
+              note: "<i>x</i>·<i>x</i> = <i>x</i>², <i>x</i>·2 = 2<i>x</i>, 1·<i>x</i> = <i>x</i>, 1·2 = 2."
+            },
+            {
+              fx: { type: "meet", ids: ["dx", "p1", "ox"] },
+              expr: [T("sq", X + "²"), T("p2", "+", "op"), T("tx", "3" + X, "", ["dx", "p1", "ox"]), T("p2b", "+", "op"), T("two", "2")],
+              note: "2<i>x</i> + <i>x</i> = 3<i>x</i>. Résultat : <b><i>x</i>² + 3<i>x</i> + 2</b>."
+            },
+            { summary: true }
+          ]
+        },
+        {
+          title: "Identité",
+          split: true,
+          steps: [
+            {
+              top: true,
+              expr: [T("l", "(", "par"), T("xa", X), T("pa", "+", "op"), T("ta", "3"), T("r", ")", "par"), T("sq2", "2", "sup")],
+              magic: "« (a + b)² = a² + 2ab + b² »"
+            },
+            {
+              expr: [T("l", "(", "par"), T("xa", X), T("pa", "+", "op"), T("ta", "3"), T("r", ")", "par"), T("l2", "(", "par", ["sq2"]), T("xb", X, "", ["sq2"]), T("pb", "+", "op", ["sq2"]), T("tb", "3", "", ["sq2"]), T("r2", ")", "par", ["sq2"])],
+              note: "Au carré, c'est multiplié par lui-même : (<i>x</i> + 3)(<i>x</i> + 3)."
+            },
+            {
+              expr: [T("xa", X), T("m1", "·", "op dot"), T("xb", X), T("p1", "+", "op"), T("xa2", X, "", ["xa"]), T("m2", "·", "op dot"), T("tb", "3"), T("pa", "+", "op"), T("ta", "3"), T("m3", "·", "op dot"), T("xb2", X, "", ["xb"]), T("p3", "+", "op"), T("ta2", "3", "", ["ta"]), T("m4", "·", "op dot"), T("tb2", "3", "", ["tb"])],
+              stagger: { m1: 0, p1: 1200, xa2: 1200, m2: 1200, m3: 2400, xb2: 2400, p3: 3600, ta2: 3600, m4: 3600, tb2: 3600 },
+              note: "Double distributivité : quatre produits."
+            },
+            {
+              expr: [T("sq", X + "²", "", ["xa", "m1", "xb"]), T("p1", "+", "op"), T("u", "3" + X, "", ["xa2", "m2", "tb"]), T("pa", "+", "op"), T("v", "3" + X, "", ["ta", "m3", "xb2"]), T("p3", "+", "op"), T("nine", "9", "", ["ta2", "m4", "tb2"])],
+              hl: ["u", "v"],
+              note: "Les deux produits du milieu sont <b>égaux</b> : 3<i>x</i> et 3<i>x</i>. C'est de là que vient le « 2ab »."
+            },
+            {
+              top: true,
+              fx: { type: "meet", ids: ["u", "pa", "v"] },
+              expr: [T("sq", X + "²"), T("p1", "+", "op"), T("sx", "6" + X, "", ["u", "pa", "v"]), T("p3", "+", "op"), T("nine", "9")],
+              note: "3<i>x</i> + 3<i>x</i> = 2 · 3<i>x</i> = 6<i>x</i>. Résultat : <b><i>x</i>² + 6<i>x</i> + 9</b>."
+            },
+            { summary: true }
+          ]
+        },
+        {
           title: "Équation",
           split: true,
           finalSign: "⇔",
@@ -1212,13 +1280,14 @@
           .replace(/<svg[^>]*><circle[^>]*\/><\/svg>/g, "O")
           .replace(/<svg[^>]*><rect[^>]*\/><\/svg>/g, "Q")
           .replace(/<[^>]+>/g, "")
-          .replace(/−/g, "-").replace(/·/g, "*");
+          .replace(/−/g, "-").replace(/·/g, "*").replace(/²/g, "^2");
       }
 
       function exprText(list) {
         return list.map(function (it) {
           if (it.frac) return "(" + exprText(it.num) + ")/(" + exprText(it.den) + ")";
           if (it.cancel) return "(" + exprText(it.top) + exprText(it.bottom) + ")";
+          if (/\bsup\b/.test(it.k)) return "^" + tokText(it);
           return tokText(it);
         }).join("");
       }
@@ -1226,7 +1295,8 @@
       function evalExpr(str, env) {
         // Multiplication implicite : 2x, 2(…), )(…, x(…
         var js = str.replace(/\s+/g, "")
-          .replace(/([0-9xOQ)])(?=[xOQ(])/g, "$1*");
+          .replace(/([0-9xOQ)])(?=[xOQ(])/g, "$1*")
+          .replace(/\^(\d)/g, "**$1");
         if (!/^[0-9xOQ+\-*\/().]*$/.test(js)) throw new Error("caractère inattendu : " + str);
         return Function("x", "O", "Q", "return (" + js + ");")(env.x, env.O, env.Q);
       }
@@ -1640,7 +1710,8 @@
       // la formule de départ, le bas montre le résultat — même objet.
       function syncTop(animate) {
         var demo = DEMOS[demoIndex];
-        stageWrap.classList.toggle("split", !!demo.split);
+        // Page récapitulative : elle contient déjà le départ, pas de rangée du haut
+        stageWrap.classList.toggle("split", !!demo.split && !demo.steps[cur].summary);
         if (!demo.split) { stageWrap.classList.remove("final"); return; }
         var isFinal = cur === demo.steps.length - 1;
         stageWrap.classList.toggle("final", isFinal);
@@ -2131,7 +2202,11 @@
         el.style.top = (y - d / 2) + "px";
       }
 
+      var sgRound = 0;
       function sgStart() {
+        sgRound++;
+        // Une manche sur deux : soustraction (dès la 2e manche)
+        if (sgRound > 1 && sgRound % 2 === 0) { sgStartSub(); return; }
         var a = 6 + Math.floor(Math.random() * 4);           // 6..9
         var bMin = 11 - a;                                     // dépasse 10
         var b = bMin + Math.floor(Math.random() * (10 - bMin)); // ..9
@@ -2330,6 +2405,137 @@
         }, ms(900));
       }
 
+      // ---------- Soustraction : « retirer de 10 » ----------
+      // 13 − 5 : la dizaine pleine et 3 à côté. On retire 5 jetons de la
+      // dizaine (pas des 3 isolés) : 10 − 5 = 5, plus les 3 → 8.
+      // Retirer dans le 2e cadre = erreur (on casse d'abord la dizaine).
+      function sgStartSub() {
+        var u = 1 + Math.floor(Math.random() * 7);             // 1..7
+        var a = 10 + u;
+        var b = u + 1 + Math.floor(Math.random() * (9 - u));   // u+1..9
+        sgState = { op: "-", a: a, b: b, u: u, filled: {}, removed: 0, placed: 0, mistake: false, done: false };
+        sgBoard.innerHTML = "";
+        SG_CELL = Math.max(20, Math.min(44, (sgBoard.clientHeight - 50) / 5, (sgBoard.clientWidth - 10) / 5));
+        sgEq.innerHTML = a + ' − <span class="sg-b" id="sgB">' + b + "</span>";
+        document.getElementById("sgB").addEventListener("click", sgAutoRemove);
+        sgMsg.textContent = "";
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        sgRenderStreak();
+        for (var k = 0; k < 20; k++) {
+          var s = sgSlot(k);
+          var c = document.createElement("span");
+          c.className = "sg-cell";
+          c.style.left = (s.x - SG_CELL / 2) + "px";
+          c.style.top = (s.y - SG_CELL / 2) + "px";
+          c.style.width = SG_CELL + "px";
+          c.style.height = SG_CELL + "px";
+          sgBoard.appendChild(c);
+        }
+        var trayY = sgSlot(10).y + 2 * SG_CELL + 20;
+        var gap = Math.min(SG_CELL, (sgBoard.clientWidth - 12) / b);
+        sgState.tray = { y: trayY, gap: gap, left: sgBoard.clientWidth / 2 - (b - 1) * gap / 2, size: Math.min(SG_CELL - 10, gap - 5) };
+        [].concat(range(10), range(u).map(function (i) { return 10 + i; })).forEach(function (k) {
+          var dot = document.createElement("span");
+          dot.className = "sg-dot free";
+          var sl = sgSlot(k);
+          sgPlace(dot, sl.x, sl.y);
+          dot.dataset.k = k;
+          sgState.filled[k] = true;
+          sgBoard.appendChild(dot);
+          sgRemovable(dot, k);
+        });
+      }
+
+      function range(n) { var r = []; for (var i = 0; i < n; i++) r.push(i); return r; }
+
+      function sgRemovable(dot, k) {
+        var start = null;
+        dot.addEventListener("pointerdown", function (e) {
+          if (!sgState || sgState.done) return;
+          e.preventDefault();
+          dot.setPointerCapture(e.pointerId);
+          var r = sgBoard.getBoundingClientRect();
+          start = { ox: r.left, oy: r.top, x: e.clientX, y: e.clientY, moved: false };
+        });
+        dot.addEventListener("pointermove", function (e) {
+          if (!start) return;
+          if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 8) return;
+          start.moved = true;
+          dot.classList.add("drag");
+          sgPlace(dot, e.clientX - start.ox, e.clientY - start.oy);
+        });
+        function up(e) {
+          if (!start) return;
+          var st = start;
+          start = null;
+          dot.classList.remove("drag");
+          var out = dot.classList.contains("out");
+          if (out) { sgPutBack(dot, k); return; }
+          if (st.moved) {
+            // Lâché encore dans les cadres : il revient à sa case
+            var y = e.clientY - st.oy;
+            if (y < sgSlot(19).y + SG_CELL / 2) { var sl = sgSlot(k); sgMove(dot, sl.x, sl.y); return; }
+          }
+          sgTakeAway(dot, k);
+        }
+        dot.addEventListener("pointerup", up);
+        dot.addEventListener("pointercancel", up);
+      }
+
+      function sgTakeAway(dot, k) {
+        if (k >= 10) {
+          sgWrong();
+          var sl = sgSlot(k);
+          sgMove(dot, sl.x, sl.y);
+          return;
+        }
+        var t = sgState.tray, j = sgState.removed;
+        delete sgState.filled[k];
+        sgState.removed++;
+        dot.classList.add("out");
+        dot._size = t.size;
+        sgMove(dot, t.left + j * t.gap, t.y).then(function () {
+          if (sgState.removed === sgState.b && !sgState.done) sgWinSub();
+        });
+      }
+
+      function sgPutBack(dot, k) {
+        if (sgState.done) return;
+        sgState.filled[k] = true;
+        sgState.removed--;
+        dot.classList.remove("out");
+        dot._size = 0;
+        var sl = sgSlot(k);
+        sgMove(dot, sl.x, sl.y);
+      }
+
+      function sgAutoRemove() {
+        if (!sgState || sgState.done) return;
+        sgState.auto = true;
+        var left = sgState.b - sgState.removed;
+        for (var k = 9; k >= 0 && left > 0; k--) {
+          if (!sgState.filled[k]) continue;
+          (function (kk, i) {
+            var dot = Array.prototype.find.call(sgBoard.querySelectorAll(".sg-dot"), function (d) { return Number(d.dataset.k) === kk && !d.classList.contains("out"); });
+            setTimeout(function () { sgTakeAway(dot, kk); }, ms(i * 140));
+          })(k, sgState.b - left);
+          left--;
+        }
+      }
+
+      function sgWinSub() {
+        sgState.done = true;
+        var a = sgState.a, b = sgState.b, u = sgState.u;
+        var seq = [
+          "10 − " + b + " + " + u,
+          (10 - b) + " + " + u,
+          a + " − " + b + " = " + (a - b)
+        ];
+        sgFinish(seq);
+      }
+
       function sgWin() {
         sgState.done = true;
         var a = sgState.a, b = sgState.b, fill = 10 - a, rest = b - fill;
@@ -2338,6 +2544,10 @@
           "10 + " + rest,
           a + " + " + b + " = " + (a + b)
         ];
+        sgFinish(seq);
+      }
+
+      function sgFinish(seq) {
         var chain = wait(500);
         seq.forEach(function (txt) {
           chain = chain.then(function () {
@@ -2593,13 +2803,17 @@
         document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
       });
       window.addEventListener("resize", function () {
-        if (DEMOS[demoIndex].custom === "sg" && sgState && !sgState.done) sgStart();
+        if (DEMOS[demoIndex].custom === "sg" && sgState && !sgState.done) {
+          if (sgState.op === "-") sgStartSub(); else { sgRound--; sgStart(); }
+        }
         if (DEMOS[demoIndex].custom === "pf" && pfState) pfLayout();
       });
 
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v19", text: "Deux nouvelles démos : Double ((x + 1)(x + 2) = x² + 3x + 2, quatre produits écrits un par un) et Identité ((x + 3)² = x² + 6x + 9 : on voit d'où vient le « 2ab »). Page récapitulative à la fin de chacune." },
+        { v: "v18", text: "Singapour : soustraction « retirer de 10 », une manche sur deux. 13 − 5 : on retire les jetons de la dizaine pleine, pas des 3 à côté (sinon la dizaine s'allume en jaune) → 10 − 5 + 3 → 5 + 3 → 8. Appui bref ou glisser hors des cadres pour retirer, appui sur un jeton retiré pour le remettre, appui sur le 5 pour tout retirer d'un coup." },
         { v: "v17", text: "Premiers : diviseurs de ÷0 à ÷13 — les premiers (2, 3, 5, 7, 11, 13) sont vifs, les autres estompés avec la raison (0 interdit, 1 inutile, 4 = 2 × 2, 6 = 2 × 3…). Appui long sur un diviseur : la règle de divisibilité s'affiche dans une fenêtre. Les traits de l'arbre s'arrêtent au bord des cercles. Nombres jusqu'à 200, avec parfois 11 ou 13." },
         { v: "v16", text: "Équation : le « + » manquant est rétabli (2x + 0 = 7 − 3). Nouveau : chaque étape de chaque démo est recalculée au chargement (valeurs au hasard pour x, ○, □) ; une étape fausse est signalée à l'écran." },
         { v: "v15", text: "−×− : la rotation se voit vraiment — la flèche tourne dans le plan autour de 0, sa pointe trace un demi-cercle en pointillés et l'angle défile jusqu'à 180°. Le 2e demi-tour passe en dessous : à la fin, un tour complet." },
