@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Bulles Sonores</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="../favicon-32.png?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #faf8f4;
+      --bg-soft: #f2efe8;
+      --ink: #1c1a17;
+      --ink-soft: #6f6a60;
+      --hairline: #ddd6c9;
+      --accent: #b08d57;
+      --bad: #b5523b;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      background-image: radial-gradient(circle at 50% 0%, var(--bg-soft), var(--bg) 60%);
+      color: var(--ink);
+      font-family: "Jost", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.2rem 16px 1.5rem;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    header {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .back {
+      color: var(--ink-soft);
+      font-size: 0.68rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      text-decoration: none;
+    }
+
+    .back:hover { color: var(--accent); }
+
+    h1 {
+      margin: 0;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 300;
+      font-size: clamp(1.6rem, 6vw, 2.2rem);
+      letter-spacing: 0.06em;
+    }
+
+    .stats {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      justify-content: space-between;
+      margin: 0.9rem 0 0.6rem;
+      padding: 0.6rem 0.25rem;
+      border-top: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--hairline);
+      font-size: 0.72rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    .stats b {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 1.05rem;
+      letter-spacing: 0.02em;
+      color: var(--accent);
+      margin-left: 0.35rem;
+    }
+
+    .status {
+      min-height: 1.6rem;
+      margin: 0.2rem 0 0.4rem;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-style: italic;
+      font-size: 1.15rem;
+      color: var(--ink-soft);
+      text-align: center;
+      transition: color 0.3s ease;
+    }
+
+    .status.bad { color: var(--bad); }
+    .status.good { color: var(--accent); }
+
+    .arena {
+      position: relative;
+      width: 100%;
+      max-width: 560px;
+      flex: 1;
+      min-height: 280px;
+      border-radius: 18px;
+      background: radial-gradient(circle at 50% 30%, #fffdf9, var(--bg-soft));
+      border: 1px solid var(--hairline);
+      overflow: hidden;
+      touch-action: manipulation;
+    }
+
+    .bubble {
+      position: absolute;
+      left: 0;
+      top: 0;
+      border-radius: 50%;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-style: italic;
+      font-size: 1.05rem;
+      color: rgba(28, 26, 23, 0.55);
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.95) 0 12%, rgba(255, 255, 255, 0) 30%),
+        radial-gradient(circle at 50% 50%, hsla(var(--h), 70%, 80%, 0.35) 0 55%, hsla(var(--h), 60%, 62%, 0.75) 100%);
+      box-shadow:
+        inset 0 0 0 1.5px hsla(var(--h), 55%, 55%, 0.55),
+        0 6px 18px hsla(var(--h), 50%, 50%, 0.12);
+      transition: filter 0.15s ease;
+      will-change: transform;
+    }
+
+    .bubble .label { opacity: 0; transition: opacity 0.3s ease; pointer-events: none; }
+    .show-notes .bubble .label { opacity: 1; }
+
+    .bubble.lit {
+      filter: brightness(1.12) saturate(1.6);
+      box-shadow:
+        inset 0 0 0 2.5px hsla(var(--h), 70%, 45%, 0.9),
+        0 0 28px 6px hsla(var(--h), 80%, 60%, 0.55);
+    }
+
+    .bubble.wrong {
+      box-shadow:
+        inset 0 0 0 2.5px var(--bad),
+        0 0 24px 4px rgba(181, 82, 59, 0.45);
+    }
+
+    .ring {
+      position: absolute;
+      left: 0;
+      top: 0;
+      border-radius: 50%;
+      border: 2px solid hsla(var(--h), 60%, 55%, 0.7);
+      pointer-events: none;
+      animation: ring 0.55s ease-out forwards;
+    }
+
+    @keyframes ring {
+      from { opacity: 0.9; transform: var(--t) scale(1); }
+      to   { opacity: 0;   transform: var(--t) scale(1.7); }
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      text-align: center;
+      background: rgba(250, 248, 244, 0.86);
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      z-index: 5;
+    }
+
+    .overlay[hidden] { display: none; }
+
+    .overlay p {
+      margin: 0;
+      max-width: 22rem;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      color: var(--ink-soft);
+    }
+
+    .overlay .big {
+      font-family: "Cormorant Garamond", Georgia, serif;
+      font-weight: 300;
+      font-size: 2rem;
+      color: var(--ink);
+    }
+
+    .btn {
+      font-family: inherit;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 999px;
+      padding: 0.8rem 1.8rem;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+
+    .btn:hover, .btn:focus-visible { background: var(--accent); color: #fff; }
+
+    .controls {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 0.8rem;
+      gap: 0.8rem;
+    }
+
+    .link {
+      font-family: inherit;
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      background: none;
+      border: none;
+      padding: 0.4rem 0;
+      cursor: pointer;
+    }
+
+    .link:hover, .link:focus-visible { color: var(--accent); }
+    .link:disabled { opacity: 0.35; cursor: default; }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="back" href="../">← Portfolio</a>
+    <h1>Bulles Sonores</h1>
+  </header>
+
+  <div class="stats">
+    <span>Niveau<b id="level">1</b></span>
+    <span>Vies<b id="lives">3</b></span>
+    <span>Record<b id="best">0</b></span>
+  </div>
+
+  <div class="status" id="status">Écoute, puis rejoue.</div>
+
+  <div class="arena" id="arena">
+    <div class="overlay" id="overlay">
+      <div class="big" id="overlayTitle">Bulles Sonores</div>
+      <p id="overlayText">Chaque bulle chante une note. Écoute la mélodie, retiens l'ordre, puis éclate les bulles dans le même ordre. Les bulles bougent : fie-toi à la couleur et au son, pas à la place.</p>
+      <button class="btn" id="startBtn">Commencer</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="link" id="replayBtn" disabled>Réécouter (−1 vie)</button>
+    <button class="link" id="notesBtn">Afficher les notes</button>
+  </div>
+
+  <script>
+    (function () {
+      // Gamme de do majeur, do4 → do5
+      var NOTES = [
+        { name: "do",  freq: 261.63, hue: 0 },
+        { name: "ré",  freq: 293.66, hue: 30 },
+        { name: "mi",  freq: 329.63, hue: 52 },
+        { name: "fa",  freq: 349.23, hue: 110 },
+        { name: "sol", freq: 392.00, hue: 175 },
+        { name: "la",  freq: 440.00, hue: 215 },
+        { name: "si",  freq: 493.88, hue: 265 },
+        { name: "do",  freq: 523.25, hue: 320 }
+      ];
+
+      // Notes disponibles selon le niveau : d'abord l'accord do-mi-sol-do
+      function notesForLevel(level) {
+        if (level < 4) return [0, 2, 4, 7];
+        if (level < 7) return [0, 1, 2, 4, 5, 7];
+        return [0, 1, 2, 3, 4, 5, 6, 7];
+      }
+
+      function speedForLevel(level) {
+        return 18 + level * 4; // px/s
+      }
+
+      var arena = document.getElementById("arena");
+      var overlay = document.getElementById("overlay");
+      var overlayTitle = document.getElementById("overlayTitle");
+      var overlayText = document.getElementById("overlayText");
+      var startBtn = document.getElementById("startBtn");
+      var replayBtn = document.getElementById("replayBtn");
+      var notesBtn = document.getElementById("notesBtn");
+      var statusEl = document.getElementById("status");
+      var levelEl = document.getElementById("level");
+      var livesEl = document.getElementById("lives");
+      var bestEl = document.getElementById("best");
+
+      var audio = null;
+      var bubbles = [];
+      var sequence = [];
+      var step = 0;
+      var level = 1;
+      var lives = 3;
+      var best = 0;
+      var state = "idle"; // idle | playing | input | over
+      var lastTime = 0;
+
+      try { best = parseInt(localStorage.getItem("bulles-sonores-best"), 10) || 0; } catch (e) {}
+      bestEl.textContent = best;
+
+      // ---------- Son ----------
+
+      function initAudio() {
+        if (!audio) {
+          var Ctx = window.AudioContext || window.webkitAudioContext;
+          if (Ctx) audio = new Ctx();
+        }
+        if (audio && audio.state === "suspended") audio.resume();
+      }
+
+      function playNote(freq, duration) {
+        if (!audio) return;
+        var t = audio.currentTime;
+        var gain = audio.createGain();
+        gain.connect(audio.destination);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.28, t + 0.015);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+
+        var osc = audio.createOscillator();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(freq * 1.03, t);
+        osc.frequency.exponentialRampToValueAtTime(freq, t + 0.05); // petit « bloup » de bulle
+        osc.connect(gain);
+
+        var shimmer = audio.createOscillator();
+        var shimmerGain = audio.createGain();
+        shimmer.type = "triangle";
+        shimmer.frequency.value = freq * 2;
+        shimmerGain.gain.value = 0.18;
+        shimmer.connect(shimmerGain).connect(gain);
+
+        osc.start(t);
+        shimmer.start(t);
+        osc.stop(t + duration + 0.05);
+        shimmer.stop(t + duration + 0.05);
+      }
+
+      function playBuzz() {
+        if (!audio) return;
+        var t = audio.currentTime;
+        var gain = audio.createGain();
+        gain.connect(audio.destination);
+        gain.gain.setValueAtTime(0.0001, t);
+        gain.gain.exponentialRampToValueAtTime(0.15, t + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+        var osc = audio.createOscillator();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(140, t);
+        osc.frequency.exponentialRampToValueAtTime(90, t + 0.4);
+        osc.connect(gain);
+        osc.start(t);
+        osc.stop(t + 0.45);
+      }
+
+      // ---------- Bulles ----------
+
+      function arenaSize() {
+        return { w: arena.clientWidth, h: arena.clientHeight };
+      }
+
+      function bubbleRadius(count) {
+        var s = arenaSize();
+        var r = Math.sqrt((s.w * s.h) / (count * Math.PI)) * 0.42;
+        return Math.max(30, Math.min(58, r));
+      }
+
+      function clearBubbles() {
+        bubbles.forEach(function (b) { b.el.remove(); });
+        bubbles = [];
+      }
+
+      function createBubbles(noteIndexes) {
+        clearBubbles();
+        var s = arenaSize();
+        var r = bubbleRadius(noteIndexes.length);
+        var speed = speedForLevel(level);
+
+        noteIndexes.forEach(function (ni) {
+          var note = NOTES[ni];
+          var el = document.createElement("button");
+          el.className = "bubble";
+          el.style.setProperty("--h", note.hue);
+          el.style.width = el.style.height = (r * 2) + "px";
+          el.setAttribute("aria-label", note.name);
+          var label = document.createElement("span");
+          label.className = "label";
+          label.textContent = note.name;
+          el.appendChild(label);
+
+          // Placement sans chevauchement (quelques essais)
+          var x, y, tries = 0;
+          do {
+            x = r + Math.random() * Math.max(1, s.w - 2 * r);
+            y = r + Math.random() * Math.max(1, s.h - 2 * r);
+            tries++;
+          } while (tries < 60 && bubbles.some(function (o) {
+            return Math.hypot(o.x - x, o.y - y) < o.r + r + 6;
+          }));
+
+          var angle = Math.random() * Math.PI * 2;
+          var b = {
+            note: ni,
+            el: el,
+            x: x,
+            y: y,
+            r: r,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed
+          };
+
+          el.addEventListener("pointerdown", function (ev) {
+            ev.preventDefault();
+            onBubble(b);
+          });
+
+          arena.appendChild(el);
+          bubbles.push(b);
+        });
+        render();
+      }
+
+      function update(dt) {
+        var s = arenaSize();
+        bubbles.forEach(function (b) {
+          b.x += b.vx * dt;
+          b.y += b.vy * dt;
+          if (b.x < b.r)       { b.x = b.r;       b.vx = Math.abs(b.vx); }
+          if (b.x > s.w - b.r) { b.x = s.w - b.r; b.vx = -Math.abs(b.vx); }
+          if (b.y < b.r)       { b.y = b.r;       b.vy = Math.abs(b.vy); }
+          if (b.y > s.h - b.r) { b.y = s.h - b.r; b.vy = -Math.abs(b.vy); }
+        });
+
+        // Rebonds doux entre bulles
+        for (var i = 0; i < bubbles.length; i++) {
+          for (var j = i + 1; j < bubbles.length; j++) {
+            var a = bubbles[i], c = bubbles[j];
+            var dx = c.x - a.x, dy = c.y - a.y;
+            var dist = Math.hypot(dx, dy) || 0.001;
+            var min = a.r + c.r;
+            if (dist < min) {
+              var nx = dx / dist, ny = dy / dist;
+              var push = (min - dist) / 2;
+              a.x -= nx * push; a.y -= ny * push;
+              c.x += nx * push; c.y += ny * push;
+              var va = a.vx * nx + a.vy * ny;
+              var vc = c.vx * nx + c.vy * ny;
+              if (va - vc > 0) {
+                a.vx += (vc - va) * nx; a.vy += (vc - va) * ny;
+                c.vx += (va - vc) * nx; c.vy += (va - vc) * ny;
+              }
+            }
+          }
+        }
+      }
+
+      function render() {
+        bubbles.forEach(function (b) {
+          b.el.style.transform = "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px)";
+        });
+      }
+
+      function loop(time) {
+        var dt = Math.min(0.05, (time - lastTime) / 1000 || 0);
+        lastTime = time;
+        if (state !== "idle" && state !== "over") update(dt);
+        render();
+        requestAnimationFrame(loop);
+      }
+
+      function flash(b, cls, ms) {
+        b.el.classList.add(cls);
+        setTimeout(function () { b.el.classList.remove(cls); }, ms);
+        if (cls === "lit") {
+          var ring = document.createElement("div");
+          ring.className = "ring";
+          ring.style.setProperty("--h", NOTES[b.note].hue);
+          ring.style.width = ring.style.height = (b.r * 2) + "px";
+          ring.style.setProperty("--t", "translate(" + (b.x - b.r) + "px," + (b.y - b.r) + "px)");
+          arena.appendChild(ring);
+          setTimeout(function () { ring.remove(); }, 600);
+        }
+      }
+
+      function bubbleFor(noteIndex) {
+        for (var i = 0; i < bubbles.length; i++) {
+          if (bubbles[i].note === noteIndex) return bubbles[i];
+        }
+        return null;
+      }
+
+      // ---------- Jeu ----------
+
+      function setStatus(text, cls) {
+        statusEl.textContent = text;
+        statusEl.className = "status" + (cls ? " " + cls : "");
+      }
+
+      function updateStats() {
+        levelEl.textContent = level;
+        livesEl.textContent = lives;
+        bestEl.textContent = best;
+      }
+
+      // Mélodie : surtout des pas conjoints, quelques sauts
+      function makeSequence(available, length) {
+        var seq = [];
+        var pos = Math.floor(Math.random() * available.length);
+        for (var i = 0; i < length; i++) {
+          if (i > 0) {
+            var r = Math.random();
+            var move = r < 0.55 ? (Math.random() < 0.5 ? -1 : 1)
+                     : r < 0.8  ? (Math.random() < 0.5 ? -2 : 2)
+                     : r < 0.9  ? 0
+                     : Math.floor(Math.random() * available.length) - pos;
+            pos = Math.max(0, Math.min(available.length - 1, pos + move));
+          }
+          seq.push(available[pos]);
+        }
+        return seq;
+      }
+
+      function startLevel() {
+        var available = notesForLevel(level);
+        createBubbles(available);
+        sequence = makeSequence(available, level + 2);
+        updateStats();
+        setTimeout(playSequence, 500);
+      }
+
+      function playSequence() {
+        state = "playing";
+        replayBtn.disabled = true;
+        setStatus("Écoute…");
+        var tempo = Math.max(380, 650 - level * 20);
+        sequence.forEach(function (ni, k) {
+          setTimeout(function () {
+            var b = bubbleFor(ni);
+            playNote(NOTES[ni].freq, tempo / 1000 * 1.1);
+            if (b) flash(b, "lit", tempo * 0.7);
+          }, k * tempo);
+        });
+        setTimeout(function () {
+          state = "input";
+          step = 0;
+          replayBtn.disabled = lives <= 1;
+          setStatus("À toi : " + sequence.length + " notes.");
+        }, sequence.length * tempo + 150);
+      }
+
+      function onBubble(b) {
+        initAudio();
+        if (state !== "input") {
+          // Hors tour : on peut quand même écouter une bulle en attendant
+          if (state === "idle" || state === "over") return;
+          return;
+        }
+        playNote(NOTES[b.note].freq, 0.45);
+
+        if (b.note === sequence[step]) {
+          flash(b, "lit", 250);
+          step++;
+          var left = sequence.length - step;
+          if (left === 0) {
+            state = "playing";
+            setStatus("Juste !", "good");
+            if (level > best) {
+              best = level;
+              try { localStorage.setItem("bulles-sonores-best", String(best)); } catch (e) {}
+            }
+            level++;
+            setTimeout(startLevel, 900);
+          } else {
+            setStatus("Encore " + left + ".");
+          }
+        } else {
+          flash(b, "wrong", 450);
+          playBuzz();
+          lives--;
+          updateStats();
+          if (lives <= 0) {
+            gameOver();
+          } else {
+            state = "playing";
+            setStatus("Raté. Réécoute.", "bad");
+            setTimeout(playSequence, 1100);
+          }
+        }
+      }
+
+      function gameOver() {
+        state = "over";
+        replayBtn.disabled = true;
+        setStatus("Fin de partie.", "bad");
+        overlayTitle.textContent = "Niveau " + level;
+        overlayText.textContent = level - 1 > 0
+          ? "Tu as rejoué " + (level - 1) + " mélodie" + (level - 1 > 1 ? "s" : "") + " sans perdre le fil. Record : niveau " + best + "."
+          : "Pas encore de mélodie complète. Astuce : chante les notes dans ta tête.";
+        startBtn.textContent = "Rejouer";
+        setTimeout(function () { overlay.hidden = false; }, 700);
+      }
+
+      function newGame() {
+        initAudio();
+        level = 1;
+        lives = 3;
+        overlay.hidden = true;
+        state = "playing";
+        startLevel();
+      }
+
+      startBtn.addEventListener("click", newGame);
+
+      replayBtn.addEventListener("click", function () {
+        if (state !== "input" || lives <= 1) return;
+        lives--;
+        updateStats();
+        playSequence();
+      });
+
+      notesBtn.addEventListener("click", function () {
+        var on = arena.classList.toggle("show-notes");
+        notesBtn.textContent = on ? "Masquer les notes" : "Afficher les notes";
+      });
+
+      window.addEventListener("resize", function () {
+        var s = arenaSize();
+        bubbles.forEach(function (b) {
+          b.x = Math.min(Math.max(b.r, b.x), s.w - b.r);
+          b.y = Math.min(Math.max(b.r, b.y), s.h - b.r);
+        });
+      });
+
+      // Bulles décoratives derrière l'écran d'accueil
+      createBubbles(notesForLevel(1));
+      state = "idle";
+      requestAnimationFrame(function (t) { lastTime = t; requestAnimationFrame(loop); });
+    })();
+  </script>
+</body>
+</html>
