@@ -441,6 +441,30 @@
 
     .ghost.traveller { color: var(--sign); z-index: 3; }
 
+    /* Méthode de Singapour : cadre de dix (2 × 5 cases), un jeton rond par unité.
+       Tracé fin, jamais plein (charte oscilloscope). Négatif = jaune. */
+    .cell {
+      position: absolute;
+      border: 1px solid var(--ink-soft);
+      margin: 0 -1px -1px 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .unit {
+      position: absolute;
+      border: 1.5px solid var(--accent);
+      background: var(--accent-soft);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .unit.neg {
+      border-color: var(--sign);
+      background: rgba(255, 209, 102, 0.12);
+    }
+
     .controls {
       display: flex;
       align-items: center;
@@ -579,7 +603,7 @@
             },
             {
               top: true,
-              fx: { type: "meet", ids: ["sa2", "n2", "sc2", "n1"] },
+              fx: { type: "meet", ids: ["sa2", "n2", "sc2", "n1"], blocks: [{ id: "n2", n: -2 }, { id: "n1", n: -1 }] },
               expr: [T("m3", "−3", "", ["sa2", "n2", "sc2", "n1"]), T("xf", X), T("sb", "+", "op"), T("b", "3")],
               magic: "« On regroupe et on calcule. »",
               note: "(−2) + (−1) = −3. Résultat : <b>−3<i>x</i> + 3</b>, sans sauter d'étape."
@@ -618,7 +642,7 @@
               note: "0 est neutre pour l'addition : 0 + 2 = 2. On peut l'effacer."
             },
             {
-              fx: { type: "meet", ids: ["b", "sd", "d"] },
+              fx: { type: "meet", ids: ["b", "sd", "d"], blocks: [{ id: "b", n: 2 }, { id: "d", n: 5 }] },
               expr: [T("n7", "7", "", ["b", "sd", "d"])],
               note: "2 + 5 = 7. Résultat : <b>7</b>."
             }
@@ -914,6 +938,80 @@
         return chain.then(function () { return wait(250); });
       }
 
+      // Méthode de Singapour (programme MOE, P1) : addition par le « cadre
+      // de dix » — deux rangées de 5 cases. Chaque nombre part de son jeton
+      // en jetons ronds qui remplissent les cases, dans l'ordre ; le second
+      // nombre vient compléter les cases vides (« faire 10 » quand ça
+      // déborde, cadre suivant). La structure 5 + 5 se lit sans compter.
+      // Ne gère que des nombres de même signe (pas d'annulation ici).
+      function fxBlocks(blocks, snap, cx, units) {
+        var cell = 22, dot = 14, apart = 12;
+        var rows = blocks.map(function (b) { return { b: b, p: snap[b.id] }; })
+          .filter(function (r) { return r.p; });
+        if (!rows.length) return Promise.resolve();
+
+        var total = 0;
+        rows.forEach(function (r) { total += Math.abs(r.b.n); });
+        var frames = Math.max(1, Math.ceil(total / 10));
+        var fw = cell * 5;
+        var left0 = cx - (frames * fw + (frames - 1) * apart) / 2;
+        var y0 = 0;
+        rows.forEach(function (r) { y0 = Math.max(y0, r.p.y + r.p.h); });
+        var top = y0 + 18;
+
+        function slot(k) {
+          var f = Math.floor(k / 10), r = Math.floor((k % 10) / 5), c = k % 5;
+          return { x: left0 + f * (fw + apart) + c * cell + cell / 2, y: top + r * cell + cell / 2 };
+        }
+
+        // 1. Le cadre apparaît, vide
+        var appear = [];
+        for (var k = 0; k < frames * 10; k++) {
+          var s = slot(k);
+          var c = document.createElement("span");
+          c.className = "cell";
+          c.style.left = (s.x - cell / 2) + "px";
+          c.style.top = (s.y - cell / 2) + "px";
+          c.style.width = cell + "px";
+          c.style.height = cell + "px";
+          stage.appendChild(c);
+          units.push({ el: c, x: s.x, y: s.y, at: "translate(0,0)" });
+          appear.push(done(c.animate([{ opacity: 0 }, { opacity: 1 }],
+            { duration: ms(500), easing: "ease-out", fill: "backwards" })));
+        }
+
+        // 2. Chaque nombre part de son jeton et remplit les cases suivantes
+        var next = 0;
+        var chain = Promise.all(appear).then(function () { return wait(300); });
+        rows.forEach(function (r) {
+          var n = Math.abs(r.b.n);
+          var first = next;
+          next += n;
+          chain = chain.then(function () {
+            var from = center(r.p);
+            var flights = [];
+            for (var i = 0; i < n; i++) {
+              var s = slot(first + i);
+              var el = document.createElement("span");
+              el.className = "unit" + (r.b.n < 0 ? " neg" : "");
+              el.style.left = (s.x - dot / 2) + "px";
+              el.style.top = (s.y - dot / 2) + "px";
+              el.style.width = dot + "px";
+              el.style.height = dot + "px";
+              stage.appendChild(el);
+              units.push({ el: el, x: s.x, y: s.y, at: "translate(0,0)" });
+              flights.push(done(el.animate([
+                { transform: "translate(" + (from.x - s.x) + "px," + (from.y - s.y) + "px) scale(0.3)", opacity: 0 },
+                { transform: "translate(0,0) scale(1)", opacity: 1 }
+              ], { duration: ms(700), delay: ms(320 * i), easing: "cubic-bezier(.3,1.2,.5,1)", fill: "backwards" })));
+            }
+            return Promise.all(flights).then(function () { return wait(600); });
+          });
+        });
+
+        return chain.then(function () { return wait(900); });
+      }
+
       function fxMeet(fx, vanished) {
         var snap = snapshot();
         var parts = fx.ids.map(function (id) { return snap[id]; }).filter(Boolean);
@@ -924,7 +1022,20 @@
 
         parts.forEach(function (p) { p.el.classList.add("hl"); });
 
-        return wait(350).then(function () {
+        var units = [];
+        var pre = wait(350);
+        if (fx.blocks) pre = pre.then(function () { return fxBlocks(fx.blocks, snap, cx, units); });
+
+        return pre.then(function () {
+          // Les carrés rejoignent le point de fusion en même temps que les
+          // jetons : c'est de là que sort le résultat.
+          units.forEach(function (u) {
+            var a = u.el.animate([
+              { transform: u.at, opacity: 1 },
+              { transform: "translate(" + (cx - u.x) + "px," + (cy - u.y) + "px) scale(0.2)", opacity: 0 }
+            ], { duration: ms(650), easing: "ease-in", fill: "forwards" });
+            done(a).then(function () { u.el.remove(); });
+          });
           var anims = parts.map(function (p) {
             var c = center(p);
             vanished[p.el.dataset.id] = true;
@@ -1140,6 +1251,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v6", text: "Méthode de Singapour : au moment où deux nombres fusionnent (2 + 5, (−2) + (−1)), un cadre de dix (2 rangées de 5, comme à Singapour) apparaît et chaque nombre vient le remplir de jetons, puis tout se referme sur le résultat. Jetons jaunes = négatifs." },
         { v: "v5", text: "Distribution du −1 terme par terme, écrite en toutes lettres (−1)·(terme), avant de la simplifier. Phrases magiques sur la ligne du haut. Contrôles réduits à deux flèches." },
         { v: "v4", text: "Écran scindé écrit / détail sur la démo −( … ) : le haut montre la formule telle qu'on l'écrit à la main, le bas ne saute aucune étape. Retrait des commentaires sous l'animation." },
         { v: "v3", text: "Ajout au menu du portfolio." },
