@@ -1,0 +1,16 @@
+{
+  "name": "Soroban",
+  "short_name": "Soroban",
+  "description": "Un boulier japonais au doigt — pousser des perles, puis compter.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05100a",
+  "theme_color": "#05100a",
+  "icons": [
+    { "src": "../apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "../favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
