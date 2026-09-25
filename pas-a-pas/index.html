@@ -583,6 +583,37 @@
       background: rgba(20, 5, 5, 0.9);
     }
 
+    /* Mode jeu : deux propositions pour l'étape suivante */
+    .stage-wrap { position: relative; }
+
+    .choices {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0.6rem;
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      padding: 0 0.4rem;
+    }
+
+    .choice {
+      display: flex;
+      justify-content: center;
+      overflow: hidden;
+      padding: 0.5rem 0.4rem;
+      background: var(--bg);
+      border: 1px solid var(--ink-soft);
+      border-radius: 12px;
+      cursor: pointer;
+      color: var(--ink);
+    }
+
+    .choice .expr { font-size: clamp(1.1rem, 5vw, 1.6rem); }
+    .choice.good { border-color: var(--accent); background: var(--accent-soft); }
+    .choice.bad { border-color: #ff8a7a; color: #ff8a7a; }
+
     .summary {
       display: flex;
       flex-direction: column;
@@ -929,6 +960,7 @@
       <button class="menu-item" id="histBtn" data-tr="Historique">Historique</button>
       <button class="menu-item" id="badgeReset" data-tr="Effacer le badge">Effacer le badge</button>
       <button class="menu-item" id="langBtn" data-tr="English">English</button>
+      <button class="menu-item" id="gameBtn"></button>
     </div>
 
     <div class="overlay" id="histOverlay" hidden>
@@ -2316,6 +2348,7 @@
           return;
         }
         var last = DEMOS[demoIndex].steps.length - 1;
+        if (gameMode && cur < last && !busy && !choiceEl && gameChoice(cur + 1)) return;
         if (cur === last) {
           if (busy) return;
           cur = 0;
@@ -2327,7 +2360,106 @@
         }
       }
 
+      // ---------- Mode jeu ----------
+      // À chaque étape qui change l'écriture, deux propositions : la vraie
+      // étape suivante et une fausse, fabriquée en changeant un signe ou un
+      // nombre (le vérificateur garantit qu'elle est vraiment fausse). La
+      // bonne réponse lance l'animation ; une erreur secoue la proposition
+      // et montre la bonne.
+      var gameMode = false;
+      try { gameMode = localStorage.getItem("pasapas_game") === "1"; } catch (e) {}
+      var choiceEl = null;
+
+      function sameValue(txtA, txtB) {
+        var envs = [{ x: 1.7, O: 2.3, Q: -0.9, a: 1.3, b: -2.2 }, { x: -3.1, O: 0.6, Q: 4.2, a: -0.7, b: 3.4 }];
+        try {
+          if (txtA.indexOf("=") >= 0 || txtB.indexOf("=") >= 0) {
+            function root(t) {
+              var sd = t.split("=");
+              var f = function (x) { return evalExpr(sd[0], { x: x, O: 0, Q: 0, a: 0, b: 0 }) - evalExpr(sd[1], { x: x, O: 0, Q: 0, a: 0, b: 0 }); };
+              var f0 = f(0), f1 = f(1);
+              return Math.abs(f1 - f0) < 1e-12 ? NaN : -f0 / (f1 - f0);
+            }
+            return Math.abs(root(txtA) - root(txtB)) < 1e-9;
+          }
+          return envs.every(function (env) {
+            var a = evalC(txtA, env), b = evalC(txtB, env);
+            return Math.abs(a[0] - b[0]) < 1e-9 && Math.abs(a[1] - b[1]) < 1e-9;
+          });
+        } catch (e) { return false; }
+      }
+
+      function flatTokens(list, out) {
+        list.forEach(function (it) {
+          if (it.frac) { flatTokens(it.num, out); flatTokens(it.den, out); }
+          else if (it.cancel) { flatTokens(it.top, out); flatTokens(it.bottom, out); if (it.eq) flatTokens(it.eq, out); }
+          else out.push(it);
+        });
+        return out;
+      }
+
+      function makeWrong(step) {
+        var copy = JSON.parse(JSON.stringify(step.expr));
+        var toks = flatTokens(copy, []);
+        var cands = [];
+        toks.forEach(function (t) {
+          if (t.t === "+" || t.t === "−") cands.push(function () { var o = t.t; t.t = o === "+" ? "−" : "+"; return function () { t.t = o; }; });
+          var m = /^(\(?−?)(\d+)/.exec(t.t);
+          if (m) cands.push(function () { var o = t.t; t.t = t.t.replace(/\d+/, String(Number(m[2]) + 1)); return function () { t.t = o; }; });
+        });
+        var good = exprText(step.expr);
+        for (var n = 0; n < 12 && cands.length; n++) {
+          var k = Math.floor(Math.random() * cands.length);
+          var undo = cands[k]();
+          var txt = exprText(copy);
+          if (txt !== good && !sameValue(txt, good)) return { expr: copy };
+          undo();
+          cands.splice(k, 1);
+        }
+        return null;
+      }
+
+      function gameChoice(to) {
+        var st = DEMOS[demoIndex].steps[to], here = DEMOS[demoIndex].steps[cur];
+        if (!st.expr || st.summary || !here.expr) return false;
+        if (exprText(st.expr) === exprText(here.expr)) return false;
+        var wrong = makeWrong(st);
+        if (!wrong) return false;
+        choiceEl = document.createElement("div");
+        choiceEl.className = "choices";
+        var opts = [{ step: st, ok: true }, { step: wrong, ok: false }];
+        if (Math.random() < 0.5) opts.reverse();
+        opts.forEach(function (o) {
+          var b = document.createElement("button");
+          b.className = "choice";
+          var e = buildExprEl(o.step, true);
+          b.appendChild(e);
+          b.addEventListener("click", function () {
+            if (!choiceEl) return;
+            if (o.ok) {
+              b.classList.add("good");
+              setTimeout(function () { closeChoice(); go(to); }, ms(350));
+            } else {
+              b.classList.add("bad");
+              b.animate([{ transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "none" }], { duration: ms(300) });
+              choiceEl.querySelectorAll(".choice").forEach(function (c) { if (c !== b) c.classList.add("good"); });
+              setTimeout(function () { closeChoice(); go(to); }, ms(1400));
+            }
+          });
+          choiceEl.appendChild(b);
+        });
+        stageWrap.appendChild(choiceEl);
+        choiceEl.querySelectorAll(".expr").forEach(function (e) { fitOneLine(e, e.parentNode); });
+        choiceEl.animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: ms(300) });
+        return true;
+      }
+
+      function closeChoice() {
+        if (choiceEl) { choiceEl.remove(); choiceEl = null; }
+      }
+
       function prev() {
+        closeChoice();
         var demo = DEMOS[demoIndex];
         if (demo.custom) return;
         if (busy) return;
@@ -2348,6 +2480,7 @@
         tabsEl.querySelectorAll(".tab").forEach(function (t, k) {
           t.setAttribute("aria-selected", k === i ? "true" : "false");
         });
+        closeChoice();
         try { localStorage.setItem("pasapas_demo", DEMOS[i].title); } catch (e) {}
         var custom = DEMOS[i].custom;
         sgEl.hidden = custom !== "sg";
@@ -3314,6 +3447,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v24", text: "Mode jeu (menu ☰) : à chaque étape qui change l'écriture, deux propositions — la vraie étape et une fausse (un signe ou un nombre changé, vérifiée fausse par le calcul). Bonne réponse : l'animation continue ; erreur : la bonne réponse s'allume." },
         { v: "v23", text: "Barre des ensembles toujours visible en bas : ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ, on choisit où l'on travaille (tout ce qui est plus petit est inclus). Nouveau chapitre Solutions : la réponse dépend de l'ensemble — 2 − 3 donne ∅ dans ℕ et { −1 } dans ℤ ; x² = 4 donne { 2 } dans ℕ et { −2 ; 2 } dans ℤ ; x² = −1 n'a de solution que dans ℂ." },
         { v: "v22", text: "Nouveau chapitre Ensembles : un nombre s'affiche, on le glisse (ou on touche) dans un ensemble — ℕ*, ℕ, ℤ, ℚ, ℝ, ℂ en première ligne ; 𝔻, ℝ∖ℚ, ℝ₊, iℝ, 𝕌 en seconde. Toute case qui le contient est juste ; la réponse allume toutes ses cases. Appui long : définition de l'ensemble. Les cases et les nombres suivent les ensembles cochés dans le menu." },
         { v: "v21", text: "Identités remarquables sous leur forme générale : (a + b)² = a² + 2ab + b², (a − b)² = a² − 2ab + b², (a + b)(a − b) = a² − b². Nouveau chapitre ℂ : a² + b² = (a + ib)(a − ib), grâce à i² = −1. Menu ☰ : on coche les ensembles ℕ ℤ ℚ ℝ ℂ, les chapitres suivent (ℂ décoché au départ). Tient aussi sur téléphone couché. Le vérificateur calcule aussi avec a, b et i." },
@@ -3396,6 +3530,19 @@
         if (!busy) selectDemo(demoIndex);
       });
       applyLang();
+
+      var gameBtn = document.getElementById("gameBtn");
+      function renderGameBtn() {
+        gameBtn.textContent = (LANG === "en" ? "Play mode: " : "Mode jeu : ") + (gameMode ? "✓" : "—");
+      }
+      gameBtn.addEventListener("click", function () {
+        gameMode = !gameMode;
+        try { localStorage.setItem("pasapas_game", gameMode ? "1" : "0"); } catch (e) {}
+        renderGameBtn();
+        closeChoice();
+      });
+      renderGameBtn();
+      document.getElementById("langBtn").addEventListener("click", renderGameBtn);
 
       // ---------- Ensembles de nombres ----------
       // Chaque chapitre appartient à l'ensemble où il se passe. On coche ou

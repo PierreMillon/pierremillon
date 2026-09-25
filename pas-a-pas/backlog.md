@@ -54,7 +54,7 @@ Tri : priorité décroissante.
 - [x] P1 — Identités remarquables (3) sous forme générale + chapitre ℂ (a² + b²), ensembles ℕ ℤ ℚ ℝ ℂ à cocher dans le menu
 - [x] P1 — Quiz Ensembles : ranger un nombre dans le bon ensemble (glisser ou toucher), 11 ensembles, définitions en appui long
 - [x] P1 — Barre des ensembles toujours visible (univers emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ) + chapitre Solutions : la réponse change avec l'ensemble
-- [ ] P2 — Mode jeu : l'élève choisit la transformation, l'animation valide ou montre l'erreur
+- [x] P2 — Mode jeu (menu ☰) : deux propositions à chaque étape, la fausse est générée (signe ou nombre changé) et vérifiée fausse par le calcul
 - [x] P2 — Équations (même opération des deux côtés, ⇔ à la fin)
 - [x] P2 — Plus d'exemples : double distributivité (Double), identité remarquable (Identité), avec page récapitulative
 - [x] P2 — Ajouter au menu du portfolio (groupe maths)
