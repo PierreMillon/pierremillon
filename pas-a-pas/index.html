@@ -122,14 +122,15 @@
 
     .menu-item:last-child { border-bottom: none; }
 
-    /* Ensembles de nombres cochés : ils décident quels chapitres existent */
-    .menu-sets {
+    /* Barre des ensembles, toujours visible : ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ */
+    .univ {
+      flex: none;
       display: flex;
       gap: 0.3rem;
-      padding: 0.6rem 0.8rem 0.8rem;
+      margin-top: 0.5rem;
     }
 
-    .menu-sets button {
+    .univ button {
       flex: 1;
       font-family: inherit;
       font-size: 1rem;
@@ -141,7 +142,8 @@
       cursor: pointer;
     }
 
-    .menu-sets button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+    .univ button.on { color: var(--ink); border-color: var(--ink-soft); background: var(--accent-soft); }
+    .univ button.cur { color: var(--accent); border-color: var(--accent); }
     .menu-item:hover, .menu-item:focus-visible { color: var(--accent); }
     .menu-panel[hidden] { display: none; }
 
@@ -764,6 +766,55 @@
 
     .sg-streak { display: flex; gap: 0.4rem; }
 
+    /* Chapitre Solutions : la réponse dépend de l'ensemble choisi */
+    #sol { justify-content: center; gap: 1.2rem; }
+    .sol-q { font-size: clamp(1.8rem, 9vw, 2.8rem); font-weight: 500; }
+    .sol-in { font-size: 0.8rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); }
+    .sol-a { font-size: clamp(1.6rem, 8vw, 2.4rem); color: var(--accent); min-height: 1.3em; text-align: center; }
+    .sol-a.empty { color: var(--sign); }
+
+    /* Chapitre Ensembles : ranger un nombre dans un ensemble */
+    #ens { position: relative; justify-content: space-between; }
+    .ens-top { flex: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+
+    .ens-num {
+      display: inline-block;
+      padding: 0.4rem 1.1rem;
+      font-size: clamp(1.8rem, 9vw, 2.8rem);
+      font-weight: 500;
+      color: var(--ink);
+      border: 1px solid var(--accent);
+      border-radius: 14px;
+      background: var(--accent-soft);
+      touch-action: none;
+      cursor: grab;
+    }
+
+    .ens-num.drag { position: fixed; z-index: 20; transform: translate(-50%, -50%) scale(1.05); pointer-events: none; }
+    .ens-rows { width: 100%; display: flex; flex-direction: column; gap: 0.45rem; }
+    .ens-row { display: flex; gap: 0.35rem; justify-content: center; }
+
+    .ens-box {
+      flex: 1;
+      max-width: 4.2rem;
+      height: 3.2rem;
+      font-family: inherit;
+      font-size: 1.25rem;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--ink-soft);
+      border-radius: 10px;
+      cursor: pointer;
+      touch-action: none;
+      transition: background 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+    }
+
+    .ens-row + .ens-row .ens-box { font-size: 1rem; border-style: dashed; }
+    .ens-box.hover { background: var(--accent-soft); }
+    .ens-box.in { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); border-style: solid; }
+    .ens-box.bad { border-color: var(--sign); color: var(--sign); }
+    .ens-score { font-size: 0.75rem; color: var(--ink-soft); letter-spacing: 0.1em; min-height: 1em; }
+
     /* Chapitre Premiers : arbre de facteurs */
     .pf-eq { font-size: clamp(1.4rem, 6.5vw, 2.2rem); text-align: center; }
 
@@ -878,7 +929,6 @@
       <button class="menu-item" id="histBtn" data-tr="Historique">Historique</button>
       <button class="menu-item" id="badgeReset" data-tr="Effacer le badge">Effacer le badge</button>
       <button class="menu-item" id="langBtn" data-tr="English">English</button>
-      <div class="menu-sets" id="menuSets"></div>
     </div>
 
     <div class="overlay" id="histOverlay" hidden>
@@ -903,6 +953,26 @@
       <div class="pf-tip" id="pfTip" hidden></div>
     </section>
 
+    <section class="sg" id="sol" hidden>
+      <div class="sol-q" id="solQ"></div>
+      <div class="sol-in" id="solIn"></div>
+      <div class="sol-a" id="solA"></div>
+      <p class="sg-msg" id="solMsg"></p>
+    </section>
+
+    <section class="sg" id="ens" hidden>
+      <div class="ens-top">
+        <span class="ens-num" id="ensNum"></span>
+      </div>
+      <p class="sg-msg" id="ensMsg"></p>
+      <div class="ens-rows">
+        <div class="ens-row" id="ensRow1"></div>
+        <div class="ens-row" id="ensRow2"></div>
+      </div>
+      <div class="ens-score" id="ensScore"></div>
+      <div class="pf-tip" id="ensTip" hidden></div>
+    </section>
+
     <div class="stage-wrap" id="stageWrap">
       <div class="stage-top" id="stageTop">
         <span class="row-tag">sauter des étapes</span>
@@ -916,6 +986,8 @@
         <div class="dots" id="dotsBottom"></div>
       </div>
     </div>
+
+    <div class="univ" id="univ" aria-label="Ensemble de travail"></div>
 
     <div class="controls" id="controls">
       <button class="arrow-btn" id="prevBtn" aria-label="Retour">←</button>
@@ -940,6 +1012,8 @@
       var DEMOS = [
         { title: "Singapour", custom: "sg", steps: [{ expr: [] }] },
         { title: "Premiers", custom: "pf", steps: [{ expr: [] }] },
+        { title: "Ensembles", custom: "ens", steps: [{ expr: [] }] },
+        { title: "Solutions", custom: "sol", steps: [{ expr: [] }] },
         {
           title: "−( … )",
           split: true,
@@ -2236,6 +2310,8 @@
           // Singapour : la flèche lance la manche suivante, une fois le
           // résultat affiché
           if (DEMOS[demoIndex].custom === "pf") { if (pfState && pfState.ready) pfStart(); return; }
+          if (DEMOS[demoIndex].custom === "ens") { if (ensState && ensState.ready) ensStart(); return; }
+          if (DEMOS[demoIndex].custom === "sol") { solIndex = (solIndex + 1) % SOL.length; solRender(false); return; }
           if (sgState && sgState.ready) sgStart();
           return;
         }
@@ -2276,11 +2352,15 @@
         var custom = DEMOS[i].custom;
         sgEl.hidden = custom !== "sg";
         pfEl.hidden = custom !== "pf";
+        ensEl.hidden = custom !== "ens";
+        solEl.hidden = custom !== "sol";
         stageWrap.hidden = !!custom;
         document.getElementById("controls").hidden = false;
         prevBtn.style.visibility = custom ? "hidden" : "";
         if (custom === "sg") { sgStart(); return; }
         if (custom === "pf") { pfStart(); return; }
+        if (custom === "ens") { ensStart(); return; }
+        if (custom === "sol") { solStart(); return; }
         buildDots(DEMOS[i]);
         build(DEMOS[i].steps[0]);
         refreshUi();
@@ -2979,6 +3059,241 @@
         });
       }
 
+      // ---------- Chapitre Solutions ----------
+      // Un même problème, plusieurs réponses selon l'ensemble où on cherche :
+      // 2 − 3 n'existe pas dans ℕ (∅), vaut −1 dans ℤ. On change d'ensemble
+      // avec la barre du bas et la réponse se met à jour sous nos yeux.
+      var solEl = document.getElementById("sol");
+      var SOL = [
+        { q: "x = 2 − 3", a: { N: "∅", Z: "{ −1 }" } },
+        { q: "x + 5 = 2", a: { N: "∅", Z: "{ −3 }" } },
+        { q: "x² = 4", a: { N: "{ 2 }", Z: "{ −2 ; 2 }" } },
+        { q: "2x = 7", a: { N: "∅", Q: "{ 7/2 }" } },
+        { q: "2x = 1", a: { N: "∅", Q: "{ 1/2 }" } },
+        { q: "3x = −2", a: { N: "∅", Q: "{ −2/3 }" } },
+        { q: "x² = 2", a: { N: "∅", R: "{ −√2 ; √2 }" } },
+        { q: "x² − x − 1 = 0", a: { N: "∅", R: "{ (1 − √5)/2 ; (1 + √5)/2 }" } },
+        { q: "x² = −1", a: { N: "∅", C: "{ −i ; i }" } },
+        { q: "x² = −4", a: { N: "∅", C: "{ −2i ; 2i }" } },
+        { q: "x³ = 8", a: { N: "{ 2 }", C: "{ 2 ; −1 − i√3 ; −1 + i√3 }" } },
+        { q: "x² + 2x + 5 = 0", a: { N: "∅", C: "{ −1 − 2i ; −1 + 2i }" } }
+      ];
+      var solIndex = 0, solShown = "";
+      var SYM = { N: "ℕ", Z: "ℤ", Q: "ℚ", R: "ℝ", C: "ℂ" };
+
+      function solAnswer(p) {
+        // La réponse valable dans le plus grand ensemble ≤ univers
+        var ans = "∅";
+        UNIV.forEach(function (k) { if (sets[k] && p.a[k]) ans = p.a[k]; });
+        return ans;
+      }
+
+      function solStart() { solRender(false); }
+
+      function solRender(animate) {
+        var p = SOL[solIndex];
+        var qEl = document.getElementById("solQ"), aEl = document.getElementById("solA");
+        qEl.textContent = p.q;
+        document.getElementById("solIn").textContent = (LANG === "en" ? "in " : "dans ") + SYM[universe];
+        var ans = "S = " + solAnswer(p);
+        var changed = ans !== solShown;
+        aEl.textContent = ans;
+        aEl.classList.toggle("empty", solAnswer(p) === "∅");
+        if (animate && changed) aEl.animate([{ transform: "rotateX(90deg)", opacity: 0.2 }, { transform: "none", opacity: 1 }], { duration: ms(500), easing: "ease-out" });
+        else if (!animate) qEl.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: ms(400) });
+        solShown = ans;
+        // Où apparaît la première solution ?
+        var first = UNIV.find(function (k) { return p.a[k] && p.a[k] !== "∅"; });
+        document.getElementById("solMsg").textContent = solAnswer(p) === "∅"
+          ? (LANG === "en" ? "No solution in " + SYM[universe] + " — try a bigger set." : "Pas de solution dans " + SYM[universe] + " — essaie un ensemble plus grand.")
+          : "";
+        nextBtn.disabled = false;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+      }
+
+      // ---------- Chapitre Ensembles ----------
+      // Un nombre s'affiche ; on le glisse dans un ensemble (ou on touche la
+      // case). Toute case qui le contient est juste : 3 est dans ℤ, mais
+      // aussi dans ℂ. La réponse allume toutes les cases qui le contiennent
+      // — on voit les inclusions. Appui long sur une case : sa définition.
+
+      var ensEl = document.getElementById("ens");
+      var ensNum = document.getElementById("ensNum");
+      var ensMsg = document.getElementById("ensMsg");
+      var ensTip = document.getElementById("ensTip");
+      var ensScoreEl = document.getElementById("ensScore");
+      var ensState = null, ensScore = { ok: 0, n: 0 };
+
+      // Chaque case : symbole, ensemble de base (pour les cases à cocher du
+      // menu), appartenance, définition.
+      var ENS = [
+        { id: "Ns", sym: "ℕ*", base: "N", row: 1, has: function (z) { return z.real && z.kind === "int" && z.re > 0; },
+          def: "ℕ* : les entiers naturels non nuls, 1, 2, 3…", defEn: "ℕ*: non-zero natural numbers 1, 2, 3…" },
+        { id: "N", sym: "ℕ", base: "N", row: 1, has: function (z) { return z.real && z.kind === "int" && z.re >= 0; },
+          def: "ℕ : les entiers naturels 0, 1, 2, 3…", defEn: "ℕ: natural numbers 0, 1, 2, 3…" },
+        { id: "Z", sym: "ℤ", base: "Z", row: 1, has: function (z) { return z.real && z.kind === "int"; },
+          def: "ℤ : les entiers relatifs … −2, −1, 0, 1, 2…", defEn: "ℤ: integers … −2, −1, 0, 1, 2…" },
+        { id: "Q", sym: "ℚ", base: "Q", row: 1, has: function (z) { return z.real && z.kind !== "irr"; },
+          def: "ℚ : les rationnels, quotients p/q d'entiers (q ≠ 0).", defEn: "ℚ: rationals, quotients p/q of integers (q ≠ 0)." },
+        { id: "R", sym: "ℝ", base: "R", row: 1, has: function (z) { return z.real; },
+          def: "ℝ : les réels, tous les points de la droite graduée.", defEn: "ℝ: reals, every point of the number line." },
+        { id: "C", sym: "ℂ", base: "C", row: 1, has: function () { return true; },
+          def: "ℂ : les complexes a + ib, avec i² = −1. Contient tous les autres.", defEn: "ℂ: complex numbers a + ib, with i² = −1. Contains all the others." },
+        { id: "D", sym: "𝔻", base: "Q", row: 2, has: function (z) { return z.real && (z.kind === "int" || z.kind === "dec"); },
+          def: "𝔻 : les décimaux, un nombre fini de chiffres après la virgule (a/10ⁿ).", defEn: "𝔻: decimals, finitely many digits after the point (a/10ⁿ)." },
+        { id: "RQ", sym: "ℝ∖ℚ", base: "R", row: 2, has: function (z) { return z.real && z.kind === "irr"; },
+          def: "ℝ∖ℚ : les irrationnels, réels qui ne sont pas un quotient d'entiers (√2, π…).", defEn: "ℝ∖ℚ: irrationals, reals that are not a quotient of integers (√2, π…)." },
+        { id: "Rp", sym: "ℝ₊", base: "R", row: 2, has: function (z) { return z.real && z.re >= 0; },
+          def: "ℝ₊ : les réels positifs ou nuls.", defEn: "ℝ₊: non-negative reals." },
+        { id: "iR", sym: "iℝ", base: "C", row: 2, has: function (z) { return Math.abs(z.re) < 1e-12; },
+          def: "iℝ : les imaginaires purs ib (partie réelle nulle). 0 en fait partie.", defEn: "iℝ: pure imaginary numbers ib (zero real part). 0 belongs to it." },
+        { id: "U", sym: "𝕌", base: "C", row: 2, has: function (z) { return Math.abs(Math.hypot(z.re, z.im) - 1) < 1e-9; },
+          def: "𝕌 : les complexes de module 1, sur le cercle unité (e^(iθ)).", defEn: "𝕌: complex numbers of modulus 1, on the unit circle (e^(iθ))." }
+      ];
+
+      // Nombres : valeur (re, im) et nature de la partie réelle (entier,
+      // décimal, rationnel, irrationnel). Quelques pièges : √9, −7/2, i².
+      var R2 = Math.SQRT2;
+      var NUMS = [
+        { t: "3", re: 3, im: 0, kind: "int" }, { t: "0", re: 0, im: 0, kind: "int" }, { t: "−4", re: -4, im: 0, kind: "int" },
+        { t: "1", re: 1, im: 0, kind: "int" }, { t: "−1", re: -1, im: 0, kind: "int" }, { t: "√9", re: 3, im: 0, kind: "int" },
+        { t: "0,25", re: 0.25, im: 0, kind: "dec" }, { t: "−7/2", re: -3.5, im: 0, kind: "dec" }, { t: "10⁻³", re: 0.001, im: 0, kind: "dec" },
+        { t: "1/3", re: 1 / 3, im: 0, kind: "rat" }, { t: "22/7", re: 22 / 7, im: 0, kind: "rat" }, { t: "−2/3", re: -2 / 3, im: 0, kind: "rat" },
+        { t: "√2", re: R2, im: 0, kind: "irr" }, { t: "π", re: Math.PI, im: 0, kind: "irr" }, { t: "−√2", re: -R2, im: 0, kind: "irr" },
+        { t: "3i", re: 0, im: 3, kind: "int" }, { t: "i", re: 0, im: 1, kind: "int" }, { t: "i²", re: -1, im: 0, kind: "int" },
+        { t: "2 + i", re: 2, im: 1, kind: "int" }, { t: "e^(iπ/3)", re: 0.5, im: Math.sqrt(3) / 2, kind: "dec" },
+        { t: "(1 + i)/√2", re: 1 / R2, im: 1 / R2, kind: "irr" }, { t: "−i", re: 0, im: -1, kind: "int" }
+      ];
+      NUMS.forEach(function (z) { z.real = Math.abs(z.im) < 1e-12; });
+
+      function smallestBase(z) {
+        if (!z.real) return "C";
+        if (z.kind === "irr") return "R";
+        if (z.kind === "rat" || z.kind === "dec") return "Q";
+        return z.re >= 0 ? "N" : "Z";
+      }
+
+      var ensBoxes = [];
+      ENS.forEach(function (e) {
+        var b = document.createElement("button");
+        b.className = "ens-box";
+        b.textContent = e.sym;
+        b._e = e;
+        var timer = null, longDone = false;
+        b.addEventListener("pointerdown", function (ev) {
+          ev.preventDefault();
+          longDone = false;
+          ensTip.hidden = true;
+          timer = setTimeout(function () { longDone = true; ensShowTip(e, b); }, 450);
+        });
+        b.addEventListener("pointerup", function () {
+          if (timer) { clearTimeout(timer); timer = null; }
+          if (!longDone) ensAnswer(b);
+        });
+        b.addEventListener("pointerleave", function () { if (timer) { clearTimeout(timer); timer = null; } });
+        b.addEventListener("contextmenu", function (ev) { ev.preventDefault(); });
+        document.getElementById(e.row === 1 ? "ensRow1" : "ensRow2").appendChild(b);
+        ensBoxes.push(b);
+      });
+
+      function ensShowTip(e, b) {
+        ensTip.textContent = LANG === "en" ? e.defEn : e.def;
+        ensTip.hidden = false;
+        var rs = ensEl.getBoundingClientRect(), rb = b.getBoundingClientRect();
+        var rows = document.querySelector(".ens-rows").getBoundingClientRect();
+        ensTip.style.left = Math.max(4, Math.min(rs.width - ensTip.offsetWidth - 4, rb.left - rs.left + rb.width / 2 - ensTip.offsetWidth / 2)) + "px";
+        ensTip.style.top = (rows.top - rs.top - ensTip.offsetHeight - 8) + "px";
+      }
+      document.addEventListener("pointerdown", function (ev) {
+        if (!ensTip.hidden && !ev.target.closest(".ens-box")) ensTip.hidden = true;
+      });
+
+      function ensStart() {
+        // Seuls les nombres et les cases des ensembles cochés dans le menu
+        ensBoxes.forEach(function (b) {
+          b.hidden = !sets[b._e.base];
+          b.classList.remove("in", "bad", "hover");
+        });
+        var pool = NUMS.filter(function (z) { return sets[smallestBase(z)]; });
+        if (!pool.length) pool = NUMS.filter(function (z) { return smallestBase(z) === "N"; });
+        var z = pool[Math.floor(Math.random() * pool.length)];
+        if (ensState && ensState.z === z && pool.length > 1) z = pool[(pool.indexOf(z) + 1) % pool.length];
+        ensState = { z: z, ready: false };
+        ensNum.textContent = z.t;
+        ensNum.classList.remove("drag");
+        ensNum.style.left = ensNum.style.top = "";
+        ensMsg.textContent = "";
+        ensScoreEl.textContent = ensScore.n ? ensScore.ok + " / " + ensScore.n : "";
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        ensNum.animate([{ opacity: 0, transform: "scale(0.6)" }, { opacity: 1, transform: "scale(1)" }],
+          { duration: ms(450), easing: "cubic-bezier(.3,1.4,.5,1)" });
+      }
+
+      function ensAnswer(b) {
+        if (!ensState || ensState.ready || b.hidden) return;
+        ensState.ready = true;
+        var z = ensState.z, ok = b._e.has(z);
+        ensScore.n++;
+        if (ok) ensScore.ok++;
+        // Toutes les cases qui contiennent le nombre s'allument, une à une
+        ensBoxes.forEach(function (bb, k) {
+          if (bb.hidden || !bb._e.has(z)) return;
+          setTimeout(function () { bb.classList.add("in"); }, ms(ok && bb === b ? 0 : 250 + k * 90));
+        });
+        if (!ok) {
+          b.classList.add("bad");
+          b.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(300) });
+        }
+        var list = ensBoxes.filter(function (bb) { return !bb.hidden && bb._e.has(z); }).map(function (bb) { return bb._e.sym; }).join("  ");
+        ensMsg.textContent = (ok ? "✓ " : "✗ ") + z.t + " ∈ " + list;
+        ensScoreEl.textContent = ensScore.ok + " / " + ensScore.n;
+        nextBtn.disabled = false;
+      }
+
+      // Glisser le nombre sur une case
+      (function () {
+        var drag = null;
+        ensNum.addEventListener("pointerdown", function (e) {
+          if (!ensState || ensState.ready) return;
+          e.preventDefault();
+          ensNum.setPointerCapture(e.pointerId);
+          drag = { x: e.clientX, y: e.clientY, moved: false };
+        });
+        function boxAt(x, y) {
+          return ensBoxes.find(function (b) {
+            if (b.hidden) return false;
+            var r = b.getBoundingClientRect();
+            return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+          });
+        }
+        ensNum.addEventListener("pointermove", function (e) {
+          if (!drag) return;
+          if (!drag.moved && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+          drag.moved = true;
+          ensNum.classList.add("drag");
+          ensNum.style.left = e.clientX + "px";
+          ensNum.style.top = e.clientY + "px";
+          var over = boxAt(e.clientX, e.clientY);
+          ensBoxes.forEach(function (b) { b.classList.toggle("hover", b === over); });
+        });
+        function up(e) {
+          if (!drag) return;
+          var d = drag;
+          drag = null;
+          ensBoxes.forEach(function (b) { b.classList.remove("hover"); });
+          var target = d.moved ? boxAt(e.clientX, e.clientY) : null;
+          ensNum.classList.remove("drag");
+          ensNum.style.left = ensNum.style.top = "";
+          ensNum.animate([{ transform: "scale(0.85)" }, { transform: "scale(1)" }], { duration: ms(350), easing: "cubic-bezier(.3,1.4,.5,1)" });
+          if (target) ensAnswer(target);
+        }
+        ensNum.addEventListener("pointerup", up);
+        ensNum.addEventListener("pointercancel", up);
+      })();
+
       // ---------- Écran figé ----------
       // Aucun glissement de page, aucun zoom (iOS ignore user-scalable=no
       // pour le pincement : on bloque aussi ses événements « gesture »).
@@ -2999,6 +3314,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v23", text: "Barre des ensembles toujours visible en bas : ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ, on choisit où l'on travaille (tout ce qui est plus petit est inclus). Nouveau chapitre Solutions : la réponse dépend de l'ensemble — 2 − 3 donne ∅ dans ℕ et { −1 } dans ℤ ; x² = 4 donne { 2 } dans ℕ et { −2 ; 2 } dans ℤ ; x² = −1 n'a de solution que dans ℂ." },
+        { v: "v22", text: "Nouveau chapitre Ensembles : un nombre s'affiche, on le glisse (ou on touche) dans un ensemble — ℕ*, ℕ, ℤ, ℚ, ℝ, ℂ en première ligne ; 𝔻, ℝ∖ℚ, ℝ₊, iℝ, 𝕌 en seconde. Toute case qui le contient est juste ; la réponse allume toutes ses cases. Appui long : définition de l'ensemble. Les cases et les nombres suivent les ensembles cochés dans le menu." },
         { v: "v21", text: "Identités remarquables sous leur forme générale : (a + b)² = a² + 2ab + b², (a − b)² = a² − 2ab + b², (a + b)(a − b) = a² − b². Nouveau chapitre ℂ : a² + b² = (a + ib)(a − ib), grâce à i² = −1. Menu ☰ : on coche les ensembles ℕ ℤ ℚ ℝ ℂ, les chapitres suivent (ℂ décoché au départ). Tient aussi sur téléphone couché. Le vérificateur calcule aussi avec a, b et i." },
         { v: "v20", text: "Reprend sur la dernière démo ouverte. Anglais disponible (menu ☰ → English). Installable comme une application (ajouter à l'écran d'accueil), fonctionne hors ligne." },
         { v: "v19", text: "Deux nouvelles démos : Double ((x + 1)(x + 2) = x² + 3x + 2, quatre produits écrits un par un) et Identité ((x + 3)² = x² + 6x + 9 : on voit d'où vient le « 2ab »). Page récapitulative à la fin de chacune." },
@@ -3089,29 +3406,47 @@
         "Fraction": "Q", "Piège": "Q", "Équation": "Q",
         "Distribuer": "R", "Factoriser": "R", "Double": "R"
       };
+      // Univers emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ : on choisit dans quel ensemble
+      // on travaille (barre toujours visible en bas). Tout ce qui est plus
+      // petit est inclus. Les chapitres et les réponses suivent.
       var SET_NAMES = [["N", "ℕ"], ["Z", "ℤ"], ["Q", "ℚ"], ["R", "ℝ"], ["C", "ℂ"]];
-      var sets = { N: true, Z: true, Q: true, R: true, C: false };
-      try { var saved = JSON.parse(localStorage.getItem("pasapas_sets") || "null"); if (saved) sets = saved; } catch (e) {}
+      var UNIV = ["N", "Z", "Q", "R", "C"];
+      var universe = "R";
+      try { var su = localStorage.getItem("pasapas_universe"); if (UNIV.indexOf(su) >= 0) universe = su; } catch (e) {}
+      var sets = {};
+      function computeSets() {
+        UNIV.forEach(function (k) { sets[k] = UNIV.indexOf(k) <= UNIV.indexOf(universe); });
+      }
+      computeSets();
       function setOf(d) { return d.set || SET_OF[d.title] || "N"; }
-      var menuSets = document.getElementById("menuSets");
+      var univEl = document.getElementById("univ");
       SET_NAMES.forEach(function (sn) {
         var b = document.createElement("button");
         b.textContent = sn[1];
-        b.setAttribute("aria-pressed", sets[sn[0]] ? "true" : "false");
-        b.addEventListener("click", function (e) {
-          e.stopPropagation();
-          sets[sn[0]] = !sets[sn[0]];
-          if (!Object.keys(sets).some(function (k) { return sets[k]; })) sets.N = true;
-          try { localStorage.setItem("pasapas_sets", JSON.stringify(sets)); } catch (err) {}
-          menuSets.querySelectorAll("button").forEach(function (bb, k) {
-            bb.setAttribute("aria-pressed", sets[SET_NAMES[k][0]] ? "true" : "false");
-          });
+        b.dataset.k = sn[0];
+        b.addEventListener("click", function () {
+          if (busy) return;
+          universe = sn[0];
+          try { localStorage.setItem("pasapas_universe", universe); } catch (err) {}
+          computeSets();
+          renderUniv();
           applySets();
+          b.animate([{ transform: "scale(1.2)" }, { transform: "scale(1)" }], { duration: ms(350), easing: "ease-out" });
         });
-        menuSets.appendChild(b);
+        univEl.appendChild(b);
       });
+      function renderUniv() {
+        univEl.querySelectorAll("button").forEach(function (b) {
+          b.classList.toggle("on", sets[b.dataset.k]);
+          b.classList.toggle("cur", b.dataset.k === universe);
+        });
+      }
+      renderUniv();
       function applySets() {
         tabsEl.querySelectorAll(".tab").forEach(function (t, k) { t.hidden = !sets[setOf(DEMOS[k])]; });
+        var cu = DEMOS[demoIndex].custom;
+        if (cu === "sol") solRender(true);
+        if (cu === "ens" && ensState && !ensState.ready) ensStart();
         if (!sets[setOf(DEMOS[demoIndex])] && !busy) {
           for (var k = 0; k < DEMOS.length; k++) if (sets[setOf(DEMOS[k])]) { selectDemo(k); break; }
         }
