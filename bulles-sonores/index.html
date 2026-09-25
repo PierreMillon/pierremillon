@@ -320,13 +320,28 @@
     <button class="btn" id="histClose">Fermer</button>
   </div>
 
-  <script>
-    (function () {
-      // Physique maison (pas de librairie externe — comme les autres jeux
-      // du catalogue) : glissé "sur glace" via un amortissement exponentiel
-      // faible, collisions cercle-cercle classiques, tout recalculé chaque
-      // image à partir des positions/rayons courants.
+  <script type="module">
+    // Physique : Rapier (moteur Rust compilé en WebAssembly, choix de
+    // Pierre), chargé depuis jsDelivr. Chaque bulle est un corps rigide
+    // circulaire sans gravité ni frottement, freiné par un amortissement
+    // linéaire faible (effet glace). Une bulle tenue au doigt devient
+    // « cinématique » : elle suit le doigt et pousse les autres sans être
+    // poussée. Version figée pour que le comportement ne change pas dans
+    // notre dos.
+    import RAPIER from "https://cdn.jsdelivr.net/npm/@dimforge/rapier2d-compat@0.14.0/rapier.es.js";
 
+    try {
+      await RAPIER.init();
+    } catch (e) {
+      var msg = document.createElement("p");
+      msg.className = "hint";
+      msg.style.cssText = "position:fixed;left:0;right:0;top:45%;";
+      msg.textContent = "Moteur physique introuvable — il faut du réseau au premier lancement.";
+      document.body.appendChild(msg);
+      throw e;
+    }
+
+    (function () {
       // ---------- Réglages ----------
 
       var TARGET_COUNT = 5;
@@ -343,6 +358,10 @@
       var MIN_R = 16;
       var ICE_DAMPING = 0.32;    // amortissement par seconde — faible = glisse longtemps
       var WALL_BOUNCE = 0.62;
+      var BUBBLE_BOUNCE = 0.2;   // entre bulles : échange d'élan atténué, pas un choc parfait
+      var PX_PER_METER = 50;     // échelle interne de Rapier (on travaille en pixels)
+      var WALL_THICK = 200;      // murs épais hors écran : rien ne passe au travers
+      var STEP = 1 / 60;         // pas fixe de la simulation
       // Monochrome vert phosphore — plusieurs intensités, jamais une autre teinte
       var COLORS = ["#3be08a", "#2fd17d", "#54e8a0", "#26c46f", "#6dffb0"];
 
@@ -371,6 +390,49 @@
 
       try { style = localStorage.getItem("bulles-sonores-style") || "wire"; } catch (e) {}
       arena.dataset.style = style;
+
+      // ---------- Monde Rapier ----------
+
+      var world = new RAPIER.World({ x: 0, y: 0 });
+      world.timestep = STEP;
+      if ("lengthUnit" in world) world.lengthUnit = PX_PER_METER;
+      var events = new RAPIER.EventQueue(true);
+      var byCollider = new Map();   // handle de collider -> bulle
+      var wallAngle = new Map();    // handle de collider de mur -> angle d'écrasement
+      var walls = [];
+      var wallBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+      var contacts = new Set();     // paires de bulles en contact, "idA:idB"
+      var accumulator = 0;
+
+      function buildWalls() {
+        walls.forEach(function (c) { wallAngle.delete(c.handle); world.removeCollider(c, false); });
+        walls = [];
+        var s = arenaSize(), t = WALL_THICK;
+        [
+          [-t / 2, s.h / 2, t / 2, s.h / 2 + t, 0],          // gauche
+          [s.w + t / 2, s.h / 2, t / 2, s.h / 2 + t, 0],     // droite
+          [s.w / 2, -t / 2, s.w / 2 + t, t / 2, Math.PI / 2],      // haut
+          [s.w / 2, s.h + t / 2, s.w / 2 + t, t / 2, Math.PI / 2]  // bas
+        ].forEach(function (w) {
+          var desc = RAPIER.ColliderDesc.cuboid(w[2], w[3])
+            .setTranslation(w[0], w[1])
+            .setFriction(0)
+            .setRestitution(WALL_BOUNCE)
+            .setRestitutionCombineRule(RAPIER.CoefficientCombineRule.Max);
+          var c = world.createCollider(desc, wallBody);
+          wallAngle.set(c.handle, w[4]);
+          walls.push(c);
+        });
+      }
+
+      function isHeld(b) { return Object.keys(b.touches).length > 0; }
+
+      // Tenue au doigt : cinématique (suit le doigt, pousse sans être
+      // poussée). Relâchée : redevient libre et part avec la vitesse du geste.
+      function setHeld(b, held) {
+        var type = held ? RAPIER.RigidBodyType.KinematicPositionBased : RAPIER.RigidBodyType.Dynamic;
+        if (b.body.bodyType() !== type) b.body.setBodyType(type, true);
+      }
 
       // ---------- Style ----------
 
@@ -519,8 +581,25 @@
           impactAmp: 0,
           impactAngle: 0,
           wobble: 0,
-          _touch: null
+          contacts: 0          // nombre de bulles touchées en ce moment
         };
+
+        b.body = world.createRigidBody(
+          RAPIER.RigidBodyDesc.dynamic()
+            .setTranslation(x, y)
+            .setLinvel(vx, vy)
+            .setLinearDamping(ICE_DAMPING)
+            .lockRotations()
+            .setCcdEnabled(true)
+        );
+        b.collider = world.createCollider(
+          RAPIER.ColliderDesc.ball(r)
+            .setFriction(0)
+            .setRestitution(BUBBLE_BOUNCE)
+            .setActiveEvents(RAPIER.ActiveEvents.COLLISION_EVENTS),
+          b.body
+        );
+        byCollider.set(b.collider.handle, b);
 
         el.addEventListener("pointerdown", function (ev) { onDown(ev, b); });
         el.addEventListener("pointermove", function (ev) { onMove(ev, b); });
@@ -537,6 +616,15 @@
         var i = bubbles.indexOf(b);
         if (i >= 0) bubbles.splice(i, 1);
         b.el.remove();
+        byCollider.delete(b.collider.handle);
+        contacts.forEach(function (key) {
+          var ids = key.split(":");
+          if (Number(ids[0]) === b.id || Number(ids[1]) === b.id) {
+            contacts.delete(key);
+            bubbles.forEach(function (o) { if (o.id === Number(ids[0]) || o.id === Number(ids[1])) o.contacts = Math.max(0, o.contacts - 1); });
+          }
+        });
+        world.removeRigidBody(b.body);
         maybeRespawn();
       }
 
@@ -620,6 +708,7 @@
       function setRadius(b, r) {
         r = clamp(r, MIN_R, b.r0 * MAX_R_FACTOR);
         b.r = r;
+        b.collider.setRadius(r);
         b.el.style.width = b.el.style.height = (r * 2) + "px";
       }
 
@@ -643,6 +732,7 @@
           var now = performance.now();
           b.el.classList.add("dragging");
           b.dragTX = b.x; b.dragTY = b.y;
+          setHeld(b, true);
           b.history = [{ t: now, x: p.x, y: p.y }];
           b.pressStart = now;
           b.pressPos = p;
@@ -682,8 +772,8 @@
           var a = b.touches[ids[0]], c = b.touches[ids[1]];
           var dx = c.x - a.x, dy = c.y - a.y;
           var dist = Math.hypot(dx, dy);
-          b.x = (a.x + c.x) / 2;
-          b.y = (a.y + c.y) / 2;
+          b.dragTX = (a.x + c.x) / 2;
+          b.dragTY = (a.y + c.y) / 2;
           var stretch = clamp(dist / (b.r * 2), 1, SPLIT_DIST_FACTOR + 0.4);
           b.pinch = { sx: 1 / Math.sqrt(stretch), sy: stretch, angle: Math.atan2(dy, dx) };
           if (dist > b.r * 2 * SPLIT_DIST_FACTOR) splitBubble(b, a, c, ids[0], ids[1]);
@@ -712,6 +802,9 @@
           }
           b.vx = clamp(vx, -900, 900);
           b.vy = clamp(vy, -900, 900);
+          b.pinch = null;
+          setHeld(b, false);
+          b.body.setLinvel({ x: b.vx, y: b.vy }, true);
           thereminStop();
 
           if (b.growingContinuous) {
@@ -758,6 +851,7 @@
           bub.touches[id] = pos;
           bub.dragTX = pos.x; bub.dragTY = pos.y;
           bub.el.classList.add("dragging");
+          setHeld(bub, true);
         });
         playTone(280, 0.16, 0.15, "sawtooth");
         playTone(350, 0.13, 0.11, "sawtooth");
@@ -790,79 +884,83 @@
 
       // ---------- Boucle physique ----------
 
-      function update(dt) {
-        var s = arenaSize();
-        var iceFactor = Math.exp(-ICE_DAMPING * dt); // amortissement doux, façon glace
+      function bubbleContact(a, c, started) {
+        var key = Math.min(a.id, c.id) + ":" + Math.max(a.id, c.id);
+        if (!started) {
+          if (contacts.delete(key)) { a.contacts = Math.max(0, a.contacts - 1); c.contacts = Math.max(0, c.contacts - 1); }
+          return;
+        }
+        if (contacts.has(key)) return;
+        contacts.add(key);
+        a.contacts++; c.contacts++;
+        // Vitesse relative d'avant le choc (celle mesurée à l'image précédente)
+        var speed = Math.hypot(a.vx - c.vx, a.vy - c.vy);
+        var impact = clamp(0.05 + speed / 700, 0.05, 0.22);
+        var ang = Math.atan2(c.y - a.y, c.x - a.x);
+        kick(a, impact, ang);
+        kick(c, impact, ang);
+        if (running) playTone(85 + Math.random() * 15, 0.11, clamp(0.04 + speed / 2000, 0.03, 0.13));
+      }
 
+      function stepPhysics(dt) {
+        var s = arenaSize();
+
+        // Bulles tenues : suivi direct du doigt, sans délai.
         bubbles.forEach(function (b) {
-          var ids = Object.keys(b.touches);
-          if (ids.length === 1 && !b.pinch) {
-            // Suivi direct du doigt — pas de délai à la prise en main.
-            b.x = b.dragTX;
-            b.y = b.dragTY;
-          } else if (ids.length === 0) {
-            b.x += b.vx * dt;
-            b.y += b.vy * dt;
-            var bounced = false, angle = 0;
-            if (b.x < b.r) { b.x = b.r; b.vx = Math.abs(b.vx) * WALL_BOUNCE; bounced = true; angle = 0; }
-            if (b.x > s.w - b.r) { b.x = s.w - b.r; b.vx = -Math.abs(b.vx) * WALL_BOUNCE; bounced = true; angle = 0; }
-            if (b.y < b.r) { b.y = b.r; b.vy = Math.abs(b.vy) * WALL_BOUNCE; bounced = true; angle = Math.PI / 2; }
-            if (b.y > s.h - b.r) { b.y = s.h - b.r; b.vy = -Math.abs(b.vy) * WALL_BOUNCE; bounced = true; angle = Math.PI / 2; }
-            if (bounced) kick(b, 0.12, angle);
-            b.vx *= iceFactor;
-            b.vy *= iceFactor;
-          }
+          if (!isHeld(b)) return;
+          var tx = clamp(b.dragTX, b.r, s.w - b.r);
+          var ty = clamp(b.dragTY, b.r, s.h - b.r);
+          b.body.setNextKinematicTranslation({ x: tx, y: ty });
         });
 
-        // Contacts entre bulles : on les repousse et on les déforme.
-        for (var i = 0; i < bubbles.length; i++) {
-          for (var j = i + 1; j < bubbles.length; j++) {
-            var a = bubbles[i], c = bubbles[j];
-            var dx = c.x - a.x, dy = c.y - a.y;
-            var dist = Math.hypot(dx, dy) || 0.001;
-            var min = a.r + c.r;
-            if (dist < min) {
-              var nx = dx / dist, ny = dy / dist;
-              var overlap = (min - dist);
-              var wasTouching = a._touch === c;
-              if (!wasTouching) {
-                var speed = Math.hypot(a.vx - c.vx, a.vy - c.vy);
-                var impact = clamp(0.05 + speed / 700, 0.05, 0.22);
-                var ang = Math.atan2(ny, nx);
-                kick(a, impact, ang);
-                kick(c, impact, ang);
-                if (running) playTone(85 + Math.random() * 15, 0.11, clamp(0.04 + speed / 2000, 0.03, 0.13));
-                // Échange d'élan façon billard, atténué (pas un choc parfait)
-                var rvx = a.vx - c.vx, rvy = a.vy - c.vy;
-                var rel = rvx * nx + rvy * ny;
-                if (rel > 0) {
-                  var imp = rel * 0.5;
-                  a.vx -= imp * nx; a.vy -= imp * ny;
-                  c.vx += imp * nx; c.vy += imp * ny;
-                }
-              }
-              a._touch = c; c._touch = a;
-              var aFree = Object.keys(a.touches).length === 0;
-              var cFree = Object.keys(c.touches).length === 0;
-              var push = overlap / (aFree && cFree ? 2 : 1);
-              if (aFree) { a.x -= nx * push; a.y -= ny * push; }
-              if (cFree) { c.x += nx * push; c.y += ny * push; }
-              // Style gel : reste visuellement écrasé tant que le contact dure
-              if (style === "gel") {
-                var live = clamp(overlap / min, 0, 0.4);
-                if (live > a.impactAmp) { a.impactAmp = live; a.impactAngle = Math.atan2(ny, nx); }
-                if (live > c.impactAmp) { c.impactAmp = live; c.impactAngle = Math.atan2(ny, nx); }
-              }
-            } else {
-              if (a._touch === c) { a._touch = null; c._touch = null; }
-            }
-          }
+        accumulator = Math.min(accumulator + dt, STEP * 4);
+        while (accumulator >= STEP) {
+          world.step(events);
+          accumulator -= STEP;
+          events.drainCollisionEvents(function (h1, h2, started) {
+            var a = byCollider.get(h1), c = byCollider.get(h2);
+            if (a && c) { bubbleContact(a, c, started); return; }
+            // Rebond contre un bord : léger écrasement dans l'axe du mur
+            var bub = a || c, wall = a ? h2 : h1;
+            if (bub && started && wallAngle.has(wall)) kick(bub, 0.12, wallAngle.get(wall));
+          });
         }
 
         bubbles.forEach(function (b) {
-          b.x = clamp(b.x, b.r, s.w - b.r);
-          b.y = clamp(b.y, b.r, s.h - b.r);
-          if (style !== "gel" || (Object.keys(b.touches).length === 0 && !b._touch)) {
+          var t = b.body.translation();
+          // Filet de sécurité (redimensionnement, bulle coincée par un
+          // doigt contre un bord) : jamais hors de l'écran.
+          var cx = clamp(t.x, b.r, s.w - b.r), cy = clamp(t.y, b.r, s.h - b.r);
+          if (!isHeld(b) && (Math.abs(cx - t.x) > b.r || Math.abs(cy - t.y) > b.r)) {
+            b.body.setTranslation({ x: cx, y: cy }, true);
+          }
+          b.x = cx; b.y = cy;
+          var v = b.body.linvel();
+          b.vx = v.x; b.vy = v.y;
+        });
+      }
+
+      function update(dt) {
+        stepPhysics(dt);
+
+        // Style gel : reste visuellement écrasé tant que le contact dure
+        if (style === "gel") {
+          contacts.forEach(function (key) {
+            var ids = key.split(":").map(Number);
+            var a = null, c = null;
+            bubbles.forEach(function (o) { if (o.id === ids[0]) a = o; else if (o.id === ids[1]) c = o; });
+            if (!a || !c) return;
+            var dx = c.x - a.x, dy = c.y - a.y;
+            var min = a.r + c.r;
+            var live = clamp((min - Math.hypot(dx, dy)) / min, 0, 0.4);
+            var ang = Math.atan2(dy, dx);
+            if (live > a.impactAmp) { a.impactAmp = live; a.impactAngle = ang; }
+            if (live > c.impactAmp) { c.impactAmp = live; c.impactAngle = ang; }
+          });
+        }
+
+        bubbles.forEach(function (b) {
+          if (style !== "gel" || (Object.keys(b.touches).length === 0 && !b.contacts)) {
             b.impactAmp *= Math.max(0, 1 - dt * 9);
           }
           b.wobble += dt * (reduced ? 2 : 16);
@@ -903,6 +1001,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v6", text: "Physique confiée à Rapier (moteur physique en WebAssembly) au lieu du code maison : collisions et rebonds plus justes, une bulle tenue au doigt pousse les autres sans être poussée. Mêmes gestes qu'avant, même effet glace. Le moteur se télécharge depuis internet (ensuite gardé en cache par le navigateur)." },
         { v: "v5", text: "Glissé façon glace (amortissement plus faible), vitesse de lâcher fidèle au geste. Appui maintenu = la bulle se coupe en deux (avant : elle éclatait). Double-tap = grossit ; double-tap maintenu = grossit en continu. Sons descendus d'une octave. Écran d'accueil retiré, plein écran (l'oscilloscope, c'est tout l'écran, pas une fenêtre)." },
         { v: "v4", text: "Prototype de sensation affiné : moins de bulles à l'écran, contacts plus doux, correction du double-comptage au démarrage. Style « Oscilloscope » (fond noir, vert phosphore) par défaut." },
         { v: "v3", text: "Refonte en prototype de sensation, sans but : glisser une bulle, en coller deux l'une contre l'autre, en écarter une à deux doigts, rester appuyé pour éclater. Quatre styles visuels au choix." },
@@ -928,10 +1027,12 @@
       histClose.addEventListener("click", function () { histOverlay.hidden = true; });
 
       window.addEventListener("resize", function () {
+        buildWalls();
         var s = arenaSize();
         bubbles.forEach(function (b) {
           b.x = clamp(b.x, b.r, s.w - b.r);
           b.y = clamp(b.y, b.r, s.h - b.r);
+          b.body.setTranslation({ x: b.x, y: b.y }, true);
         });
       });
 
@@ -939,6 +1040,7 @@
       // Pas d'écran d'accueil : ça commence tout de suite (un seul joueur,
       // qui connaît déjà le prototype — inutile de le lui réexpliquer).
 
+      buildWalls();
       for (var i = 0; i < TARGET_COUNT; i++) spawnBubble();
       requestAnimationFrame(function (t) { lastTime = t; requestAnimationFrame(loop); });
     })();
