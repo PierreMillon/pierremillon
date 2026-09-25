@@ -42,6 +42,26 @@ Tri : priorité décroissante.
   avant.
 - Ces badges font progresser à travers les ensembles de nombres, dans
   l'ordre : ℕ → ℤ → ℚ → ℝ → ℂ → quaternions → octonions (au minimum).
+- Nouveau chapitre « méthodes de calcul » (bouton ou onglet à part) : des
+  techniques de calcul mental décomposées pas à pas, avec les carrés façon
+  Singapour comme unité visuelle commune. Exemple de référence, 16 + 27 :
+  - décomposer en puissances de 10 : 10 + 6 + 20 + 7
+  - décomposer 6 et 7 par rapport à 5 (les compléments à 5, pas à 10) :
+    6 = 5 + 1, 7 = 5 + 2
+  - regrouper les deux 5 : 5 + 5 = 10 → avec le 10 et le 20 déjà là, ça
+    fait 3 × 10
+  - il reste 1 + 2 = 3 à côté
+  - assembler : 3×10 + 3 = 33
+  - Le point pédagogique : très peu de faits à connaître par cœur (les
+    sommes/compléments jusqu'à 5 seulement — compter jusqu'à 3 suffit,
+    ex. « +4 » = « −1 par rapport à 5 »). Tout le reste est de la
+    manipulation (regrouper, substituer, mettre en facteur), pas du calcul
+    posé terme à terme (jamais un 7+6 fait directement).
+  - Ce principe — décomposer, repérer ce qui se simplifie, regrouper — est
+    le même « geste » que les démos d'algèbre existantes : quelques étapes
+    toujours identiques, appliquées à des objets différents. Nom
+    provisoire évoqué pour cette idée/l'appli entière : « l'Alchimiste »
+    (transformer par étapes plutôt que calculer d'un bloc).
 
 ## Migration future
 
