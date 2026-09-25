@@ -935,6 +935,12 @@
             b.body.setTranslation({ x: cx, y: cy }, true);
           }
           b.x = cx; b.y = cy;
+          // Tenue : affichée pile sous le doigt, même si aucun pas de
+          // simulation n'a tourné cette image (sinon une image de retard).
+          if (isHeld(b)) {
+            b.x = clamp(b.dragTX, b.r, s.w - b.r);
+            b.y = clamp(b.dragTY, b.r, s.h - b.r);
+          }
           var v = b.body.linvel();
           b.vx = v.x; b.vy = v.y;
         });
