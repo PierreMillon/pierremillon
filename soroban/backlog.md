@@ -34,9 +34,24 @@ Tri : priorité décroissante.
 - [x] v2 — Méthode vérifiée par un test exhaustif (toutes les additions et
   soustractions jusqu'à 999, toutes les multiplications du mode ×)
 
+- [x] v3 — Son réparé sur iPhone (déblocage en fin de toucher, mode
+  silencieux contourné via `navigator.audioSession`, fréquences audibles
+  sur un haut-parleur de téléphone), et plus doux
+- [x] v3 — Guidage : perles à bouger en surbrillance, étape du calcul en
+  haut, technique en bas, erreur signalée gentiment
+- [x] v3 — Réussite : pause d'une seconde, puis félicitations qui restent
+  jusqu'à « Suivant », avec les techniques utilisées
+- [x] v3 — Division (on retire le diviseur par paquets), puissances
+  (multiplier = ajouter plusieurs fois), racines carrées (on retire (10t)²
+  puis (20t + u) × u) — plans vérifiés exhaustivement
+
 ## À faire
 
-- [ ] P1 — Retour de Pierre sur le toucher v2 : force du cran, rebond, son
+- [ ] P1 — Retour de Pierre : le son s'entend-il maintenant sur iPhone ?
+  force du cran, rebond, clarté du guidage
+- [ ] P2 — Division avec reste, racine non entière (approchée)
+- [ ] P2 — Méthode japonaise traditionnelle de la division (quotient posé à
+  gauche du dividende) : demande plus de tiges
 - [ ] P2 — Relier ces badges à ceux de Pas à Pas (../VISION.md), une fois
   que les deux projets auront un système commun
 
