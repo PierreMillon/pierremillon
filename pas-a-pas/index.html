@@ -452,6 +452,25 @@
 
     /* Droite des réels : une flèche de 0 vers la valeur. Multiplier par
        −1 la fait tourner d'un demi-tour autour de 0 (démo −×−). */
+    .stage.has-line { align-items: flex-start; padding-top: 1rem; }
+
+    .numsvg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .nl-axis { stroke: var(--ink-soft); stroke-width: 1; }
+    .nl-lab { fill: var(--ink-soft); font-size: 10px; text-anchor: middle; font-family: inherit; }
+    .nl-deg { fill: var(--sign); font-size: 12px; text-anchor: middle; font-family: inherit; }
+    .nl-trace { fill: none; stroke: var(--sign); stroke-width: 1.5; stroke-dasharray: 4 5; opacity: 0.55; }
+    .nl-trace.live { opacity: 0.9; }
+    .nl-vec line { stroke: var(--sign); stroke-width: 3; stroke-linecap: round; }
+    .nl-vec path, .nl-vec circle { fill: var(--sign); }
+
     .numline {
       position: absolute;
       left: 8%;
@@ -519,6 +538,38 @@
       stroke: var(--sign);
       stroke-width: 2;
       stroke-linecap: round;
+    }
+
+    .verify-warn {
+      position: fixed;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      z-index: 30;
+      padding: 0.5rem 0.7rem;
+      font-size: 0.7rem;
+      color: #ff8a7a;
+      border: 1px solid #ff8a7a;
+      border-radius: 8px;
+      background: rgba(20, 5, 5, 0.9);
+    }
+
+    .summary {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.35rem;
+      transform-origin: center center;
+    }
+
+    .summary .expr { font-size: clamp(1.4rem, 6vw, 2.2rem); justify-content: flex-start; }
+    .sum-row { display: flex; align-items: center; gap: 0.5rem; }
+
+    .sum-eq {
+      width: 1.2em;
+      font-size: clamp(1.4rem, 6vw, 2.2rem);
+      color: var(--accent);
+      text-align: center;
     }
 
     .shape {
@@ -674,6 +725,55 @@
 
     .sg-streak { display: flex; gap: 0.4rem; }
 
+    /* Chapitre Premiers : arbre de facteurs */
+    .pf-eq { font-size: clamp(1.4rem, 6.5vw, 2.2rem); text-align: center; }
+
+    .pf-board svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .pf-board line { stroke: var(--ink-soft); stroke-width: 1.5; }
+
+    .pf-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      min-width: 2.4rem;
+      height: 2.4rem;
+      padding: 0 0.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      font-size: 1.25rem;
+      color: var(--ink);
+      border: 1px solid transparent;
+      border-radius: 0.5rem;
+      cursor: pointer;
+    }
+
+    .pf-node.sel { border-color: var(--accent); background: var(--accent-soft); }
+    .pf-node.prime { color: var(--sign); border-color: var(--sign); border-radius: 50%; cursor: default; }
+
+    .pf-primes { display: flex; gap: 0.6rem; justify-content: center; }
+
+    .pf-primes button {
+      font-family: inherit;
+      font-size: 1rem;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      width: 3.2rem;
+      height: 2.6rem;
+      cursor: pointer;
+    }
+
+    .pf-primes button:disabled { opacity: 0.3; }
+
     .sg-streak span {
       width: 10px;
       height: 10px;
@@ -720,6 +820,12 @@
       <p class="sg-msg" id="sgMsg"></p>
     </section>
 
+    <section class="sg" id="pf" hidden>
+      <div class="sg-eq pf-eq" id="pfEq"></div>
+      <div class="sg-board pf-board" id="pfBoard"></div>
+      <div class="pf-primes" id="pfPrimes"></div>
+    </section>
+
     <div class="stage-wrap" id="stageWrap">
       <div class="stage-top" id="stageTop">
         <span class="row-tag">sauter des étapes</span>
@@ -754,7 +860,8 @@
       var X = "<i>x</i>";
 
       var DEMOS = [
-        { title: "Singapour", custom: true, steps: [{ expr: [] }] },
+        { title: "Singapour", custom: "sg", steps: [{ expr: [] }] },
+        { title: "Premiers", custom: "pf", steps: [{ expr: [] }] },
         {
           title: "−( … )",
           split: true,
@@ -944,6 +1051,7 @@
             },
             {
               line: 3,
+              fresh: true, // on multiplie volontairement par −1 : nouvelle valeur de référence
               expr: [T("m", "(−1)"), T("d", "·", "op dot"), T("a", "3")],
               hl: ["m"],
               note: "Multiplier par −1, c'est faire <b>demi-tour</b> : la flèche tourne de 180° autour de 0."
@@ -951,11 +1059,14 @@
             {
               fx: { type: "rotate", from: 0, to: 180 },
               line: -3,
+              trace: [[0, 180]],
               expr: [T("r", "−3", "", ["m", "d", "a"])],
               note: "(−1)·3 = −3 : la flèche pointe de l'autre côté."
             },
             {
               line: -3,
+              trace: [[0, 180]],
+              fresh: true,
               expr: [T("m2", "(−1)"), T("d2", "·", "op dot"), T("r", "(−3)")],
               hl: ["m2"],
               note: "Encore une fois (−1) : encore un demi-tour."
@@ -963,6 +1074,7 @@
             {
               fx: { type: "rotate", from: 180, to: 360 },
               line: 3,
+              trace: [[0, 180], [180, 360]],
               expr: [T("a3", "3", "", ["m2", "d2", "r"])],
               note: "Deux demi-tours = un tour complet : on revient à 3. Moins par moins donne plus — pas une règle magique, une rotation."
             }
@@ -972,7 +1084,7 @@
           title: "Distribuer",
           steps: [
             {
-              expr: [T("n2", "2"), T("d", "·", "op dot"), T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par")]
+              expr: [T("n2", "2"), T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par")]
             },
             {
               expr: [T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par"), T("pm", "+", "op", ["n2"]),
@@ -984,6 +1096,9 @@
             },
             {
               expr: [T("k1", "2", "", ["ob"]), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("k2", "2", "", ["qb"]), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>")]
+            },
+            {
+              summary: true
             }
           ]
         },
@@ -1003,7 +1118,10 @@
             },
             {
               fx: { type: "meet", ids: ["lp2", "ob", "pb", "qb", "rp2", "pm"] },
-              expr: [T("n2", "2", "", ["lp2", "ob", "pb", "qb", "rp2", "pm"]), T("d", "·", "op dot"), T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par")]
+              expr: [T("n2", "2", "", ["lp2", "ob", "pb", "qb", "rp2", "pm"]), T("lp", "(", "par"), T("oa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>"), T("pa", "+", "op"), T("qa", "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>"), T("rp", ")", "par")]
+            },
+            {
+              summary: true
             }
           ]
         },
@@ -1023,7 +1141,7 @@
               note: "Rien ne « passe » de l'autre côté : on retire 3 <b>des deux côtés</b>, l'égalité reste vraie."
             },
             {
-              expr: [T("a", "2" + X), T("z", "0", "", ["p", "b", "m1", "b1"]), T("eq", "=", "op"), T("c", "7"), T("m2", "−", "op"), T("b2", "3")],
+              expr: [T("a", "2" + X), T("p", "+", "op"), T("z", "0", "", ["b", "m1", "b1"]), T("eq", "=", "op"), T("c", "7"), T("m2", "−", "op"), T("b2", "3")],
               hl: ["z"]
             },
             {
@@ -1045,6 +1163,87 @@
           ]
         }
       ];
+
+      // ---------- Vérification des calculs ----------
+      // Chaque étape de chaque démo est recalculée avec des valeurs au hasard
+      // pour x, ○ et □ : une expression doit garder la même valeur d'une
+      // étape à l'autre ; une équation doit garder la même solution. Une
+      // erreur de saisie (signe oublié, mauvais nombre) est donc repérée
+      // dès le chargement au lieu d'être découverte à l'écran.
+
+      function tokText(t) {
+        return t.t
+          .replace(/<svg[^>]*><circle[^>]*\/><\/svg>/g, "O")
+          .replace(/<svg[^>]*><rect[^>]*\/><\/svg>/g, "Q")
+          .replace(/<[^>]+>/g, "")
+          .replace(/−/g, "-").replace(/·/g, "*");
+      }
+
+      function exprText(list) {
+        return list.map(function (it) {
+          if (it.frac) return "(" + exprText(it.num) + ")/(" + exprText(it.den) + ")";
+          if (it.cancel) return "(" + exprText(it.top) + exprText(it.bottom) + ")";
+          return tokText(it);
+        }).join("");
+      }
+
+      function evalExpr(str, env) {
+        // Multiplication implicite : 2x, 2(…), )(…, x(…
+        var js = str.replace(/\s+/g, "")
+          .replace(/([0-9xOQ)])(?=[xOQ(])/g, "$1*");
+        if (!/^[0-9xOQ+\-*\/().]*$/.test(js)) throw new Error("caractère inattendu : " + str);
+        return Function("x", "O", "Q", "return (" + js + ");")(env.x, env.O, env.Q);
+      }
+
+      function verifyDemos() {
+        var issues = [];
+        var envs = [{ x: 1.7, O: 2.3, Q: -0.9 }, { x: -3.1, O: 0.6, Q: 4.2 }];
+        DEMOS.forEach(function (demo) {
+          if (demo.custom) return;
+          var ref = null, root = null;
+          demo.steps.forEach(function (st, i) {
+            if (!st.expr || st.summary) return;
+            var txt = exprText(st.expr);
+            // Sous-expressions posées : le résultat sous la barre doit être juste
+            st.expr.forEach(function (it) {
+              if (it.cancel && it.eq) {
+                envs.forEach(function (env) {
+                  var a = evalExpr(exprText(it.top) + exprText(it.bottom), env), b = evalExpr(exprText(it.eq), env);
+                  if (Math.abs(a - b) > 1e-9) issues.push(demo.title + " étape " + (i + 1) + " : résultat posé faux");
+                });
+              }
+            });
+            if (/[≠]/.test(txt)) return;
+            try {
+              if (txt.indexOf("=") >= 0) {
+                var sides = txt.split("=");
+                var f = function (x) { return evalExpr(sides[0], { x: x, O: 0, Q: 0 }) - evalExpr(sides[1], { x: x, O: 0, Q: 0 }); };
+                if (root === null) { var f0 = f(0), f1 = f(1); root = -f0 / (f1 - f0); }
+                if (Math.abs(f(root)) > 1e-9 || Math.abs(f(root + 1.7)) < 1e-9)
+                  issues.push(demo.title + " étape " + (i + 1) + " : « " + txt + " » n'a plus la même solution");
+              } else {
+                var vals = envs.map(function (env) { return evalExpr(txt, env); });
+                if (ref === null || st.fresh) ref = vals;
+                else if (vals.some(function (v, k) { return Math.abs(v - ref[k]) > 1e-9; }))
+                  issues.push(demo.title + " étape " + (i + 1) + " : « " + txt + " » ne vaut plus l'expression de départ");
+              }
+            } catch (e) {
+              issues.push(demo.title + " étape " + (i + 1) + " : illisible (" + e.message + ")");
+            }
+          });
+        });
+        return issues;
+      }
+
+      var ISSUES = verifyDemos();
+      window.pasAPasIssues = ISSUES;
+      if (ISSUES.length) {
+        console.error("Pas à Pas — étapes incohérentes :\n" + ISSUES.join("\n"));
+        var warn = document.createElement("div");
+        warn.className = "verify-warn";
+        warn.textContent = "⚠ " + ISSUES.join(" · ");
+        document.body.appendChild(warn);
+      }
 
       // ---------- Éléments ----------
 
@@ -1149,40 +1348,104 @@
         return expr;
       }
 
-      function numLine(v) {
-        var nl = document.createElement("div");
-        nl.className = "numline";
-        var axis = document.createElement("span");
-        axis.className = "axis";
-        nl.appendChild(axis);
+      // Droite des réels en SVG, sous l'expression. La flèche va de 0 à la
+      // valeur ; multiplier par −1 la fait tourner d'un demi-tour autour de
+      // 0, et la pointe laisse la trace de son demi-cercle (au-dessus pour
+      // le 1er demi-tour, en dessous pour le 2e : un tour complet à la fin).
+      var SVGNS = "http://www.w3.org/2000/svg";
+      function svgEl(tag, attrs, parent) {
+        var e = document.createElementNS(SVGNS, tag);
+        for (var k in attrs) e.setAttribute(k, attrs[k]);
+        if (parent) parent.appendChild(e);
+        return e;
+      }
+
+      function arcPath(g, a1, a2) {
+        var d = "";
+        for (var i = 0; i <= 48; i++) {
+          var t = (a1 + (a2 - a1) * i / 48) * Math.PI / 180;
+          d += (i ? " L" : "M") + (g.cx + g.r * Math.cos(t)).toFixed(1) + "," + (g.cy - g.r * Math.sin(t)).toFixed(1);
+        }
+        return d;
+      }
+
+      function drawNumLine(step) {
+        var W = stage.clientWidth, H = stage.clientHeight;
+        var expr = stage.querySelector(".expr");
+        var top = expr ? expr.getBoundingClientRect().bottom - stage.getBoundingClientRect().top + 10 : 20;
+        var avail = H - top - 24;
+        var u = Math.max(8, Math.min(W * 0.84 / 8, avail / 6.8));
+        var L = Math.abs(step.line) * u;
+        var g = { cx: W / 2, cy: top + 3 * u + 0.4 * u, u: u, r: L };
+        var svg = svgEl("svg", { class: "numsvg" });
+        stage.appendChild(svg);
+        svgEl("line", { x1: g.cx - 4.3 * u, y1: g.cy, x2: g.cx + 4.3 * u, y2: g.cy, class: "nl-axis" }, svg);
         for (var k = -4; k <= 4; k++) {
-          var left = (50 + k * 12.5) + "%";
-          var t = document.createElement("span");
-          t.className = "tick";
-          t.style.left = left;
-          nl.appendChild(t);
+          var x = g.cx + k * u;
+          svgEl("line", { x1: x, y1: g.cy - 4, x2: x, y2: g.cy + 4, class: "nl-axis" }, svg);
           if (k % 2 === 0 || Math.abs(k) === 3) {
-            var l = document.createElement("span");
-            l.className = "lab";
-            l.style.left = left;
-            l.textContent = k < 0 ? "−" + (-k) : String(k);
-            nl.appendChild(l);
+            var t = svgEl("text", { x: x, y: g.cy + 16, class: "nl-lab" }, svg);
+            t.textContent = k < 0 ? "−" + (-k) : String(k);
           }
         }
-        var vec = document.createElement("span");
-        vec.className = "vec";
-        vec.style.width = (Math.abs(v) * 12.5) + "%";
-        vec.style.transform = "rotate(" + (v < 0 ? 180 : 0) + "deg)";
-        nl.appendChild(vec);
-        return nl;
+        (step.trace || []).forEach(function (tr) {
+          svgEl("path", { d: arcPath(g, tr[0], tr[1]), class: "nl-trace" }, svg);
+          var mid = (tr[0] + tr[1]) / 2 * Math.PI / 180;
+          var lab = svgEl("text", { x: g.cx + (g.r + 12) * Math.cos(mid), y: g.cy - (g.r + 12) * Math.sin(mid) + 4, class: "nl-deg" }, svg);
+          lab.textContent = "180°";
+        });
+        var vec = svgEl("g", { class: "nl-vec" }, svg);
+        svgEl("line", { x1: g.cx, y1: g.cy, x2: g.cx + L - 6, y2: g.cy }, vec);
+        svgEl("path", { d: "M" + (g.cx + L) + "," + g.cy + " l-10,-6 l0,12 z" }, vec);
+        svgEl("circle", { cx: g.cx, cy: g.cy, r: 3 }, vec);
+        var ang = step.line < 0 ? 180 : 0;
+        vec.setAttribute("transform", "rotate(" + (-ang) + " " + g.cx + " " + g.cy + ")");
+        stage._nl = { svg: svg, vec: vec, g: g };
+      }
+
+      // Récapitulatif : toutes les écritures de la démo sur une seule page,
+      // l'une sous l'autre, reliées par « = » — on voit d'un coup que c'est
+      // le même objet écrit de plusieurs façons.
+      function buildSummary() {
+        var col = document.createElement("div");
+        col.className = "summary";
+        var prev = "";
+        DEMOS[demoIndex].steps.forEach(function (st) {
+          if (!st.expr) return;
+          var e = buildExprEl(st, true);
+          var key = e.textContent.replace(/\s+/g, "");
+          if (key === prev) return;
+          var row = document.createElement("div");
+          row.className = "sum-row";
+          var eq = document.createElement("span");
+          eq.className = "sum-eq";
+          eq.textContent = prev ? "=" : "";
+          row.appendChild(eq);
+          // Pas d'identifiants : ces jetons ne participent pas aux glissements
+          e.querySelectorAll("[data-id]").forEach(function (t) { t.removeAttribute("data-id"); });
+          row.appendChild(e);
+          col.appendChild(row);
+          prev = key;
+        });
+        stage.appendChild(col);
+        var avail = stage.clientHeight - 16, hgt = col.scrollHeight;
+        var wAvail = stage.clientWidth - 16, wid = col.scrollWidth;
+        var k = Math.min(1, avail / hgt, wAvail / wid);
+        col.style.transform = "scale(" + k.toFixed(3) + ")";
+        col.querySelectorAll(".sum-row").forEach(function (r, i) {
+          r.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+            { duration: ms(500), delay: ms(300 + i * 450), easing: "ease-out", fill: "backwards" });
+        });
       }
 
       function build(step) {
         stage.innerHTML = "";
+        if (step.summary) { buildSummary(); return; }
         var expr = buildExprEl(step, false);
         stage.appendChild(expr);
         fitOneLine(expr, stage);
-        if (step.line !== undefined) stage.appendChild(numLine(step.line));
+        stage.classList.toggle("has-line", step.line !== undefined);
+        if (step.line !== undefined) drawNumLine(step);
         if (step.arcs) drawArcs(step.arcs, false);
       }
 
@@ -1258,15 +1521,29 @@
 
       // Multiplier par −1 : la flèche tourne d'un demi-tour autour de 0,
       // lentement, dans le plan — elle ne « saute » pas de 3 à −3.
+      // La flèche tourne vraiment, dans le plan : la pointe trace son
+      // demi-cercle en direct, l'angle parcouru s'affiche en dessous.
       function fxRotate(fx) {
-        var vec = stage.querySelector(".numline .vec");
-        if (!vec) return Promise.resolve();
+        var nl = stage._nl;
+        if (!nl) return Promise.resolve();
+        var g = nl.g;
+        var live = svgEl("path", { class: "nl-trace live", d: "" }, nl.svg);
+        var deg = svgEl("text", { x: g.cx, y: fx.to > 180 ? g.cy + g.r + 30 : g.cy - g.r - 10, class: "nl-deg" }, nl.svg);
         return wait(500).then(function () {
-          return done(vec.animate([
-            { transform: "rotate(" + fx.from + "deg)" },
-            { transform: "rotate(" + fx.to + "deg)" }
-          ], { duration: ms(2600), easing: "cubic-bezier(.45,0,.25,1)", fill: "forwards" }));
-        }).then(function () { return wait(400); });
+          return new Promise(function (res) {
+            var dur = ms(3200), t0 = performance.now();
+            function step(now) {
+              var p = Math.min(1, (now - t0) / (dur || 1));
+              var e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+              var a = fx.from + (fx.to - fx.from) * e;
+              nl.vec.setAttribute("transform", "rotate(" + (-a) + " " + g.cx + " " + g.cy + ")");
+              live.setAttribute("d", arcPath(g, fx.from, a));
+              deg.textContent = Math.round(a - fx.from) + "°";
+              if (p < 1) requestAnimationFrame(step); else res();
+            }
+            requestAnimationFrame(step);
+          });
+        }).then(function () { return wait(600); });
       }
 
       // ---------- Rangée du haut ("écrit normalement") ----------
@@ -1684,6 +1961,7 @@
         if (DEMOS[demoIndex].custom) {
           // Singapour : la flèche lance la manche suivante, une fois le
           // résultat affiché
+          if (DEMOS[demoIndex].custom === "pf") { if (pfState && pfState.ready) pfStart(); return; }
           if (sgState && sgState.ready) sgStart();
           return;
         }
@@ -1720,12 +1998,14 @@
         tabsEl.querySelectorAll(".tab").forEach(function (t, k) {
           t.setAttribute("aria-selected", k === i ? "true" : "false");
         });
-        var custom = !!DEMOS[i].custom;
-        sgEl.hidden = !custom;
-        stageWrap.hidden = custom;
+        var custom = DEMOS[i].custom;
+        sgEl.hidden = custom !== "sg";
+        pfEl.hidden = custom !== "pf";
+        stageWrap.hidden = !!custom;
         document.getElementById("controls").hidden = false;
         prevBtn.style.visibility = custom ? "hidden" : "";
-        if (custom) { sgStart(); return; }
+        if (custom === "sg") { sgStart(); return; }
+        if (custom === "pf") { pfStart(); return; }
         buildDots(DEMOS[i]);
         build(DEMOS[i].steps[0]);
         refreshUi();
@@ -2049,6 +2329,161 @@
 
       badgeChip.hidden = !hasBadge();
 
+      // ---------- Chapitre Premiers : arbre de facteurs ----------
+      // On touche un nombre de l'arbre, puis un nombre premier : s'il le
+      // divise, le nombre se sépare en deux branches (le premier et le
+      // quotient). Les premiers sont entourés et s'arrêtent. À la fin, le
+      // produit s'écrit — et il est le même quel que soit l'ordre choisi
+      // (unicité de la décomposition).
+
+      var pfEl = document.getElementById("pf");
+      var pfEq = document.getElementById("pfEq");
+      var pfBoard = document.getElementById("pfBoard");
+      var pfPrimes = document.getElementById("pfPrimes");
+      var PRIMES = [2, 3, 5, 7];
+      var pfState = null;
+
+      function isPrime(n) {
+        if (n < 2) return false;
+        for (var d = 2; d * d <= n; d++) if (n % d === 0) return false;
+        return true;
+      }
+
+      PRIMES.forEach(function (p) {
+        var b = document.createElement("button");
+        b.textContent = "÷" + p;
+        b.addEventListener("click", function () { pfDivide(p, b); });
+        pfPrimes.appendChild(b);
+      });
+
+      function pfPick() {
+        var n = 1;
+        while (n < 12) {
+          n = 1;
+          var k = 2 + Math.floor(Math.random() * 3);
+          for (var i = 0; i < k; i++) {
+            var p = PRIMES[Math.floor(Math.random() * (i === 0 ? 4 : 3))];
+            if (n * p <= 120) n *= p;
+          }
+        }
+        return n;
+      }
+
+      function pfStart() {
+        var n = pfPick();
+        pfState = { n: n, nodes: [{ v: n, parent: -1, depth: 0, side: 0 }], sel: 0, ready: false };
+        pfEq.textContent = String(n);
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        pfLayout();
+      }
+
+      // Disposition : chaque séparation met le premier à gauche, le quotient
+      // à droite, une rangée plus bas. L'arbre descend en diagonale.
+      function pfLayout() {
+        var w = pfBoard.clientWidth, h = pfBoard.clientHeight;
+        var maxDepth = 1;
+        pfState.nodes.forEach(function (nd) { maxDepth = Math.max(maxDepth, nd.depth); });
+        var row = Math.min(64, (h - 40) / Math.max(4, maxDepth + 1));
+        var dx = Math.min(56, w / 8);
+        pfState.nodes.forEach(function (nd, i) {
+          if (nd.parent < 0) { nd.x = w / 2 - dx * 1.2; nd.y = 26; }
+          else {
+            var pa = pfState.nodes[nd.parent];
+            nd.x = pa.x + nd.side * dx * 0.75;
+            nd.y = pa.y + row;
+          }
+        });
+        pfRender();
+      }
+
+      function pfRender() {
+        pfBoard.innerHTML = "";
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        pfBoard.appendChild(svg);
+        pfState.nodes.forEach(function (nd, i) {
+          if (nd.parent >= 0) {
+            var pa = pfState.nodes[nd.parent];
+            var l = document.createElementNS("http://www.w3.org/2000/svg", "line");
+            l.setAttribute("x1", pa.x); l.setAttribute("y1", pa.y + 16);
+            l.setAttribute("x2", nd.x); l.setAttribute("y2", nd.y - 16);
+            svg.appendChild(l);
+          }
+          var el = document.createElement("span");
+          var leaf = !pfState.nodes.some(function (c) { return c.parent === i; });
+          el.className = "pf-node" + (leaf && isPrime(nd.v) ? " prime" : "") + (i === pfState.sel ? " sel" : "");
+          el.style.left = nd.x + "px";
+          el.style.top = nd.y + "px";
+          el.textContent = nd.v;
+          el.dataset.i = i;
+          if (leaf && !isPrime(nd.v)) el.addEventListener("click", function () {
+            pfState.sel = i;
+            pfRender();
+          });
+          pfBoard.appendChild(el);
+          nd.el = el;
+        });
+      }
+
+      function pfDivide(p, btn) {
+        if (!pfState || pfState.ready || pfState.sel < 0) return;
+        var i = pfState.sel, nd = pfState.nodes[i];
+        if (nd.v % p !== 0) {
+          // Ne divise pas : le bouton tremble, rien ne change
+          btn.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
+          if (nd.el) nd.el.animate([{ color: "var(--sign)" }, { color: "var(--ink)" }], { duration: ms(600) });
+          return;
+        }
+        var a = pfState.nodes.length;
+        pfState.nodes.push({ v: p, parent: i, depth: nd.depth + 1, side: -1 });
+        pfState.nodes.push({ v: nd.v / p, parent: i, depth: nd.depth + 1, side: 1 });
+        // Sélection suivante : le prochain nombre qui n'est pas premier
+        pfState.sel = -1;
+        pfState.nodes.forEach(function (c, k) {
+          var leaf = !pfState.nodes.some(function (o) { return o.parent === k; });
+          if (pfState.sel < 0 && leaf && !isPrime(c.v)) pfState.sel = k;
+        });
+        pfLayout();
+        // Les deux enfants sortent du parent, avec un léger rebond
+        [a, a + 1].forEach(function (k) {
+          var c = pfState.nodes[k];
+          c.el.animate([
+            { transform: "translate(" + (nd.x - c.x - 0) + "px," + (nd.y - c.y) + "px) translate(-50%,-50%) scale(0.4)", opacity: 0 },
+            { transform: "translate(-50%,-50%) scale(1)", opacity: 1 }
+          ], { duration: ms(650), easing: "cubic-bezier(.3,1.4,.5,1)" });
+        });
+        if (pfState.sel < 0) pfFinish();
+      }
+
+      function pfFinish() {
+        pfState.ready = true;
+        var ps = [];
+        pfState.nodes.forEach(function (c, k) {
+          var leaf = !pfState.nodes.some(function (o) { return o.parent === k; });
+          if (leaf) ps.push(c.v);
+        });
+        ps.sort(function (x, y) { return x - y; });
+        var counts = {};
+        ps.forEach(function (p) { counts[p] = (counts[p] || 0) + 1; });
+        var SUP = { 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶" };
+        var pow = Object.keys(counts).map(function (p) { return p + (counts[p] > 1 ? SUP[counts[p]] : ""); }).join(" · ");
+        var steps = [pfState.n + " = " + ps.join(" · ")];
+        if (pow !== ps.join(" · ")) steps.push(pfState.n + " = " + pow);
+        var chain = wait(500);
+        steps.forEach(function (t) {
+          chain = chain.then(function () {
+            pfEq.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: ms(400) });
+            pfEq.textContent = t;
+            return wait(1400);
+          });
+        });
+        chain.then(function () {
+          nextBtn.disabled = false;
+          nextBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: ms(600) });
+        });
+      }
+
       // ---------- Écran figé ----------
       // Aucun glissement de page, aucun zoom (iOS ignore user-scalable=no
       // pour le pincement : on bloque aussi ses événements « gesture »).
@@ -2060,12 +2495,17 @@
         document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
       });
       window.addEventListener("resize", function () {
-        if (DEMOS[demoIndex].custom && sgState && !sgState.done) sgStart();
+        if (DEMOS[demoIndex].custom === "sg" && sgState && !sgState.done) sgStart();
+        if (DEMOS[demoIndex].custom === "pf" && pfState) pfLayout();
       });
 
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v16", text: "Équation : le « + » manquant est rétabli (2x + 0 = 7 − 3). Nouveau : chaque étape de chaque démo est recalculée au chargement (valeurs au hasard pour x, ○, □) ; une étape fausse est signalée à l'écran." },
+        { v: "v15", text: "−×− : la rotation se voit vraiment — la flèche tourne dans le plan autour de 0, sa pointe trace un demi-cercle en pointillés et l'angle défile jusqu'à 180°. Le 2e demi-tour passe en dessous : à la fin, un tour complet." },
+        { v: "v14", text: "Distribuer / Factoriser : 2(○ + □) s'écrit sans le point de multiplication. Dernière étape : toutes les écritures sur une seule page, l'une sous l'autre, reliées par « = » — c'est le même objet." },
+        { v: "v13", text: "Nouveau chapitre Premiers : arbre de facteurs. On touche un nombre, puis ÷2, ÷3, ÷5 ou ÷7 ; s'il divise, il se sépare en deux branches. Les premiers sont entourés. À la fin : 60 = 2 · 2 · 3 · 5 = 2² · 3 · 5, quel que soit l'ordre choisi." },
         { v: "v12", text: "Opposés : la soustraction est posée en colonne — 3x, puis −3x dessous, la barre, et le 0 sous la barre (plus de « = 0 » à côté qui faisait croire à une fraction)." },
         { v: "v11", text: "Singapour plus souple : un appui bref pose un jeton dans la bonne case (ou le retire s'il est posé), on peut aussi glisser pour poser et pour retirer, chaque déplacement rebondit un peu. Appuyer sur le 2e nombre range tous ses jetons d'un coup (manche montrée, ne compte pas pour le badge). À la fin, la somme reste affichée (7 + 9 = 16) et la flèche → passe à la suivante. Les jetons de la réserve ne se chevauchent plus." },
         { v: "v10", text: "Distribution du −1 refaite : c'est toi qui déclenches chaque étape. Le (−1) trace une flèche en arc, lentement, vers chaque terme l'un après l'autre (le terme touché passe en jaune et reste marqué). Ensuite seulement, les produits s'écrivent un par un, puis on calcule." },

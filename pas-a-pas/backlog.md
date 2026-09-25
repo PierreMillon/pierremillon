@@ -20,8 +20,15 @@ Tri : priorité décroissante.
   animation souple, appui sur le 2e nombre = tout ranger, résultat qui
   reste affiché, flèche → pour la suite
 - [x] P1 — Opposés : soustraction posée en colonne, 0 sous la barre
-- [ ] P1 — Chapitre décomposition en produit de facteurs premiers (vient
-  de la démo Fraction : 6 = 2 · 3, 9 = 3 · 3)
+- [x] P1 — Chapitre Premiers : arbre de facteurs (toucher un nombre, puis
+  ÷2 ÷3 ÷5 ÷7), premiers entourés, produit écrit à la fin
+- [x] P1 — Distribuer / Factoriser : 2(○ + □) sans point, page finale avec
+  toutes les écritures reliées par « = »
+- [x] P1 — −×− : rotation dessinée (demi-cercle tracé par la pointe, angle
+  affiché, tour complet à la fin)
+- [x] P1 — Vérificateur de calculs au chargement : chaque étape recalculée
+  (x, ○, □ au hasard), étape fausse signalée à l'écran. `fresh: true` sur
+  une étape qui change volontairement la valeur (ex. × (−1))
 - [ ] P1 — Retour sur la page d'essai : vitesse, lisibilité, clarté des explications
 - [x] P1 — Démo « piège » : (x + 3) / 3 ≠ x, montrer pourquoi on ne peut pas simplifier
 - [x] P2 — Démo dédiée « moins par moins = plus » : expliquée par une rotation à
