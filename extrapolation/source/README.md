@@ -15,14 +15,22 @@ comparées sur les 100 années suivantes :
   supposé (multiple réglable de l'amplitude observée).
 
 Un bouton « Révéler la mécanique » affiche la vraie courbe génératrice
-et son nom, pour comparer chaque méthode à la réalité qu'elle essaie de
-deviner.
+(prolongée jusqu'en 2126) et son nom, pour comparer chaque méthode à la
+réalité qu'elle essaie de deviner.
+
+**Mes courbes** : on peut dessiner ses propres prédictions (jusqu'à 4).
+Chaque courbe passe par des points que l'on glisse au doigt ; toucher
+une zone vide du graphique ajoute un point. Les points sont reliés par
+une interpolation cubique monotone (Fritsch–Carlson). Un tableau donne
+l'écart moyen de chaque courbe aux données (passé) puis, après la
+révélation, à la vraie mécanique (futur). Chaque méthode a un petit ⓘ
+explicatif.
 
 **https://pierremillon.github.io/pierremillon/extrapolation/**
 
 ## Stack
 
-React + Recharts, build Vite. Vit comme sous-dossier du portfolio
+React, graphique en SVG fait main (tactile), build Vite. Vit comme sous-dossier du portfolio
 (`pierremillon/pierremillon`), qui déploie tout le dépôt tel quel sans
 étape de build — donc pas de build automatique en CI pour ce projet
 précis. Après une modification, il faut reconstruire à la main et
