@@ -53,6 +53,12 @@ Tri : priorité décroissante.
 - [x] v4 — Service worker « réseau d'abord » (comme Pas à Pas) : hors ligne
   une fois ouvert, police comprise
 
+- [x] v5 — Boulier de taille fixe (plus de zoom / dézoom tout seul pendant
+  une opération : textes, niveaux et boutons ont une place réservée)
+- [x] v5 — Sons beaucoup plus graves ; perle qui glisse toujours de façon
+  continue (même avec « Réduire les animations ») ; légende « chiffre par
+  chiffre » retirée ; français par défaut
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
