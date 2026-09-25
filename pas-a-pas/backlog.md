@@ -13,6 +13,26 @@ Tri : priorité décroissante.
 
 ## À faire
 
+### Décisions de Pierre (questions du 26/09)
+
+- Accueil : écran sommaire avec les **ensembles emboîtés** (ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ
+  en patates), on touche une zone pour entrer dans ses chapitres
+- Progression : **déblocage obligatoire** — tous les chapitres d'un ensemble
+  réussis ouvrent le suivant. Démo animée réussie = **3 fois sans faute en
+  mode jeu** ; mode jeu : **série de 3 = badge**
+- **Mode prof** dans le menu : tout ouvert
+- ℍ (quaternions) : **teaser verrouillé** « bientôt », rien de plus
+- Notation : **point explicite pendant les calculs** (2·x, 2·(○ + □)), puis
+  une dernière étape passe à l'écriture usuelle (2x) pour montrer que c'est
+  la même chose
+- Phrases magiques : on garde
+- Son : **petits bips oscillo** (fusion, juste / faux)
+- Calcul mental 16 + 27 : **maintenant**, animation continue, compléments à
+  **5 et à 10** (le cadre de dix = 2 rangées de 5)
+- Dépôt séparé : **plus tard**
+- Rapports : courts + liens
+
+
 - [x] P1 — Distribution du −1 refaite après retour de Pierre : pas à pas
   déclenché au toucher, flèches en arc tracées lentement une par une,
   produits écrits un par un, calcul à part
