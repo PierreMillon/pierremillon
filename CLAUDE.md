@@ -60,6 +60,10 @@ push**, sans attendre une demande explicite — ne pas la laisser en
 brouillon en attente. S'il y a un conflit ou un échec CI, le signaler
 plutôt que de fusionner en l'état.
 
+**Pas d'Artifact claude.ai pour tester l'application** : Pierre teste
+sur le site hébergé, pas ailleurs. Un Artifact seulement quand il demande
+explicitement une page de test à part (ex. l'effet oscilloscope).
+
 ## Historique utile
 
 - `bastion-orbit/` et `forge-line/` ont été extraits vers leurs propres
