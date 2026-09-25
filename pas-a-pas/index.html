@@ -93,18 +93,64 @@
     .tab:hover { color: var(--ink); }
     .tab[aria-selected="true"] { border-color: var(--accent); color: var(--ink); }
 
+    .stage-wrap {
+      margin-top: 0.9rem;
+      border-top: 1px solid var(--hairline);
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .stage-top {
+      position: relative;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 120px;
+      padding: 1.6rem 0.5rem 0.8rem;
+      overflow: hidden;
+    }
+
+    .stage-wrap.split .stage-top { display: flex; }
+
+    .stage-divider {
+      display: none;
+      height: 1px;
+      background: var(--hairline);
+      margin: 0 1.2rem;
+    }
+
+    .stage-wrap.split .stage-divider { display: block; }
+
+    .stage-bottom { position: relative; }
+
     .stage {
       position: relative;
-      margin-top: 0.9rem;
       min-height: 240px;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 2.4rem 0.5rem;
-      border-top: 1px solid var(--hairline);
-      border-bottom: 1px solid var(--hairline);
       overflow: hidden;
     }
+
+    .stage-wrap.split .stage {
+      min-height: 190px;
+      padding: 1.4rem 0.5rem 1.8rem;
+    }
+
+    .row-tag {
+      position: absolute;
+      top: 0.5rem;
+      left: 0.7rem;
+      font-size: 0.6rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .stage-wrap.split .row-tag { opacity: 0.65; }
 
     .expr {
       display: flex;
@@ -173,19 +219,6 @@
 
     .ghost.traveller { color: var(--sign); z-index: 3; }
 
-    .note {
-      min-height: 5.5rem;
-      margin: 1.2rem 0 0;
-      font-size: 1rem;
-      line-height: 1.65;
-      color: var(--ink);
-    }
-
-    .note i {
-      font-family: "Cormorant Garamond", Georgia, serif;
-      font-size: 1.15em;
-    }
-
     .counter {
       white-space: nowrap;
       font-size: 0.68rem;
@@ -240,9 +273,16 @@
 
     <div class="tabs" role="tablist" id="tabs"></div>
 
-    <div class="stage" id="stage"></div>
-
-    <p class="note" id="note"></p>
+    <div class="stage-wrap" id="stageWrap">
+      <div class="stage-top" id="stageTop">
+        <span class="row-tag">écrit</span>
+      </div>
+      <div class="stage-divider"></div>
+      <div class="stage-bottom">
+        <span class="row-tag">détail</span>
+        <div class="stage" id="stage"></div>
+      </div>
+    </div>
 
     <div class="controls">
       <button class="btn quiet" id="prevBtn">← Retour</button>
@@ -268,8 +308,10 @@
       var DEMOS = [
         {
           title: "−( … )",
+          split: true,
           steps: [
             {
+              top: true,
               expr: [T("c5", "5"), T("m", "−", "op"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "−", "op"), T("b", "3"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")],
               hl: ["m"],
               note: "Point de départ. Devant la parenthèse, un signe <b>−</b>. C'est ici qu'on se trompe le plus souvent."
@@ -280,6 +322,7 @@
               note: "Soustraire, c'est ajouter l'opposé : <b>− ( … )</b> veut dire <b>+ (−1) · ( … )</b>."
             },
             {
+              top: true,
               fx: { type: "touch", src: "m", targets: ["a", "sb", "sc"] },
               expr: [T("c5", "5"), T("sa", "−", "op"), T("a", "2" + X), T("sb", "+", "op"), T("b", "3"), T("sc", "−", "op"), T("c", X)],
               signs: ["sa", "sb", "sc"],
@@ -297,6 +340,7 @@
               note: "5 + 3 = 8."
             },
             {
+              top: true,
               fx: { type: "meet", ids: ["a", "sc", "c"] },
               expr: [T("n8", "8"), T("sa", "−", "op"), T("x3", "3" + X, "", ["a", "sc", "c"])],
               note: "−2<i>x</i> − <i>x</i> = −3<i>x</i>, car (−2) + (−1) = −3. Résultat : <b>8 − 3<i>x</i></b>, sans sauter d'étape."
@@ -377,8 +421,9 @@
 
       // ---------- Éléments ----------
 
+      var stageWrap = document.getElementById("stageWrap");
+      var stageTop = document.getElementById("stageTop");
       var stage = document.getElementById("stage");
-      var noteEl = document.getElementById("note");
       var counterEl = document.getElementById("counter");
       var prevBtn = document.getElementById("prevBtn");
       var nextBtn = document.getElementById("nextBtn");
@@ -387,6 +432,7 @@
       var demoIndex = 0;
       var cur = 0;
       var busy = false;
+      var lastTopStep = null;
       var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       var SPEED = reduced ? 0.01 : 1;
 
@@ -410,31 +456,82 @@
         return el;
       }
 
-      function build(step) {
-        stage.innerHTML = "";
+      // plain = true : rendu simple sans surbrillance (utilisé en haut,
+      // "écrit normalement" — l'accent visuel appartient au détail du bas)
+      function buildExprEl(step, plain) {
         var expr = document.createElement("div");
         expr.className = "expr";
+        var forStep = plain ? {} : step;
         step.expr.forEach(function (item) {
           if (item.frac) {
             var f = document.createElement("span");
             f.className = "frac";
             var num = document.createElement("span");
             num.className = "row";
-            item.num.forEach(function (t) { num.appendChild(tokenEl(t, step)); });
+            item.num.forEach(function (t) { num.appendChild(tokenEl(t, forStep)); });
             var bar = document.createElement("span");
             bar.className = "bar";
             var den = document.createElement("span");
             den.className = "row";
-            item.den.forEach(function (t) { den.appendChild(tokenEl(t, step)); });
+            item.den.forEach(function (t) { den.appendChild(tokenEl(t, forStep)); });
             f.appendChild(num);
             f.appendChild(bar);
             f.appendChild(den);
             expr.appendChild(f);
           } else {
-            expr.appendChild(tokenEl(item, step));
+            expr.appendChild(tokenEl(item, forStep));
           }
         });
-        stage.appendChild(expr);
+        return expr;
+      }
+
+      function build(step) {
+        stage.innerHTML = "";
+        stage.appendChild(buildExprEl(step, false));
+      }
+
+      // ---------- Rangée du haut ("écrit normalement") ----------
+
+      function renderTop(step, animate) {
+        var old = stageTop.querySelector(".expr");
+        var expr = buildExprEl(step, true);
+        if (animate && old) {
+          expr.style.opacity = "0";
+          expr.style.transform = "translateY(6px)";
+          stageTop.appendChild(expr);
+          var outA = old.animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms(200), easing: "ease-in", fill: "forwards" });
+          done(outA).then(function () { old.remove(); });
+          requestAnimationFrame(function () {
+            done(expr.animate([
+              { opacity: 0, transform: "translateY(6px)" },
+              { opacity: 1, transform: "translateY(0)" }
+            ], { duration: ms(380), delay: ms(160), easing: "ease-out", fill: "both" }));
+          });
+        } else {
+          if (old) old.remove();
+          stageTop.appendChild(expr);
+        }
+      }
+
+      function topAnchorStep(demo, to) {
+        var anchor = demo.steps[0];
+        for (var i = 0; i <= to && i < demo.steps.length; i++) {
+          if (demo.steps[i].top) anchor = demo.steps[i];
+        }
+        return anchor;
+      }
+
+      // Aligne la rangée du haut sur l'étape-ancre la plus proche : elle ne
+      // bouge qu'à certaines étapes, pendant que le bas détaille tout.
+      function syncTop(animate) {
+        var demo = DEMOS[demoIndex];
+        stageWrap.classList.toggle("split", !!demo.split);
+        if (!demo.split) return;
+        var anchor = topAnchorStep(demo, cur);
+        if (anchor !== lastTopStep) {
+          renderTop(anchor, animate);
+          lastTopStep = anchor;
+        }
       }
 
       function snapshot() {
@@ -613,7 +710,6 @@
       function refreshUi() {
         var demo = DEMOS[demoIndex];
         var last = demo.steps.length - 1;
-        noteEl.innerHTML = demo.steps[cur].note;
         counterEl.textContent = (cur + 1) + " / " + (last + 1);
         prevBtn.disabled = busy || cur === 0;
         nextBtn.disabled = busy;
@@ -627,6 +723,7 @@
         busy = true;
         cur = to;
         refreshUi();
+        syncTop(true);
         transition(to, forward).then(function () {
           busy = false;
           refreshUi();
@@ -640,6 +737,7 @@
           cur = 0;
           build(DEMOS[demoIndex].steps[0]);
           refreshUi();
+          syncTop(true);
         } else {
           go(cur + 1);
         }
@@ -649,11 +747,13 @@
         if (busy) return;
         demoIndex = i;
         cur = 0;
+        lastTopStep = null;
         tabsEl.querySelectorAll(".tab").forEach(function (t, k) {
           t.setAttribute("aria-selected", k === i ? "true" : "false");
         });
         build(DEMOS[i].steps[0]);
         refreshUi();
+        syncTop(false);
       }
 
       DEMOS.forEach(function (d, i) {
