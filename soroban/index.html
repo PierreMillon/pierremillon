@@ -202,6 +202,16 @@
       fill: var(--accent-soft);
       filter: url(#glow);
     }
+    /* Perle à bouger pour l'étape suivante : contour clair qui respire */
+    .bead.hint polygon {
+      stroke: #eafff3;
+      stroke-width: 3.2;
+      animation: hint 0.9s ease-in-out infinite;
+    }
+    @keyframes hint {
+      0%, 100% { stroke-opacity: 1; }
+      50% { stroke-opacity: 0.25; }
+    }
     .bead:focus-visible polygon { stroke: var(--accent); stroke-dasharray: 5 4; }
     .digit {
       fill: var(--ink-soft);
@@ -285,8 +295,19 @@
       margin-bottom: 0.1rem;
     }
 
+    .win .answer {
+      font-size: 1.4rem;
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(61, 224, 138, 0.45);
+      font-variant-numeric: tabular-nums;
+    }
+    .win .big { font-size: 2.2rem; color: var(--accent); }
+    .win.show .big { animation: pop 0.5s cubic-bezier(.3, 1.6, .5, 1) both; }
+    @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
     @media (prefers-reduced-motion: reduce) {
       .bead polygon { transition: none; }
+      .bead.hint polygon { animation: none; }
     }
   </style>
 </head>
@@ -321,8 +342,15 @@
   <div class="bottombar">
     <button class="btn quiet" id="slowBtn" data-t="slow" hidden>Voir au ralenti</button>
     <button class="btn quiet" id="instantBtn" data-t="instant" hidden>D'un coup</button>
-    <button class="btn" id="nextBtn" data-t="next" hidden>Suivant</button>
     <button class="btn quiet" id="resetBtn" data-t="reset">Remettre à zéro</button>
+  </div>
+
+  <div class="overlay win" id="winOverlay" hidden>
+    <div class="big" id="winTitle"></div>
+    <div class="answer" id="winAnswer"></div>
+    <p id="winUsed"></p>
+    <p id="winBadge"></p>
+    <button class="btn" id="nextBtn" data-t="next">Suivant</button>
   </div>
 
   <div class="overlay" id="histOverlay" hidden>
@@ -390,30 +418,54 @@
           back: "← Portfolio", hist: "Historique", free: "Libre", ops: "Opérations",
           reset: "Remettre à zéro", slow: "Voir au ralenti", instant: "D'un coup",
           next: "Suivant", close: "Fermer", empty: " — tige vide",
-          install: "Pour l'avoir comme une appli : Partager → « Sur l'écran d'accueil ».",
-          pose: "pose {n}", add: "ajoute {n}", sub: "retire {n}", mul: "calcule-le",
-          yourTurn: "À toi : refais-le à la main.", good: "Juste !", badge: "Badge gagné : {b}. « D'un coup » est débloqué.",
-          levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×" },
+          install: "Pour l'avoir comme une appli : Partager → « Sur l'écran d'accueil ». Si tu n'entends rien, monte le volume.",
+          yourTurn: "À toi : suis les perles qui clignotent.",
+          follow: "Bouge les perles qui clignotent.",
+          oops: "Pas celle-là : remets-la, puis suis les perles qui clignotent.",
+          cheers: ["Bravo !", "Bien joué !", "C'est compris !", "Parfait !", "Superbe !"],
+          used: "Tu as utilisé : {list}.",
+          badge: "Badge gagné : {b}. « D'un coup » est débloqué pour ce niveau.",
+          levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×", div: "÷", pow: "puissance", sqrt: "√" },
+          techs: { direct: "l'ajout direct", c5: "le complément à 5", c10: "le complément à 10 (retenue)", sdirect: "le retrait direct", s5: "le complément à 5 en retirant", s10: "le complément à 10 (emprunt)" },
+          blk: {
+            pose: "pose {n}", add: "ajoute {n}", sub: "retire {n}",
+            mul: "{d} × {b} = {p} → ajoute {p}",
+            div: "{b} × {m} = {v} → retire {v}",
+            pow: "× {a} : ajoute {k} × {v}",
+            sqrt1: "{t}² = {q} → retire {q}",
+            sqrt2: "({d} + {u}) × {u} = {x} → retire {x}"
+          },
           cap: {
-            zero: "on remet à zéro", pose: "on pose {n}",
+            zero: "on remet à zéro", pose: "chiffre par chiffre, de gauche à droite",
             direct: "+{a} : direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "retenue : +1 à gauche",
-            sdirect: "−{a} : direct", s5: "−{a} = −5 + {b}", s10: "−{a} = −10 + {b}", borrow: "emprunt : −1 à gauche",
-            partial: "{x} × {y} = {p}"
+            sdirect: "−{a} : direct", s5: "−{a} = −5 + {b}", s10: "−{a} = −10 + {b}", borrow: "emprunt : −1 à gauche"
           }
         },
         en: {
           back: "← Portfolio", hist: "History", free: "Free", ops: "Operations",
           reset: "Clear", slow: "Show slowly", instant: "Instantly",
           next: "Next", close: "Close", empty: " — empty rod",
-          install: "To use it like an app: Share → “Add to Home Screen”.",
-          pose: "set {n}", add: "add {n}", sub: "take away {n}", mul: "work it out",
-          yourTurn: "Your turn: do it by hand.", good: "Correct!", badge: "Badge earned: {b}. “Instantly” is unlocked.",
-          levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×" },
+          install: "To use it like an app: Share → “Add to Home Screen”. If you hear nothing, turn the volume up.",
+          yourTurn: "Your turn: follow the blinking beads.",
+          follow: "Move the blinking beads.",
+          oops: "Not that one: put it back, then follow the blinking beads.",
+          cheers: ["Well done!", "Nice!", "You got it!", "Perfect!", "Superb!"],
+          used: "You used: {list}.",
+          badge: "Badge earned: {b}. “Instantly” is unlocked for this level.",
+          levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×", div: "÷", pow: "power", sqrt: "√" },
+          techs: { direct: "direct adding", c5: "the 5-complement", c10: "the 10-complement (carry)", sdirect: "direct taking away", s5: "the 5-complement when taking away", s10: "the 10-complement (borrow)" },
+          blk: {
+            pose: "set {n}", add: "add {n}", sub: "take away {n}",
+            mul: "{d} × {b} = {p} → add {p}",
+            div: "{b} × {m} = {v} → take away {v}",
+            pow: "× {a}: add {k} × {v}",
+            sqrt1: "{t}² = {q} → take away {q}",
+            sqrt2: "({d} + {u}) × {u} = {x} → take away {x}"
+          },
           cap: {
-            zero: "clearing the board", pose: "setting {n}",
+            zero: "clearing the board", pose: "digit by digit, left to right",
             direct: "+{a}: direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "carry: +1 on the left",
-            sdirect: "−{a}: direct", s5: "−{a} = −5 + {b}", s10: "−{a} = −10 + {b}", borrow: "borrow: −1 on the left",
-            partial: "{x} × {y} = {p}"
+            sdirect: "−{a}: direct", s5: "−{a} = −5 + {b}", s10: "−{a} = −10 + {b}", borrow: "borrow: −1 on the left"
           }
         }
       };
@@ -508,7 +560,7 @@
       function makeBead(x, rod, kind, idx) {
         var g = el("g", { "class": "bead", tabindex: "0" }, svg);
         el("polygon", { points: BEAD_POINTS }, g);
-        var b = { g: g, rod: rod, kind: kind, idx: idx, x: x, y: 0, v: 0, target: 0, held: false, base: 0 };
+        var b = { g: g, rod: rod, kind: kind, idx: idx, x: x, y: 0, v: 0, target: 0, held: false, base: 0, on: false, hint: false };
         allBeads.push(b);
         g.addEventListener("pointerdown", function (ev) { onDown(b, ev); });
         g.addEventListener("keydown", function (ev) {
@@ -518,6 +570,11 @@
           else if (ev.key === "ArrowDown") { ev.preventDefault(); pushBead(b, 1); }
         });
         return b;
+      }
+
+      // « on » : la perle compte ; « hint » : c'est elle qu'il faut bouger
+      function applyCls(b) {
+        b.g.setAttribute("class", "bead" + (b.on ? " on" : "") + (b.hint ? " hint" : ""));
       }
 
       function draw(b) {
@@ -547,7 +604,8 @@
 
       function setTarget(b, y, on, instant) {
         b.target = y;
-        b.g.setAttribute("class", on ? "bead on" : "bead");
+        b.on = on;
+        applyCls(b);
         if (instant || reduceMotion) { b.y = y; b.v = 0; draw(b); }
       }
 
@@ -707,59 +765,79 @@
         caption = null;
         setDigit(rod, v);
         render();
-        checkStep();
+        guideCheck();
       }
 
       // ---------- Son ----------
-      // Web Audio, débloqué au premier geste. Un « toc » de bois doux :
-      // une sinusoïde qui descend un peu, filtrée, avec une harmonique
-      // brève par-dessus — plus grave pour la perle du haut.
+      // Web Audio. Trois pièges sur iPhone, tous parés ici :
+      // - le son ne se débloque qu'à la fin d'un toucher (touchend / click),
+      //   pas au moment où le doigt se pose ;
+      // - avec l'interrupteur « silencieux », Web Audio se tait, sauf si la
+      //   page se déclare en lecture (navigator.audioSession, iOS 17+) ;
+      // - le petit haut-parleur ne rend presque rien sous ~500 Hz : le
+      //   « toc » de bois est donc placé plus haut, doux par l'enveloppe
+      //   (attaque arrondie, extinction rapide), pas par des graves.
 
-      var actx = null;
+      var actx = null, unlocked = false, master = null;
       function unlockAudio() {
+        try {
+          if (navigator.audioSession && navigator.audioSession.type !== "playback") {
+            navigator.audioSession.type = "playback";
+          }
+        } catch (e) {}
         try {
           if (!actx) {
             var AC = window.AudioContext || window.webkitAudioContext;
             if (!AC) return;
             actx = new AC();
+            master = actx.createGain();
+            master.gain.value = 0.9;
+            var lp = actx.createBiquadFilter();
+            lp.type = "lowpass";
+            lp.frequency.value = 5200;
+            master.connect(lp);
+            lp.connect(actx.destination);
           }
           if (actx.state === "suspended") actx.resume();
+          if (!unlocked) {
+            // Un échantillon muet joué dans le geste : c'est ce qui
+            // « ouvre » réellement le son sur Safari iOS
+            var buf = actx.createBuffer(1, 1, 22050);
+            var src = actx.createBufferSource();
+            src.buffer = buf;
+            src.connect(actx.destination);
+            src.start(0);
+            unlocked = true;
+          }
         } catch (e) {}
       }
+      ["touchend", "click", "keydown", "pointerdown"].forEach(function (ty) {
+        document.addEventListener(ty, unlockAudio, { capture: true, passive: true });
+      });
 
-      function tone(f0, f1, peak, decay, when) {
+      function tone(f0, f1, peak, decay, when, type) {
         var o = actx.createOscillator();
         var g = actx.createGain();
-        o.type = "sine";
+        o.type = type || "sine";
         o.frequency.setValueAtTime(f0, when);
         o.frequency.exponentialRampToValueAtTime(f1, when + decay * 0.6);
         g.gain.setValueAtTime(0.0001, when);
-        g.gain.exponentialRampToValueAtTime(peak, when + 0.004);
+        g.gain.exponentialRampToValueAtTime(peak, when + 0.006);
         g.gain.exponentialRampToValueAtTime(0.0001, when + decay);
         o.connect(g);
-        g.connect(lowpass());
+        g.connect(master);
         o.start(when);
-        o.stop(when + decay + 0.02);
-      }
-      var lp = null;
-      function lowpass() {
-        if (!lp) {
-          lp = actx.createBiquadFilter();
-          lp.type = "lowpass";
-          lp.frequency.value = 2200;
-          lp.connect(actx.destination);
-        }
-        return lp;
+        o.stop(when + decay + 0.03);
       }
 
       function toc(heavy, vol) {
         try {
           unlockAudio();
           if (!actx) return;
-          var w = actx.currentTime + 0.005;
-          var f = (heavy ? 290 : 400) * (0.97 + Math.random() * 0.06);
-          tone(f, f * 0.78, 0.32 * vol, 0.16, w);
-          tone(f * 2.76, f * 2.5, 0.05 * vol, 0.045, w);
+          var w = actx.currentTime + 0.01;
+          var f = (heavy ? 640 : 880) * (0.97 + Math.random() * 0.06);
+          tone(f, f * 0.86, 0.42 * vol, 0.11, w, "triangle");   // corps de la perle
+          tone(f * 2.4, f * 2.2, 0.08 * vol, 0.035, w);          // petit claquement boisé
         } catch (e) {}
       }
 
@@ -767,9 +845,10 @@
         try {
           unlockAudio();
           if (!actx) return;
-          var w = actx.currentTime + 0.01;
-          tone(523, 520, 0.14, 0.9, w);
-          tone(784, 780, 0.1, 0.9, w + 0.12);
+          var w = actx.currentTime + 0.02;
+          [784, 988, 1175, 1568].forEach(function (f, i) {
+            tone(f, f, 0.16, 1.1, w + i * 0.11);
+          });
         } catch (e) {}
       }
 
@@ -779,16 +858,17 @@
       // Pour un chiffre à ajouter ou retirer sur une tige, la suite exacte
       // des gestes : direct, complément à 5, ou complément à 10 (avec
       // retenue / emprunt sur la tige de gauche). Chaque geste = une tige
-      // qui change de valeur, avec sa légende. Sert à la fois à classer un
-      // exercice (quelles techniques il demande) et à le jouer au ralenti.
+      // qui change de valeur, avec sa légende (cap) et l'étape du calcul à
+      // laquelle il appartient (blk). Sert à guider, à jouer la démo au
+      // ralenti et à dire quelles techniques un exercice demande.
 
       function planner(start) {
-        var D = start.slice(), moves = [], tech = {};
+        var D = start.slice(), moves = [], tech = {}, blk = "";
         function cap(k, o) { return fmt(TXT[lang].cap[k], o); }
         function set(r, v, c) {
           if (r < 0) throw new Error("overflow");
           D[r] = v;
-          moves.push({ rod: r, to: v, cap: c });
+          moves.push({ rod: r, to: v, cap: c, blk: blk });
         }
         function add(r, a, ctx) {
           if (!a) return;
@@ -830,17 +910,22 @@
         }
         // Un nombre entier, chiffre par chiffre, de gauche à droite comme
         // sur un vrai soroban. shift = décalage vers la gauche (dizaines…)
-        function number(n, fn, shift, ctx) {
+        function number(n, fn, shift) {
           var s = String(n);
           for (var i = 0; i < s.length; i++) {
             var place = s.length - 1 - i + (shift || 0);
-            fn(RODS - 1 - place, s.charCodeAt(i) - 48, ctx);
+            fn(RODS - 1 - place, s.charCodeAt(i) - 48);
           }
         }
         return {
           D: D, moves: moves, tech: tech, cap: cap, set: set,
-          addN: function (n, shift, ctx) { number(n, add, shift, ctx); },
-          subN: function (n, shift, ctx) { number(n, sub, shift, ctx); }
+          block: function (text) { blk = text; },
+          addN: function (n, shift) { number(n, add, shift); },
+          subN: function (n, shift) { number(n, sub, shift); },
+          pose: function (n) {
+            var d = digitsOf(n);
+            for (var r = 0; r < RODS; r++) if (d[r] !== D[r]) set(r, d[r], cap("pose"));
+          }
         };
       }
 
@@ -849,10 +934,18 @@
         for (var i = RODS - 1; i >= 0; i--) { d[i] = n % 10; n = Math.floor(n / 10); }
         return d;
       }
+      function valueOf(D) { var n = 0; for (var j = 0; j < RODS; j++) n = n * 10 + D[j]; return n; }
 
       // ---------- Opérations ----------
+      // Chaque exercice = une suite de gestes calculée d'avance, du boulier
+      // vide au résultat. On guide geste par geste : les perles à bouger
+      // clignotent, la ligne du haut dit l'étape du calcul, celle du bas la
+      // technique (complément à 5, à 10…).
 
-      var LEVELS = ["direct", "c5", "c10", "sdirect", "s5", "s10", "mul"];
+      var LEVELS = ["direct", "c5", "c10", "sdirect", "s5", "s10", "mul", "div", "pow", "sqrt"];
+      var SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+      function sup(n) { return String(n).replace(/\d/g, function (c) { return SUP.charAt(+c); }); }
+
       var badges = (function () {
         var o = {};
         var raw = load("badges") || "";
@@ -864,69 +957,187 @@
 
       var mode = load("mode") === "ops" ? "ops" : "free";
       var level = LEVELS.indexOf(load("level")) >= 0 ? load("level") : "direct";
-      var ex = null;             // { op, a, b, steps:[{target, label}], stage, watched, solved }
+      var ex = null;
 
       function rnd(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
 
-      function techsOf(op, a, b) {
-        try {
-          var p = planner(digitsOf(op === "×" ? 0 : a));
-          if (op === "+") p.addN(b);
-          else if (op === "−") p.subN(b);
-          return p.tech;
-        } catch (e) { return null; }
+      // Le plan complet d'un exercice, du boulier vide jusqu'au bout
+      function buildPlan(e) {
+        var B = TXT[lang].blk;
+        var p = planner(digitsOf(0));
+        if (e.op !== "×") {
+          p.block(fmt(B.pose, { n: numStr(e.a) }));
+          p.pose(e.a);
+        }
+        if (e.op === "+") { p.block(fmt(B.add, { n: numStr(e.b) })); p.addN(e.b); }
+        else if (e.op === "−") { p.block(fmt(B.sub, { n: numStr(e.b) })); p.subN(e.b); }
+        else if (e.op === "×") {
+          // Un produit partiel par chiffre, ajouté au bon rang
+          var s = String(e.a);
+          for (var i = 0; i < s.length; i++) {
+            var place = s.length - 1 - i;
+            var d = (s.charCodeAt(i) - 48) * Math.pow(10, place);
+            if (!d) continue;
+            p.block(fmt(B.mul, { d: numStr(d), b: e.b, p: numStr(d * e.b) }));
+            p.addN((s.charCodeAt(i) - 48) * e.b, place);
+          }
+        }
+        else if (e.op === "÷") {
+          // On retire le diviseur par paquets : un chiffre du quotient à la fois
+          var q = String(e.result);
+          for (var j = 0; j < q.length; j++) {
+            var pl = q.length - 1 - j, qd = q.charCodeAt(j) - 48;
+            if (!qd) continue;
+            var m = qd * Math.pow(10, pl);
+            p.block(fmt(B.div, { b: e.b, m: numStr(m), v: numStr(m * e.b) }));
+            p.subN(qd * e.b, pl);
+          }
+        }
+        else if (e.op === "^") {
+          // a × a × … : multiplier v par a, c'est ajouter (a − 1) fois v
+          var v = e.a;
+          for (var k = 2; k <= e.b; k++) {
+            p.block(fmt(B.pow, { a: e.a, k: e.a - 1, v: numStr(v) }));
+            var sv = String(v);
+            for (var i2 = 0; i2 < sv.length; i2++) {
+              var part = (sv.charCodeAt(i2) - 48) * (e.a - 1);
+              if (part) p.addN(part, sv.length - 1 - i2);
+            }
+            v *= e.a;
+          }
+        }
+        else if (e.op === "√") {
+          // Racine à deux chiffres (10t + u)² = 100t² + (20t + u)·u :
+          // on retire d'abord (10t)², puis (20t + u) × u — il reste 0
+          var r = e.result, tt = Math.floor(r / 10), u = r % 10;
+          if (tt) {
+            p.block(fmt(B.sqrt1, { t: numStr(tt * 10), q: numStr(tt * tt * 100) }));
+            p.subN(tt * tt, 2);
+          }
+          if (u && !tt) {
+            p.block(fmt(B.sqrt1, { t: u, q: numStr(u * u) }));
+            p.subN(u * u);
+          } else if (u) {
+            p.block(fmt(B.sqrt2, { d: numStr(20 * tt), u: u, x: numStr((20 * tt + u) * u) }));
+            p.subN((20 * tt + u) * u);
+          }
+        }
+        // États successifs du boulier : states[0] = vide, states[i+1] = après le geste i
+        var states = [digitsOf(0)], cur = digitsOf(0);
+        p.moves.forEach(function (mv) { cur = cur.slice(); cur[mv.rod] = mv.to; states.push(cur); });
+        e.moves = p.moves;
+        e.states = states;
+        e.tech = p.tech;
+      }
+
+      function exprOf(e) {
+        if (e.op === "^") return numStr(e.a) + sup(e.b);
+        if (e.op === "√") return "√" + numStr(e.a);
+        return numStr(e.a) + " " + e.op + " " + numStr(e.b);
       }
 
       function fits(lv, tech) {
-        if (!tech) return false;
         var k = Object.keys(tech);
+        // la pose du premier nombre compte comme « direct » : on l'ignore
         switch (lv) {
           case "direct": return k.length === 1 && tech.direct;
-          case "c5": return tech.c5 && !tech.c10;
-          case "c10": return !!tech.c10;
+          case "c5": return tech.c5 && !tech.c10 && !tech.sdirect && !tech.s5 && !tech.s10;
+          case "c10": return tech.c10 && !tech.s10;
           case "sdirect": return k.length === 1 && tech.sdirect;
-          case "s5": return tech.s5 && !tech.s10;
-          case "s10": return !!tech.s10;
+          case "s5": return tech.s5 && !tech.s10 && !tech.c5 && !tech.c10;
+          case "s10": return !!tech.s10 && !tech.c10;
         }
-        return false;
+        return true;
+      }
+
+      function candidate(lv, tries) {
+        var hi = tries < 300 ? 9 : (tries < 600 ? 99 : 999);
+        switch (lv) {
+          case "mul": var m = rnd(12, 99), k = rnd(2, 9); return { op: "×", a: m, b: k, result: m * k };
+          case "div": var b = rnd(2, 9), q = rnd(11, Math.floor(999 / b)); return { op: "÷", a: b * q, b: b, result: q };
+          case "pow":
+            var base = rnd(2, 9), n = base <= 3 ? rnd(2, 5) : (base <= 6 ? rnd(2, 3) : 2);
+            return { op: "^", a: base, b: n, result: Math.pow(base, n) };
+          case "sqrt": var rt = tries % 4 === 0 ? rnd(2, 9) : rnd(11, 99); return { op: "√", a: rt * rt, b: 0, result: rt };
+        }
+        var a = rnd(1, hi), c = rnd(1, hi), op = lv.charAt(0) === "s" ? "−" : "+";
+        if (op === "−" && c > a) { var tmp = a; a = c; c = tmp; }
+        return { op: op, a: a, b: c, result: op === "+" ? a + c : a - c };
+      }
+
+      // Techniques utilisées par l'opération seule (sans la pose)
+      function opTech(e) {
+        try {
+          var p = planner(digitsOf(e.a));
+          if (e.op === "+") p.addN(e.b); else p.subN(e.b);
+          return p.tech;
+        } catch (er) { return null; }
       }
 
       function makeExercise(lv) {
-        if (lv === "mul") {
-          var m = rnd(12, 99), k = rnd(2, 9);
-          return { op: "×", a: m, b: k, result: m * k };
+        for (var tries = 0; tries < 900; tries++) {
+          var e = candidate(lv, tries);
+          if (e.op === "−" && e.a === e.b) continue;
+          if (e.op === "+" || e.op === "−") {
+            var tc = opTech(e);
+            if (!tc || !fits(lv, tc)) continue;
+          }
+          try { buildPlan(e); } catch (er) { continue; }
+          return e;
         }
-        var op = lv.charAt(0) === "s" ? "−" : "+";
-        for (var tries = 0; tries < 800; tries++) {
-          // Petits nombres d'abord, un peu plus grands si rien ne convient
-          var hi = tries < 300 ? 9 : (tries < 600 ? 99 : 999);
-          var a = rnd(1, hi), b = rnd(1, hi);
-          if (op === "−" && b > a) { var tmp = a; a = b; b = tmp; }
-          if (op === "−" && a === b) continue;
-          if (fits(lv, techsOf(op, a, b))) return { op: op, a: a, b: b, result: op === "+" ? a + b : a - b };
-        }
-        return { op: "+", a: 1, b: 1, result: 2 };
+        var f = { op: "+", a: 1, b: 1, result: 2 };
+        buildPlan(f);
+        return f;
       }
 
       function newExercise() {
         ex = makeExercise(level);
-        ex.stage = 0;
+        ex.k = 0;
         ex.watched = false;
         ex.solved = false;
-        caption = null;
+        caption = { text: t("follow") };
         clearBoard();
-        showTask();
-        updateButtons();
+        guideShow();
       }
 
-      // Étapes : poser le premier nombre, puis faire l'opération (la
-      // multiplication se construit directement à partir de zéro)
-      function stepsOf(e) {
-        if (e.op === "×") return [{ target: e.result, verb: "mul" }];
-        return [
-          { target: e.a, verb: "pose", n: e.a },
-          { target: e.result, verb: e.op === "+" ? "add" : "sub", n: e.b }
-        ];
+      function stateOn(D, b) {
+        var d = D[b.rod];
+        return b.kind === "h" ? d >= 5 : b.idx < d % 5;
+      }
+
+      // Surbrillance : chaque perle dont la position diffère de l'état visé
+      function setHints(targetD) {
+        allBeads.forEach(function (b) {
+          var h = !!targetD && stateOn(targetD, b) !== stateOn(digits, b);
+          if (h !== b.hint) { b.hint = h; applyCls(b); }
+        });
+      }
+
+      function guideShow() {
+        showTask();
+        updateButtons();
+        if (mode !== "ops" || !ex || ex.solved || busy) { setHints(null); renderSplit(); return; }
+        var mv = ex.moves[ex.k];
+        var prev = ex.states[ex.k], next = ex.states[ex.k + 1];
+        // Une perle bougée qui n'appartient ni à l'état d'avant ni à celui
+        // visé : on le dit gentiment, et la surbrillance montre la réparation
+        var wrong = allBeads.some(function (b) {
+          var now = stateOn(digits, b);
+          return now !== stateOn(prev, b) && now !== stateOn(next, b);
+        });
+        caption = { text: wrong ? t("oops") : mv.cap };
+        setHints(next);
+        renderSplit();
+      }
+
+      function guideCheck() {
+        if (mode !== "ops" || !ex || ex.solved || busy) return;
+        var cur = digits.join("");
+        for (var j = ex.k + 1; j < ex.states.length; j++) {
+          if (ex.states[j].join("") === cur) { ex.k = j; break; }
+        }
+        if (ex.k >= ex.states.length - 1) finish(true);
+        else guideShow();
       }
 
       function showTask() {
@@ -934,45 +1145,51 @@
         if (mode !== "ops" || !ex) { task.hidden = true; return; }
         task.hidden = false;
         task.textContent = "";
-        task.appendChild(document.createTextNode(numStr(ex.a) + " " + ex.op + " " + numStr(ex.b) + "  "));
-        var st = stepsOf(ex)[Math.min(ex.stage, stepsOf(ex).length - 1)];
+        task.appendChild(document.createTextNode(exprOf(ex)));
         var span = document.createElement("span");
         span.className = "step";
-        span.textContent = ex.solved ? "= " + numStr(ex.result) : "→ " + t(st.verb, { n: numStr(st.n || 0) });
+        if (ex.solved) span.textContent = "  = " + numStr(ex.result);
+        else if (ex.moves[ex.k]) span.textContent = "  → " + ex.moves[ex.k].blk;
         task.appendChild(span);
       }
 
-      function checkStep() {
-        if (mode !== "ops" || !ex || ex.solved || busy) return;
-        var steps = stepsOf(ex);
-        // On accepte d'avancer d'une ou plusieurs étapes d'un coup
-        while (ex.stage < steps.length && value() === steps[ex.stage].target) ex.stage++;
-        if (ex.stage >= steps.length) solved(true);
-        else showTask();
-      }
-
-      function solved(byHand) {
+      function finish(byHand) {
         ex.solved = true;
-        var text = t("good");
+        setHints(null);
+        caption = null;
+        showTask();
+        updateButtons();
+        renderSplit();
+        var earned = false;
         if (byHand && !ex.watched && !badges[level]) {
           badges[level] = 1;
           saveBadges();
           buildLevels();
-          text += " " + t("badge", { b: TXT[lang].levels[level] });
+          earned = true;
         }
-        caption = { text: text, good: true };
-        chime();
-        buzz(20);
-        showTask();
-        renderSplit();
-        updateButtons();
+        // Une petite seconde pour voir le boulier juste, puis les félicitations,
+        // qui restent jusqu'à « Suivant »
+        setTimeout(function () {
+          var cheers = TXT[lang].cheers;
+          document.getElementById("winTitle").textContent = cheers[Math.floor(Math.random() * cheers.length)];
+          document.getElementById("winAnswer").textContent = exprOf(ex) + " = " + numStr(ex.result);
+          var names = Object.keys(ex.tech).map(function (k) { return TXT[lang].techs[k]; });
+          document.getElementById("winUsed").textContent = names.length ? t("used", { list: names.join(", ") }) : "";
+          document.getElementById("winBadge").textContent = earned ? t("badge", { b: TXT[lang].levels[level] }) : "";
+          var win = document.getElementById("winOverlay");
+          win.hidden = false;
+          win.classList.remove("show");
+          void win.offsetWidth;
+          win.classList.add("show");
+          chime();
+          buzz(30);
+        }, byHand ? 900 : 400);
       }
 
       function updateButtons() {
         var ops = mode === "ops" && ex;
         document.getElementById("slowBtn").hidden = !ops || ex.solved;
         document.getElementById("instantBtn").hidden = !ops || ex.solved || !badges[level];
-        document.getElementById("nextBtn").hidden = !ops || !ex.solved;
       }
 
       function clearBoard() {
@@ -986,69 +1203,49 @@
 
       function wait(ms) { return new Promise(function (res) { setTimeout(res, ms); }); }
 
-      function playMoves(moves) {
-        var chain = Promise.resolve();
-        moves.forEach(function (m) {
-          chain = chain.then(function () {
-            if (digits[m.rod] === m.to) return;
-            var heavy = (digits[m.rod] >= 5) !== (m.to >= 5);
-            toc(heavy, 0.8);
-            caption = { text: m.cap };
-            setDigit(m.rod, m.to);
-            render();
-            return wait(DEMO_STEP_MS);
-          });
-        });
-        return chain;
-      }
-
       function demo() {
         if (busy || !ex) return;
         busy = true;
         document.body.classList.add("busy");
         ex.watched = true;
-        var p = planner(digits);
-        // 1. on remet à zéro
-        for (var r = 0; r < RODS; r++) if (p.D[r]) p.set(r, 0, p.cap("zero"));
-        // 2. on pose le premier nombre (sauf ×, qui part de zéro)
-        if (ex.op !== "×") {
-          var start = digitsOf(ex.a);
-          for (var r2 = 0; r2 < RODS; r2++) if (start[r2]) p.set(r2, start[r2], p.cap("pose", { n: numStr(ex.a) }));
-        }
-        // 3. l'opération, geste par geste
-        try {
-          if (ex.op === "+") p.addN(ex.b);
-          else if (ex.op === "−") p.subN(ex.b);
-          else {
-            // × : un produit partiel par chiffre, ajouté au bon rang
-            var s = String(ex.a);
-            for (var i = 0; i < s.length; i++) {
-              var dgt = s.charCodeAt(i) - 48;
-              var place = s.length - 1 - i;
-              var part = dgt * ex.b;
-              if (part) p.addN(part, place, p.cap("partial", { x: dgt * Math.pow(10, place), y: ex.b, p: part * Math.pow(10, place) }));
-            }
-          }
-        } catch (e) {}
-        playMoves(p.moves).then(function () { return wait(900); }).then(function () {
-          // Puis la main revient à Pierre : on repart de zéro
+        setHints(null);
+        var zero = planner(digits);
+        zero.pose(0);
+        var moves = zero.moves.map(function (m) { m.cap = zero.cap("zero"); m.blk = ""; return m; }).concat(ex.moves);
+        var chain = Promise.resolve();
+        moves.forEach(function (m, i) {
+          chain = chain.then(function () {
+            if (digits[m.rod] === m.to) return;
+            var heavy = (digits[m.rod] >= 5) !== (m.to >= 5);
+            toc(heavy, 0.8);
+            caption = { text: m.cap };
+            var task = document.getElementById("task");
+            if (task.lastChild && m.blk) task.lastChild.textContent = "  → " + m.blk;
+            setDigit(m.rod, m.to);
+            render();
+            return wait(DEMO_STEP_MS);
+          });
+        });
+        chain.then(function () { return wait(1000); }).then(function () {
+          // Puis la main revient : on repart de zéro, guidé
           busy = false;
           document.body.classList.remove("busy");
-          ex.stage = 0;
-          caption = { text: t("yourTurn") };
+          ex.k = 0;
           clearBoard();
-          showTask();
+          guideShow();
+          caption = { text: t("yourTurn") };
+          renderSplit();
         });
       }
 
       function instant() {
         if (busy || !ex || !badges[level]) return;
-        var target = digitsOf(ex.result);
+        var target = ex.states[ex.states.length - 1];
         for (var r = 0; r < RODS; r++) digits[r] = target[r];
         save("state", digits.join(""));
         toc(true, 1);
         render();
-        solved(false);
+        finish(false);
       }
 
       // ---------- Interface ----------
@@ -1082,7 +1279,7 @@
         buildLevels();
         caption = null;
         if (m === "ops") newExercise();
-        else { ex = null; showTask(); updateButtons(); render(); }
+        else { ex = null; guideShow(); render(); }
       }
 
       document.getElementById("tabFree").addEventListener("click", function () { setMode("free"); });
@@ -1090,6 +1287,7 @@
       document.getElementById("slowBtn").addEventListener("click", demo);
       document.getElementById("instantBtn").addEventListener("click", instant);
       document.getElementById("nextBtn").addEventListener("click", function () {
+        document.getElementById("winOverlay").hidden = true;
         // Badge tout juste gagné : on passe au niveau suivant pas encore acquis
         if (badges[level]) {
           for (var i = LEVELS.indexOf(level) + 1; i < LEVELS.length; i++) {
@@ -1102,15 +1300,18 @@
         if (busy) return;
         var any = value() !== 0;
         caption = null;
-        if (ex && !ex.solved) { ex.stage = 0; showTask(); }
         clearBoard();
+        if (ex && !ex.solved) { ex.k = 0; guideShow(); }
         if (any) { toc(false, 0.7); setTimeout(function () { toc(true, 0.7); }, 70); }
       });
       document.getElementById("langBtn").addEventListener("click", function () {
+        if (busy) return;
         lang = lang === "fr" ? "en" : "fr";
         save("lang", lang);
         caption = null;
+        if (ex && !ex.solved) { var k = ex.k; buildPlan(ex); ex.k = k; }
         applyLang();
+        guideShow();
       });
 
       // ---------- Écran figé ----------
@@ -1135,6 +1336,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v3", text: "Son réparé sur iPhone (débloqué à la fin du toucher, joue même en mode silencieux, placé dans des fréquences que le haut-parleur rend) et plus doux. Guidage pas à pas : les perles à bouger clignotent, la ligne du haut dit l'étape du calcul, celle du bas la technique ; une perle bougée par erreur est signalée. Réussite : une seconde de pause, puis un écran de félicitations qui reste jusqu'à « Suivant », avec les techniques utilisées. Nouvelles opérations : division (on retire le diviseur par paquets), puissances (multiplier = ajouter plusieurs fois), racines carrées (on retire (10t)², puis (20t + u) × u)." },
         { v: "v2", text: "Perles souples : elles résistent un peu sous le doigt, basculent d'un coup passé un cran, reviennent en rebondissant si on les lâche trop tôt, s'écrasent légèrement en arrivant. Son de bois plus doux, petite vibration (Android). Zoom et double-tap vraiment bloqués. Mode Opérations : poser un nombre puis ajouter, retirer ou multiplier ; « Voir au ralenti » montre chaque geste (compléments à 5 et à 10, retenues) ; un exercice réussi à la main sans avoir regardé gagne un badge qui débloque « D'un coup ». Français / anglais, installable sur l'écran d'accueil, perles utilisables au clavier." },
         { v: "v1", text: "Premier boulier : 5 tiges (jusqu'à 99 999), une perle du haut qui vaut 5, quatre du bas qui valent 1. Deux gestes : toucher une perle la fait basculer, la glisser au doigt la pousse dans le sens du geste. Nombre affiché avec la décomposition du dernier chiffre par rapport à 5 (7 = 5 + 2). Son de perle, état gardé d'une visite à l'autre, bouton de remise à zéro." }
       ];
