@@ -129,6 +129,8 @@
       font-size: 0.7rem;
     }
     .levels .chip.earned::after { content: " ✓"; color: var(--accent); }
+    .levels .chip.mix { border-color: var(--ink-soft); color: var(--accent); }
+    .levels .chip.mix[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 
     /* Lecture : le nombre formé, puis une ligne d'explication — la
        décomposition par rapport à 5 en libre (7 = 5 + 2), la légende de
@@ -574,7 +576,8 @@
           badge: "Badge gagné : {b}. Il apparaît en bas : appuie dessus et il fait ces gestes tout seul.",
           badgeCant: "Le badge {b} ne sait pas faire ce geste : à toi !",
           badgeDone: "Le badge {b} a fait sa part. À toi :",
-          levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×", div: "÷", pow: "puissance", sqrt: "√" },
+          levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×", div: "÷", pow: "puissance", sqrt: "√", mix: "∞ entraînement libre" },
+          mixEmpty: "Gagne d'abord un badge pour t'entraîner librement.",
           techs: { direct: "l'ajout direct", c5: "le complément à 5", c10: "le complément à 10 (retenue)", sdirect: "le retrait direct", s5: "le complément à 5 en retirant", s10: "le complément à 10 (emprunt)" },
           blk: {
             pose: "pose {n}", add: "ajoute {n}", sub: "retire {n}",
@@ -608,7 +611,8 @@
           badge: "Badge earned: {b}. It shows up at the bottom: tap it and it does these moves by itself.",
           badgeCant: "The {b} badge can't do this move: your turn!",
           badgeDone: "The {b} badge did its part. Your turn:",
-          levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×", div: "÷", pow: "power", sqrt: "√" },
+          levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×", div: "÷", pow: "power", sqrt: "√", mix: "∞ free practice" },
+          mixEmpty: "Earn a badge first to practise freely.",
           techs: { direct: "direct adding", c5: "the 5-complement", c10: "the 10-complement (carry)", sdirect: "direct taking away", s5: "the 5-complement when taking away", s10: "the 10-complement (borrow)" },
           blk: {
             pose: "set {n}", add: "add {n}", sub: "take away {n}",
@@ -1186,7 +1190,11 @@
       }
 
       var mode = load("mode") === "ops" ? "ops" : "free";
-      var level = LEVELS.indexOf(load("level")) >= 0 ? load("level") : "direct";
+      // "mix" = entraînement libre : des questions tirées au hasard parmi les
+      // niveaux dont on a le badge ; on les fait avec les badges-outils, et
+      // à la main quand aucun badge ne couvre un geste
+      var level = LEVELS.indexOf(load("level")) >= 0 || load("level") === "mix" ? load("level") : "direct";
+      function earnedLevels() { return LEVELS.filter(function (lv) { return badges[lv]; }); }
       var ex = null;
 
       function rnd(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
@@ -1369,7 +1377,14 @@
       }
 
       function newExercise() {
-        ex = makeExercise(level);
+        var lv = level;
+        if (lv === "mix") {
+          var pool = earnedLevels();
+          if (!pool.length) { level = lv = "direct"; save("level", lv); buildLevels(); }
+          else lv = pool[Math.floor(Math.random() * pool.length)];
+        }
+        ex = makeExercise(lv);
+        ex.lv = lv;
         ex.k = 0;
         ex.watched = false;
         ex.solved = false;
@@ -1460,12 +1475,12 @@
         updateButtons();
         renderSplit();
         var earned = false;
-        wins[level] = (wins[level] || 0) + 1;
+        wins[ex.lv] = (wins[ex.lv] || 0) + 1;
         saveWins();
         // Une réussite suffit, même après avoir regardé l'exemple au
         // ralenti (choix de Pierre) : on gagne le badge du niveau en cours
-        if (!badges[level]) {
-          badges[level] = 1;
+        if (!badges[ex.lv]) {
+          badges[ex.lv] = 1;
           saveBadges();
           buildLevels();
           earned = true;
@@ -1478,7 +1493,7 @@
           document.getElementById("winAnswer").textContent = exprOf(ex) + " " + answerOf(ex);
           var names = Object.keys(ex.tech).map(function (k) { return TXT[lang].techs[k]; });
           document.getElementById("winUsed").textContent = names.length ? t("used", { list: names.join(", ") }) : "";
-          var badgeLine = earned ? t("badge", { b: TXT[lang].levels[level] }) : "";
+          var badgeLine = earned ? t("badge", { b: TXT[lang].levels[ex.lv] }) : "";
           if (ex.tech.c10 && pasapasTen()) badgeLine = (badgeLine ? badgeLine + " " : "") + t("pasapas");
           document.getElementById("winBadge").textContent = badgeLine;
           var win = document.getElementById("winOverlay");
@@ -1633,6 +1648,21 @@
           });
           box.appendChild(b);
         });
+        // Entraînement libre : dès le premier badge
+        if (earnedLevels().length) {
+          var m = document.createElement("button");
+          m.className = "chip mix";
+          m.textContent = TXT[lang].levels.mix;
+          m.setAttribute("aria-pressed", level === "mix" ? "true" : "false");
+          m.addEventListener("click", function () {
+            if (busy) return;
+            level = "mix";
+            save("level", level);
+            buildLevels();
+            newExercise();
+          });
+          box.appendChild(m);
+        }
       }
 
       function setMode(m) {
@@ -1707,7 +1737,7 @@
       document.getElementById("nextBtn").addEventListener("click", function () {
         document.getElementById("winOverlay").hidden = true;
         // Badge tout juste gagné : on passe au niveau suivant pas encore acquis
-        if (badges[level]) {
+        if (level !== "mix" && badges[level]) {
           for (var i = LEVELS.indexOf(level) + 1; i < LEVELS.length; i++) {
             if (!badges[LEVELS[i]]) { level = LEVELS[i]; save("level", level); buildLevels(); break; }
           }
@@ -1754,6 +1784,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v9", text: "Entraînement libre (∞, à la fin des niveaux, dès le premier badge) : des questions sans fin tirées au hasard parmi les niveaux dont tu as le badge ; on les fait en appuyant sur les badges, et à la main quand aucun badge ne couvre un geste (les perles clignotent)." },
         { v: "v8", text: "La perle tenue suit le doigt dans les deux sens tant qu'on ne la lâche pas (après le petit cran de départ). Elle pousse les perles qu'elle rencontre, et celles-ci reviennent avec elle si on repart dans l'autre sens pendant le même geste. Le chiffre change en direct quand une perle passe le milieu ; au lâcher, tout se range à la place la plus proche. Le son ne se coupe plus après un passage par le menu ou une autre appli. Menu : « Réinitialiser la progression » remet aussi le compteur de perles à zéro. Les perles à bouger clignotent vraiment (même avec « Réduire les animations »)." },
         { v: "v7", text: "Menu ☰ : bac à sable (manipuler librement), langue, historique, effacer les badges (deux appuis), et le compteur de perles déplacées depuis le début. Petits nombres d'abord : ils grandissent avec les réussites (3 → deux chiffres, 6 → trois). Son encore plus grave. Téléphone couché : deux colonnes et autant de tiges que possible sans perles trop petites." },
         { v: "v6", text: "Les badges deviennent des outils : chaque badge gagné apparaît en bas ; appuyer dessus fait tout seul, en accéléré, les gestes qu'il connaît, et s'arrête au premier geste qu'il ne connaît pas — c'est alors à toi. Chaque badge inclut ceux d'avant (le badge × fait aussi les additions). Remplace le bouton « D'un coup ». « Voir au ralenti » reste : l'exemple complet, pour savoir quoi faire. Un badge se gagne en réussissant une fois, même après avoir regardé le ralenti. Le message de réussite s'affiche en bandeau en haut : le boulier reste visible avec le résultat." },

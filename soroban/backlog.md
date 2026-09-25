@@ -82,6 +82,11 @@ Tri : priorité décroissante.
   compteur. Perles à bouger qui clignotent vraiment (minuteur JS, pas une
   animation CSS coupée par « Réduire les animations »)
 
+- [x] v9 — Entraînement libre (∞) : questions sans fin tirées parmi les
+  niveaux dont on a le badge ; on appuie sur les badges, et on fait à la
+  main ce qu'aucun badge ne couvre. Choix confirmé : tirer la perle du bas
+  d'un groupe ne fait descendre qu'elle (comme un vrai soroban)
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
