@@ -17,6 +17,11 @@ partie technique de la charte s'applique.
   Terminal (texte phosphore, balayage, scintillement), Musique (cube dessiné
   par le son en X-Y, audible)
 
+- [x] v3 : refaite façon Jerobeam Fenderson — son stéréo = faisceau
+  (G = X, D = Y), faisceau gaussien WebGL intégré le long des segments
+  (principe de woscope), 4 scènes qui se métamorphosent (spirale, cube,
+  nom, planète), texte CRT tapé par-dessus + lignes de balayage
+
 ## À faire
 
 - [ ] P1 — Choisir le style retenu pour les jeux (retour de Pierre)
