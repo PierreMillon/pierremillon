@@ -25,6 +25,14 @@ Un nouveau projet (jeu ou page d'essai) :
   explicitement dans le backlog : seule la partie technique de la charte
   s'applique alors
 
+## Fusion des PR
+
+Pierre teste en réel sur son téléphone via GitHub Pages, qui ne déploie
+que depuis `main`. Donc : **toujours fusionner la PR directement après le
+push**, sans attendre une demande explicite — ne pas la laisser en
+brouillon en attente. S'il y a un conflit ou un échec CI, le signaler
+plutôt que de fusionner en l'état.
+
 ## Historique utile
 
 - `bastion-orbit/` et `forge-line/` ont été extraits vers leurs propres
