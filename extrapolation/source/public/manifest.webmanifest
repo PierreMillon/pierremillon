@@ -1,0 +1,16 @@
+{
+  "name": "Extrapolation",
+  "short_name": "Extrapolation",
+  "description": "Prolonger une courbe : quatre méthodes d'extrapolation comparées, sur une série aléatoire ou dessinée au doigt.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#12161d",
+  "theme_color": "#12161d",
+  "icons": [
+    { "src": "../apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

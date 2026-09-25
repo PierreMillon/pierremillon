@@ -53,6 +53,28 @@ Tri : priorité décroissante.
 - [x] v4 — Service worker « réseau d'abord » (comme Pas à Pas) : hors ligne
   une fois ouvert, police comprise
 
+- [x] v5 — Boulier de taille fixe (plus de zoom / dézoom tout seul pendant
+  une opération : textes, niveaux et boutons ont une place réservée)
+- [x] v5 — Sons beaucoup plus graves ; perle qui glisse toujours de façon
+  continue (même avec « Réduire les animations ») ; légende « chiffre par
+  chiffre » retirée ; français par défaut
+
+- [x] v6 — Badges-outils (règles fixées avec Pierre) : chaque badge gagné
+  devient un bouton en bas ; appuyé, il fait en accéléré animé les gestes
+  qu'il connaît et s'arrête au premier geste inconnu. Chaque badge inclut
+  ceux d'avant. Tous les badges gagnés sont affichés. Une réussite suffit
+  pour gagner un badge, même après le ralenti. Remplace « D'un coup »
+- [x] v6 — Réussite en bandeau en haut : le boulier reste visible
+
+- [x] v7 — Réponses de Pierre (2e série de questions) : menu ☰ (bac à
+  sable, langue, historique, effacer les badges en deux appuis, compteur
+  de perles déplacées depuis toujours — tous les gestes, badges et ralenti
+  compris) ; petits nombres d'abord (3 réussites → 2 chiffres, 6 → 3) ;
+  son encore plus grave ; paysage en deux colonnes avec autant de tiges
+  que possible (tige ≥ 56 px), 5 en portrait. Gardés tels quels, à sa
+  demande : vitesse du ralenti (0,85 s) et des badges (0,26 s), passage au
+  niveau suivant après un badge, erreur = message + surbrillance, cran
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?

@@ -26,6 +26,21 @@ Les points sont reliés par une interpolation cubique monotone
 méthodes et le tableau d'écart moyen se recalculent en direct sur la
 courbe dessinée. Chaque méthode a un petit ⓘ explicatif.
 
+Français / anglais, état sauvegardé en local (`extrapolation_state`),
+mise à jour automatique (script inline dans `index.html`), installable
+(`public/manifest.webmanifest`). Backlog : `../backlog.md`.
+
+**Onglet Bourse** : Bitcoin (jour / semaine / mois) et S&P 500
+(mensuel). Bitcoin : historique quotidien intégré (`src/data/btc.json`,
+Coin Metrics, 2010 → 23/05/2026), complété en direct dans le navigateur
+jusqu'à hier (Binance, sinon CoinGecko), mis en cache local. S&P 500 :
+Shiller (`src/data/markets.json`). On prédit 1 à 12 pas au doigt, face
+à 8 méthodes cachées jusqu'à la validation ; score en erreur %, sens
+juste et fonds fictif de 10 000 $ (achat / vente à découvert, 0,1 % de
+frais) face à « acheter et garder » ; test walk-forward sur toute la
+série. Pour rafraîchir les données intégrées :
+`python3 scripts/fetch-markets.py`, puis build.
+
 **https://pierremillon.github.io/pierremillon/extrapolation/**
 
 ## Stack
@@ -39,6 +54,7 @@ recopier le résultat :
 ```sh
 npm install
 npm run build
+rm -rf ../assets
 cp -r dist/* ../
 ```
 
