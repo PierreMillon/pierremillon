@@ -3245,6 +3245,33 @@
             return wait(1300);
           });
         });
+        // Regroupement final : les jetons qui restent se tassent dans un
+        // seul cadre, par colonnes de 2 — 4 forme un carré 2 × 2, 7 trois
+        // paires et 1. Les jetons retirés et le cadre vide s'effacent.
+        chain = chain.then(function () {
+          var keep = [], gone = [];
+          sgBoard.querySelectorAll(".sg-dot").forEach(function (d) {
+            (d.classList.contains("out") ? gone : keep).push(d);
+          });
+          keep.sort(function (a, b) { return (Number(a.dataset.k) || 0) - (Number(b.dataset.k) || 0); });
+          gone.forEach(function (d) {
+            d.animate([{ opacity: 0.35 }, { opacity: 0, transform: "scale(0.4)" }], { duration: ms(500), fill: "forwards" });
+          });
+          var moves = keep.map(function (d, j) {
+            var f = Math.floor(j / 10), r = j % 10;
+            var k = f * 10 + (r % 2) * 5 + Math.floor(r / 2);
+            var sl = sgSlot(k);
+            d._size = 0;
+            return sgMove(d, sl.x, sl.y, j * 60);
+          });
+          if (keep.length <= 10) {
+            var cells = sgBoard.querySelectorAll(".sg-cell");
+            for (var i = 10; i < cells.length; i++) {
+              cells[i].animate([{ opacity: 1 }, { opacity: 0 }], { duration: ms(500), fill: "forwards" });
+            }
+          }
+          return Promise.all(moves).then(function () { return wait(400); });
+        });
         // Le résultat reste affiché : on voit ce qu'on a fait. La flèche
         // en bas à droite passe à la manche suivante.
         chain.then(function () {
@@ -4210,6 +4237,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v32", text: "Singapour : à la fin d'une manche, les jetons restants se regroupent dans un seul cadre, par colonnes de 2 (4 = un carré 2 × 2) ; les jetons retirés et le cadre vide s'effacent." },
         { v: "v31", text: "Accueil : la carte des ensembles ne bouge plus quand on change d'ensemble. Au-delà de ℂ, en teaser verrouillé : ℍ (quaternions, dim 4), 𝕆 (octonions, dim 8), 𝕊 (sédénions, dim 16), 𝕋 (trigintaduonions, dim 32) — chacun avec la propriété qu'il perd." },
         { v: "v30", text: "Nouveau chapitre Fusion (ℝ) : les termes sont des bulles qu'on déplace au doigt. Lâchées l'une sur l'autre, elles fusionnent si une règle le permet : a + a → 2·a, 2·a + 2·b → 2·(a + b), 3·x − 3·x → disparaît, fractions de même dénominateur. Pouvoir « 1 → c/c » (gagné avec le chapitre Fraction). 8 niveaux, ↺ pour recommencer." },
         { v: "v29", text: "Menu ☰ → Fiche des règles : toutes les règles de calcul jusqu'en terminale, et les gestes d'exercice (écrire 1 = c/c, ajouter et retrancher, découper 25 = 24 + 1, quantité conjuguée, facteur dominant…)." },
