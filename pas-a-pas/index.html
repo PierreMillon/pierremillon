@@ -2122,7 +2122,18 @@
       var busy = false;
       var lastTopStep = null;
       var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      var SPEED = reduced ? 0.01 : 1;
+      // « Réduire les animations » (iOS) : on supprime le mouvement, mais on
+      // garde des temps de lecture normaux. (Avant, tout était accéléré 100
+      // fois : le calcul mental défilait comme un film en accéléré.)
+      var SPEED = 1;
+      if (reduced && Element.prototype.animate) {
+        var nativeAnimate = Element.prototype.animate;
+        Element.prototype.animate = function (kf, opts) {
+          if (typeof opts === "object" && opts) { opts = Object.assign({}, opts, { duration: 1, delay: 0 }); }
+          else opts = 1;
+          return nativeAnimate.call(this, kf, opts);
+        };
+      }
 
       function ms(n) { return n * SPEED; }
       function wait(n) { return new Promise(function (r) { setTimeout(r, ms(n)); }); }
@@ -4551,6 +4562,9 @@
           { duration: ms(dur || 1100), delay: ms(delay || 0), easing: "cubic-bezier(.45,0,.25,1)", fill: "backwards" }));
       }
 
+      // Somme écrite sans les termes nuls (pas de « 5 + 0 »)
+      function sumOf(list) { return list.filter(function (v) { return v !== 0; }).join(" + "); }
+
       function cmText(t) {
         calcEq.animate([{ opacity: 1 }, { opacity: 0.15 }, { opacity: 1 }], { duration: ms(700) });
         setTimeout(function () { calcEq.textContent = t; }, ms(300));
@@ -4626,7 +4640,7 @@
         if (u1 >= 5 && u2 >= 5) {
           chain = chain.then(function () {
             if (!alive()) return;
-            cmText(T1 + " + " + T2 + " + 5 + " + (u1 - 5) + " + 5 + " + (u2 - 5));
+            cmText(sumOf([T1, T2, 5, u1 - 5, 5, u2 - 5]));
             // Les rangées de 5 s'allument
             dots[0].slice(0, 5).concat(dots[1].slice(0, 5)).forEach(function (d) {
               d.animate([{ transform: "scale(1)" }, { transform: "scale(1.25)" }, { transform: "scale(1)" }], { duration: ms(800) });
@@ -4634,7 +4648,7 @@
             return wait(2000);
           }).then(function () {
             if (!alive()) return;
-            cmText(T1 + " + " + T2 + " + 10 + " + (u1 - 5) + " + " + (u2 - 5));
+            cmText(sumOf([T1, T2, 10, u1 - 5, u2 - 5]));
             left = dots[0].slice(5).concat(dots[1].slice(5));
             return tenToRod(dots[0].slice(0, 5).concat(dots[1].slice(0, 5)));
           });
@@ -4943,6 +4957,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v61", text: "Correctif : avec « Réduire les animations » activé sur l'iPhone, tout défilait 100 fois trop vite (le calcul mental comme un film en accéléré). Maintenant le mouvement est supprimé mais le rythme de lecture reste normal." },
         { v: "v60", text: "Ensembles : l'étoile de ℕ* est en exposant, en haut à droite." },
         { v: "v59", text: "Singapour : liberté totale — on peut retirer n'importe quel jeton, même ceux du départ. On peint au doigt : parti d'un jeton, on efface tout ce qu'on survole ; parti d'une case vide, on remplit tout ce qu'on survole. La manche finit quand le compte est bon ; le badge ne compte que les manches bien rangées." },
         { v: "v58", text: "Premiers : quand le nombre en cours est lui-même un premier du clavier (13), son bouton est vert — le diviser par lui-même est une bonne réponse. La dernière division tentée reste affichée ; flèche ← pour revenir en arrière." },
