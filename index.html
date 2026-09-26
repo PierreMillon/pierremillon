@@ -181,7 +181,7 @@
           try {
             localStorage.setItem('pm_pageVersion', tag);
             sessionStorage.setItem('pm_lastUpdateReload', String(now));
-          } catch (e) { /* ignore */ }
+          } catch (e) { return; } // stockage indisponible (plein, navigation privée) : sans le tag ni le garde-fou écrits, recharger relancerait la même détection à chaque vérification — on renonce
           location.replace(location.pathname + '?_r=' + now);
         }
       } catch (e) { /* hors-ligne, ou requête bloquée — on ignore, on retentera plus tard */ }
