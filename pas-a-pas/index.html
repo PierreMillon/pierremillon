@@ -1115,20 +1115,49 @@
       pointer-events: none;
     }
 
-    /* Titre des diviseurs : les trois écritures de la division */
+    /* Au-dessus des diviseurs : le nombre en cours, écrit des trois façons
+       (fraction, barre oblique, ÷), avec la case du diviseur qui respire */
     .pf-head {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 1rem;
-      align-self: flex-start;
-      margin-left: 0.2rem;
+      gap: 0.5rem;
+      align-self: stretch;
       font-size: 1.05rem;
-      color: var(--ink-soft);
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
     }
 
-    .pf-bar { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
-    .pf-bar i { width: 7px; height: 7px; border-radius: 1px; background: transparent; border: 1px solid var(--ink-soft); }
-    .pf-bar b { width: 1.1em; height: 2px; background: var(--ink-soft); }
+    .pf-head .row { display: flex; align-items: center; justify-content: center; gap: 1.8rem; }
+    .pf-head .n { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .pf-head sup { font-size: 0.65em; margin-left: -0.15rem; align-self: flex-start; }
+    .pf-head .op { color: var(--ink-soft); }
+
+    .pf-head .fracv { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
+    .pf-head .fracv .bar { align-self: stretch; height: 2px; background: var(--ink-soft); }
+
+    .pf-slot {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.9em;
+      height: 1.5em;
+      padding: 0 0.2em;
+      border: 1.5px dashed var(--ink-soft);
+      border-radius: 6px;
+      color: var(--ink-soft);
+      animation: breathe 2.4s ease-in-out infinite;
+    }
+
+    .pf-slot.ok { border-style: solid; border-color: var(--accent); color: var(--accent); animation: none; }
+    .pf-slot.no { border-style: solid; border-color: var(--sign); color: var(--sign); animation: none; }
+
+    @keyframes breathe {
+      0%, 100% { opacity: 0.45; transform: scale(0.94); }
+      50% { opacity: 1; transform: scale(1.04); }
+    }
+
+    @media (prefers-reduced-motion: reduce) { .pf-slot { animation: none; } }
 
     .pf-primes {
       display: grid;
@@ -1245,9 +1274,7 @@
     <section class="sg" id="pf" hidden>
       <div class="sg-eq pf-eq" id="pfEq"></div>
       <div class="sg-board pf-board" id="pfBoard"></div>
-      <div class="pf-head" aria-label="diviser par">
-        <span>÷</span><span>/</span><span class="pf-bar"><i></i><b></b><i></i></span>
-      </div>
+      <div class="pf-head" id="pfHead" aria-label="diviser par"></div>
       <div class="pf-primes" id="pfPrimes"></div>
       <div class="pf-tip" id="pfTip" hidden></div>
     </section>
@@ -3573,6 +3600,15 @@
         pfEq.textContent = String(n);
         pfExtraDivisor(n);
         nextBtn.disabled = true;
+        if (isPrime(n)) {
+          // Déjà premier : rien à décomposer
+          pfState.sel = -1;
+          pfState.ready = true;
+          setTimeout(function () {
+            pfEq.textContent = n + (LANG === "en" ? " is prime" : " est premier");
+            nextBtn.disabled = false;
+          }, ms(300));
+        }
         nextBtn.textContent = "→";
         nextBtn.classList.remove("text");
         pfLayout();
@@ -3608,6 +3644,7 @@
         pfPrimes.querySelectorAll(".extra").forEach(function (b) { b.remove(); });
         var m = n, d = 2, big = [];
         while (m > 1) { while (m % d === 0) { m /= d; if (d > 13 && big.indexOf(d) < 0) big.push(d); } d++; }
+        big = big.filter(function (p) { return p !== n; });
         big.forEach(function (p) {
           var b = document.createElement("button");
           b.textContent = String(p);
@@ -3639,7 +3676,28 @@
       // Diamètre d'une bulle selon le nombre de chiffres (px)
       function pfSize(v) { return Math.max(40, 16 + String(v).length * 12); }
 
+      // Titre au-dessus des diviseurs : 163 / ?, 163 ÷ ?, fraction 163 sur ?
+      var pfHead = document.getElementById("pfHead");
+      function pfUpdateHead(fill, ok) {
+        var nd = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel] : null;
+        if (!nd) { pfHead.innerHTML = ""; return; }
+        var slot = '<span class="pf-slot' + (fill !== undefined ? (ok ? " ok" : " no") : "") + '">' + (fill !== undefined ? fill : "") + "</span>";
+        // Cinq écritures de la même division : fraction, /, ÷, puissance −1,
+        // et multiplication par 1 sur le diviseur
+        pfHead.innerHTML =
+          '<div class="row">' +
+          '<span class="fracv"><span>' + nd.v + '</span><span class="bar"></span>' + slot + "</span>" +
+          '<span class="n">' + nd.v + ' <span class="op">/</span> ' + slot + "</span>" +
+          '<span class="n">' + nd.v + ' <span class="op">÷</span> ' + slot + "</span>" +
+          "</div><div class=\"row\">" +
+          '<span class="n">' + nd.v + ' <span class="op">·</span> ' + slot + '<sup class="op">−1</sup></span>' +
+          '<span class="n">' + nd.v + ' <span class="op">·</span> <span class="fracv"><span>1</span><span class="bar"></span>' + slot + "</span></span>" +
+          "</div>";
+      }
+
+      var pfHeadHold = false;
       function pfRender() {
+        if (!pfHeadHold) pfUpdateHead();
         pfBoard.innerHTML = "";
         var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         pfBoard.appendChild(svg);
@@ -3675,6 +3733,8 @@
         if (!pfState || pfState.ready || pfState.sel < 0) return;
         var i = pfState.sel, nd = pfState.nodes[i];
         if (nd.v % p !== 0) {
+          pfUpdateHead(p, false);
+          setTimeout(function () { if (pfState && pfState.nodes[pfState.sel] === nd) pfUpdateHead(); }, ms(1400));
           pfState.mistake = true;
           SND.bad();
           // Ne divise pas : le bouton tremble, et la règle est appliquée à CE
@@ -3684,6 +3744,10 @@
           if (nd.el) nd.el.animate([{ color: "var(--sign)" }, { color: "var(--ink)" }], { duration: ms(600) });
           return;
         }
+        // Le bon diviseur s'inscrit dans la case, puis l'arbre se scinde
+        pfUpdateHead(p, true);
+        pfHeadHold = true;
+        setTimeout(function () { pfHeadHold = false; pfUpdateHead(); }, ms(1000));
         var a = pfState.nodes.length;
         pfState.nodes.push({ v: p, parent: i, depth: nd.depth + 1, side: -1 });
         pfState.nodes.push({ v: nd.v / p, parent: i, depth: nd.depth + 1, side: 1 });
@@ -4498,6 +4562,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v42", text: "Premiers : deux écritures de plus de la division, sur une deuxième ligne — 163 · ▢⁻¹ et 163 · 1/▢. Un nombre premier tapé soi-même affiche directement « est premier »." },
+        { v: "v41", text: "Premiers : au-dessus des diviseurs, centré, le nombre en cours écrit des trois façons — en fraction, avec / et avec ÷ — et une case qui respire à la place du diviseur. Le diviseur touché s'y inscrit (vert s'il divise, jaune sinon)." },
         { v: "v40", text: "Premiers : les boutons des diviseurs sont des cercles parfaits." },
         { v: "v39", text: "Premiers : chaque nombre de l'arbre est une bulle ronde, le nombre bien centré, les traits s'arrêtent au bord des bulles. Quand un diviseur marche, la bulle devient d'abord le produit « 5 · 11 » en s'étirant, puis se scinde en deux bulles qui rebondissent à leur place." },
         { v: "v38", text: "Premiers : un petit titre au-dessus des diviseurs montre les trois écritures de la division (÷, /, barre de fraction) ; les boutons ne portent plus que le nombre. Division par 0 : on rappelle qu'elle devient possible dans ℝ ∪ {∞} ou ℂ ∪ {∞} (x ÷ 0 = ∞, x ≠ 0)." },
