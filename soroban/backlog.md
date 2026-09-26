@@ -93,6 +93,10 @@ Tri : priorité décroissante.
   Un badge ne fait que des techniques déjà gagnées. Entraînement libre en
   tête des niveaux
 
+- [x] v11 — Perles à bouger qui respirent (feu doux, 2,8 s, piloté en JS) ;
+  boutons du bas sans icône, juste l'opération (+, +5, ×…), toujours
+  allumés, et qui apparaissent dès qu'on gagne le niveau
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
