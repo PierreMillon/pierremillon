@@ -1136,6 +1136,8 @@
     .pf-head .fracv { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; }
     .pf-head .fracv .bar { align-self: stretch; height: 2px; background: var(--ink-soft); }
 
+    /* Case du diviseur : zone pleine qui luit comme un écran de phosphore,
+       s'allume puis s'éteint lentement (rémanence) */
     .pf-slot {
       display: inline-flex;
       align-items: center;
@@ -1143,18 +1145,19 @@
       min-width: 1.9em;
       height: 1.5em;
       padding: 0 0.2em;
-      border: 1.5px dashed var(--ink-soft);
       border-radius: 6px;
-      color: var(--ink-soft);
-      animation: breathe 2.4s ease-in-out infinite;
+      color: var(--bg);
+      background: var(--ink);
+      animation: phosphor 2.6s ease-out infinite;
     }
 
-    .pf-slot.ok { border-style: solid; border-color: var(--accent); color: var(--accent); animation: none; }
-    .pf-slot.no { border-style: solid; border-color: var(--sign); color: var(--sign); animation: none; }
+    .pf-slot.ok { color: var(--bg); background: var(--accent); box-shadow: 0 0 14px rgba(109, 255, 176, 0.7); animation: none; }
+    .pf-slot.no { color: var(--bg); background: var(--sign); box-shadow: 0 0 14px rgba(255, 209, 102, 0.6); animation: none; }
 
-    @keyframes breathe {
-      0%, 100% { opacity: 0.45; transform: scale(0.94); }
-      50% { opacity: 1; transform: scale(1.04); }
+    @keyframes phosphor {
+      0% { opacity: 0.95; box-shadow: 0 0 16px rgba(61, 224, 138, 0.8); }
+      12% { opacity: 1; box-shadow: 0 0 22px rgba(109, 255, 176, 0.9); }
+      100% { opacity: 0.18; box-shadow: 0 0 2px rgba(61, 224, 138, 0.1); }
     }
 
     @media (prefers-reduced-motion: reduce) { .pf-slot { animation: none; } }
@@ -1185,6 +1188,23 @@
     }
 
     .pf-tip[hidden] { display: none; }
+
+    #pfTip { left: 0 !important; right: 0; max-width: none; padding: 1rem 1.1rem; font-size: 0.9rem; }
+    .tip-rule { color: var(--ink); line-height: 1.5; }
+    .tip-ex {
+      margin-top: 1rem;
+      padding-top: 0.9rem;
+      border-top: 1px solid var(--hairline);
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      font-size: 1rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+    }
+    .tip-v { margin-top: 0.9rem; font-size: 1.05rem; font-weight: 500; }
+    .tip-v.ok { color: var(--accent); }
+    .tip-v.no { color: var(--sign); }
 
     .pf-primes button {
       font-family: inherit;
@@ -3511,8 +3531,9 @@
         13: "Rest + 4 × last digit in the 13 times table."
       };
       var pfTip = document.getElementById("pfTip");
-      function pfShowTip(d, btn, text) {
-        pfTip.textContent = text || (LANG === "en" ? DIV_INFO_EN : DIV_INFO)[d];
+      function pfShowTip(d, btn, html) {
+        if (html) pfTip.innerHTML = html;
+        else pfTip.textContent = (LANG === "en" ? DIV_INFO_EN : DIV_INFO)[d];
         pfTip.hidden = false;
         var rb = btn.getBoundingClientRect(), rs = pfEl.getBoundingClientRect();
         pfTip.style.left = Math.max(4, Math.min(rs.width - pfTip.offsetWidth - 4, rb.left - rs.left + rb.width / 2 - pfTip.offsetWidth / 2)) + "px";
@@ -3526,43 +3547,51 @@
       // Pourquoi n n'est pas divisible par p : la règle, faite sur n
       // La règle de divisibilité appliquée au nombre de l'exercice, avec
       // le verdict (✓ ou ✗) et, à la fin, la division écrite en entier.
+      // La règle de divisibilité appliquée au nombre de l'exercice. Rendu
+      // en trois parties séparées : la règle, puis l'exemple (une étape par
+      // ligne), puis le verdict avec la division écrite en entier.
       function ruleOn(n, p) {
         var en = LANG === "en";
-        function digits(x) { return String(Math.abs(x)).split("").map(Number); }
+        var rule = (en ? DIV_INFO_EN : DIV_INFO)[p] || (en ? "Divide and look at the remainder." : "On divise et on regarde le reste.");
         var lines = [], ok = n % p === 0;
-        if (p === 0) return (en ? DIV_INFO_EN : DIV_INFO)[0];
-        if (p === 1) return (en ? "Useless: " : "Inutile : ") + n + " ÷ 1 = " + n + ".";
+        function digits(x) { return String(Math.abs(x)).split("").map(Number); }
+        function neg(v) { return String(v).replace("-", "−"); }
+        if (p === 0 || p === 1) return pack(rule, [], "");
         if (!isPrime(p)) {
           var fs = [], m = p, dv = 2;
           while (m > 1) { while (m % dv === 0) { fs.push(dv); m /= dv; } dv++; }
-          var f = fs.join(" × ");
-          return (en ? "Not prime: " : "Pas premier : ") + p + " = " + f + (en ? ". Divide " + n + " by its prime factors instead." : ". Divise plutôt " + n + " par ses facteurs premiers.");
+          return pack(rule, [p + " = " + fs.join(" × "), en ? "Divide " + n + " by " + fs[0] + " instead." : "Divise plutôt " + n + " par " + fs[0] + "."], "");
         }
-        if (p === 2) lines.push((en ? "Ends in an even digit? " : "Se termine par un chiffre pair ? ") + n + (en ? " ends in " : " se termine par ") + (n % 10) + ".");
-        else if (p === 5) lines.push((en ? "Ends in 0 or 5? " : "Se termine par 0 ou 5 ? ") + n + (en ? " ends in " : " se termine par ") + (n % 10) + ".");
+        if (p === 2 || p === 5) lines.push(n + (en ? " ends in " : " se termine par ") + (n % 10));
         else if (p === 3) {
-          var x = n, chain = [];
-          while (x >= 10) { var d = digits(x), sm = d.reduce(function (a, c) { return a + c; }, 0); chain.push(d.join(" + ") + " = " + sm); x = sm; }
-          lines.push((en ? "Digit sum: " : "Somme des chiffres : ") + (chain.join(", ") || String(n)) + (en ? " — in the 3 times table?" : " — dans la table de 3 ?"));
+          var x = n;
+          while (x >= 10) { var d = digits(x), sm = d.reduce(function (a, c) { return a + c; }, 0); lines.push(d.join(" + ") + " = " + sm); x = sm; }
+          lines.push(x + (x % 3 === 0 ? (en ? " is in the 3 times table" : " est dans la table de 3") : (en ? " is not in the 3 times table" : " n'est pas dans la table de 3")));
         } else if (p === 7 || p === 13) {
-          var y = n, ch = [];
-          while (Math.abs(y) >= (p === 7 ? 70 : 130) || (ch.length === 0 && Math.abs(y) >= 10)) {
+          var y = n, last = n;
+          while (Math.abs(y) >= (p === 7 ? 70 : 130) || (lines.length === 0 && Math.abs(y) >= 10)) {
             var r = Math.floor(Math.abs(y) / 10), l = Math.abs(y) % 10;
             var v = p === 7 ? r - 2 * l : r + 4 * l;
-            ch.push(r + (p === 7 ? " − 2 × " : " + 4 × ") + l + " = " + String(v).replace("-", "−"));
+            lines.push(Math.abs(y) + " → " + r + (p === 7 ? " − 2 × " : " + 4 × ") + l + " = " + neg(v));
             if (Math.abs(v) >= Math.abs(y)) break;
-            y = v;
+            y = v; last = v;
           }
-          lines.push((p === 7 ? (en ? "Rest − 2 × last digit: " : "Reste − 2 × dernier chiffre : ") : (en ? "Rest + 4 × last digit: " : "Reste + 4 × dernier chiffre : ")) + ch.join(", ") + (en ? " — in the " + p + " times table?" : " — dans la table de " + p + " ?"));
+          lines.push(neg(last) + (last % p === 0 ? (en ? " is in the " + p + " times table" : " est dans la table de " + p) : (en ? " is not in the " + p + " times table" : " n'est pas dans la table de " + p)));
         } else if (p === 11) {
           var dd = digits(n), alt = 0, t = [];
           dd.forEach(function (c, i) { var sg = i % 2 === 0 ? 1 : -1; alt += sg * c; t.push((i ? (sg > 0 ? " + " : " − ") : "") + c); });
-          lines.push((en ? "Alternating sum: " : "Somme alternée : ") + t.join("") + " = " + alt + (en ? " — in the 11 times table?" : " — dans la table de 11 ?"));
+          lines.push(t.join("") + " = " + neg(alt));
+          lines.push(neg(alt) + (alt % 11 === 0 ? (en ? " is in the 11 times table" : " est dans la table de 11") : (en ? " is not in the 11 times table" : " n'est pas dans la table de 11")));
         }
         var q = Math.floor(n / p), rm = n % p;
-        lines.push(ok ? "✓ " + n + " = " + p + " × " + q
-                      : "✗ " + n + " = " + p + " × " + q + " + " + rm + (en ? " (remainder " + rm + ")" : " (reste " + rm + ")"));
-        return lines.join(" ");
+        var verdict = ok ? "✓ " + n + " = " + p + " × " + q
+                         : "✗ " + n + " = " + p + " × " + q + " + " + rm + (en ? "  (remainder " + rm + ")" : "  (reste " + rm + ")");
+        return pack(rule, lines, verdict, ok);
+      }
+      function pack(rule, lines, verdict, ok) {
+        return '<div class="tip-rule">' + rule + "</div>" +
+          (lines.length ? '<div class="tip-ex">' + lines.map(function (l) { return "<div>" + l + "</div>"; }).join("") + "</div>" : "") +
+          (verdict ? '<div class="tip-v ' + (ok ? "ok" : "no") + '">' + verdict + "</div>" : "");
       }
       function whyNot(n, p) { return ruleOn(n, p); }
       document.addEventListener("pointerdown", function (e) {
@@ -4588,6 +4617,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v44", text: "Premiers : la case du diviseur est une zone pleine qui luit et s'éteint lentement, comme un écran d'oscilloscope. L'explication est un panneau clair et aéré : la règle en haut, puis l'exemple sur le nombre de l'exercice, une étape par ligne, puis le verdict." },
         { v: "v43", text: "Premiers : l'appui long sur un diviseur applique la règle au nombre de l'exercice (98 et 7 : 9 − 2 × 8 = −7, dans la table de 7 ✓ → 98 = 7 × 14), répétée si le nombre est grand, avec la division écrite à la fin." },
         { v: "v42", text: "Premiers : deux écritures de plus de la division, sur une deuxième ligne — 163 · ▢⁻¹ et 163 · 1/▢. Un nombre premier tapé soi-même affiche directement « est premier »." },
         { v: "v41", text: "Premiers : au-dessus des diviseurs, centré, le nombre en cours écrit des trois façons — en fraction, avec / et avec ÷ — et une case qui respire à la place du diviseur. Le diviseur touché s'y inscrit (vert s'il divise, jaune sinon)." },
