@@ -33,6 +33,14 @@ Tri : priorité décroissante.
 - [x] Notation point explicite + étape finale « écriture usuelle » (v25)
 - [x] Chapitre Calcul : calcul mental continu (v26)
 - [x] Accueil ensembles emboîtés, déblocage, mode prof, teaser ℍ, bips (v27)
+- [x] Termes qui changent de place : demi-cercles (v28)
+- [x] Fiche des règles jusqu'en terminale + gestes « faire apparaître » (fiche.html, v29)
+- [x] Chapitre Fusion : bulles à glisser qui fusionnent selon les règles, pouvoir « 1 → c/c » gagné avec Fraction (v30)
+- [ ] P1 — Nouveaux pouvoirs Fusion, un par geste de la fiche : ajouter et retrancher
+  (compléter le carré), découper un nombre (25 = 24 + 1), quantité conjuguée,
+  facteur commun sur des puissances (2ⁿ⁺¹ + 2ⁿ), séparer une fraction
+  (télescopage) — chacun gagné en réussissant le chapitre qui le montre à la main
+- [ ] P2 — Fusion : développer (bulle k·(a + b) touchée → k·a + k·b), l'inverse de factoriser
 - Rapports : courts + liens
 
 

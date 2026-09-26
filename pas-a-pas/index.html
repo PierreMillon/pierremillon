@@ -844,7 +844,7 @@
     .toast {
       position: fixed;
       left: 50%;
-      top: max(4rem, env(safe-area-inset-top));
+      bottom: calc(8.5rem + env(safe-area-inset-bottom));
       transform: translateX(-50%);
       z-index: 40;
       padding: 0.6rem 1rem;
@@ -857,6 +857,71 @@
 
     .univ button:disabled { opacity: 0.3; }
     .tabs { display: none !important; }
+
+    /* Chapitre Fusion : on déplace des bulles, elles fusionnent */
+    .fus-goal { font-size: 0.8rem; letter-spacing: 0.08em; color: var(--ink-soft); text-align: center; }
+    .fus-goal b { color: var(--ink); font-weight: 500; font-size: 1.1rem; letter-spacing: 0; }
+
+    .fus-board {
+      flex: 1;
+      min-height: 0;
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: center;
+      justify-content: center;
+      align-items: center;
+      gap: 0.5rem 0.35rem;
+      touch-action: none;
+    }
+
+    .fus-sep { font-size: 1.3rem; color: var(--ink-soft); }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.1em;
+      padding: 0.45rem 0.85rem;
+      font-size: clamp(1.2rem, 5.5vw, 1.6rem);
+      font-weight: 500;
+      color: var(--ink);
+      border: 1.5px solid var(--accent);
+      border-radius: 999px;
+      background: radial-gradient(circle at 35% 30%, rgba(109, 255, 176, 0.22), rgba(61, 224, 138, 0.06) 70%);
+      box-shadow: 0 0 12px rgba(61, 224, 138, 0.18);
+      touch-action: none;
+      cursor: grab;
+    }
+
+    .chip.sel { border-color: var(--sign); box-shadow: 0 0 14px rgba(255, 209, 102, 0.35); }
+    .chip.drag { position: fixed; z-index: 30; pointer-events: none; transform: translate(-50%, -50%) scale(1.12); }
+    .chip.target { background: var(--accent-soft); transform: scale(1.08); }
+    .chip.ghost-slot { opacity: 0.25; }
+    .chip .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      font-size: 0.78em;
+      line-height: 1.15;
+    }
+
+    .chip .fr > span:first-child { padding: 0 0.2em 0.05em; }
+    .chip .fr > span:last-child { border-top: 2px solid currentColor; width: 100%; text-align: center; padding-top: 0.05em; }
+
+    .fus-powers { display: flex; gap: 0.4rem; justify-content: center; flex-wrap: wrap; min-height: 2.4rem; }
+
+    .fus-powers button {
+      font-family: inherit;
+      font-size: 0.85rem;
+      color: var(--sign);
+      background: transparent;
+      border: 1px solid var(--sign);
+      border-radius: 999px;
+      padding: 0.45rem 0.9rem;
+      cursor: pointer;
+    }
+
+    .fus-powers button:disabled { color: var(--ink-soft); border-color: var(--hairline); opacity: 0.6; }
 
     /* Chapitre Calcul : calcul mental animé en continu */
     .calc-eq {
@@ -1087,6 +1152,13 @@
 
     <div class="toast" id="toast" hidden></div>
 
+    <section class="sg" id="fus" hidden>
+      <div class="fus-goal" id="fusGoal"></div>
+      <div class="fus-board" id="fusBoard"></div>
+      <p class="sg-msg" id="fusMsg"></p>
+      <div class="fus-powers" id="fusPowers"></div>
+    </section>
+
     <section class="sg" id="calc" hidden>
       <div class="calc-eq" id="calcEq"></div>
       <div class="calc-scene" id="calcScene"></div>
@@ -1154,6 +1226,7 @@
         { title: "Ensembles", custom: "ens", steps: [{ expr: [] }] },
         { title: "Solutions", custom: "sol", steps: [{ expr: [] }] },
         { title: "Calcul", custom: "calc", steps: [{ expr: [] }] },
+        { title: "Fusion", custom: "fus", set: "R", steps: [{ expr: [] }] },
         {
           title: "−( … )",
           split: true,
@@ -2520,6 +2593,7 @@
           if (DEMOS[demoIndex].custom === "pf") { if (pfState && pfState.ready) pfStart(); return; }
           if (DEMOS[demoIndex].custom === "ens") { if (ensState && ensState.ready) ensStart(); return; }
           if (DEMOS[demoIndex].custom === "calc") { calcStart(); return; }
+          if (DEMOS[demoIndex].custom === "fus") { if (fus.won) { fus.level = (fus.level + 1) % FUS_LEVELS.length; fusStart(); } return; }
           if (DEMOS[demoIndex].custom === "sol") { solIndex = (solIndex + 1) % SOL.length; solRender(false); return; }
           if (sgState && sgState.ready) sgStart();
           return;
@@ -2677,6 +2751,7 @@
 
       function prev() {
         closeChoice();
+        if (DEMOS[demoIndex].custom === "fus") { fusStart(); return; }
         var demo = DEMOS[demoIndex];
         if (demo.custom) return;
         if (busy) return;
@@ -2708,15 +2783,18 @@
         ensEl.hidden = custom !== "ens";
         solEl.hidden = custom !== "sol";
         calcEl.hidden = custom !== "calc";
+        fusEl.hidden = custom !== "fus";
         if (custom !== "calc") calcRun++;
         stageWrap.hidden = !!custom;
         document.getElementById("controls").hidden = false;
         prevBtn.style.visibility = custom ? "hidden" : "";
+        prevBtn.textContent = "←";
         if (custom === "sg") { sgStart(); return; }
         if (custom === "pf") { pfStart(); return; }
         if (custom === "ens") { ensStart(); return; }
         if (custom === "sol") { solStart(); return; }
         if (custom === "calc") { calcStart(); return; }
+        if (custom === "fus") { fusStart(); return; }
         buildDots(DEMOS[i]);
         build(DEMOS[i].steps[0]);
         refreshUi();
@@ -3423,6 +3501,280 @@
         });
       }
 
+      // ---------- Chapitre Fusion ----------
+      // Les termes sont des bulles. On en lâche une sur une autre : si une
+      // règle le permet, elles fusionnent en une forme plus simple.
+      //   a + a → 2·a          (même lettre : on additionne les nombres)
+      //   2·a + 2·b → 2·(a + b) (même nombre devant : on le met en facteur)
+      //   3·x + (−3·x) → 0      (opposés : la bulle disparaît)
+      //   p/c + q/c → (p + q)/c (même dénominateur)
+      // Pouvoir « 1 → c/c » : une bulle nombre prend le dénominateur d'une
+      // fraction voisine. Il se gagne en réussissant le chapitre Fraction.
+      var fusEl = document.getElementById("fus");
+      var fusBoard = document.getElementById("fusBoard");
+      var fusUid = 0;
+      function M(k, s) { return { t: "m", k: k, s: s || "", id: ++fusUid }; }
+      // Ordre d'écriture : lettres dans l'ordre alphabétique, nombres à la fin
+      function sortMonos(list) {
+        return list.slice().sort(function (a, b) { return (a.s || "~") < (b.s || "~") ? -1 : (a.s || "~") > (b.s || "~") ? 1 : 0; });
+      }
+      function Fa(k, inner) { return { t: "f", k: k, inner: sortMonos(inner), id: ++fusUid }; }
+      function Fr(num, den) { return { t: "q", num: sortMonos(num), den: den, id: ++fusUid }; }
+      // Forme canonique d'une bulle, pour comparer au but sans tenir compte
+      // de l'ordre des bulles (l'addition est commutative)
+      function canon(c) {
+        if (c.t === "m") return (c.k < 0 ? "-" : "+") + Math.abs(c.k) + "*" + c.s;
+        if (c.t === "f") return "+" + c.k + "*(" + sortMonos(c.inner).map(canon).join("") + ")";
+        return "+(" + sortMonos(c.num).map(canon).join("") + ")/" + c.den;
+      }
+      function boardKey(list) { return list.map(canon).sort().join("|"); }
+
+      var FUS_LEVELS = [
+        { chips: function () { return [M(1, "a"), M(1, "a")]; }, goal: "2·a", want: function () { return [M(2, "a")]; } },
+        { chips: function () { return [M(1, "a"), M(1, "b"), M(1, "a"), M(1, "b")]; }, goal: "2·(a + b)", want: function () { return [Fa(2, [M(1, "a"), M(1, "b")])]; } },
+        { chips: function () { return [M(3, "x"), M(5, "x"), M(-2, "x")]; }, goal: "6·x", want: function () { return [M(6, "x")]; } },
+        { chips: function () { return [M(3, "x"), M(2), M(-3, "x"), M(5)]; }, goal: "7", want: function () { return [M(7)]; } },
+        { chips: function () { return [M(2, "x"), M(3), M(4, "x"), M(1)]; }, goal: "6·x + 4", want: function () { return [M(6, "x"), M(4)]; } },
+        { chips: function () { return [M(2, "a"), M(2, "b"), M(2, "c")]; }, goal: "2·(a + b + c)", want: function () { return [Fa(2, [M(1, "a"), M(1, "b"), M(1, "c")])]; } },
+        { chips: function () { return [M(1), Fr([M(1)], "c")]; }, goal: "(c + 1)/c", want: function () { return [Fr([M(1, "c"), M(1)], "c")]; }, power: true },
+        { chips: function () { return [M(2), Fr([M(3)], "c"), Fr([M(1)], "c")]; }, goal: "(2·c + 4)/c", want: function () { return [Fr([M(2, "c"), M(4)], "c")]; }, power: true }
+      ];
+      var fus = { level: 0, chips: [], sel: null, won: false };
+      try { fus.level = Math.min(FUS_LEVELS.length - 1, Number(localStorage.getItem("pasapas_fus")) || 0); } catch (e) {}
+
+      function monoStr(m, lead) {
+        var k = m.k, a = Math.abs(k), sgn = k < 0 ? (lead ? "−" : "− ") : (lead ? "" : "+ ");
+        var body = m.s ? (a === 1 ? m.s : a + "·" + m.s) : String(a);
+        return sgn + body;
+      }
+      function sumStr(list) {
+        return list.map(function (m, i) { return monoStr(m, i === 0); }).join(" ");
+      }
+      function chipStr(c, lead) {
+        if (c.t === "m") return monoStr(c, lead);
+        var pre = lead ? "" : "+ ";
+        if (c.t === "f") return pre + c.k + "·(" + sumStr(c.inner) + ")";
+        return pre + "(" + sumStr(c.num) + ")/" + c.den;
+      }
+      function boardStr() {
+        return fus.chips.map(function (c, i) { return chipStr(c, i === 0); }).join(" ").replace(/^\(([^()]*)\)\//, function (m0, n) { return "(" + n + ")/"; });
+      }
+      // Réduit une somme de monômes (termes semblables regroupés)
+      function reduce(list) {
+        var out = [];
+        list.forEach(function (m) {
+          var same = out.find(function (o) { return o.s === m.s; });
+          if (same) same.k += m.k; else out.push(M(m.k, m.s));
+        });
+        return out.filter(function (m) { return m.k !== 0; });
+      }
+      // Règles de fusion : A lâchée sur B. Renvoie la nouvelle bulle, ou
+      // "zero" si elles s'annulent, ou null si aucune règle ne s'applique.
+      function fuse(A, B) {
+        if (A.t === "m" && B.t === "m") {
+          if (A.s === B.s) { var k = A.k + B.k; return k === 0 ? "zero" : M(k, A.s); }
+          if (A.k === B.k && Math.abs(A.k) !== 1 && A.s && B.s) return Fa(A.k, [M(1, B.s), M(1, A.s)]);
+          return null;
+        }
+        if (A.t === "m" && B.t === "f" && A.s && A.k === B.k) return Fa(B.k, B.inner.concat([M(1, A.s)]));
+        if (A.t === "f" && B.t === "m" && B.s && A.k === B.k) return Fa(A.k, [M(1, B.s)].concat(A.inner));
+        if (A.t === "q" && B.t === "q" && A.den === B.den) return Fr(reduce(B.num.concat(A.num)), B.den);
+        return null;
+      }
+
+      var fusPowers = document.getElementById("fusPowers");
+      function powerOpen() { return prof || !!doneMap["Fraction"]; }
+
+      function fusStart() {
+        var L = FUS_LEVELS[fus.level];
+        fus.chips = L.chips();
+        fus.sel = null;
+        fus.won = false;
+        try { localStorage.setItem("pasapas_fus", String(fus.level)); } catch (e) {}
+        document.getElementById("fusGoal").innerHTML = (LANG === "en" ? "Goal " : "But ") + (fus.level + 1) + "/" + FUS_LEVELS.length + " &nbsp; <b>" + L.goal + "</b>";
+        document.getElementById("fusMsg").textContent = "";
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        prevBtn.style.visibility = "";
+        prevBtn.textContent = "↺";
+        fusPowers.innerHTML = "";
+        if (L.power) {
+          var pb = document.createElement("button");
+          pb.textContent = "1 → c/c";
+          pb.disabled = !powerOpen();
+          pb.title = LANG === "en" ? "Same denominator" : "Même dénominateur";
+          pb.addEventListener("click", fusPower);
+          fusPowers.appendChild(pb);
+          if (!powerOpen()) document.getElementById("fusMsg").textContent = LANG === "en" ? "Power locked: pass the Fraction chapter." : "Pouvoir verrouillé : réussis le chapitre Fraction.";
+        }
+        fusRender(null);
+      }
+
+      function chipHTML(c, lead) {
+        function sum(list) { return sumStr(list).replace(/([a-z])/g, "<i>$1</i>"); }
+        if (c.t === "q") return (lead ? "" : "") + '<span class="fr"><span>' + sum(c.num) + "</span><span><i>" + c.den + "</i></span></span>";
+        return chipStr(c, true).replace(/([a-z])/g, "<i>$1</i>");
+      }
+
+      // Rendu avec animation FLIP : chaque bulle part de son ancienne place
+      // (en arc si elle change beaucoup de place), les nouvelles éclosent.
+      function fusRender(bornId) {
+        var old = {};
+        fusBoard.querySelectorAll(".chip").forEach(function (e) { old[e.dataset.id] = e.getBoundingClientRect(); });
+        fusBoard.innerHTML = "";
+        fus.chips.forEach(function (c, i) {
+          if (i > 0) {
+            var sp = document.createElement("span");
+            sp.className = "fus-sep";
+            sp.textContent = (c.t === "m" && c.k < 0) ? "−" : "+";
+            fusBoard.appendChild(sp);
+          }
+          var e = document.createElement("span");
+          e.className = "chip" + (fus.sel === c.id ? " sel" : "");
+          e.dataset.id = c.id;
+          var cc = c.t === "m" && c.k < 0 && i > 0 ? M(-c.k, c.s) : c;
+          e.innerHTML = chipHTML(cc, true);
+          fusBoard.appendChild(e);
+          fusDraggable(e, c);
+        });
+        fusBoard.querySelectorAll(".chip").forEach(function (e) {
+          var r = e.getBoundingClientRect(), o = old[e.dataset.id];
+          if (o && e.dataset.id !== String(bornId)) {
+            var dx = o.left - r.left, dy = o.top - r.top;
+            if (Math.abs(dx) + Math.abs(dy) < 1) return;
+            var lift = Math.min(50, Math.abs(dx) * 0.35) * (dx < 0 ? -1 : 1), kf = [];
+            for (var q = 0; q <= 8; q++) {
+              var t = q / 8, sn = Math.sin(Math.PI * t);
+              kf.push({ transform: "translate(" + dx * (1 - t) + "px," + (dy * (1 - t) + lift * sn) + "px)" });
+            }
+            e.animate(kf, { duration: ms(650), easing: "cubic-bezier(.45,0,.3,1)" });
+          } else {
+            e.animate([{ transform: "scale(0.3)", opacity: 0 }, { transform: "scale(1.18)", opacity: 1, offset: 0.7 }, { transform: "scale(1)" }],
+              { duration: ms(520), easing: "ease-out" });
+          }
+        });
+      }
+
+      function fusDraggable(e, c) {
+        var d = null;
+        e.addEventListener("pointerdown", function (ev) {
+          if (fus.won) return;
+          ev.preventDefault();
+          e.setPointerCapture(ev.pointerId);
+          d = { x: ev.clientX, y: ev.clientY, moved: false, clone: null };
+        });
+        e.addEventListener("pointermove", function (ev) {
+          if (!d) return;
+          if (!d.moved && Math.hypot(ev.clientX - d.x, ev.clientY - d.y) < 8) return;
+          if (!d.moved) {
+            d.moved = true;
+            d.clone = e.cloneNode(true);
+            d.clone.classList.add("drag");
+            document.body.appendChild(d.clone);
+            e.classList.add("ghost-slot");
+          }
+          d.clone.style.left = ev.clientX + "px";
+          d.clone.style.top = ev.clientY + "px";
+          var over = chipAt(ev.clientX, ev.clientY, e);
+          fusBoard.querySelectorAll(".chip").forEach(function (x) { x.classList.toggle("target", x === over); });
+        });
+        function up(ev) {
+          if (!d) return;
+          var dd = d;
+          d = null;
+          fusBoard.querySelectorAll(".chip").forEach(function (x) { x.classList.remove("target"); });
+          if (!dd.moved) {
+            // Appui bref : sélection (pour un pouvoir)
+            fus.sel = fus.sel === c.id ? null : c.id;
+            SND.tick();
+            fusBoard.querySelectorAll(".chip").forEach(function (x) { x.classList.toggle("sel", x.dataset.id === String(fus.sel)); });
+            return;
+          }
+          var over = chipAt(ev.clientX, ev.clientY, e);
+          var clone = dd.clone;
+          e.classList.remove("ghost-slot");
+          if (!over) { flyBack(clone, e); return; }
+          var B = fus.chips.find(function (x) { return String(x.id) === over.dataset.id; });
+          var res = fuse(c, B);
+          if (!res) {
+            SND.bad();
+            flyBack(clone, e);
+            over.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
+            return;
+          }
+          clone.remove();
+          SND.meet();
+          var iB = fus.chips.indexOf(B);
+          fus.chips.splice(fus.chips.indexOf(c), 1);
+          iB = fus.chips.indexOf(B);
+          if (res === "zero") {
+            fus.chips.splice(iB, 1);
+            if (!fus.chips.length) fus.chips.push(M(0));
+            over.animate([{ transform: "scale(1)", opacity: 1 }, { transform: "scale(0)", opacity: 0 }], { duration: ms(350), fill: "forwards" });
+            setTimeout(function () { fusRender(null); fusCheck(); }, ms(330));
+          } else {
+            fus.chips.splice(iB, 1, res);
+            fusRender(res.id);
+            fusCheck();
+          }
+        }
+        e.addEventListener("pointerup", up);
+        e.addEventListener("pointercancel", up);
+      }
+
+      function chipAt(x, y, self) {
+        var found = null;
+        fusBoard.querySelectorAll(".chip").forEach(function (b) {
+          if (b === self) return;
+          var r = b.getBoundingClientRect();
+          if (x >= r.left - 8 && x <= r.right + 8 && y >= r.top - 8 && y <= r.bottom + 8) found = b;
+        });
+        return found;
+      }
+
+      function flyBack(clone, e) {
+        var r = e.getBoundingClientRect();
+        var cr = clone.getBoundingClientRect();
+        var a = clone.animate([
+          { left: (cr.left + cr.width / 2) + "px", top: (cr.top + cr.height / 2) + "px" },
+          { left: (r.left + r.width / 2) + "px", top: (r.top + r.height / 2) + "px" }
+        ], { duration: ms(380), easing: "cubic-bezier(.3,1.3,.5,1)", fill: "forwards" });
+        done(a).then(function () { clone.remove(); });
+      }
+
+      function fusPower() {
+        if (!powerOpen()) return;
+        var c = fus.chips.find(function (x) { return x.id === fus.sel; });
+        var q = fus.chips.find(function (x) { return x.t === "q"; });
+        if (!c || c.t !== "m" || !q) {
+          SND.bad();
+          document.getElementById("fusMsg").textContent = LANG === "en" ? "Tap a number bubble first." : "Touche d'abord une bulle nombre.";
+          return;
+        }
+        // k = k·c/c : même valeur, mais maintenant avec le dénominateur c
+        var i = fus.chips.indexOf(c);
+        var nf = Fr([M(c.k, c.s ? c.s + "·" + q.den : q.den)], q.den);
+        nf.id = c.id;
+        fus.chips.splice(i, 1, nf);
+        fus.sel = null;
+        SND.ok();
+        document.getElementById("fusMsg").textContent = "";
+        fusRender(null);
+        var el = fusBoard.querySelector('.chip[data-id="' + nf.id + '"]');
+        if (el) el.animate([{ transform: "rotateY(90deg)" }, { transform: "none" }], { duration: ms(500) });
+      }
+
+      function fusCheck() {
+        if (boardKey(fus.chips) !== boardKey(FUS_LEVELS[fus.level].want())) return;
+        fus.won = true;
+        SND.badge();
+        document.getElementById("fusMsg").textContent = "✓";
+        nextBtn.disabled = false;
+        nextBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: ms(600) });
+        if (fus.level === FUS_LEVELS.length - 1) markDone("Fusion");
+      }
+
       // ---------- Chapitre Calcul : calcul mental en continu ----------
       // Pas de clics : l'animation se déroule seule, comme un raisonnement
       // qu'on regarderait au ralenti. Dizaines = barres de 10, unités =
@@ -3854,6 +4206,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v30", text: "Nouveau chapitre Fusion (ℝ) : les termes sont des bulles qu'on déplace au doigt. Lâchées l'une sur l'autre, elles fusionnent si une règle le permet : a + a → 2·a, 2·a + 2·b → 2·(a + b), 3·x − 3·x → disparaît, fractions de même dénominateur. Pouvoir « 1 → c/c » (gagné avec le chapitre Fraction). 8 niveaux, ↺ pour recommencer." },
         { v: "v29", text: "Menu ☰ → Fiche des règles : toutes les règles de calcul jusqu'en terminale, et les gestes d'exercice (écrire 1 = c/c, ajouter et retrancher, découper 25 = 24 + 1, quantité conjuguée, facteur dominant…)." },
         { v: "v28", text: "Les termes qui changent de place décrivent un demi-cercle (vers la droite par-dessus, vers la gauche par-dessous) : on les voit se croiser au lieu de glisser en ligne droite." },
         { v: "v27", text: "Écran d'accueil (⌂) : les ensembles emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ, on touche une zone pour voir ses chapitres. Déblocage : tous les chapitres d'un ensemble réussis ouvrent le suivant (démo animée = 3 fois sans faute en mode jeu). Mode prof dans le menu : tout ouvert. ℍ en teaser verrouillé. Petits bips (fusion, juste, faux, badge), coupables dans le menu." },
@@ -3963,7 +4316,7 @@
       var SET_OF = {
         "Singapour": "N", "Premiers": "N", "Ensembles": "N", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
         "Fraction": "Q", "Piège": "Q", "Équation": "Q",
-        "Distribuer": "R", "Factoriser": "R", "Double": "R"
+        "Distribuer": "R", "Factoriser": "R", "Double": "R", "Fusion": "R"
       };
       // Univers emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ : on choisit dans quel ensemble
       // on travaille (barre toujours visible en bas). Tout ce qui est plus
@@ -4125,7 +4478,7 @@
       function showHome() {
         calcRun++;
         closeChoice();
-        [sgEl, pfEl, ensEl, solEl, calcEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
+        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
         univEl.hidden = true;
         homeEl.hidden = false;
         document.getElementById("title").textContent = "Pas à Pas";
