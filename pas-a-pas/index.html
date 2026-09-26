@@ -1189,20 +1189,31 @@
 
     .pf-tip[hidden] { display: none; }
 
-    #pfTip { left: 0 !important; right: 0; max-width: none; padding: 1rem 1.1rem; font-size: 0.9rem; }
-    .tip-rule { color: var(--ink); line-height: 1.5; }
+    /* Explication : grand panneau, écrit gros et aéré, qui peut couvrir
+       l'arbre (il disparaît au prochain toucher) */
+    #pfTip {
+      left: 0 !important;
+      right: 0;
+      max-width: none;
+      padding: 1.5rem 1.4rem;
+      font-size: 1.02rem;
+      border-radius: 16px;
+      background: var(--bg);
+    }
+    .tip-rule { color: var(--ink); font-size: 1.08rem; line-height: 1.6; }
     .tip-ex {
-      margin-top: 1rem;
-      padding-top: 0.9rem;
+      margin-top: 1.3rem;
+      padding-top: 1.2rem;
       border-top: 1px solid var(--hairline);
       display: flex;
       flex-direction: column;
-      gap: 0.45rem;
-      font-size: 1rem;
+      gap: 0.85rem;
+      font-size: clamp(1.1rem, 5vw, 1.35rem);
+      line-height: 1.3;
       font-variant-numeric: tabular-nums;
       color: var(--ink);
     }
-    .tip-v { margin-top: 0.9rem; font-size: 1.05rem; font-weight: 500; }
+    .tip-v { margin-top: 1.3rem; font-size: clamp(1.2rem, 5.6vw, 1.5rem); font-weight: 500; }
     .tip-v.ok { color: var(--accent); }
     .tip-v.no { color: var(--sign); }
 
@@ -3537,9 +3548,11 @@
         pfTip.hidden = false;
         var rb = btn.getBoundingClientRect(), rs = pfEl.getBoundingClientRect();
         pfTip.style.left = Math.max(4, Math.min(rs.width - pfTip.offsetWidth - 4, rb.left - rs.left + rb.width / 2 - pfTip.offsetWidth / 2)) + "px";
-        // Au-dessus de toute la grille des diviseurs, jamais sur un bouton
+        // Au-dessus de toute la grille des diviseurs, jamais sur un bouton ;
+        // s'il est grand, il remonte jusqu'en haut de l'écran
         var rg = pfPrimes.getBoundingClientRect();
-        pfTip.style.top = (rg.top - rs.top - pfTip.offsetHeight - 8) + "px";
+        var headH = pfHead.getBoundingClientRect().height + 12;
+        pfTip.style.top = Math.max(0, rg.top - rs.top - headH - pfTip.offsetHeight - 8) + "px";
         pfTip.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: ms(220), easing: "ease-out" });
       }
       function pfHideTip() { pfTip.hidden = true; }
@@ -4617,6 +4630,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v45", text: "Premiers : l'explication est plus grande, écrite gros et aérée (règle, exemple ligne par ligne, verdict), au-dessus des écritures de la division." },
         { v: "v44", text: "Premiers : la case du diviseur est une zone pleine qui luit et s'éteint lentement, comme un écran d'oscilloscope. L'explication est un panneau clair et aéré : la règle en haut, puis l'exemple sur le nombre de l'exercice, une étape par ligne, puis le verdict." },
         { v: "v43", text: "Premiers : l'appui long sur un diviseur applique la règle au nombre de l'exercice (98 et 7 : 9 − 2 × 8 = −7, dans la table de 7 ✓ → 98 = 7 × 14), répétée si le nombre est grand, avec la division écrite à la fin." },
         { v: "v42", text: "Premiers : deux écritures de plus de la division, sur une deuxième ligne — 163 · ▢⁻¹ et 163 · 1/▢. Un nombre premier tapé soi-même affiche directement « est premier »." },
