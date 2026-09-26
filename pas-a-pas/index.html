@@ -1100,6 +1100,7 @@
 
     .ens-row + .ens-row .ens-box { font-size: 1rem; border-style: dashed; }
     .ens-box.hover { background: var(--accent-soft); }
+    .ens-box sup, #ensMsg sup, #ensTip sup { font-size: 0.6em; vertical-align: super; margin-left: 0.05em; }
     .ens-box.in { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); border-style: solid; }
     .ens-box.bad { border-color: var(--sign); color: var(--sign); }
     .ens-score { font-size: 0.75rem; color: var(--ink-soft); letter-spacing: 0.1em; min-height: 1em; }
@@ -3170,66 +3171,23 @@
         el.style.top = (y - d / 2) + "px";
       }
 
+      // ---------- Défi : on « peint » avec le doigt ----------
+      // Liberté totale : on peut retirer n'importe quel jeton, même ceux
+      // posés au départ, et les ranger comme on veut. En glissant le doigt :
+      // parti d'un jeton, on efface tout ce qu'on survole ; parti d'une case
+      // vide, on remplit tout ce qu'on survole (avec les jetons de la
+      // réserve). Un appui bref = une seule case. La manche se termine quand
+      // le compte est bon ; le badge ne compte que les manches bien rangées
+      // (la dizaine complétée d'abord), sans jamais rien bloquer.
       var sgRound = 0;
       function sgStart() {
         sgRound++;
-        // Une manche sur deux : soustraction (dès la 2e manche)
-        if (sgRound > 1 && sgRound % 2 === 0) { sgStartSub(); return; }
-        var a = 6 + Math.floor(Math.random() * 4);           // 6..9
-        var bMin = 11 - a;                                     // dépasse 10
-        var b = bMin + Math.floor(Math.random() * (10 - bMin)); // ..9
-        sgState = { a: a, b: b, filled: {}, placed: 0, mistake: false, done: false };
-        sgBoard.innerHTML = "";
-        // Deux cadres + réserve ≈ 5 cases de haut : tout doit tenir dans
-        // l'écran, sans jamais défiler
-        SG_CELL = Math.max(20, Math.min(44, (sgBoard.clientHeight - 50) / 5, (sgBoard.clientWidth - 10) / 5));
-        sgEq.textContent = a + " + " + b;
-        sgMsg.textContent = "";
-        nextBtn.disabled = true;
-        nextBtn.textContent = "→";
-        nextBtn.classList.remove("text");
-        sgRenderStreak();
-        badgeChip.hidden = !hasBadge();
-
-        for (var k = 0; k < 20; k++) {
-          var s = sgSlot(k);
-          var c = document.createElement("span");
-          c.className = "sg-cell";
-          c.dataset.k = k;
-          c.style.left = (s.x - SG_CELL / 2) + "px";
-          c.style.top = (s.y - SG_CELL / 2) + "px";
-          c.style.width = SG_CELL + "px";
-          c.style.height = SG_CELL + "px";
-          sgBoard.appendChild(c);
-        }
-        for (var i = 0; i < a; i++) {
-          var g = document.createElement("span");
-          g.className = "sg-dot given";
-          var gs = sgSlot(i);
-          sgPlace(g, gs.x, gs.y);
-          sgBoard.appendChild(g);
-          sgState.filled[i] = true;
-        }
-        // Le second nombre attend dans la réserve, sous les cadres
-        var trayY = sgSlot(10).y + 2 * SG_CELL + 20;
-        // Réserve : jamais de chevauchement — les jetons rétrécissent si
-        // la ligne est trop longue pour la largeur de l'écran
-        var gap = Math.min(SG_CELL, (sgBoard.clientWidth - 12) / b);
-        var traySize = Math.min(SG_CELL - 10, gap - 5);
-        var trayLeft = sgBoard.clientWidth / 2 - (b - 1) * gap / 2;
-        for (var j = 0; j < b; j++) {
-          var dot = document.createElement("span");
-          dot.className = "sg-dot free";
-          var home = { x: trayLeft + j * gap, y: trayY };
-          dot._size = traySize;
-          sgPlace(dot, home.x, home.y);
-          sgBoard.appendChild(dot);
-          sgDraggable(dot, home);
-        }
+        sgSetup(sgRound > 1 && sgRound % 2 === 0);
       }
+      function sgStartSub() { sgSetup(true); }
 
-      // Déplacement souple : le jeton part de là où il est et rebondit
-      // légèrement en arrivant (léger dépassement, puis retour)
+      function range(n) { var r = []; for (var i = 0; i < n; i++) r.push(i); return r; }
+
       function sgMove(dot, x, y, delay) {
         var r0 = dot.getBoundingClientRect();
         sgPlace(dot, x, y);
@@ -3240,266 +3198,180 @@
         return done(dot.animate([
           { transform: "translate(" + dx + "px," + dy + "px) scale(" + s0 + ")" },
           { transform: "translate(0,0) scale(1)" }
-        ], { duration: ms(520), delay: ms(delay || 0), easing: "cubic-bezier(.3,1.5,.5,1)", fill: "backwards" }));
+        ], { duration: ms(420), delay: ms(delay || 0), easing: "cubic-bezier(.3,1.5,.5,1)", fill: "backwards" }));
       }
 
-      function sgFirstFull() {
-        for (var i = 0; i < 10; i++) if (!sgState.filled[i]) return false;
-        return true;
-      }
-
-      // Prochaine case libre dans le bon ordre : on finit la dizaine d'abord
-      function sgNextFree() {
-        for (var k = 0; k < 20; k++) if (!sgState.filled[k]) return k;
-        return -1;
-      }
-
-      function sgPut(dot, k, delay) {
-        var s = sgSlot(k);
-        dot._size = 0;
-        dot.dataset.k = k;
-        sgState.filled[k] = true;
-        sgState.placed++;
-        return sgMove(dot, s.x, s.y, delay);
-      }
-
-      function sgTakeOut(dot) {
-        var k = Number(dot.dataset.k);
-        delete sgState.filled[k];
-        delete dot.dataset.k;
-        sgState.placed--;
-        dot._size = dot._traySize;
-        sgMove(dot, dot._home.x, dot._home.y);
-      }
-
-      function sgCheckWin() {
-        if (sgState.placed === sgState.b && !sgState.done) sgWin();
-      }
-
-      // Un appui bref pose le jeton dans la prochaine case libre (ou le
-      // retire s'il est déjà posé) ; un glissé le pose où on le lâche, ou
-      // le renvoie dans la réserve si on le lâche hors des cadres.
-      function sgDraggable(dot, home) {
-        var start = null;
-        dot._home = home;
-        dot._traySize = dot._size;
-        dot.addEventListener("pointerdown", function (e) {
-          if (!sgState || sgState.done) return;
-          e.preventDefault();
-          dot.setPointerCapture(e.pointerId);
-          var r = sgBoard.getBoundingClientRect();
-          start = { ox: r.left, oy: r.top, x: e.clientX, y: e.clientY, moved: false };
-        });
-        dot.addEventListener("pointermove", function (e) {
-          if (!start) return;
-          if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 8) return;
-          if (!start.moved) {
-            start.moved = true;
-            dot.classList.add("drag");
-            // Il quitte sa case dès qu'on commence à le tirer
-            if (dot.dataset.k !== undefined) {
-              delete sgState.filled[Number(dot.dataset.k)];
-              delete dot.dataset.k;
-              sgState.placed--;
-            }
-          }
-          sgPlace(dot, e.clientX - start.ox, e.clientY - start.oy);
-        });
-        function drop(e) {
-          if (!start) return;
-          var st = start;
-          start = null;
-          dot.classList.remove("drag");
-
-          if (!st.moved) {
-            if (dot.dataset.k !== undefined) { sgTakeOut(dot); return; }
-            var k = sgNextFree();
-            if (k >= 0) sgPut(dot, k).then(sgCheckWin);
-            return;
-          }
-
-          var x = e.clientX - st.ox, y = e.clientY - st.oy;
-          var best = -1, bestD = SG_CELL * 0.8;
-          for (var k2 = 0; k2 < 20; k2++) {
-            if (sgState.filled[k2]) continue;
-            var s = sgSlot(k2);
-            var d = Math.hypot(s.x - x, s.y - y);
-            if (d < bestD) { bestD = d; best = k2; }
-          }
-          if (best < 0) {
-            dot._size = dot._traySize;
-            sgMove(dot, home.x, home.y);
-            return;
-          }
-          if (best >= 10 && !sgFirstFull()) {
-            sgWrong();
-            dot._size = dot._traySize;
-            sgMove(dot, home.x, home.y);
-            return;
-          }
-          sgPut(dot, best).then(sgCheckWin);
-        }
-        dot.addEventListener("pointerup", drop);
-        dot.addEventListener("pointercancel", drop);
-      }
-
-      // Appui sur le 2e nombre : tous ses jetons partent se ranger d'un
-      // coup, dans l'ordre (la dizaine d'abord). Manche de démonstration :
-      // elle ne compte pas pour le badge.
-      function sgAutoFill() {
-        if (!sgState || sgState.done) return;
-        sgState.auto = true;
-        var dots = Array.prototype.filter.call(sgBoard.querySelectorAll(".sg-dot.free"), function (d) {
-          return d.dataset.k === undefined;
-        });
-        var moves = dots.map(function (d, i) {
-          var k = sgNextFree();
-          return sgPut(d, k, i * 140);
-        });
-        Promise.all(moves).then(sgCheckWin);
-      }
-
-      // Jeton lâché dans la 2e dizaine alors que la 1re n'est pas pleine :
-      // la 1re s'allume en jaune, le jeton revient, la série repart de 0.
-      function sgWrong() {
-        sgState.mistake = true;
-        sgStreakN = 0;
-        sgRenderStreak();
-        var cells = sgBoard.querySelectorAll(".sg-cell");
-        for (var i = 0; i < 10; i++) cells[i].classList.add("warn");
-        setTimeout(function () {
-          for (var i = 0; i < 10; i++) cells[i].classList.remove("warn");
-        }, ms(900));
-      }
-
-      // ---------- Soustraction : « retirer de 10 » ----------
-      // 13 − 5 : la dizaine pleine et 3 à côté. On retire 5 jetons de la
-      // dizaine (pas des 3 isolés) : 10 − 5 = 5, plus les 3 → 8.
-      // Retirer dans le 2e cadre = erreur (on casse d'abord la dizaine).
-      function sgStartSub() {
-        var u = 1 + Math.floor(Math.random() * 7);             // 1..7
-        var a = 10 + u;
-        var b = u + 1 + Math.floor(Math.random() * (9 - u));   // u+1..9
-        sgState = { op: "-", a: a, b: b, u: u, filled: {}, removed: 0, placed: 0, mistake: false, done: false };
+      function sgSetup(sub) {
+        var a, b, u = 0;
+        if (sub) { u = 1 + Math.floor(Math.random() * 7); a = 10 + u; b = u + 1 + Math.floor(Math.random() * (9 - u)); }
+        else { a = 6 + Math.floor(Math.random() * 4); var bMin = 11 - a; b = bMin + Math.floor(Math.random() * (10 - bMin)); }
+        sgState = { op: sub ? "-" : "+", a: a, b: b, u: u, cells: [], tray: [], done: false, mistake: false, auto: false };
+        for (var i = 0; i < 20; i++) sgState.cells.push(null);
         sgBoard.innerHTML = "";
         SG_CELL = Math.max(20, Math.min(44, (sgBoard.clientHeight - 50) / 5, (sgBoard.clientWidth - 10) / 5));
-        sgEq.textContent = a + " − " + b;
+        sgEq.textContent = a + (sub ? " − " : " + ") + b;
         sgMsg.textContent = "";
         nextBtn.disabled = true;
         nextBtn.textContent = "→";
         nextBtn.classList.remove("text");
         sgRenderStreak();
+        badgeChip.hidden = !hasBadge();
         for (var k = 0; k < 20; k++) {
-          var s = sgSlot(k);
-          var c = document.createElement("span");
+          var sl = sgSlot(k), c = document.createElement("span");
           c.className = "sg-cell";
-          c.style.left = (s.x - SG_CELL / 2) + "px";
-          c.style.top = (s.y - SG_CELL / 2) + "px";
+          c.style.left = (sl.x - SG_CELL / 2) + "px";
+          c.style.top = (sl.y - SG_CELL / 2) + "px";
           c.style.width = SG_CELL + "px";
           c.style.height = SG_CELL + "px";
           sgBoard.appendChild(c);
         }
-        var trayY = sgSlot(10).y + 2 * SG_CELL + 20;
-        var gap = Math.min(SG_CELL, (sgBoard.clientWidth - 12) / b);
-        sgState.tray = { y: trayY, gap: gap, left: sgBoard.clientWidth / 2 - (b - 1) * gap / 2, size: Math.min(SG_CELL - 10, gap - 5) };
-        [].concat(range(10), range(u).map(function (i) { return 10 + i; })).forEach(function (k) {
-          var dot = document.createElement("span");
-          dot.className = "sg-dot free";
-          var sl = sgSlot(k);
-          sgPlace(dot, sl.x, sl.y);
-          dot.dataset.k = k;
-          sgState.filled[k] = true;
-          sgBoard.appendChild(dot);
-          sgRemovable(dot, k);
+        function token() { var d = document.createElement("span"); d.className = "sg-dot"; sgBoard.appendChild(d); return d; }
+        var start = sub ? range(10).concat(range(u).map(function (i) { return 10 + i; })) : range(a);
+        start.forEach(function (k) { var d = token(); d.classList.add("given"); var sl = sgSlot(k); sgPlace(d, sl.x, sl.y); d.dataset.k = k; sgState.cells[k] = d; });
+        if (!sub) for (var j = 0; j < b; j++) { var t = token(); t.classList.add("free"); sgState.tray.push(t); }
+        sgLayoutTray(true);
+      }
+
+      // Réserve : rangée de jetons sous les cadres (addition : à poser ;
+      // soustraction : ceux qu'on a retirés)
+      function sgLayoutTray(instant) {
+        var tr = sgState.tray, n = Math.max(tr.length, 1);
+        var y = sgSlot(10).y + 2 * SG_CELL + 20;
+        var gap = Math.min(SG_CELL, (sgBoard.clientWidth - 12) / Math.max(n, 5));
+        var size = Math.min(SG_CELL - 10, gap - 5);
+        var left = sgBoard.clientWidth / 2 - (tr.length - 1) * gap / 2;
+        tr.forEach(function (d, j) {
+          d._size = size;
+          delete d.dataset.k;
+          d.classList.toggle("out", sgState.op === "-");
+          if (instant) sgPlace(d, left + j * gap, y); else sgMove(d, left + j * gap, y);
         });
       }
 
-      function range(n) { var r = []; for (var i = 0; i < n; i++) r.push(i); return r; }
+      function sgCellAt(x, y) {
+        var best = -1, bd = SG_CELL * 0.62;
+        for (var k = 0; k < 20; k++) {
+          var sl = sgSlot(k), d = Math.hypot(sl.x - x, sl.y - y);
+          if (d < bd) { bd = d; best = k; }
+        }
+        return best;
+      }
 
-      function sgRemovable(dot, k) {
-        var start = null;
-        dot.addEventListener("pointerdown", function (e) {
+      function sgErase(k) {
+        var d = sgState.cells[k];
+        if (!d) return false;
+        sgState.cells[k] = null;
+        sgState.tray.push(d);
+        d.classList.remove("given");
+        SND.tick();
+        return true;
+      }
+
+      function sgFill(k) {
+        if (sgState.cells[k] || !sgState.tray.length) return false;
+        var d = sgState.tray.pop();
+        sgState.cells[k] = d;
+        d._size = 0;
+        d.dataset.k = k;
+        d.classList.remove("out");
+        var sl = sgSlot(k);
+        sgMove(d, sl.x, sl.y);
+        SND.tick();
+        return true;
+      }
+
+      function sgNextFree() {
+        for (var k = 0; k < 20; k++) if (!sgState.cells[k]) return k;
+        return -1;
+      }
+
+      // Peinture au doigt sur le plateau
+      (function () {
+        var mode = null, touched = {};
+        sgBoard.addEventListener("pointerdown", function (e) {
           if (!sgState || sgState.done) return;
           e.preventDefault();
-          dot.setPointerCapture(e.pointerId);
-          var r = sgBoard.getBoundingClientRect();
-          start = { ox: r.left, oy: r.top, x: e.clientX, y: e.clientY, moved: false };
-        });
-        dot.addEventListener("pointermove", function (e) {
-          if (!start) return;
-          if (!start.moved && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 8) return;
-          start.moved = true;
-          dot.classList.add("drag");
-          sgPlace(dot, e.clientX - start.ox, e.clientY - start.oy);
-        });
-        function up(e) {
-          if (!start) return;
-          var st = start;
-          start = null;
-          dot.classList.remove("drag");
-          var out = dot.classList.contains("out");
-          if (out) { sgPutBack(dot, k); return; }
-          if (st.moved) {
-            // Lâché encore dans les cadres : il revient à sa case
-            var y = e.clientY - st.oy;
-            if (y < sgSlot(19).y + SG_CELL / 2) { var sl = sgSlot(k); sgMove(dot, sl.x, sl.y); return; }
+          try { sgBoard.setPointerCapture(e.pointerId); } catch (err) {}
+          var r = sgBoard.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+          touched = {};
+          var k = sgCellAt(x, y);
+          if (k < 0) {
+            // Appui sur la réserve : un jeton va dans la prochaine case libre
+            if (y > sgSlot(19).y + SG_CELL / 2) { var f = sgNextFree(); if (f >= 0 && sgFill(f)) { sgLayoutTray(); } }
+            mode = null;
+            return;
           }
-          sgTakeAway(dot, k);
-        }
-        dot.addEventListener("pointerup", up);
-        dot.addEventListener("pointercancel", up);
-      }
-
-      function sgTakeAway(dot, k) {
-        if (k >= 10) {
-          sgWrong();
-          var sl = sgSlot(k);
-          sgMove(dot, sl.x, sl.y);
-          return;
-        }
-        var t = sgState.tray, j = sgState.removed;
-        delete sgState.filled[k];
-        sgState.removed++;
-        dot.classList.add("out");
-        dot._size = t.size;
-        sgMove(dot, t.left + j * t.gap, t.y).then(function () {
-          if (sgState.removed === sgState.b && !sgState.done) sgWinSub();
+          mode = sgState.cells[k] ? "erase" : "fill";
+          sgPaint(k);
         });
+        sgBoard.addEventListener("pointermove", function (e) {
+          if (!mode) return;
+          var r = sgBoard.getBoundingClientRect();
+          var k = sgCellAt(e.clientX - r.left, e.clientY - r.top);
+          if (k >= 0) sgPaint(k);
+        });
+        function end() { if (mode !== null || true) { mode = null; sgCheck(); } }
+        sgBoard.addEventListener("pointerup", end);
+        sgBoard.addEventListener("pointercancel", end);
+        function sgPaint(k) {
+          if (touched[k]) return;
+          touched[k] = true;
+          var changed = mode === "erase" ? sgErase(k) : sgFill(k);
+          if (changed) sgLayoutTray();
+        }
+      })();
+
+      // La manche est finie quand le compte est bon
+      function sgCheck() {
+        if (!sgState || sgState.done) return;
+        var inCells = sgState.cells.filter(Boolean).length;
+        var f1 = sgState.cells.slice(0, 10).filter(Boolean).length, f2 = inCells - f1;
+        if (sgState.op === "+") {
+          if (sgState.tray.length) return;
+          // Bien rangé : la 1re dizaine pleine avant la 2e
+          sgState.mistake = !(f1 === Math.min(10, inCells));
+          sgWin();
+        } else {
+          if (inCells !== sgState.a - sgState.b) return;
+          // Bien fait : on a pris dans la dizaine, les jetons isolés restent
+          sgState.mistake = f2 !== sgState.u;
+          sgWinSub();
+        }
       }
 
-      function sgPutBack(dot, k) {
-        if (sgState.done) return;
-        sgState.filled[k] = true;
-        sgState.removed--;
-        dot.classList.remove("out");
-        dot._size = 0;
-        var sl = sgSlot(k);
-        sgMove(dot, sl.x, sl.y);
+      function sgAutoFill() {
+        if (!sgState || sgState.done) return;
+        sgState.auto = true;
+        var i = 0;
+        (function step() {
+          var f = sgNextFree();
+          if (f < 0 || !sgState.tray.length) { sgLayoutTray(); setTimeout(sgCheck, ms(300)); return; }
+          sgFill(f);
+          sgLayoutTray();
+          i++;
+          setTimeout(step, ms(140));
+        })();
       }
 
       function sgAutoRemove() {
         if (!sgState || sgState.done) return;
         sgState.auto = true;
-        var left = sgState.b - sgState.removed;
-        for (var k = 9; k >= 0 && left > 0; k--) {
-          if (!sgState.filled[k]) continue;
-          (function (kk, i) {
-            var dot = Array.prototype.find.call(sgBoard.querySelectorAll(".sg-dot"), function (d) { return Number(d.dataset.k) === kk && !d.classList.contains("out"); });
-            setTimeout(function () { sgTakeAway(dot, kk); }, ms(i * 140));
-          })(k, sgState.b - left);
+        var left = (sgState.cells.filter(Boolean).length) - (sgState.a - sgState.b);
+        var k = 9;
+        (function step() {
+          while (k >= 0 && !sgState.cells[k]) k--;
+          if (left <= 0 || k < 0) { setTimeout(sgCheck, ms(300)); return; }
+          sgErase(k);
+          sgLayoutTray();
           left--;
-        }
+          setTimeout(step, ms(140));
+        })();
       }
 
       function sgWinSub() {
         sgState.done = true;
         var a = sgState.a, b = sgState.b, u = sgState.u;
-        var seq = [
-          "10 − " + b + " + " + u,
-          (10 - b) + " + " + u,
-          a + " − " + b + " = " + (a - b)
-        ];
-        sgFinish(seq);
+        sgFinish(["10 − " + b + " + " + u, (10 - b) + " + " + u, a + " − " + b + " = " + (a - b)]);
       }
 
       // Boutons « Voir la solution » et « Règles », calés à gauche
@@ -4884,8 +4756,8 @@
       // Chaque case : symbole, ensemble de base (pour les cases à cocher du
       // menu), appartenance, définition.
       var ENS = [
-        { id: "Ns", sym: "ℕ*", base: "N", row: 1, has: function (z) { return z.real && z.kind === "int" && z.re > 0; },
-          def: "ℕ* : les entiers naturels non nuls, 1, 2, 3…", defEn: "ℕ*: non-zero natural numbers 1, 2, 3…" },
+        { id: "Ns", sym: "ℕ<sup>*</sup>", base: "N", row: 1, has: function (z) { return z.real && z.kind === "int" && z.re > 0; },
+          def: "ℕ<sup>*</sup> : les entiers naturels non nuls, 1, 2, 3…", defEn: "ℕ<sup>*</sup>: non-zero natural numbers 1, 2, 3…" },
         { id: "N", sym: "ℕ", base: "N", row: 1, has: function (z) { return z.real && z.kind === "int" && z.re >= 0; },
           def: "ℕ : les entiers naturels 0, 1, 2, 3…", defEn: "ℕ: natural numbers 0, 1, 2, 3…" },
         { id: "Z", sym: "ℤ", base: "Z", row: 1, has: function (z) { return z.real && z.kind === "int"; },
@@ -4934,7 +4806,7 @@
       ENS.forEach(function (e) {
         var b = document.createElement("button");
         b.className = "ens-box";
-        b.textContent = e.sym;
+        b.innerHTML = e.sym; // l'étoile de ℕ* en exposant, en haut à droite
         b._e = e;
         var timer = null, longDone = false;
         b.addEventListener("pointerdown", function (ev) {
@@ -4954,7 +4826,7 @@
       });
 
       function ensShowTip(e, b) {
-        ensTip.textContent = LANG === "en" ? e.defEn : e.def;
+        ensTip.innerHTML = LANG === "en" ? e.defEn : e.def;
         ensTip.hidden = false;
         var rs = ensEl.getBoundingClientRect(), rb = b.getBoundingClientRect();
         var rows = document.querySelector(".ens-rows").getBoundingClientRect();
@@ -5005,7 +4877,7 @@
           b.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(300) });
         }
         var list = ensBoxes.filter(function (bb) { return !bb.hidden && bb._e.has(z); }).map(function (bb) { return bb._e.sym; }).join("  ");
-        ensMsg.textContent = (ok ? "✓ " : "✗ ") + z.t + " ∈ " + list;
+        ensMsg.innerHTML = (ok ? "✓ " : "✗ ") + z.t + " ∈ " + list;
         ensScoreEl.textContent = ensScore.ok + " / " + ensScore.n;
         nextBtn.disabled = false;
       }
@@ -5071,6 +4943,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v60", text: "Ensembles : l'étoile de ℕ* est en exposant, en haut à droite." },
+        { v: "v59", text: "Singapour : liberté totale — on peut retirer n'importe quel jeton, même ceux du départ. On peint au doigt : parti d'un jeton, on efface tout ce qu'on survole ; parti d'une case vide, on remplit tout ce qu'on survole. La manche finit quand le compte est bon ; le badge ne compte que les manches bien rangées." },
         { v: "v58", text: "Premiers : quand le nombre en cours est lui-même un premier du clavier (13), son bouton est vert — le diviser par lui-même est une bonne réponse. La dernière division tentée reste affichée ; flèche ← pour revenir en arrière." },
         { v: "v57", text: "Premiers : flèche ← pour revenir en arrière d'une étape (division ou « est premier »), même après avoir fini." },
         { v: "v56", text: "Premiers : la dernière division tentée reste affichée sur le bandeau (en jaune si elle ne tombe pas juste, en vert sinon, pendant que la décomposition se met à jour en haut) jusqu'à la prochaine action." },
