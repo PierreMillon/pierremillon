@@ -87,6 +87,12 @@ Tri : priorité décroissante.
   main ce qu'aucun badge ne couvre. Choix confirmé : tirer la perle du bas
   d'un groupe ne fait descendre qu'elle (comme un vrai soroban)
 
+- [x] v10 — Un seul chemin (choix de Pierre) : niveaux débloqués dans
+  l'ordre, seuls les niveaux gagnés et le prochain sont visibles (les
+  suivants gardent leur place, invisibles : taille du boulier constante).
+  Un badge ne fait que des techniques déjà gagnées. Entraînement libre en
+  tête des niveaux
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
