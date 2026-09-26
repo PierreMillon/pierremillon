@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La coupe — démonstration</title>
+<link rel="icon" type="image/svg+xml" href="../../favicon.svg?v=2">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf8f4; --bg-soft:#f2efe8; --ink:#1c1a17; --ink-soft:#6f6a60;
+    --hairline:#ddd6c9; --accent:#b08d57; --danger:#a4443a; --second:#4a6b73;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:var(--bg);
+    background-image:radial-gradient(circle at 50% 0%, var(--bg-soft), var(--bg) 60%);
+    color:var(--ink);
+    font-family:"Jost",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    display:flex; justify-content:center;
+    padding:3rem 1.25rem 4rem;
+    line-height:1.7;
+  }
+  main{width:100%;max-width:560px}
+
+  h1{
+    font-family:"Cormorant Garamond",Georgia,serif; font-weight:300;
+    font-size:clamp(1.9rem,6vw,2.4rem); letter-spacing:0.04em; margin:0;
+  }
+  .sous{
+    margin:0.9rem 0 0; font-family:"Cormorant Garamond",Georgia,serif;
+    font-style:italic; color:var(--ink-soft); font-size:1.05rem;
+  }
+  .rule{width:46px;height:1px;background:var(--accent);margin:2.2rem 0}
+
+  h2{
+    font-size:0.7rem; letter-spacing:0.28em; text-transform:uppercase;
+    color:var(--accent); font-weight:500; margin:3.5rem 0 1.2rem;
+  }
+  p{font-size:0.86rem;color:var(--ink);margin:0 0 1.1rem}
+  p.doux{color:var(--ink-soft);font-size:0.8rem}
+  strong{font-weight:500}
+
+  figure{margin:1.6rem 0 1.2rem}
+  figcaption{
+    margin-top:0.7rem; font-size:0.7rem; letter-spacing:0.06em;
+    color:var(--ink-soft); text-align:center;
+  }
+  canvas{display:block;width:100%;background:transparent}
+
+  .cadre{border-top:1px solid var(--hairline);border-bottom:1px solid var(--hairline)}
+
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .duo figcaption{font-size:0.66rem}
+
+  .commandes{
+    display:flex;flex-direction:column;gap:0.5rem;
+    margin:1.4rem 0 0;padding-top:1.2rem;border-top:1px solid var(--hairline);
+  }
+  .ligneCmd{display:flex;align-items:baseline;justify-content:space-between;gap:1rem}
+  .ligneCmd label{font-size:0.72rem;letter-spacing:0.04em}
+  .ligneCmd output{font-size:0.72rem;color:var(--accent);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent);margin:0}
+  button{
+    font-family:inherit;font-size:0.66rem;letter-spacing:0.2em;text-transform:uppercase;
+    color:var(--ink-soft);background:none;border:1px solid var(--hairline);
+    padding:0.5rem 1rem;cursor:pointer;
+  }
+  button:hover{color:var(--accent);border-color:var(--accent)}
+
+  .verdict{
+    margin-top:1rem;font-size:0.74rem;letter-spacing:0.08em;
+    text-transform:uppercase;text-align:center;
+  }
+  .verdict.touche{color:var(--danger)}
+  .verdict.libre{color:var(--second)}
+
+  .retour{margin-top:4rem;text-align:center}
+  .retour a{
+    font-size:0.66rem;letter-spacing:0.2em;text-transform:uppercase;
+    color:var(--ink-soft);text-decoration:none;margin:0 0.8rem;
+  }
+  .retour a:hover{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+
+  <h1>La coupe</h1>
+  <p class="sous">Pourquoi on ne voit pas la quatrième dimension, et ce qu'il faudrait pour la voir.</p>
+  <div class="rule"></div>
+
+  <p>Dans Sillage, tu ne perçois rien de la quatrième dimension. Ce n'est pas un défaut de réglage : les tranches étaient tirées au sort indépendamment les unes des autres. Il n'y avait <strong>aucun objet commun</strong> à reconstruire.</p>
+
+  <p>Cette page ne contient pas de jeu. Elle montre ce qui manquait.</p>
+
+  <h2>1 — Le principe</h2>
+
+  <p>Un disque traverse ta ligne. Tu vis sur la ligne : tu ne vois pas le disque, tu ne vois que l'intersection.</p>
+
+  <figure>
+    <canvas id="cvPrincipe" class="cadre" height="260"></canvas>
+    <figcaption>En pâle, ce qui existe. En plein, ce que tu vois.</figcaption>
+  </figure>
+
+  <p>Un segment apparaît, grandit, atteint un maximum, rétrécit, disparaît. Tu ne verras jamais le disque.</p>
+
+  <p>Mais cette suite est <strong>cohérente</strong>, et c'est de sa cohérence que tu déduis l'existence d'une dimension de plus. Un tirage au sort ne produit aucune cohérence, donc aucune déduction.</p>
+
+  <h2>2 — Ta tranche</h2>
+
+  <p>Passons un rang plus haut. Les obstacles sont maintenant des solides dans un espace à trois axes : ta ligne, la quatrième dimension, et le temps.</p>
+
+  <p>En haut, le plan complet à cet instant — la coupe transverse. Le trait horizontal est ta tranche, le point est toi.</p>
+
+  <p>En bas, ce que Sillage t'afficherait : ta ligne en largeur, le futur en hauteur.</p>
+
+  <figure>
+    <canvas id="cvCoupe" class="cadre" height="220"></canvas>
+    <figcaption>Coupe transverse — le plan (ligne, quatrième dimension) à cet instant</figcaption>
+  </figure>
+
+  <figure>
+    <canvas id="cvJeu" class="cadre" height="300"></canvas>
+    <figcaption>Vue de jeu — ta ligne en largeur, les 3 secondes à venir en hauteur</figcaption>
+  </figure>
+
+  <div class="commandes">
+    <div class="ligneCmd">
+      <label for="rTranche">Ta tranche</label>
+      <output id="oTranche"></output>
+    </div>
+    <input type="range" id="rTranche" min="0" max="1" step="0.005">
+    <div class="ligneCmd" style="justify-content:center;margin-top:0.6rem">
+      <button id="bPause">Arrêter le temps</button>
+    </div>
+    <p class="verdict" id="verdict"></p>
+  </div>
+
+  <p class="doux">Déplace lentement le curseur. La vue de jeu ne saute pas d'une image à l'autre : elle <strong>se déforme</strong>. C'est cette déformation continue, et elle seule, qui fait sentir la dimension supplémentaire.</p>
+
+  <h2>3 — Un seul objet, deux tranches</h2>
+
+  <p>Les deux vues ci-dessous montrent le même instant et les mêmes obstacles. Seule la tranche change.</p>
+
+  <div class="duo">
+    <figure>
+      <canvas id="cvGauche" class="cadre" height="260"></canvas>
+      <figcaption>tranche 0,20</figcaption>
+    </figure>
+    <figure>
+      <canvas id="cvDroite" class="cadre" height="260"></canvas>
+      <figcaption>tranche 0,75</figcaption>
+    </figure>
+  </div>
+
+  <p>Dans la version actuelle du jeu, ces deux images seraient deux tirages sans rapport. Ici, ce sont deux coupes d'un même solide — et c'est pour ça qu'on peut apprendre à les anticiper.</p>
+
+  <h2>4 — Ce que ça changerait</h2>
+
+  <p>Un obstacle cesse d'être une barrière et devient un objet. Il approche, il grossit, il s'ouvre. Tu vois sa forme avant qu'il t'atteigne, donc tu sais de quel côté sortir — et tu peux choisir de sortir <strong>sur ta ligne</strong> ou <strong>en changeant de tranche</strong>.</p>
+
+  <p>La garantie de jouabilité survit. Au lieu de tirer une suite de cases sûres, on tire une trajectoire continue respectant ta vitesse maximale, puis on place les solides en évitant un couloir autour d'elle. Même principe, version continue.</p>
+
+  <p class="doux">Le dernier obstacle de la boucle est un couloir dont le passage se déplace avec la tranche. C'est exactement le « tunnel qui se rétrécit » de ton résumé d'origine.</p>
+
+  <div class="retour">
+    <a href="../">Sillage</a>
+    <a href="../../">Accueil</a>
+  </div>
+
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  // =================================================================
+  // Démonstration — pas un jeu.
+  //
+  // Le monde a trois axes : x (ta ligne), w (la quatrième dimension)
+  // et t (le temps). Les obstacles sont des SOLIDES continus dans cet
+  // espace. Tu n'en vois jamais qu'une coupe : l'ensemble des x
+  // bloqués, à ta tranche w, en fonction de t.
+  //
+  // Tout est calculé à partir des mêmes fonctions implicites — aucune
+  // image n'est dessinée à la main.
+  // =================================================================
+
+  const PERIODE = 14;       // s — la boucle
+  const HORIZON = 3;        // s — futur affiché dans la vue de jeu
+  const MOI = 0.5;          // position fixe sur la ligne
+
+  const SOLIDES = [
+    // Ellipsoïdes : ((x-x0)/rx)² + ((w-w0)/rw)² + ((t-t0)/rt)² < 1
+    { type: 'bulle', x0: 0.30, w0: 0.28, t0: 2.6, rx: 0.20, rw: 0.32, rt: 1.5 },
+    { type: 'bulle', x0: 0.63, w0: 0.64, t0: 5.4, rx: 0.24, rw: 0.42, rt: 1.8 },
+    { type: 'bulle', x0: 0.50, w0: 0.50, t0: 8.3, rx: 0.30, rw: 0.62, rt: 2.0 },
+    // Couloir : tout est bloqué sauf un passage, dont la position
+    // dépend de la tranche et dont la largeur se resserre puis s'ouvre.
+    { type: 'couloir', t0: 11.6, rt: 2.0, base: 0.20, pente: 0.58, demi: 0.115 }
+  ];
+
+  // Écart temporel le plus court en tenant compte de la boucle.
+  function ecart(t, t0){
+    let d = (t - t0) % PERIODE;
+    if (d > PERIODE / 2) d -= PERIODE;
+    if (d < -PERIODE / 2) d += PERIODE;
+    return d;
+  }
+
+  // Intervalles de x bloqués, à la tranche w et à l'instant t.
+  function bloques(w, t){
+    const out = [];
+    for (const s of SOLIDES){
+      const d = ecart(t, s.t0);
+      if (Math.abs(d) >= s.rt) continue;
+      if (s.type === 'bulle'){
+        const k = 1 - Math.pow((w - s.w0) / s.rw, 2) - Math.pow(d / s.rt, 2);
+        if (k <= 0) continue;
+        const demi = s.rx * Math.sqrt(k);
+        out.push([s.x0 - demi, s.x0 + demi]);
+      } else {
+        const centre = s.base + s.pente * w;
+        const demi = s.demi * (0.42 + 0.58 * Math.abs(d) / s.rt);
+        out.push([-0.05, centre - demi]);
+        out.push([centre + demi, 1.05]);
+      }
+    }
+    return out;
+  }
+
+  const estBloque = (x, w, t) => bloques(w, t).some(([a, b]) => x >= a && x <= b);
+
+  // --- horloge ----------------------------------------------------
+  let horloge = 0;
+  let enMarche = true;
+  let precedent = performance.now();
+
+  // --- utilitaires de rendu ---------------------------------------
+  const dpr = () => Math.min(window.devicePixelRatio || 1, 2);
+
+  // Sans hauteur CSS explicite, la mise en page suit l'attribut height —
+  // qu'on écrase ensuite en pixels physiques. Le cadre doublerait à la
+  // première image. On fige donc la hauteur demandée une fois pour toutes.
+  function figerHauteur(cv){
+    cv.style.height = cv.getAttribute('height') + 'px';
+  }
+
+  function preparer(cv){
+    const r = cv.getBoundingClientRect();
+    const k = dpr();
+    if (cv.width !== Math.round(r.width * k)){
+      cv.width = Math.round(r.width * k);
+      cv.height = Math.round(cv.clientHeight * k);
+    }
+    const ctx = cv.getContext('2d');
+    ctx.setTransform(k, 0, 0, k, 0, 0);
+    ctx.clearRect(0, 0, r.width, cv.clientHeight);
+    return { ctx, W: r.width, H: cv.clientHeight };
+  }
+
+  // Balaie une image ligne par ligne : chaque ligne est une coupe 1D.
+  // Sert aussi bien à la vue de jeu (lignes = instants) qu'à la coupe
+  // transverse (lignes = tranches) — c'est la même opération.
+  function balayer(ctx, W, H, valeurDeLigne, couleur){
+    const PAS = 1;
+    ctx.fillStyle = couleur;
+    for (let y = 0; y < H; y += PAS){
+      const u = 1 - (y + PAS / 2) / H;            // 0 en bas, 1 en haut
+      for (const [a, b] of valeurDeLigne(u)){
+        const x1 = Math.max(0, a) * W;
+        const x2 = Math.min(1, b) * W;
+        if (x2 > x1) ctx.fillRect(x1, y, x2 - x1, PAS);
+      }
+    }
+  }
+
+  const TOILES = ['cvPrincipe', 'cvCoupe', 'cvJeu', 'cvGauche', 'cvDroite']
+    .map((id) => document.getElementById(id));
+  TOILES.forEach(figerHauteur);
+
+  // --- 1. le principe ---------------------------------------------
+  // Un disque traverse la ligne. On dessine le disque en pâle (ce qui
+  // existe) et l'intersection en plein (ce que l'habitant perçoit).
+  const cvPrincipe = document.getElementById('cvPrincipe');
+
+  function dessinerPrincipe(){
+    const { ctx, W, H } = preparer(cvPrincipe);
+    const ligneY = H * 0.5;
+    const cycle = 6;
+    const u = (horloge % cycle) / cycle;          // 0 → 1
+    const rayon = H * 0.17;
+    const cx = W * 0.5;
+    // le disque traverse la ligne sans jamais sortir du cadre
+    const cy = ligneY + rayon * 1.25 - u * rayon * 2.5;
+
+    // le disque : ce qui existe, et que l'habitant ne voit pas
+    ctx.fillStyle = 'rgba(74,107,115,0.13)';
+    ctx.beginPath();
+    ctx.arc(cx, cy, rayon, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(74,107,115,0.4)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // la ligne : le monde de l'habitant
+    ctx.strokeStyle = 'rgba(221,214,201,1)';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.06, Math.round(ligneY) + 0.5);
+    ctx.lineTo(W * 0.94, Math.round(ligneY) + 0.5);
+    ctx.stroke();
+
+    // l'intersection : ce qu'il voit
+    const dy = Math.abs(cy - ligneY);
+    if (dy < rayon){
+      const demi = Math.sqrt(rayon * rayon - dy * dy);
+      ctx.strokeStyle = '#1c1a17';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - demi, Math.round(ligneY) + 0.5);
+      ctx.lineTo(cx + demi, Math.round(ligneY) + 0.5);
+      ctx.stroke();
+    }
+
+    ctx.font = '11px Jost, sans-serif';
+    ctx.fillStyle = '#6f6a60';
+    ctx.textAlign = 'left';
+    ctx.fillText('le disque', W * 0.06, 18);
+    ctx.fillText('ta ligne', W * 0.06, ligneY + 18);
+  }
+
+  // --- 2. coupe transverse + vue de jeu ---------------------------
+  const cvCoupe = document.getElementById('cvCoupe');
+  const cvJeu = document.getElementById('cvJeu');
+  const rTranche = document.getElementById('rTranche');
+  const oTranche = document.getElementById('oTranche');
+  const verdict = document.getElementById('verdict');
+  let tranche = 0.5;
+
+  function dessinerCoupe(){
+    const { ctx, W, H } = preparer(cvCoupe);
+
+    // les obstacles, tranche par tranche
+    balayer(ctx, W, H, (w) => bloques(w, horloge), 'rgba(28,26,23,0.82)');
+
+    // ta tranche
+    const y = (1 - tranche) * H;
+    ctx.strokeStyle = 'rgba(74,107,115,0.85)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, y); ctx.lineTo(W, y);
+    ctx.stroke();
+
+    // toi
+    const touche = estBloque(MOI, tranche, horloge);
+    ctx.fillStyle = touche ? '#a4443a' : '#1c1a17';
+    ctx.beginPath();
+    ctx.arc(MOI * W, y, 5.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.font = '11px Jost, sans-serif';
+    ctx.fillStyle = '#6f6a60';
+    ctx.save();
+    ctx.translate(12, H - 8);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'left';
+    ctx.fillText('4e dimension →', 0, 0);
+    ctx.restore();
+    ctx.textAlign = 'right';
+    ctx.fillText('ta ligne →', W - 4, H - 6);
+  }
+
+  // Vue de jeu : x en largeur, le futur en hauteur.
+  function dessinerJeu(cv, w, avecMoi){
+    const { ctx, W, H } = preparer(cv);
+
+    const largeur = W * 0.045;
+
+    // Le couloir de prédiction passe SOUS les obstacles : dessiné par
+    // dessus, il ressemblait à un passage là où il n'y en a pas.
+    if (avecMoi){
+      ctx.fillStyle = 'rgba(176,141,87,0.16)';
+      ctx.fillRect(MOI * W - largeur / 2, 0, largeur, H);
+    }
+
+    balayer(ctx, W, H, (u) => bloques(w, horloge + u * HORIZON), 'rgba(28,26,23,0.82)');
+
+    // et on marque en rouge les instants où il te touche
+    if (avecMoi){
+      ctx.fillStyle = 'rgba(164,68,58,0.9)';
+      for (let y = 0; y < H; y++){
+        const u = 1 - (y + 0.5) / H;
+        if (estBloque(MOI, w, horloge + u * HORIZON)){
+          ctx.fillRect(MOI * W - largeur / 2, y, largeur, 1);
+        }
+      }
+    }
+
+    // la ligne du présent
+    ctx.strokeStyle = '#b08d57';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, H - 0.5); ctx.lineTo(W, H - 0.5);
+    ctx.stroke();
+
+    if (avecMoi){
+      ctx.fillStyle = estBloque(MOI, w, horloge) ? '#a4443a' : '#1c1a17';
+      ctx.beginPath();
+      ctx.arc(MOI * W, H - 4, 5.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Dans combien de temps cette tranche te touche-t-elle, si tu ne bouges pas ?
+  function prochainContact(w){
+    for (let d = 0; d <= HORIZON; d += 0.02){
+      if (estBloque(MOI, w, horloge + d)) return d;
+    }
+    return null;
+  }
+
+  function majVerdict(){
+    const d = prochainContact(tranche);
+    if (d === null){
+      verdict.textContent = 'libre sur les 3 prochaines secondes';
+      verdict.className = 'verdict libre';
+    } else if (d < 0.02){
+      verdict.textContent = 'touché maintenant';
+      verdict.className = 'verdict touche';
+    } else {
+      verdict.textContent = 'touché dans ' + d.toFixed(1).replace('.', ',') + ' s';
+      verdict.className = 'verdict touche';
+    }
+  }
+
+  // --- 3. deux tranches -------------------------------------------
+  const cvGauche = document.getElementById('cvGauche');
+  const cvDroite = document.getElementById('cvDroite');
+
+  // --- boucle ------------------------------------------------------
+  function boucle(maintenant){
+    const dt = Math.min(0.05, (maintenant - precedent) / 1000);
+    precedent = maintenant;
+    if (enMarche) horloge = (horloge + dt) % PERIODE;
+
+    dessinerPrincipe();
+    dessinerCoupe();
+    dessinerJeu(cvJeu, tranche, true);
+    dessinerJeu(cvGauche, 0.20, false);
+    dessinerJeu(cvDroite, 0.75, false);
+    majVerdict();
+
+    requestAnimationFrame(boucle);
+  }
+
+  // --- commandes ---------------------------------------------------
+  rTranche.value = tranche;
+  oTranche.textContent = tranche.toFixed(2).replace('.', ',');
+  rTranche.addEventListener('input', () => {
+    tranche = Number(rTranche.value);
+    oTranche.textContent = tranche.toFixed(2).replace('.', ',');
+  });
+
+  const bPause = document.getElementById('bPause');
+  bPause.addEventListener('click', () => {
+    enMarche = !enMarche;
+    bPause.textContent = enMarche ? 'Arrêter le temps' : 'Reprendre le temps';
+  });
+
+  window.addEventListener('resize', () => {
+    for (const cv of TOILES) cv.width = 0;
+  });
+
+  // Poignée de lecture, pour vérifier depuis la console.
+  window.coupe = { bloques, estBloque, get horloge(){ return horloge; }, SOLIDES, PERIODE, HORIZON };
+
+  requestAnimationFrame(boucle);
+})();
+</script>
+</body>
+</html>

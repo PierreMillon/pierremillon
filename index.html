@@ -26,19 +26,43 @@
         <li>
           <a href="https://pierremillon.github.io/licence-math/" target="_blank" rel="noopener">
             <span class="index">I</span>
-            <span class="name">Licence Math</span>
+            <span class="name">Cours L1 Math</span>
           </a>
         </li>
         <li>
           <a href="https://pierremillon.github.io/fiche-de-math-gael/" target="_blank" rel="noopener">
             <span class="index">II</span>
-            <span class="name">Fiche de Math Gaël</span>
+            <span class="name">Fiche de Gaël</span>
           </a>
         </li>
         <li>
           <a href="https://pierremillon.github.io/exercices-l1-math/" target="_blank" rel="noopener">
             <span class="index">III</span>
             <span class="name">Exercices L1 Math</span>
+          </a>
+        </li>
+        <li>
+          <a href="https://pierremillon.github.io/plan-de-wessel/" target="_blank" rel="noopener">
+            <span class="index">IV</span>
+            <span class="name">Plan de Wessel</span>
+          </a>
+        </li>
+        <li>
+          <a href="extrapolation/">
+            <span class="index">V</span>
+            <span class="name">Extrapolation</span>
+          </a>
+        </li>
+        <li>
+          <a href="pas-a-pas/">
+            <span class="index">VI</span>
+            <span class="name">Pas à Pas</span>
+          </a>
+        </li>
+        <li>
+          <a href="soroban/">
+            <span class="index">VII</span>
+            <span class="name">Soroban</span>
           </a>
         </li>
       </ul>
@@ -48,37 +72,66 @@
       <ul>
         <li>
           <a href="https://pierremillon.github.io/knight-wars/" target="_blank" rel="noopener">
-            <span class="index">IV</span>
+            <span class="index">VIII</span>
             <span class="name">Knight&nbsp;Wars</span>
           </a>
         </li>
         <li>
           <a href="https://pierremillon.github.io/Bastion-Orbit/" target="_blank" rel="noopener">
-            <span class="index">V</span>
+            <span class="index">IX</span>
             <span class="name">Bastion&nbsp;Orbit</span>
           </a>
         </li>
         <li>
           <a href="https://pierremillon.github.io/Forge-Line/" target="_blank" rel="noopener">
-            <span class="index">VI</span>
+            <span class="index">X</span>
             <span class="name">Forge&nbsp;Line</span>
           </a>
         </li>
         <li>
+          <a href="https://pierremillon.github.io/Dwelve-Hollow/" target="_blank" rel="noopener">
+            <span class="index">XI</span>
+            <span class="name">Dwelve&nbsp;Hollow</span>
+          </a>
+        </li>
+        <li>
+          <a href="https://pierremillon.github.io/fly-or-die/" target="_blank" rel="noopener">
+            <span class="index">XII</span>
+            <span class="name">Fly or Die</span>
+          </a>
+        </li>
+        <li>
+          <a href="sillage/">
+            <span class="index">XIII</span>
+            <span class="name">Sillage</span>
+          </a>
+        </li>
+        <li>
+          <a href="bulles-sonores/">
+            <span class="index">XIV</span>
+            <span class="name">Bulles&nbsp;Sonores</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="divider"></div>
+
+      <ul>
+        <li>
           <a href="https://pierremillon.github.io/systeme-silhouette/" target="_blank" rel="noopener">
-            <span class="index">VII</span>
+            <span class="index">XV</span>
             <span class="name">Système&nbsp;Silhouette</span>
           </a>
         </li>
         <li>
           <a href="https://pierremillon.github.io/Crocosheep/" target="_blank" rel="noopener">
-            <span class="index">VIII</span>
+            <span class="index">XVI</span>
             <span class="name">Crocosheep</span>
           </a>
         </li>
         <li>
           <a href="https://pierremillon.github.io/alice-et-sophie/" target="_blank" rel="noopener">
-            <span class="index">IX</span>
+            <span class="index">XVII</span>
             <span class="name">Alice et Sophie</span>
           </a>
         </li>
@@ -93,14 +146,28 @@
     // page n'a aucun état à perdre (juste un menu de liens), donc dès
     // qu'une nouvelle version est détectée, on recharge directement : pas
     // besoin d'attendre un "point sûr" comme dans les jeux.
-    // Pas de nettoyage de service worker ni de caches ici : cette page n'en
-    // a jamais eu, et getRegistrations()/caches.keys() sont scopés à toute
-    // l'ORIGINE pierremillon.github.io — on désenregistrait à chaque visite
-    // du hub le service worker des jeux voisins (Knight Wars) et on vidait
-    // leurs caches, cassant leur mode hors-ligne.
+    // Nettoyage limité à CETTE page : on ne désinscrit que les service
+    // workers dont la portée est la racine du portfolio (restes d'anciennes
+    // versions). Ceux des projets (pas-a-pas/, soroban/, bulles-sonores/…)
+    // restent : ils rendent ces pages utilisables hors ligne, et chacun
+    // nettoie lui-même ses anciens caches (« <projet>-vN »).
+    if ('serviceWorker' in navigator) {
+      const hubScope = new URL('./', location.href).href;
+      navigator.serviceWorker.getRegistrations()
+        .then((regs) => Promise.all(regs.filter((r) => r.scope === hubScope).map((r) => r.unregister())))
+        .catch(() => {});
+    }
+    // Le paramètre anti-cache dans l'URL de vérification est nécessaire :
+    // un simple `cache: 'no-store'` n'empêche que la mise en cache locale
+    // du navigateur, pas celle du CDN devant GitHub Pages, qui peut renvoyer
+    // une réponse périmée même à une requête "no-store".
+    let lastCheck = 0;
     async function checkForUpdate(){
+      const now0 = Date.now();
+      if (now0 - lastCheck < 1500) return; // évite les rafales de clics
+      lastCheck = now0;
       try {
-        const res = await fetch(location.pathname || 'index.html', { cache: 'no-store' });
+        const res = await fetch((location.pathname || 'index.html') + '?_cb=' + now0, { cache: 'no-store' });
         if (!res.ok) return;
         const tag = res.headers.get('etag') || res.headers.get('last-modified');
         if (!tag) return; // l'hébergeur n'envoie ni l'un ni l'autre — rien de fiable à comparer
@@ -114,18 +181,14 @@
           try {
             localStorage.setItem('pm_pageVersion', tag);
             sessionStorage.setItem('pm_lastUpdateReload', String(now));
-          } catch (e) { return; } // stockage indisponible : ne pas recharger en boucle
-          location.reload();
+          } catch (e) { return; } // stockage indisponible (plein, navigation privée) : sans le tag ni le garde-fou écrits, recharger relancerait la même détection à chaque vérification — on renonce
+          location.replace(location.pathname + '?_r=' + now);
         }
       } catch (e) { /* hors-ligne, ou requête bloquée — on ignore, on retentera plus tard */ }
     }
     checkForUpdate();
-    let lastCheckAt = Date.now();
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden || Date.now() - lastCheckAt < 30000) return; // pas plus d'une requête par 30 s
-      lastCheckAt = Date.now();
-      checkForUpdate();
-    });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+    document.addEventListener('pointerdown', checkForUpdate, { passive: true });
   </script>
 </body>
 </html>
