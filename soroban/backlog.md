@@ -97,6 +97,10 @@ Tri : priorité décroissante.
   boutons du bas sans icône, juste l'opération (+, +5, ×…), toujours
   allumés, et qui apparaissent dès qu'on gagne le niveau
 
+- [x] v12 — Son « goutte d'eau » très doux, sans choc (sinusoïde qui glisse
+  vers le haut, attaque 25 ms, extinction lente, léger écho), carillon
+  de réussite plus lent
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
