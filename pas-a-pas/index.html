@@ -1128,7 +1128,37 @@
       color: var(--ink);
     }
 
-    .pf-head .row { display: flex; align-items: center; justify-content: center; gap: 0.45rem; white-space: nowrap; transform-origin: center; }
+    .pf-wheel {
+      display: flex;
+      align-self: stretch;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      touch-action: pan-x;
+      padding: 0.2rem 0;
+    }
+
+    .pf-wheel::-webkit-scrollbar { display: none; }
+
+    .pf-item {
+      flex: 0 0 46%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      scroll-snap-align: center;
+      font-size: clamp(1.3rem, 6.2vw, 1.8rem);
+      white-space: nowrap;
+      transition: opacity 0.1s linear;
+    }
+
+    .pf-item:first-child { margin-left: 27%; }
+    .pf-item:last-child { margin-right: 27%; }
+
+    .pf-dots { display: flex; justify-content: center; gap: 0.35rem; }
+    .pf-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--hairline); }
+    .pf-dots span.on { background: var(--accent); }
     .pf-head .n { display: inline-flex; align-items: center; gap: 0.2rem; }
     .pf-head .eqs { color: var(--ink-soft); margin: 0 0.1rem; }
     .pf-head.drop { outline: 1.5px dashed var(--accent); outline-offset: 6px; border-radius: 10px; }
@@ -3802,20 +3832,61 @@
         // −1, et multiplication par 1 sur le diviseur
         // Toutes sur une seule ligne, reliées par « = » (même division),
         // rétrécie si besoin pour tenir dans la largeur
-        var eq = ' <span class="eqs">=</span> ';
-        pfHead.innerHTML =
-          '<div class="row" id="pfRow">' +
-          '<span class="fracv"><span>' + nd.v + '</span><span class="bar"></span>' + slot + "</span>" + eq +
-          '<span class="n">' + nd.v + '<span class="op">/</span>' + slot + "</span>" + eq +
-          '<span class="n">' + nd.v + '<span class="op">÷</span>' + slot + "</span>" + eq +
-          '<span class="n">' + nd.v + '<span class="op">:</span>' + slot + "</span>" + eq +
-          '<span class="n">' + nd.v + '<span class="op">·</span>' + slot + '<sup class="op">−1</sup></span>' + eq +
-          '<span class="n">' + nd.v + '<span class="op">·</span><span class="fracv"><span>1</span><span class="bar"></span>' + slot + "</span></span>" +
-          "</div>";
-        var row = document.getElementById("pfRow");
-        row.style.transform = "none";
-        var k = Math.min(1, (pfHead.clientWidth - 4) / row.scrollWidth);
-        row.style.transform = "scale(" + k.toFixed(3) + ")";
+        // Bandeau coulissant façon roue du réveil iPhone, à l'horizontale :
+        // une écriture au centre, en grand ; on glisse pour changer, la roue
+        // s'aimante sur une écriture. Le choix est retenu.
+        var items = [
+          '<span class="fracv"><span>' + nd.v + '</span><span class="bar"></span>' + slot + "</span>",
+          '<span class="n">' + nd.v + '<span class="op">/</span>' + slot + "</span>",
+          '<span class="n">' + nd.v + '<span class="op">÷</span>' + slot + "</span>",
+          '<span class="n">' + nd.v + '<span class="op">:</span>' + slot + "</span>",
+          '<span class="n">' + nd.v + '<span class="op">·</span>' + slot + '<sup class="op">−1</sup></span>',
+          '<span class="n">' + nd.v + '<span class="op">·</span><span class="fracv"><span>1</span><span class="bar"></span>' + slot + "</span></span>"
+        ];
+        pfHead.innerHTML = '<div class="pf-wheel" id="pfWheel">' +
+          items.map(function (h) { return '<div class="pf-item">' + h + "</div>"; }).join("") +
+          '</div><div class="pf-dots" id="pfDots">' + items.map(function () { return "<span></span>"; }).join("") + "</div>";
+        var wheel = document.getElementById("pfWheel");
+        var it = wheel.children[pfNotation];
+        if (it) wheel.scrollLeft = it.offsetLeft - (wheel.clientWidth - it.offsetWidth) / 2;
+        pfWheelStyle();
+        wheel.addEventListener("scroll", function () {
+          pfWheelStyle();
+          clearTimeout(pfWheelStyle._t);
+          pfWheelStyle._t = setTimeout(function () {
+            var c = pfWheelCenter();
+            if (c !== pfNotation) { pfNotation = c; SND.tick(); try { localStorage.setItem("pasapas_notation", String(c)); } catch (e) {} }
+          }, 120);
+        }, { passive: true });
+      }
+
+      var pfNotation = 0;
+      try { pfNotation = Math.min(5, Number(localStorage.getItem("pasapas_notation")) || 0); } catch (e) {}
+      function pfWheelCenter() {
+        var w = document.getElementById("pfWheel");
+        if (!w) return pfNotation;
+        var mid = w.scrollLeft + w.clientWidth / 2, best = 0, bd = Infinity;
+        Array.prototype.forEach.call(w.children, function (c, i) {
+          var d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
+          if (d < bd) { bd = d; best = i; }
+        });
+        return best;
+      }
+      // Effet de roue : plus une écriture s'éloigne du centre, plus elle
+      // rapetisse, s'estompe et pivote
+      function pfWheelStyle() {
+        var w = document.getElementById("pfWheel");
+        if (!w) return;
+        var mid = w.scrollLeft + w.clientWidth / 2;
+        Array.prototype.forEach.call(w.children, function (c) {
+          var d = (c.offsetLeft + c.offsetWidth / 2 - mid) / w.clientWidth;
+          var a = Math.min(1, Math.abs(d) * 1.6);
+          c.style.transform = "perspective(400px) rotateY(" + (-d * 55).toFixed(1) + "deg) scale(" + (1 - a * 0.35).toFixed(3) + ")";
+          c.style.opacity = (1 - a * 0.75).toFixed(3);
+        });
+        var cc = pfWheelCenter();
+        var dots = document.getElementById("pfDots");
+        if (dots) Array.prototype.forEach.call(dots.children, function (dd, i) { dd.classList.toggle("on", i === cc); });
       }
 
       var pfHeadHold = false;
@@ -4669,7 +4740,7 @@
       // Aucun glissement de page, aucun zoom (iOS ignore user-scalable=no
       // pour le pincement : on bloque aussi ses événements « gesture »).
       document.addEventListener("touchmove", function (e) {
-        if (e.target.closest && e.target.closest(".hist-list")) return;
+        if (e.target.closest && e.target.closest(".hist-list, .pf-wheel")) return;
         e.preventDefault();
       }, { passive: false });
       ["gesturestart", "gesturechange", "gestureend"].forEach(function (t) {
@@ -4685,6 +4756,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v48", text: "Premiers : les écritures de la division sont sur un bandeau coulissant, comme la roue du réveil iPhone à l'horizontale — une en grand au centre, on glisse pour choisir, elle s'aimante et le choix est retenu." },
         { v: "v47", text: "Premiers : sixième écriture de la division, avec le deux-points « : »." },
         { v: "v46", text: "Premiers : les cinq écritures de la division sur une seule ligne, reliées par « = ». La case du diviseur est un cercle, comme les boutons ; les diviseurs premiers sont pleins verts avec le chiffre en noir. On peut glisser un diviseur sur les écritures pour l'appliquer." },
         { v: "v45", text: "Premiers : l'explication est plus grande, écrite gros et aérée (règle, exemple ligne par ligne, verdict), au-dessus des écritures de la division." },
