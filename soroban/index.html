@@ -1642,11 +1642,13 @@
       // Un badge ne fait que des techniques déjà gagnées (choix de Pierre) ;
       // comme les niveaux se débloquent dans l'ordre, ça revient à dire
       // qu'il inclut tous les badges d'avant
+      // Un geste est un geste : dans 2 × 6, « ajoute 12 » est une addition
+      // directe, donc le bouton + la fait (demande de Pierre). On ne regarde
+      // que la technique du geste, pas l'opération dont il fait partie.
       function covers(lv, mv) {
         var i = LEVELS.indexOf(lv);
         if (TECH_ORDER.indexOf(mv.tech) > Math.min(i, TECH_ORDER.length - 1)) return false;
-        if (!badges[mv.tech]) return false;
-        return !mv.op || (LEVELS.indexOf(mv.op) <= i && !!badges[mv.op]);
+        return !!badges[mv.tech];
       }
 
       function buildBadgeBar() {
@@ -1864,6 +1866,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v18", text: "Les boutons font leurs gestes dans toutes les opérations : dans 2 × 6, le bouton + fait « ajoute 12 », car c'est une addition directe." },
         { v: "v17", text: "En-tête sur une seule ligne : flèche de retour à gauche, titre Soroban au centre, menu à droite. Niveaux rangés en grille régulière, 3 par ligne." },
         { v: "v16", text: "Design épuré : plus de cadre autour du boulier ; les perles sont pleines et cachent la tige qui passe dedans, même pendant qu'elles glissent ; leurs pointes gauche et droite sont arrondies." },
         { v: "v15", text: "Bac à sable : deux boutons « − tige » et « + tige » pour retirer ou ajouter une tige (à gauche), en gardant le nombre posé. Le choix est gardé d'une visite à l'autre." },
