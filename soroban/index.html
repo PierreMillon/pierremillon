@@ -197,24 +197,30 @@
     }
     svg.soroban * { touch-action: none; }
 
-    .frame, .beam, .rod {
+    /* Design épuré : plus de cadre, seulement les tiges, la barre du
+       milieu et les perles */
+    .beam, .rod {
       fill: none;
       stroke: var(--ink-soft);
       stroke-width: 2;
+      stroke-linecap: round;
     }
     .rod { stroke-width: 1.5; opacity: 0.7; }
     .beam { stroke: var(--ink); }
     .dot { fill: var(--accent); }
 
     .bead { cursor: grab; outline: none; }
-    .bead polygon {
+    /* Fond plein de la perle, couleur du fond d'écran : la tige passe
+       « dedans » et disparaît derrière elle, où qu'elle soit */
+    .bead .mask { fill: var(--bg); stroke: none; }
+    .bead .shape {
       fill: rgba(0, 0, 0, 0); /* peint, donc touchable, mais invisible */
       stroke: var(--ink-soft);
       stroke-width: 2;
       stroke-linejoin: round;
       transition: stroke 0.2s ease, fill 0.2s ease;
     }
-    .bead.on polygon {
+    .bead.on .shape {
       stroke: var(--accent);
       fill: var(--accent-soft);
       filter: url(#glow);
@@ -223,12 +229,12 @@
        doux qui monte et descend lentement. --breath (0 → 1) est piloté en
        JS : une animation CSS était coupée par « Réduire les animations »
        sur iPhone, et Pierre veut voir ce mouvement */
-    .bead.hint polygon {
+    .bead.hint .shape {
       stroke: rgba(242, 255, 248, calc(0.3 + 0.7 * var(--breath, 1)));
       stroke-width: 3.2;
       fill: rgba(200, 255, 225, calc(0.04 + 0.26 * var(--breath, 1)));
     }
-    .bead:focus-visible polygon { stroke: var(--accent); stroke-dasharray: 5 4; }
+    .bead:focus-visible .shape { stroke: var(--accent); stroke-dasharray: 5 4; }
     .digit {
       fill: var(--ink-soft);
       font-family: "IBM Plex Mono", ui-monospace, monospace;
@@ -434,7 +440,7 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .bead polygon { transition: none; }
+      .bead .shape { transition: none; }
     }
   </style>
 </head>
@@ -539,7 +545,10 @@
       function earthOff(i) { return BOTTOM - PAD - BEAD_H / 2 - (3 - i) * (BEAD_H + 2); }
 
       // Perle vue de profil : un losange aplati aux pointes coupées
-      var BEAD_POINTS = "-42,0 -15,-20 15,-20 42,0 15,20 -15,20";
+      // Pointes gauche et droite adoucies par un petit arrondi (courbe de
+      // Bézier sur ~8 unités de chaque côté de la pointe)
+      var BEAD_PATH = "M -35.6,-4.8 L -15,-20 L 15,-20 L 35.6,-4.8 Q 42,0 35.6,4.8 " +
+                      "L 15,20 L -15,20 L -35.6,4.8 Q -42,0 -35.6,-4.8 Z";
 
       // « Réduire les animations » (iOS) : la perle glisse quand même —
       // un mouvement continu, sans rebond — au lieu de sauter à sa place
@@ -705,7 +714,6 @@
           var cx0 = COL * r0 + COL / 2;
           el("line", { "class": "rod", x1: cx0, y1: TOP, x2: cx0, y2: BOTTOM }, svg);
         }
-        el("rect", { "class": "frame", x: 0, y: TOP, width: W, height: BOTTOM - TOP, rx: 6 }, svg);
         el("line", { "class": "beam", x1: 0, y1: BEAM, x2: W, y2: BEAM }, svg);
         // Repère sur la barre : unités, puis tous les trois rangs
         for (var p0 = 0; p0 < RODS; p0++) {
@@ -777,7 +785,8 @@
 
       function makeBead(x, rod, kind, idx) {
         var g = el("g", { "class": "bead", tabindex: "0" }, svg);
-        el("polygon", { points: BEAD_POINTS }, g);
+        el("path", { "class": "mask", d: BEAD_PATH }, g);
+        el("path", { "class": "shape", d: BEAD_PATH }, g);
         var b = { g: g, rod: rod, kind: kind, idx: idx, x: x, y: 0, v: 0, target: 0, held: false, base: 0, on: false, hint: false };
         allBeads.push(b);
         g.addEventListener("pointerdown", function (ev) { onDown(b, ev); });
@@ -1856,6 +1865,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v16", text: "Design épuré : plus de cadre autour du boulier ; les perles sont pleines et cachent la tige qui passe dedans, même pendant qu'elles glissent ; leurs pointes gauche et droite sont arrondies." },
         { v: "v15", text: "Bac à sable : deux boutons « − tige » et « + tige » pour retirer ou ajouter une tige (à gauche), en gardant le nombre posé. Le choix est gardé d'une visite à l'autre." },
         { v: "v14", text: "Entraînement libre retiré : le bac à sable joue ce rôle. Le bac à sable n'affiche plus que le nombre en gros ; le décompte sous le nombre (« 7 = 5 + 2 ») est retiré." },
         { v: "v13", text: "Le boulier s'adapte à l'exercice : il n'affiche que les tiges nécessaires (une seule pour 3 + 6, deux pour 7 + 4 = 11, etc.). Le bac à sable garde toutes les tiges. Son sans écho, une quinte plus grave." },
