@@ -2923,6 +2923,14 @@
             gameRun.counted = true;
             if (gameRun.faults === 0) progressDemo(demo.title);
           }
+          // Mode jeu : on enchaîne directement sur la question suivante,
+          // sans passer par la flèche (s'il y en a une juste après)
+          if (gameAuto) {
+            gameAuto = false;
+            if (gameMode && cur < demo.steps.length - 1) setTimeout(function () {
+              if (!busy && !choiceEl && DEMOS[demoIndex] === demo) gameChoice(cur + 1);
+            }, ms(500));
+          }
         });
       }
 
@@ -2997,6 +3005,7 @@
       // et montre la bonne.
       var gameMode = false;
       var gameRun = { demo: "", faults: 0, counted: true };
+      var gameAuto = false; // après une réponse, la question suivante vient seule
       try { gameMode = localStorage.getItem("pasapas_game") === "1"; } catch (e) {}
       var choiceEl = null;
 
@@ -3070,14 +3079,14 @@
             if (o.ok) {
               SND.ok();
               b.classList.add("good");
-              setTimeout(function () { closeChoice(); go(to); }, ms(350));
+              setTimeout(function () { closeChoice(); gameAuto = true; go(to); }, ms(350));
             } else {
               SND.bad();
               gameRun.faults++;
               b.classList.add("bad");
               b.animate([{ transform: "translateX(-6px)" }, { transform: "translateX(6px)" }, { transform: "none" }], { duration: ms(300) });
               choiceEl.querySelectorAll(".choice").forEach(function (c) { if (c !== b) c.classList.add("good"); });
-              setTimeout(function () { closeChoice(); go(to); }, ms(1400));
+              setTimeout(function () { closeChoice(); gameAuto = true; go(to); }, ms(1400));
             }
           });
           choiceEl.appendChild(b);
@@ -5008,6 +5017,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v63", text: "Mode jeu : après une réponse, la question suivante s'affiche d'elle-même, sans appuyer sur la flèche." },
         { v: "v62", text: "Cadre de dix pour les négatifs, plus clair et plus lent : chaque jeton jaune porte un « − » (il vaut −1), et une légende écrit le calcul sous le cadre, (−2) + (−1) = −(2 + 1) = −3." },
         { v: "v61", text: "Correctif : avec « Réduire les animations » activé sur l'iPhone, tout défilait 100 fois trop vite (le calcul mental comme un film en accéléré). Maintenant le mouvement est supprimé mais le rythme de lecture reste normal." },
         { v: "v60", text: "Ensembles : l'étoile de ℕ* est en exposant, en haut à droite." },
