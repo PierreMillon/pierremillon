@@ -790,10 +790,41 @@
     .sg-dot.drag { z-index: 5; transform: scale(1.15); }
     .sg-dot.out { opacity: 0.35; border-style: dashed; }
 
-    .sg-b {
+    .sg-actions { align-self: stretch; display: flex; gap: 0.5rem; justify-content: flex-start; }
+
+    .sg-act {
+      font-family: inherit;
+      font-size: 0.7rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      padding: 0.45rem 0.8rem;
       cursor: pointer;
-      border-bottom: 2px dotted var(--ink-soft);
     }
+
+    .sg-act:hover { color: var(--accent); border-color: var(--accent); }
+
+    .sg-rules {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 3rem;
+      z-index: 12;
+      padding: 0.8rem 1rem;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      color: var(--ink);
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      border-radius: 12px;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+    }
+
+    .sg-rules p { margin: 0.25rem 0; }
+    #sg { position: relative; }
 
     .sg-streak { display: flex; gap: 0.4rem; }
 
@@ -1138,6 +1169,11 @@
       <div class="sg-eq" id="sgEq"></div>
       <div class="sg-board" id="sgBoard"></div>
       <div class="sg-streak" id="sgStreak"><span></span><span></span><span></span></div>
+      <div class="sg-actions">
+        <button class="sg-act" id="sgSolve" data-tr="Voir la solution">Voir la solution</button>
+        <button class="sg-act" id="sgRules" data-tr="Règles">Règles</button>
+      </div>
+      <div class="sg-rules" id="sgRulesBox" hidden></div>
       <p class="sg-msg" id="sgMsg"></p>
     </section>
 
@@ -1711,7 +1747,7 @@
         "« On passe le 2 de l'autre côté en divisant. »": "“Move the 2 to the other side by dividing.”",
         "« (a + b)² = a² + 2ab + b² »": "“(a + b)² = a² + 2ab + b²”",
         "départ": "start", "résultat": "result", "sauter des étapes": "skip steps", "pas à pas": "step by step",
-        "Historique": "History", "Fiche des règles": "Rules sheet", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
+        "Historique": "History", "Fiche des règles": "Rules sheet", "Voir la solution": "Show solution", "Règles": "Rules", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
       };
       function tr(t) { return LANG === "en" && EN[t] ? EN[t] : t; }
 
@@ -2904,8 +2940,7 @@
         // Deux cadres + réserve ≈ 5 cases de haut : tout doit tenir dans
         // l'écran, sans jamais défiler
         SG_CELL = Math.max(20, Math.min(44, (sgBoard.clientHeight - 50) / 5, (sgBoard.clientWidth - 10) / 5));
-        sgEq.innerHTML = a + ' + <span class="sg-b" id="sgB">' + b + "</span>";
-        document.getElementById("sgB").addEventListener("click", sgAutoFill);
+        sgEq.textContent = a + " + " + b;
         sgMsg.textContent = "";
         nextBtn.disabled = true;
         nextBtn.textContent = "→";
@@ -3105,8 +3140,7 @@
         sgState = { op: "-", a: a, b: b, u: u, filled: {}, removed: 0, placed: 0, mistake: false, done: false };
         sgBoard.innerHTML = "";
         SG_CELL = Math.max(20, Math.min(44, (sgBoard.clientHeight - 50) / 5, (sgBoard.clientWidth - 10) / 5));
-        sgEq.innerHTML = a + ' − <span class="sg-b" id="sgB">' + b + "</span>";
-        document.getElementById("sgB").addEventListener("click", sgAutoRemove);
+        sgEq.textContent = a + " − " + b;
         sgMsg.textContent = "";
         nextBtn.disabled = true;
         nextBtn.textContent = "→";
@@ -3224,6 +3258,32 @@
         ];
         sgFinish(seq);
       }
+
+      // Boutons « Voir la solution » et « Règles », calés à gauche
+      document.getElementById("sgSolve").addEventListener("click", function () {
+        if (!sgState || sgState.done) return;
+        if (sgState.op === "-") sgAutoRemove(); else sgAutoFill();
+      });
+      var sgRulesBox = document.getElementById("sgRulesBox");
+      var SG_RULES = {
+        fr: ["<b>Addition</b> — pose les jetons du 2e nombre dans les cases (appui bref ou glisser). Remplis d'abord la 1re dizaine, puis la 2e : c'est « faire 10 ».",
+             "<b>Soustraction</b> — retire les jetons de la dizaine pleine, pas les jetons isolés : 13 − 5 = (10 − 5) + 3.",
+             "Un jeton posé se retire d'un appui. 3 réussites de suite sans erreur : badge ✦ 10.",
+             "<b>Voir la solution</b> : la manche est jouée pour toi et ne compte pas."],
+        en: ["<b>Addition</b> — place the counters of the 2nd number in the boxes (tap or drag). Fill the first ten, then the second: “make 10”.",
+             "<b>Subtraction</b> — take counters from the full ten, not the loose ones: 13 − 5 = (10 − 5) + 3.",
+             "Tap a placed counter to remove it. 3 wins in a row without a mistake: ✦ 10 badge.",
+             "<b>Show solution</b>: the round is played for you and does not count."]
+      };
+      document.getElementById("sgRules").addEventListener("click", function (e) {
+        e.stopPropagation();
+        if (!sgRulesBox.hidden) { sgRulesBox.hidden = true; return; }
+        sgRulesBox.innerHTML = SG_RULES[LANG].map(function (t) { return "<p>" + t + "</p>"; }).join("");
+        sgRulesBox.hidden = false;
+      });
+      document.addEventListener("pointerdown", function (e) {
+        if (!sgRulesBox.hidden && !e.target.closest("#sgRulesBox, #sgRules")) sgRulesBox.hidden = true;
+      });
 
       function sgWin() {
         sgState.done = true;
@@ -4237,6 +4297,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v33", text: "Singapour : le nombre n'est plus cliquable (c'était caché). À la place, deux boutons calés à gauche : « Voir la solution » (la manche est jouée pour toi, ne compte pas) et « Règles »." },
         { v: "v32", text: "Singapour : à la fin d'une manche, les jetons restants se regroupent dans un seul cadre, par colonnes de 2 (4 = un carré 2 × 2) ; les jetons retirés et le cadre vide s'effacent." },
         { v: "v31", text: "Accueil : la carte des ensembles ne bouge plus quand on change d'ensemble. Au-delà de ℂ, en teaser verrouillé : ℍ (quaternions, dim 4), 𝕆 (octonions, dim 8), 𝕊 (sédénions, dim 16), 𝕋 (trigintaduonions, dim 32) — chacun avec la propriété qu'il perd." },
         { v: "v30", text: "Nouveau chapitre Fusion (ℝ) : les termes sont des bulles qu'on déplace au doigt. Lâchées l'une sur l'autre, elles fusionnent si une règle le permet : a + a → 2·a, 2·a + 2·b → 2·(a + b), 3·x − 3·x → disparaît, fractions de même dénominateur. Pouvoir « 1 → c/c » (gagné avec le chapitre Fraction). 8 niveaux, ↺ pour recommencer." },
