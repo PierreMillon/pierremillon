@@ -101,6 +101,12 @@ Tri : priorité décroissante.
   vers le haut, attaque 25 ms, extinction lente, léger écho), carillon
   de réussite plus lent
 
+- [x] v13 — Boulier adapté à l'exercice (seulement les tiges utiles : 1 pour
+  5 + 4, 2 pour 7 + 5…) ; bac à sable avec toutes les tiges. Son sans
+  écho, une quinte plus grave. Ordre du complément à 10 vérifié : méthode
+  japonaise « on retire le complément, puis on ajoute 10 » — déjà l'ordre
+  du plan, inchangé
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
