@@ -141,6 +141,9 @@ Tri : priorité décroissante.
   virgule) par la méthode des impairs ; écriture √5776 sans espace ;
   puissances de nombres à virgule au dernier palier (1,3³ = 2,197)
 
+- [x] v22 — Tables : cases libres bien visibles (contour franc, léger fond),
+  cases remplies en vert vif lumineux (pas de forme pleine)
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?

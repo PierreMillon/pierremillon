@@ -487,8 +487,10 @@
       font-family: inherit;
       font-size: calc(var(--cell) * 0.38);
       color: var(--ink);
-      background: transparent;
-      border: 1px solid var(--hairline);
+      /* Case libre bien visible (retour de Pierre) : contour franc et
+         léger fond, pas un trait presque noir sur noir */
+      background: rgba(61, 224, 138, 0.06);
+      border: 1.5px solid var(--ink-soft);
       border-radius: 6px;
       padding: 0;
       display: flex;
@@ -497,12 +499,14 @@
       cursor: pointer;
       font-variant-numeric: tabular-nums;
     }
-    .tcell.head { border: none; color: var(--accent); cursor: default; font-weight: 500; }
+    .tcell.head { border: none; background: transparent; color: var(--accent); cursor: default; font-weight: 500; }
     .tcell.off { visibility: hidden; }
     .tcell.done {
       color: var(--accent);
-      border-color: var(--ink-soft);
-      background: var(--accent-soft);
+      font-weight: 600;
+      border-color: var(--accent);
+      background: rgba(61, 224, 138, 0.24);
+      text-shadow: 0 0 8px rgba(61, 224, 138, 0.5);
       cursor: default;
     }
     /* Case à écrire : elle respire, comme les perles à bouger */
@@ -2306,6 +2310,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v22", text: "Tables : cases libres bien plus visibles (contour franc, léger fond) ; cases remplies en vert vif, contour et chiffre lumineux." },
         { v: "v21", text: "Racines précises : plus que des racines qui ne tombent pas juste (√5, √13…), à 1 puis 2 chiffres après la virgule, par la méthode des impairs (on retire 1, 3, 5… : le nombre de retraits est la racine) — aucune table à connaître. Écriture sans ambiguïté (√5776, plus « √5 776 »). Puissances de nombres à virgule au dernier palier (1,3³ : on calcule 13³ = 2197, puis on remet la virgule → 2,197 ; × 13 = × 10 + × 3)." },
         { v: "v20", text: "Nouveau premier chapitre, obligatoire : les tables de multiplication. Une grille 2 à 9, coupée en deux par la diagonale (la multiplication est symétrique) : 36 cases. Deux exercices au choix : trouver la case qui fait un nombre, ou écrire le résultat d'une case au clavier. Chaque bonne réponse remplit la case ; le badge se gagne en remplissant les deux grilles sans erreur, et ouvre le boulier. Boutons du bas centrés, sur deux lignes si besoin." },
         { v: "v19", text: "Multiplications et puissances en additions répétées, avec une consigne claire : 8 × 2 → « ajoute 8 (1/2) », puis « ajoute 8 (2/2) ». Plus besoin de connaître la table par cœur, et les boutons d'addition peuvent faire ces additions tout seuls. Division en soustractions répétées (retire 3 → quotient 1, 2, 3…, par dizaines d'abord pour les grands nombres) : la consigne affiche le quotient qui grandit, et la réussite explique que le boulier montre le reste (le résultat, c'est le nombre de fois qu'on a retiré le diviseur). Pareil pour les racines." },
