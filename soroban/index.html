@@ -576,6 +576,15 @@
     <button class="btn quiet" id="resetBtn" data-t="reset">Remettre à zéro</button>
   </div>
 
+  <!-- Accueil du chapitre des tables : pourquoi on commence ici -->
+  <div class="overlay" id="tIntro" hidden>
+    <div class="big" id="tIntroTitle"></div>
+    <p id="tIntroText"></p>
+    <p id="tIntroSand"></p>
+    <button class="btn" id="tIntroGo"></button>
+    <button class="btn quiet" id="tIntroSandBtn"></button>
+  </div>
+
   <div class="overlay win" id="winOverlay" hidden>
     <div class="big" id="winTitle"></div>
     <div class="answer" id="winAnswer"></div>
@@ -697,6 +706,10 @@
             powPose: "pose {m} (= {x} sans la virgule)"
           },
           rest: "reste {r}",
+          tIntroTitle: "D'abord, les tables",
+          tIntroText: "C'est normal d'arriver ici : avant le boulier, il faut maîtriser les tables de multiplication. Remplis les deux grilles («\u00a0Trouver la case\u00a0» et «\u00a0Écrire le résultat\u00a0») sans aucune erreur, et le boulier s'ouvre.",
+          tIntroSand: "Tu veux juste manipuler le boulier, sans exercice ? Le bac à sable est là pour ça (aussi dans le menu ☰).",
+          tIntroGo: "Commencer les tables", tIntroSandBtn: "Aller au bac à sable",
           tFind: "Trouver la case", tWrite: "Écrire le résultat", tRestart: "Recommencer la grille",
           tFindTask: "Touche une case qui fait", tWriteTask: "{a} × {b} =",
           tYes: "Oui : {a} × {b} = {p}", tNo: "Non : {a} × {b} = {p}",
@@ -744,6 +757,10 @@
             powPose: "set {m} (= {x} without the point)"
           },
           rest: "remainder {r}",
+          tIntroTitle: "Tables first",
+          tIntroText: "It's normal to land here: before the abacus, you need to master the multiplication tables. Fill both grids (“Find the cell” and “Write the answer”) without a single mistake, and the abacus opens.",
+          tIntroSand: "Just want to play with the abacus, no exercises? That's what the sandbox is for (also in the ☰ menu).",
+          tIntroGo: "Start the tables", tIntroSandBtn: "Go to the sandbox",
           tFind: "Find the cell", tWrite: "Write the answer", tRestart: "Restart the grid",
           tFindTask: "Tap a cell that makes", tWriteTask: "{a} × {b} =",
           tYes: "Yes: {a} × {b} = {p}", tNo: "No: {a} × {b} = {p}",
@@ -1950,7 +1967,29 @@
       var keypad = document.getElementById("keypad");
       var tFlash = null;
 
+      // Message d'accueil : une fois par ouverture de l'appli, tant que le
+      // badge des tables n'est pas gagné
+      var tIntroShown = false;
+      function showTablesIntro() {
+        if (tIntroShown || badges.tables) return;
+        tIntroShown = true;
+        document.getElementById("tIntroTitle").textContent = t("tIntroTitle");
+        document.getElementById("tIntroText").textContent = t("tIntroText");
+        document.getElementById("tIntroSand").textContent = t("tIntroSand");
+        document.getElementById("tIntroGo").textContent = t("tIntroGo");
+        document.getElementById("tIntroSandBtn").textContent = t("tIntroSandBtn");
+        document.getElementById("tIntro").hidden = false;
+      }
+      document.getElementById("tIntroGo").addEventListener("click", function () {
+        document.getElementById("tIntro").hidden = true;
+      });
+      document.getElementById("tIntroSandBtn").addEventListener("click", function () {
+        document.getElementById("tIntro").hidden = true;
+        setMode("free");
+      });
+
       function enterTables() {
+        showTablesIntro();
         ex = null;
         setHints(null);
         stageEl.classList.add("tables-on");
@@ -2043,7 +2082,7 @@
         // ou ce qu'on tape au clavier
         if (TB.target === null) task.appendChild(document.createTextNode(t("tFull", { d: doneCount(m) })));
         else {
-          task.appendChild(document.createTextNode(m === "find" ? t("tFindTask") : t("tWriteTask", { a: kA(TB.target), b: kB(TB.target) })));
+          task.appendChild(document.createTextNode((m === "find" ? t("tFindTask") : t("tWriteTask", { a: kA(TB.target), b: kB(TB.target) })) + " "));
           var num = document.createElement("span");
           num.className = "tnum";
           num.textContent = m === "find" ? String(TB.target) : (TB.input || "?");
@@ -2310,6 +2349,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v23", text: "Message d'accueil sur les tables : c'est normal d'arriver là, il faut d'abord les maîtriser (les deux grilles sans erreur) pour ouvrir le boulier ; pour juste manipuler, bouton direct vers le bac à sable." },
         { v: "v22", text: "Tables : cases libres bien plus visibles (contour franc, léger fond) ; cases remplies en vert vif, contour et chiffre lumineux." },
         { v: "v21", text: "Racines précises : plus que des racines qui ne tombent pas juste (√5, √13…), à 1 puis 2 chiffres après la virgule, par la méthode des impairs (on retire 1, 3, 5… : le nombre de retraits est la racine) — aucune table à connaître. Écriture sans ambiguïté (√5776, plus « √5 776 »). Puissances de nombres à virgule au dernier palier (1,3³ : on calcule 13³ = 2197, puis on remet la virgule → 2,197 ; × 13 = × 10 + × 3)." },
         { v: "v20", text: "Nouveau premier chapitre, obligatoire : les tables de multiplication. Une grille 2 à 9, coupée en deux par la diagonale (la multiplication est symétrique) : 36 cases. Deux exercices au choix : trouver la case qui fait un nombre, ou écrire le résultat d'une case au clavier. Chaque bonne réponse remplit la case ; le badge se gagne en remplissant les deux grilles sans erreur, et ouvre le boulier. Boutons du bas centrés, sur deux lignes si besoin." },
