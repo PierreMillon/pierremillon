@@ -121,6 +121,10 @@ Tri : priorité décroissante.
 - [x] v17 — En-tête sur une ligne (← | Soroban | ☰ Menu) ; niveaux en
   grille régulière de 3 par ligne
 
+- [x] v18 — Les boutons font leurs gestes dans toutes les opérations (le
+  bouton + fait « ajoute 16 » dans 4 × 4) : seule la technique du geste
+  compte, plus l'opération dont il fait partie
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
