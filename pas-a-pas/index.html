@@ -1163,8 +1163,12 @@
       color: var(--ink);
       background: transparent;
       border: 1px solid var(--hairline);
-      border-radius: 999px;
-      height: 2.4rem;
+      /* Cercle parfait : même largeur et même hauteur */
+      border-radius: 50%;
+      width: min(100%, 2.8rem);
+      aspect-ratio: 1 / 1;
+      height: auto;
+      justify-self: center;
       padding: 0;
       cursor: pointer;
       border-color: var(--accent);
@@ -4494,6 +4498,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v40", text: "Premiers : les boutons des diviseurs sont des cercles parfaits." },
         { v: "v39", text: "Premiers : chaque nombre de l'arbre est une bulle ronde, le nombre bien centré, les traits s'arrêtent au bord des bulles. Quand un diviseur marche, la bulle devient d'abord le produit « 5 · 11 » en s'étirant, puis se scinde en deux bulles qui rebondissent à leur place." },
         { v: "v38", text: "Premiers : un petit titre au-dessus des diviseurs montre les trois écritures de la division (÷, /, barre de fraction) ; les boutons ne portent plus que le nombre. Division par 0 : on rappelle qu'elle devient possible dans ℝ ∪ {∞} ou ℂ ∪ {∞} (x ÷ 0 = ∞, x ≠ 0)." },
         { v: "v37", text: "Premiers : explications en appui long réduites à l'essentiel (÷2 : se termine par un chiffre pair ; ÷3 : somme des chiffres dans la table de 3…)." },
