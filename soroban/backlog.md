@@ -144,6 +144,10 @@ Tri : priorité décroissante.
 - [x] v22 — Tables : cases libres bien visibles (contour franc, léger fond),
   cases remplies en vert vif lumineux (pas de forme pleine)
 
+- [x] v23 — Message d'accueil sur les tables (une fois par ouverture, tant
+  que le badge n'est pas gagné) : pourquoi on commence là, et bouton
+  direct vers le bac à sable pour manipuler sans exercice
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
