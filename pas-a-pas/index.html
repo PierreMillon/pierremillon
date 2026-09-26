@@ -1128,8 +1128,10 @@
       color: var(--ink);
     }
 
-    .pf-head .row { display: flex; align-items: center; justify-content: center; gap: 1.8rem; }
-    .pf-head .n { display: inline-flex; align-items: center; gap: 0.35rem; }
+    .pf-head .row { display: flex; align-items: center; justify-content: center; gap: 0.45rem; white-space: nowrap; transform-origin: center; }
+    .pf-head .n { display: inline-flex; align-items: center; gap: 0.2rem; }
+    .pf-head .eqs { color: var(--ink-soft); margin: 0 0.1rem; }
+    .pf-head.drop { outline: 1.5px dashed var(--accent); outline-offset: 6px; border-radius: 10px; }
     .pf-head sup { font-size: 0.65em; margin-left: -0.15rem; align-self: flex-start; }
     .pf-head .op { color: var(--ink-soft); }
 
@@ -1142,10 +1144,12 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 1.9em;
-      height: 1.5em;
-      padding: 0 0.2em;
-      border-radius: 6px;
+      width: 1.75em;
+      height: 1.75em;
+      padding: 0;
+      font-size: 0.9em;
+      font-weight: 500;
+      border-radius: 50%;
       color: var(--bg);
       background: var(--ink);
       animation: phosphor 2.6s ease-out infinite;
@@ -1236,6 +1240,16 @@
       touch-action: none;
       -webkit-touch-callout: none;
     }
+
+    .pf-primes button:not(.dim) {
+      color: var(--bg);
+      background: var(--ink);
+      border-color: var(--ink);
+      font-weight: 500;
+      box-shadow: 0 0 10px rgba(61, 224, 138, 0.35);
+    }
+
+    .pf-primes button.drag-clone { position: fixed; z-index: 30; pointer-events: none; transform: translate(-50%, -50%) scale(1.15); width: 2.8rem; }
 
     .pf-primes button.dim {
       color: var(--ink-soft);
@@ -3616,12 +3630,15 @@
         var prime = PRIMES.indexOf(d) >= 0;
         b.textContent = String(d);
         if (!prime) b.className = "dim";
-        var timer = null, longDone = false;
+        var timer = null, longDone = false, drag = null;
         // Appui long : la règle de divisibilité dans une fenêtre flottante.
         // Appui bref : divise (premiers) ou explique (les autres).
+        // Glisser : on dépose le diviseur sur les écritures de la division.
         b.addEventListener("pointerdown", function (e) {
           e.preventDefault();
           longDone = false;
+          drag = { x: e.clientX, y: e.clientY, clone: null };
+          try { b.setPointerCapture(e.pointerId); } catch (err) {}
           pfHideTip();
           timer = setTimeout(function () {
             longDone = true;
@@ -3633,8 +3650,40 @@
         function release() {
           if (timer) { clearTimeout(timer); timer = null; }
         }
-        b.addEventListener("pointerup", function () {
+        function overHead(x, y) {
+          var r = pfHead.getBoundingClientRect();
+          return x >= r.left && x <= r.right && y >= r.top - 20 && y <= r.bottom + 20;
+        }
+        b.addEventListener("pointermove", function (e) {
+          if (!drag || longDone) return;
+          if (!drag.clone && Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 10) return;
           release();
+          if (!drag.clone) {
+            drag.clone = b.cloneNode(true);
+            drag.clone.classList.add("drag-clone");
+            pfPrimes.appendChild(drag.clone);
+          }
+          drag.clone.style.left = e.clientX + "px";
+          drag.clone.style.top = e.clientY + "px";
+          pfHead.classList.toggle("drop", overHead(e.clientX, e.clientY));
+        });
+        b.addEventListener("pointerup", function (e) {
+          release();
+          var dr = drag;
+          drag = null;
+          if (dr && dr.clone) {
+            dr.clone.remove();
+            pfHead.classList.remove("drop");
+            if (overHead(e.clientX, e.clientY)) {
+              if (prime || b.classList.contains("extra")) pfDivide(d, b);
+              else {
+                var cur3 = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel].v : null;
+                SND.bad();
+                pfShowTip(d, b, cur3 ? ruleOn(cur3, d) : null);
+              }
+            }
+            return;
+          }
           if (longDone) return;
           if (prime) pfDivide(d, b);
           else {
@@ -3642,8 +3691,7 @@
             pfShowTip(d, b, cur2 ? ruleOn(cur2, d) : null);
           }
         });
-        b.addEventListener("pointerleave", release);
-        b.addEventListener("pointercancel", release);
+        b.addEventListener("pointercancel", function () { release(); if (drag && drag.clone) drag.clone.remove(); drag = null; pfHead.classList.remove("drop"); });
         b.addEventListener("contextmenu", function (e) { e.preventDefault(); });
         pfPrimes.appendChild(b);
       })(dv);
@@ -3750,17 +3798,24 @@
         var nd = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel] : null;
         if (!nd) { pfHead.innerHTML = ""; return; }
         var slot = '<span class="pf-slot' + (fill !== undefined ? (ok ? " ok" : " no") : "") + '">' + (fill !== undefined ? fill : "") + "</span>";
-        // Cinq écritures de la même division : fraction, /, ÷, puissance −1,
-        // et multiplication par 1 sur le diviseur
+        // Six écritures de la même division : fraction, /, ÷, :, puissance
+        // −1, et multiplication par 1 sur le diviseur
+        // Toutes sur une seule ligne, reliées par « = » (même division),
+        // rétrécie si besoin pour tenir dans la largeur
+        var eq = ' <span class="eqs">=</span> ';
         pfHead.innerHTML =
-          '<div class="row">' +
-          '<span class="fracv"><span>' + nd.v + '</span><span class="bar"></span>' + slot + "</span>" +
-          '<span class="n">' + nd.v + ' <span class="op">/</span> ' + slot + "</span>" +
-          '<span class="n">' + nd.v + ' <span class="op">÷</span> ' + slot + "</span>" +
-          "</div><div class=\"row\">" +
-          '<span class="n">' + nd.v + ' <span class="op">·</span> ' + slot + '<sup class="op">−1</sup></span>' +
-          '<span class="n">' + nd.v + ' <span class="op">·</span> <span class="fracv"><span>1</span><span class="bar"></span>' + slot + "</span></span>" +
+          '<div class="row" id="pfRow">' +
+          '<span class="fracv"><span>' + nd.v + '</span><span class="bar"></span>' + slot + "</span>" + eq +
+          '<span class="n">' + nd.v + '<span class="op">/</span>' + slot + "</span>" + eq +
+          '<span class="n">' + nd.v + '<span class="op">÷</span>' + slot + "</span>" + eq +
+          '<span class="n">' + nd.v + '<span class="op">:</span>' + slot + "</span>" + eq +
+          '<span class="n">' + nd.v + '<span class="op">·</span>' + slot + '<sup class="op">−1</sup></span>' + eq +
+          '<span class="n">' + nd.v + '<span class="op">·</span><span class="fracv"><span>1</span><span class="bar"></span>' + slot + "</span></span>" +
           "</div>";
+        var row = document.getElementById("pfRow");
+        row.style.transform = "none";
+        var k = Math.min(1, (pfHead.clientWidth - 4) / row.scrollWidth);
+        row.style.transform = "scale(" + k.toFixed(3) + ")";
       }
 
       var pfHeadHold = false;
@@ -4630,6 +4685,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v47", text: "Premiers : sixième écriture de la division, avec le deux-points « : »." },
+        { v: "v46", text: "Premiers : les cinq écritures de la division sur une seule ligne, reliées par « = ». La case du diviseur est un cercle, comme les boutons ; les diviseurs premiers sont pleins verts avec le chiffre en noir. On peut glisser un diviseur sur les écritures pour l'appliquer." },
         { v: "v45", text: "Premiers : l'explication est plus grande, écrite gros et aérée (règle, exemple ligne par ligne, verdict), au-dessus des écritures de la division." },
         { v: "v44", text: "Premiers : la case du diviseur est une zone pleine qui luit et s'éteint lentement, comme un écran d'oscilloscope. L'explication est un panneau clair et aéré : la règle en haut, puis l'exemple sur le nombre de l'exercice, une étape par ligne, puis le verdict." },
         { v: "v43", text: "Premiers : l'appui long sur un diviseur applique la règle au nombre de l'exercice (98 et 7 : 9 − 2 × 8 = −7, dans la table de 7 ✓ → 98 = 7 × 14), répétée si le nombre est grand, avec la division écrite à la fin." },
