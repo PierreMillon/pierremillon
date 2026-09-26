@@ -926,6 +926,41 @@
     .univ button:disabled { opacity: 0.3; }
     .tabs { display: none !important; }
 
+    /* Chapitre Pascal : triangle construit sous nos yeux, exploré au doigt */
+    .pas-info { min-height: 5.4rem; display: flex; flex-direction: column; align-items: center; gap: 0.35rem; text-align: center; }
+    .pas-info .l1 { font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+    .pas-info .l2 { font-size: 0.85rem; color: var(--ink-soft); }
+    .pas-info .l3 { font-size: 0.8rem; color: var(--ink-soft); }
+    .pas-info .hot { color: var(--accent); }
+    .pas-info .sym { color: var(--sign); }
+
+    .binom { display: inline-flex; align-items: center; }
+    .binom .par { font-size: 2.1em; font-weight: 300; line-height: 1; }
+    .binom .stk { display: inline-flex; flex-direction: column; align-items: center; line-height: 1.05; font-size: 0.85em; }
+
+    .pas-board { position: relative; flex: 1; min-height: 0; width: 100%; touch-action: none; }
+
+    .pas-cell {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 1.5px solid var(--ink-soft);
+      background: radial-gradient(circle at 35% 30%, rgba(109, 255, 176, 0.12), transparent 70%);
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      color: var(--ink);
+      pointer-events: none;
+      transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    .pas-cell.sel { border-color: var(--accent); background: var(--accent); color: var(--bg); box-shadow: 0 0 14px rgba(109, 255, 176, 0.6); }
+    .pas-cell.par { border-color: var(--accent); background: var(--accent-soft); }
+    .pas-cell.sym { border-color: var(--sign); color: var(--sign); background: rgba(255, 209, 102, 0.1); }
+    .pas-ghost { position: absolute; transform: translate(-50%, -50%); color: var(--accent); font-weight: 500; pointer-events: none; }
+
     /* Chapitre Fusion : on déplace des bulles, elles fusionnent */
     .fus-goal { font-size: 0.8rem; letter-spacing: 0.08em; color: var(--ink-soft); text-align: center; }
     .fus-goal b { color: var(--ink); font-weight: 500; font-size: 1.1rem; letter-spacing: 0; }
@@ -1387,6 +1422,12 @@
       <p class="pu-desc" id="puDesc"></p>
     </div>
 
+    <section class="sg" id="pas" hidden>
+      <div class="pas-info" id="pasInfo"></div>
+      <div class="pas-board" id="pasBoard"></div>
+      <div class="sg-actions"><button class="sg-act" id="pasBuild" data-tr="Construire">Construire</button></div>
+    </section>
+
     <section class="sg" id="fus" hidden>
       <div class="fus-goal" id="fusGoal"></div>
       <div class="fus-board" id="fusBoard"></div>
@@ -1462,6 +1503,7 @@
         { title: "Solutions", custom: "sol", steps: [{ expr: [] }] },
         { title: "Calcul", custom: "calc", steps: [{ expr: [] }] },
         { title: "Fusion", custom: "fus", set: "R", steps: [{ expr: [] }] },
+        { title: "Pascal", custom: "pas", set: "R", steps: [{ expr: [] }] },
         {
           title: "−( … )",
           split: true,
@@ -1942,7 +1984,7 @@
         "« On passe le 2 de l'autre côté en divisant. »": "“Move the 2 to the other side by dividing.”",
         "« (a + b)² = a² + 2ab + b² »": "“(a + b)² = a² + 2ab + b²”",
         "départ": "start", "résultat": "result", "sauter des étapes": "skip steps", "pas à pas": "step by step",
-        "Historique": "History", "Fiche des règles": "Rules sheet", "est premier": "is prime", "Voir la solution": "Show solution", "Règles": "Rules", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
+        "Historique": "History", "Fiche des règles": "Rules sheet", "est premier": "is prime", "Construire": "Build", "Voir la solution": "Show solution", "Règles": "Rules", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
       };
       function tr(t) { return LANG === "en" && EN[t] ? EN[t] : t; }
 
@@ -2828,6 +2870,7 @@
           if (DEMOS[demoIndex].custom === "pf") { if (pfState && pfState.ready) pfStart(); return; }
           if (DEMOS[demoIndex].custom === "ens") { if (ensState && ensState.ready) ensStart(); return; }
           if (DEMOS[demoIndex].custom === "calc") { calcStart(); return; }
+          if (DEMOS[demoIndex].custom === "pas") { pasStart(); return; }
           if (DEMOS[demoIndex].custom === "fus") { if (fus.won) { fus.level = (fus.level + 1) % FUS_LEVELS.length; fusStart(); } return; }
           if (DEMOS[demoIndex].custom === "sol") { solIndex = (solIndex + 1) % SOL.length; solRender(false); return; }
           if (sgState && sgState.ready) sgStart();
@@ -2988,6 +3031,7 @@
 
       function prev() {
         closeChoice();
+        if (DEMOS[demoIndex].custom === "pf") { pfUndo(); return; }
         if (DEMOS[demoIndex].custom === "fus") { fusStart(); return; }
         var demo = DEMOS[demoIndex];
         if (demo.custom) return;
@@ -3021,6 +3065,7 @@
         solEl.hidden = custom !== "sol";
         calcEl.hidden = custom !== "calc";
         fusEl.hidden = custom !== "fus";
+        pasEl.hidden = custom !== "pas";
         if (custom !== "calc") calcRun++;
         stageWrap.hidden = !!custom;
         document.getElementById("controls").hidden = false;
@@ -3032,6 +3077,7 @@
         if (custom === "sol") { solStart(); return; }
         if (custom === "calc") { calcStart(); return; }
         if (custom === "fus") { fusStart(); return; }
+        if (custom === "pas") { pasStart(); return; }
         buildDots(DEMOS[i]);
         build(DEMOS[i].steps[0]);
         refreshUi();
@@ -3689,6 +3735,7 @@
           e.preventDefault();
           longDone = false;
           drag = { x: e.clientX, y: e.clientY, clone: null };
+          if (pfHeadLast) { pfHeadLast = null; pfUpdateHead(); }
           try { b.setPointerCapture(e.pointerId); } catch (err) {}
           pfHideTip();
           timer = setTimeout(function () {
@@ -3762,7 +3809,36 @@
         return n;
       }
 
+      // Pile des étapes, pour la flèche ← (revenir en arrière)
+      var pfHist = [];
+      function pfSnap() {
+        pfHist.push({
+          nodes: pfState.nodes.map(function (n) { return { v: n.v, parent: n.parent, depth: n.depth, side: n.side, ok: n.ok }; }),
+          sel: pfState.sel, mistake: pfState.mistake
+        });
+        prevBtn.disabled = false;
+      }
+      function pfUndo() {
+        if (!pfState || !pfHist.length) return;
+        var h = pfHist.pop();
+        pfState.nodes = h.nodes;
+        pfState.sel = h.sel;
+        pfState.mistake = h.mistake;
+        pfState.ready = false;
+        pfHeadLast = null;
+        pfEqMsg = false;
+        pfEq.style.color = "";
+        nextBtn.disabled = true;
+        prevBtn.disabled = !pfHist.length;
+        SND.tick();
+        pfLayout();
+      }
+
       function pfStart(forced) {
+        pfHeadLast = null;
+        pfHist = [];
+        prevBtn.style.visibility = "";
+        prevBtn.disabled = true;
         var n = forced || pfPick();
         pfState = { n: n, nodes: [{ v: n, parent: -1, depth: 0, side: 0 }], sel: 0, ready: false };
         pfEq.textContent = String(n);
@@ -3873,13 +3949,19 @@
         var nd = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel] : null;
         pfPrimes.querySelectorAll("button").forEach(function (b) {
           var d = Number(b.textContent);
-          b.classList.toggle("can", !!nd && d > 1 && isPrime(d) && nd.v % d === 0 && d !== nd.v);
+          // (un premier divisé par lui-même compte : 13 ÷ 13 reconnaît 13)
+          b.classList.toggle("can", !!nd && d > 1 && isPrime(d) && nd.v % d === 0);
         });
       }
 
+      // pfHeadLast : la dernière division tentée (nombre, diviseur, juste
+      // ou non). Elle reste affichée jusqu'à la prochaine action — la zone
+      // n'est jamais vidée d'un coup.
+      var pfHeadLast = null;
       function pfUpdateHead(fill, ok) {
         pfUpdateButtons();
         var nd = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel] : null;
+        if (fill === undefined && pfHeadLast) { nd = { v: pfHeadLast.v }; fill = pfHeadLast.p; ok = pfHeadLast.ok; }
         if (!nd) { pfHead.innerHTML = ""; return; }
         var slot = '<span class="pf-slot' + (fill !== undefined ? (ok ? " ok" : " no") : "") + '">' + (fill !== undefined ? fill : "") + "</span>";
         // Six écritures de la même division : fraction, /, ÷, :, puissance
@@ -3975,6 +4057,7 @@
           el.textContent = nd.v;
           el.dataset.i = i;
           if (leaf && !nd.ok) el.addEventListener("click", function () {
+            pfHeadLast = null;
             pfState.sel = i;
             pfRender();
           });
@@ -3987,8 +4070,8 @@
         if (!pfState || pfState.ready || pfState.sel < 0) return;
         var i = pfState.sel, nd = pfState.nodes[i];
         if (nd.v % p !== 0) {
-          pfUpdateHead(p, false);
-          setTimeout(function () { if (pfState && pfState.nodes[pfState.sel] === nd) pfUpdateHead(); }, ms(1400));
+          pfHeadLast = { v: nd.v, p: p, ok: false };
+          pfUpdateHead();
           pfState.mistake = true;
           SND.bad();
           // Ne divise pas : le bouton tremble, et la règle est appliquée à CE
@@ -3999,9 +4082,9 @@
           return;
         }
         // Le bon diviseur s'inscrit dans la case, puis l'arbre se scinde
-        pfUpdateHead(p, true);
-        pfHeadHold = true;
-        setTimeout(function () { pfHeadHold = false; pfUpdateHead(); }, ms(1000));
+        pfHeadLast = { v: nd.v, p: p, ok: true };
+        pfUpdateHead();
+        pfSnap();
         // Un premier divisé par lui-même : c'est le reconnaître premier
         if (p === nd.v) { pfHeadHold = false; pfConfirm(i); return; }
         var a = pfState.nodes.length;
@@ -4069,7 +4152,7 @@
       pfIsPrimeBtn.addEventListener("click", function () {
         if (!pfState || pfState.ready || pfState.sel < 0) return;
         var nd = pfState.nodes[pfState.sel];
-        if (isPrime(nd.v)) { pfConfirm(pfState.sel); return; }
+        if (isPrime(nd.v)) { pfSnap(); pfConfirm(pfState.sel); return; }
         // Pas premier : on montre brièvement un diviseur, en haut
         pfState.mistake = true;
         SND.bad();
@@ -4122,6 +4205,135 @@
           nextBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: ms(600) });
         });
       }
+
+      // ---------- Chapitre Pascal ----------
+      // Le triangle se construit ligne par ligne : chaque nombre naît de ses
+      // deux parents, qui glissent vers lui et fusionnent (somme). Ensuite
+      // on glisse le doigt dessus : le coefficient choisi (k parmi n)
+      // s'affiche avec sa formule, ses deux parents et son symétrique.
+      var pasEl = document.getElementById("pas");
+      var pasBoard = document.getElementById("pasBoard");
+      var pasInfo = document.getElementById("pasInfo");
+      var PAS_N = 8;
+      var pas = { cells: [], built: false, run: 0, sel: null, seen: {} };
+      function C(n, k) { var r = 1; for (var i = 1; i <= k; i++) r = r * (n - k + i) / i; return Math.round(r); }
+      function binomHTML(n, k) {
+        return '<span class="binom"><span class="par">(</span><span class="stk"><span>' + n + "</span><span>" + k + '</span></span><span class="par">)</span></span>';
+      }
+      function pasGeom() {
+        var W = pasBoard.clientWidth, H = pasBoard.clientHeight;
+        var cell = Math.max(24, Math.min(46, W / (PAS_N + 1.4), (H - 10) / (PAS_N + 1) * 1.05));
+        var dy = Math.min(cell * 1.02, (H - cell) / PAS_N);
+        return { W: W, cell: cell, dy: dy, top: cell / 2 + 2 };
+      }
+      function pasPos(n, k, g) { return { x: g.W / 2 + (k - n / 2) * g.cell * 1.02, y: g.top + n * g.dy }; }
+      function pasStart() {
+        pas.run++;
+        pas.built = false;
+        pas.sel = null;
+        pasBoard.innerHTML = "";
+        pas.cells = [];
+        nextBtn.disabled = true;
+        prevBtn.style.visibility = "hidden";
+        pasInfo.innerHTML = '<div class="l2">' + (LANG === "en" ? "Each number is the sum of the two above it." : "Chaque nombre est la somme des deux au-dessus.") + "</div>";
+        var g = pasGeom(), run = pas.run;
+        for (var n = 0; n <= PAS_N; n++) {
+          pas.cells[n] = [];
+          for (var k = 0; k <= n; k++) {
+            var p = pasPos(n, k, g), e = document.createElement("div");
+            e.className = "pas-cell";
+            e.style.left = p.x + "px"; e.style.top = p.y + "px";
+            e.style.width = e.style.height = g.cell * 0.92 + "px";
+            e.style.fontSize = Math.max(10, g.cell * (C(n, k) > 9 ? 0.36 : 0.44)) + "px";
+            e.textContent = C(n, k);
+            e.style.opacity = 0;
+            pasBoard.appendChild(e);
+            pas.cells[n][k] = e;
+          }
+        }
+        // Construction ligne par ligne
+        var chain = wait(300);
+        for (var nn = 0; nn <= PAS_N; nn++) (function (n) {
+          chain = chain.then(function () {
+            if (run !== pas.run) return;
+            var anims = [];
+            for (var k = 0; k <= n; k++) (function (k) {
+              var e = pas.cells[n][k], p = pasPos(n, k, g);
+              if (k === 0 || k === n) {
+                e.style.opacity = 1;
+                anims.push(done(e.animate([{ transform: "translate(-50%,-50%) scale(0.3)", opacity: 0 }, { transform: "translate(-50%,-50%) scale(1)", opacity: 1 }], { duration: ms(400), easing: "ease-out" })));
+                return;
+              }
+              // Les deux parents envoient leur valeur, qui fusionne en bas
+              [k - 1, k].forEach(function (pk) {
+                var pp = pasPos(n - 1, pk, g), gh = document.createElement("span");
+                gh.className = "pas-ghost";
+                gh.textContent = C(n - 1, pk);
+                gh.style.left = pp.x + "px"; gh.style.top = pp.y + "px";
+                gh.style.fontSize = e.style.fontSize;
+                pasBoard.appendChild(gh);
+                anims.push(done(gh.animate([{ left: pp.x + "px", top: pp.y + "px", opacity: 1 }, { left: p.x + "px", top: p.y + "px", opacity: 0.2 }],
+                  { duration: ms(700), easing: "cubic-bezier(.45,0,.3,1)", fill: "forwards" })).then(function () { gh.remove(); }));
+              });
+              setTimeout(function () {
+                if (run !== pas.run) return;
+                e.style.opacity = 1;
+                e.animate([{ transform: "translate(-50%,-50%) scale(0.4)" }, { transform: "translate(-50%,-50%) scale(1.15)", offset: 0.7 }, { transform: "translate(-50%,-50%) scale(1)" }], { duration: ms(450), easing: "ease-out" });
+              }, ms(620));
+            })(k);
+            SND.tick();
+            return Promise.all(anims).then(function () { return wait(n < 3 ? 350 : 150); });
+          });
+        })(nn);
+        chain.then(function () {
+          if (run !== pas.run) return;
+          pas.built = true;
+          SND.ok();
+          pasInfo.innerHTML = '<div class="l2">' + (LANG === "en" ? "Slide your finger over the triangle." : "Glisse le doigt sur le triangle.") + "</div>";
+          nextBtn.disabled = false;
+        });
+      }
+      function pasPick(ev) {
+        if (!pas.built) return;
+        var r = pasBoard.getBoundingClientRect(), g = pasGeom();
+        var x = ev.clientX - r.left, y = ev.clientY - r.top;
+        var n = Math.max(0, Math.min(PAS_N, Math.round((y - g.top) / g.dy)));
+        var k = Math.max(0, Math.min(n, Math.round((x - g.W / 2) / (g.cell * 1.02) + n / 2)));
+        if (pas.sel && pas.sel[0] === n && pas.sel[1] === k) return;
+        pas.sel = [n, k];
+        SND.tick();
+        pasShow(n, k);
+      }
+      function pasShow(n, k) {
+        pas.cells.forEach(function (row) { row.forEach(function (e) { e.classList.remove("sel", "par", "sym"); }); });
+        pas.cells[n][k].classList.add("sel");
+        if (n > 0 && k > 0) pas.cells[n - 1][k - 1].classList.add("par");
+        if (n > 0 && k < n) pas.cells[n - 1][k].classList.add("par");
+        if (n - k !== k) pas.cells[n][n - k].classList.add("sym");
+        var v = C(n, k), en = LANG === "en";
+        var l1 = binomHTML(n, k) + " = <span>" + n + "! / (" + k + "! · " + (n - k) + "!)</span> = <b class='hot'>" + v + "</b>";
+        var l2 = (n > 0 && k > 0 && k < n ? '<span class="hot">' + C(n - 1, k - 1) + " + " + C(n - 1, k) + " = " + v + "</span> &nbsp; " : "") +
+          (n - k !== k ? '<span class="sym">= ' + binomHTML(n, n - k) + (en ? " symmetry" : " symétrie") + "</span>" : '<span class="sym">' + (en ? "middle: its own mirror" : "au milieu : son propre symétrique") + "</span>");
+        var l3 = "";
+        if (n <= 4) {
+          var terms = [];
+          for (var j = 0; j <= n; j++) {
+            var c = C(n, j), ea = n - j, eb = j;
+            var t = (c > 1 ? c + "·" : "") + (ea ? "a" + (ea > 1 ? "<sup>" + ea + "</sup>" : "") : "") + (eb ? "b" + (eb > 1 ? "<sup>" + eb + "</sup>" : "") : "");
+            terms.push(j === k ? '<b class="hot">' + t + "</b>" : t);
+          }
+          l3 = "(a + b)<sup>" + n + "</sup> = " + terms.join(" + ");
+        } else {
+          l3 = (en ? "Row sum: " : "Somme de la ligne : ") + "2<sup>" + n + "</sup> = " + Math.pow(2, n);
+        }
+        pasInfo.innerHTML = '<div class="l1">' + l1 + '</div><div class="l2">' + l2 + '</div><div class="l3">' + l3 + "</div>";
+        pas.seen[n + "," + k] = true;
+        if (Object.keys(pas.seen).length >= 8) markDone("Pascal");
+      }
+      pasBoard.addEventListener("pointerdown", function (ev) { ev.preventDefault(); pas.drag = true; try { pasBoard.setPointerCapture(ev.pointerId); } catch (e) {} pasPick(ev); });
+      pasBoard.addEventListener("pointermove", function (ev) { if (pas.drag) pasPick(ev); });
+      ["pointerup", "pointercancel"].forEach(function (t) { pasBoard.addEventListener(t, function () { pas.drag = false; }); });
+      document.getElementById("pasBuild").addEventListener("click", pasStart);
 
       // ---------- Chapitre Fusion ----------
       // Les termes sont des bulles. On en lâche une sur une autre : si une
@@ -4859,6 +5071,10 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v58", text: "Premiers : quand le nombre en cours est lui-même un premier du clavier (13), son bouton est vert — le diviser par lui-même est une bonne réponse. La dernière division tentée reste affichée ; flèche ← pour revenir en arrière." },
+        { v: "v57", text: "Premiers : flèche ← pour revenir en arrière d'une étape (division ou « est premier »), même après avoir fini." },
+        { v: "v56", text: "Premiers : la dernière division tentée reste affichée sur le bandeau (en jaune si elle ne tombe pas juste, en vert sinon, pendant que la décomposition se met à jour en haut) jusqu'à la prochaine action." },
+        { v: "v55", text: "Nouveau chapitre Pascal (ℝ) : le triangle se construit ligne par ligne, chaque nombre naît de ses deux parents qui glissent et fusionnent. Ensuite on glisse le doigt dessus : « k parmi n » avec sa formule n!/(k!(n−k)!), ses deux parents, son symétrique (n−k parmi n) et, pour les petites lignes, le développement de (a + b)ⁿ." },
         { v: "v54", text: "Sons : plus aucun son négatif. Une erreur joue deux notes douces, comme un encouragement." },
         { v: "v53", text: "Premiers : quand « est premier » est faux, le message (91 = 7 × 13 — pas premier) reste affiché jusqu'au prochain toucher ailleurs." },
         { v: "v52", text: "Premiers : au départ, le nombre du haut descend dans la bulle de l'arbre (c'est le même nombre) ; ensuite la ligne du haut suit la décomposition, 117 → 117 = 3 · 39 → 117 = 3 · 3 · 13." },
@@ -4993,7 +5209,7 @@
       var SET_OF = {
         "Singapour": "N", "Premiers": "N", "Ensembles": "N", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
         "Fraction": "Q", "Piège": "Q", "Équation": "Q",
-        "Distribuer": "R", "Factoriser": "R", "Double": "R", "Fusion": "R"
+        "Distribuer": "R", "Factoriser": "R", "Double": "R", "Fusion": "R", "Pascal": "R"
       };
       // Univers emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ : on choisit dans quel ensemble
       // on travaille (barre toujours visible en bas). Tout ce qui est plus
@@ -5228,7 +5444,7 @@
       function showHome() {
         calcRun++;
         closeChoice();
-        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
+        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, pasEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
         univEl.hidden = true;
         homeEl.hidden = false;
         document.getElementById("title").textContent = "Pas à Pas";
