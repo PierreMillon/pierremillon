@@ -129,9 +129,7 @@
       font-size: 0.7rem;
     }
     .levels .chip.earned::after { content: " ✓"; color: var(--accent); }
-    .levels .chip.mix { border-color: var(--ink-soft); color: var(--accent); }
     .levels .chip.locked { visibility: hidden; }
-    .levels .chip.mix[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 
     /* Lecture : le nombre formé, puis une ligne d'explication — la
        décomposition par rapport à 5 en libre (7 = 5 + 2), la légende de
@@ -572,8 +570,7 @@
           badge: "Badge gagné : {b}. Il apparaît en bas : appuie dessus et il fait ces gestes tout seul.",
           badgeCant: "Le badge {b} ne sait pas faire ce geste : à toi !",
           badgeDone: "Le badge {b} a fait sa part. À toi :",
-          levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×", div: "÷", pow: "puissance", sqrt: "√", mix: "∞ entraînement libre" },
-          mixEmpty: "Gagne d'abord un badge pour t'entraîner librement.",
+          levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×", div: "÷", pow: "puissance", sqrt: "√" },
           techs: { direct: "l'ajout direct", c5: "le complément à 5", c10: "le complément à 10 (retenue)", sdirect: "le retrait direct", s5: "le complément à 5 en retirant", s10: "le complément à 10 (emprunt)" },
           blk: {
             pose: "pose {n}", add: "ajoute {n}", sub: "retire {n}",
@@ -607,8 +604,7 @@
           badge: "Badge earned: {b}. It shows up at the bottom: tap it and it does these moves by itself.",
           badgeCant: "The {b} badge can't do this move: your turn!",
           badgeDone: "The {b} badge did its part. Your turn:",
-          levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×", div: "÷", pow: "power", sqrt: "√", mix: "∞ free practice" },
-          mixEmpty: "Earn a badge first to practise freely.",
+          levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×", div: "÷", pow: "power", sqrt: "√" },
           techs: { direct: "direct adding", c5: "the 5-complement", c10: "the 10-complement (carry)", sdirect: "direct taking away", s5: "the 5-complement when taking away", s10: "the 10-complement (borrow)" },
           blk: {
             pose: "set {n}", add: "add {n}", sub: "take away {n}",
@@ -802,17 +798,8 @@
           if (caption.good) split.className = "split good";
           return;
         }
-        if (lastRod < 0) return;
-        var dd = digits[lastRod];
-        var bEl = document.createElement("b");
-        bEl.textContent = dd;
-        split.appendChild(bEl);
-        var rest;
-        if (dd >= 5) rest = " = 5 + " + (dd - 5);
-        else if (dd === 0) rest = t("empty");
-        else if (dd === 1) rest = "";
-        else rest = " = " + new Array(dd + 1).join("1 + ").slice(0, -3);
-        split.appendChild(document.createTextNode(rest));
+        // Plus de décompte sous le nombre (« 7 = 5 + 2 ») : retiré à la
+        // demande de Pierre, le nombre en gros suffit
       }
 
       // ---------- Physique ----------
@@ -1196,11 +1183,9 @@
       }
 
       var mode = load("mode") === "ops" ? "ops" : "free";
-      // "mix" = entraînement libre : des questions tirées au hasard parmi les
-      // niveaux dont on a le badge ; on les fait avec les badges-outils, et
-      // à la main quand aucun badge ne couvre un geste
-      var level = LEVELS.indexOf(load("level")) >= 0 || load("level") === "mix" ? load("level") : "direct";
-      function earnedLevels() { return LEVELS.filter(function (lv) { return badges[lv]; }); }
+      // (L'entraînement libre a été retiré : le bac à sable joue ce rôle.
+      // Un ancien niveau "mix" sauvegardé retombe sur « + direct ».)
+      var level = LEVELS.indexOf(load("level")) >= 0 ? load("level") : "direct";
       var ex = null;
 
       function rnd(lo, hi) { return lo + Math.floor(Math.random() * (hi - lo + 1)); }
@@ -1385,11 +1370,6 @@
       function newExercise() {
         clampLevel();
         var lv = level;
-        if (lv === "mix") {
-          var pool = earnedLevels();
-          if (!pool.length) { level = lv = "direct"; save("level", lv); buildLevels(); }
-          else lv = pool[Math.floor(Math.random() * pool.length)];
-        }
         // Le plan se calcule sur un boulier assez large, puis le boulier
         // n'affiche que les tiges dont l'exercice a besoin (1 tige pour
         // 3 + 6, 2 pour 7 + 4 = 11…), et le plan est refait à cette taille
@@ -1485,9 +1465,10 @@
       function showTask() {
         var task = document.getElementById("task");
         if (mode !== "ops" || !ex) {
-          // Bac à sable : une seule ligne pour dire où on est
-          task.hidden = mode === "ops";
-          task.textContent = mode === "ops" ? "" : t("sandbox");
+          // Bac à sable : seulement le nombre en gros (la ligne garde sa
+          // place, invisible, pour que le boulier ne change pas de taille)
+          task.hidden = true;
+          task.textContent = "";
           return;
         }
         task.hidden = false;
@@ -1676,7 +1657,6 @@
         return LEVELS.length - 1;
       }
       function clampLevel() {
-        if (level === "mix") return;
         if (LEVELS.indexOf(level) > frontier()) { level = LEVELS[frontier()]; save("level", level); }
       }
 
@@ -1685,19 +1665,6 @@
         var box = document.getElementById("levels");
         box.textContent = "";
         box.hidden = mode !== "ops";
-        // Entraînement libre en tête : dès le premier badge
-        var m = document.createElement("button");
-        m.className = "chip mix" + (earnedLevels().length ? "" : " locked");
-        m.textContent = TXT[lang].levels.mix;
-        m.setAttribute("aria-pressed", level === "mix" ? "true" : "false");
-        m.addEventListener("click", function () {
-          if (busy || !earnedLevels().length) return;
-          level = "mix";
-          save("level", level);
-          buildLevels();
-          newExercise();
-        });
-        box.appendChild(m);
         var fr = frontier();
         LEVELS.forEach(function (lv, idx) {
           var b = document.createElement("button");
@@ -1793,7 +1760,7 @@
       document.getElementById("nextBtn").addEventListener("click", function () {
         document.getElementById("winOverlay").hidden = true;
         // Badge tout juste gagné : on passe au niveau suivant pas encore acquis
-        if (level !== "mix" && badges[level]) {
+        if (badges[level]) {
           for (var i = LEVELS.indexOf(level) + 1; i < LEVELS.length; i++) {
             if (!badges[LEVELS[i]]) { level = LEVELS[i]; save("level", level); buildLevels(); break; }
           }
@@ -1840,6 +1807,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v14", text: "Entraînement libre retiré : le bac à sable joue ce rôle. Le bac à sable n'affiche plus que le nombre en gros ; le décompte sous le nombre (« 7 = 5 + 2 ») est retiré." },
         { v: "v13", text: "Le boulier s'adapte à l'exercice : il n'affiche que les tiges nécessaires (une seule pour 3 + 6, deux pour 7 + 4 = 11, etc.). Le bac à sable garde toutes les tiges. Son sans écho, une quinte plus grave." },
         { v: "v12", text: "Nouveau son : une goutte d'eau très douce, sans choc (sinusoïde qui glisse vers le haut, attaque arrondie, léger écho) — plus zen. Carillon de réussite plus lent et plus doux." },
         { v: "v11", text: "Les perles à bouger respirent : un feu doux qui monte et descend lentement, au lieu d'un clignotement sec. Les boutons du bas n'affichent plus que l'opération qu'ils font (+, +5, ×…), sans l'icône ✦ ; ils restent toujours allumés et apparaissent un par un, à mesure qu'on les débloque." },

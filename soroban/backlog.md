@@ -107,6 +107,9 @@ Tri : priorité décroissante.
   japonaise « on retire le complément, puis on ajoute 10 » — déjà l'ordre
   du plan, inchangé
 
+- [x] v14 — Entraînement libre retiré (le bac à sable joue ce rôle) ; bac à
+  sable réduit au nombre en gros, décompte « 7 = 5 + 2 » retiré
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
