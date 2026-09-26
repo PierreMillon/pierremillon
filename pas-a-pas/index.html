@@ -1156,6 +1156,10 @@
     .pf-item:first-child { margin-left: 27%; }
     .pf-item:last-child { margin-right: 27%; }
 
+    .potence { display: inline-flex; align-items: flex-start; }
+    .potence .dvd { padding: 0.1em 0.4em 0.9em 0; }
+    .potence .dvs { padding: 0.1em 0.2em 0.35em 0.4em; border-left: 2px solid var(--ink-soft); border-bottom: 2px solid var(--ink-soft); }
+
     .pf-dots { display: flex; justify-content: center; gap: 0.35rem; }
     .pf-dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--hairline); }
     .pf-dots span.on { background: var(--accent); }
@@ -1271,7 +1275,7 @@
       -webkit-touch-callout: none;
     }
 
-    .pf-primes button:not(.dim) {
+    .pf-primes button.can {
       color: var(--bg);
       background: var(--ink);
       border-color: var(--ink);
@@ -1280,6 +1284,20 @@
     }
 
     .pf-primes button.drag-clone { position: fixed; z-index: 30; pointer-events: none; transform: translate(-50%, -50%) scale(1.15); width: 2.8rem; }
+
+    .pf-isprime {
+      align-self: stretch;
+      font-family: inherit;
+      font-size: 0.85rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--sign);
+      background: transparent;
+      border: 1.5px solid var(--sign);
+      border-radius: 999px;
+      padding: 0.55rem;
+      cursor: pointer;
+    }
 
     .pf-primes button.dim {
       color: var(--ink-soft);
@@ -1351,6 +1369,7 @@
       <div class="sg-board pf-board" id="pfBoard"></div>
       <div class="pf-head" id="pfHead" aria-label="diviser par"></div>
       <div class="pf-primes" id="pfPrimes"></div>
+      <button class="pf-isprime" id="pfIsPrime" data-tr="est premier">est premier</button>
       <div class="pf-tip" id="pfTip" hidden></div>
     </section>
 
@@ -1923,7 +1942,7 @@
         "« On passe le 2 de l'autre côté en divisant. »": "“Move the 2 to the other side by dividing.”",
         "« (a + b)² = a² + 2ab + b² »": "“(a + b)² = a² + 2ab + b²”",
         "départ": "start", "résultat": "result", "sauter des étapes": "skip steps", "pas à pas": "step by step",
-        "Historique": "History", "Fiche des règles": "Rules sheet", "Voir la solution": "Show solution", "Règles": "Rules", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
+        "Historique": "History", "Fiche des règles": "Rules sheet", "est premier": "is prime", "Voir la solution": "Show solution", "Règles": "Rules", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
       };
       function tr(t) { return LANG === "en" && EN[t] ? EN[t] : t; }
 
@@ -3699,6 +3718,7 @@
         });
         b.addEventListener("pointerup", function (e) {
           release();
+          pfHideTip(); // la fenêtre ne vit que pendant l'appui
           var dr = drag;
           drag = null;
           if (dr && dr.clone) {
@@ -3706,19 +3726,16 @@
             pfHead.classList.remove("drop");
             if (overHead(e.clientX, e.clientY)) {
               if (prime || b.classList.contains("extra")) pfDivide(d, b);
-              else {
-                var cur3 = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel].v : null;
-                SND.bad();
-                pfShowTip(d, b, cur3 ? ruleOn(cur3, d) : null);
-              }
+              else SND.bad();
             }
             return;
           }
           if (longDone) return;
           if (prime) pfDivide(d, b);
           else {
-            var cur2 = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel].v : null;
-            pfShowTip(d, b, cur2 ? ruleOn(cur2, d) : null);
+            // Appui bref sur 0, 1, 4, 6… : il ne divise pas en premier
+            SND.bad();
+            b.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
           }
         });
         b.addEventListener("pointercancel", function () { release(); if (drag && drag.clone) drag.clone.remove(); drag = null; pfHead.classList.remove("drop"); });
@@ -3726,7 +3743,10 @@
         pfPrimes.appendChild(b);
       })(dv);
 
+      // Des nombres premiers, petits et grands, à reconnaître
+      var BIG_PRIMES = [13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113];
       function pfPick() {
+        if (Math.random() < 0.2) return BIG_PRIMES[Math.floor(Math.random() * BIG_PRIMES.length)];
         var n = 1;
         while (n < 12) {
           n = 1;
@@ -3746,15 +3766,6 @@
         pfEq.textContent = String(n);
         pfExtraDivisor(n);
         nextBtn.disabled = true;
-        if (isPrime(n)) {
-          // Déjà premier : rien à décomposer
-          pfState.sel = -1;
-          pfState.ready = true;
-          setTimeout(function () {
-            pfEq.textContent = n + (LANG === "en" ? " is prime" : " est premier");
-            nextBtn.disabled = false;
-          }, ms(300));
-        }
         nextBtn.textContent = "→";
         nextBtn.classList.remove("text");
         pfLayout();
@@ -3824,7 +3835,18 @@
 
       // Titre au-dessus des diviseurs : 163 / ?, 163 ÷ ?, fraction 163 sur ?
       var pfHead = document.getElementById("pfHead");
+      // En vert plein : seulement les diviseurs premiers qui divisent
+      // vraiment le nombre en cours ; tous les autres restent sombres
+      function pfUpdateButtons() {
+        var nd = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel] : null;
+        pfPrimes.querySelectorAll("button").forEach(function (b) {
+          var d = Number(b.textContent);
+          b.classList.toggle("can", !!nd && d > 1 && isPrime(d) && nd.v % d === 0 && d !== nd.v);
+        });
+      }
+
       function pfUpdateHead(fill, ok) {
+        pfUpdateButtons();
         var nd = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel] : null;
         if (!nd) { pfHead.innerHTML = ""; return; }
         var slot = '<span class="pf-slot' + (fill !== undefined ? (ok ? " ok" : " no") : "") + '">' + (fill !== undefined ? fill : "") + "</span>";
@@ -3841,7 +3863,10 @@
           '<span class="n">' + nd.v + '<span class="op">÷</span>' + slot + "</span>",
           '<span class="n">' + nd.v + '<span class="op">:</span>' + slot + "</span>",
           '<span class="n">' + nd.v + '<span class="op">·</span>' + slot + '<sup class="op">−1</sup></span>',
-          '<span class="n">' + nd.v + '<span class="op">·</span><span class="fracv"><span>1</span><span class="bar"></span>' + slot + "</span></span>"
+          '<span class="n">' + nd.v + '<span class="op">·</span><span class="fracv"><span>1</span><span class="bar"></span>' + slot + "</span></span>",
+          // Division posée « à la française » : dividende à gauche, diviseur
+          // dans la potence à droite
+          '<span class="potence"><span class="dvd">' + nd.v + '</span><span class="dvs">' + slot + "</span></span>"
         ];
         pfHead.innerHTML = '<div class="pf-wheel" id="pfWheel">' +
           items.map(function (h) { return '<div class="pf-item">' + h + "</div>"; }).join("") +
@@ -3861,7 +3886,7 @@
       }
 
       var pfNotation = 0;
-      try { pfNotation = Math.min(5, Number(localStorage.getItem("pasapas_notation")) || 0); } catch (e) {}
+      try { pfNotation = Math.min(6, Number(localStorage.getItem("pasapas_notation")) || 0); } catch (e) {}
       function pfWheelCenter() {
         var w = document.getElementById("pfWheel");
         if (!w) return pfNotation;
@@ -3908,13 +3933,15 @@
           }
           var el = document.createElement("span");
           var leaf = !pfState.nodes.some(function (c) { return c.parent === i; });
-          el.className = "pf-node" + (leaf && isPrime(nd.v) ? " prime" : "") + (!leaf ? " split" : "") + (i === pfState.sel ? " sel" : "");
+          // Un premier n'est entouré que lorsqu'on l'a reconnu (bouton
+          // « premier » ou diviseur choisi) — sinon ce serait donner la réponse
+          el.className = "pf-node" + (leaf && nd.ok ? " prime" : "") + (!leaf ? " split" : "") + (i === pfState.sel ? " sel" : "");
           el.style.left = nd.x + "px";
           el.style.top = nd.y + "px";
           el.style.width = el.style.height = pfSize(nd.v) + "px";
           el.textContent = nd.v;
           el.dataset.i = i;
-          if (leaf && !isPrime(nd.v)) el.addEventListener("click", function () {
+          if (leaf && !nd.ok) el.addEventListener("click", function () {
             pfState.sel = i;
             pfRender();
           });
@@ -3934,7 +3961,7 @@
           // Ne divise pas : le bouton tremble, et la règle est appliquée à CE
           // nombre pour montrer pourquoi (avec le reste de la division)
           btn.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
-          pfShowTip(p, btn, whyNot(nd.v, p));
+          // (l'explication s'obtient en restant appuyé sur le diviseur)
           if (nd.el) nd.el.animate([{ color: "var(--sign)" }, { color: "var(--ink)" }], { duration: ms(600) });
           return;
         }
@@ -3942,15 +3969,12 @@
         pfUpdateHead(p, true);
         pfHeadHold = true;
         setTimeout(function () { pfHeadHold = false; pfUpdateHead(); }, ms(1000));
+        // Un premier divisé par lui-même : c'est le reconnaître premier
+        if (p === nd.v) { pfHeadHold = false; pfConfirm(i); return; }
         var a = pfState.nodes.length;
-        pfState.nodes.push({ v: p, parent: i, depth: nd.depth + 1, side: -1 });
+        pfState.nodes.push({ v: p, parent: i, depth: nd.depth + 1, side: -1, ok: true });
         pfState.nodes.push({ v: nd.v / p, parent: i, depth: nd.depth + 1, side: 1 });
-        // Sélection suivante : le prochain nombre qui n'est pas premier
-        pfState.sel = -1;
-        pfState.nodes.forEach(function (c, k) {
-          var leaf = !pfState.nodes.some(function (o) { return o.parent === k; });
-          if (pfState.sel < 0 && leaf && !isPrime(c.v)) pfState.sel = k;
-        });
+        pfNextSel();
         pfLayout();
         // Transformation, façon bulles : le nombre devient d'abord le
         // produit « p · q » (la bulle s'étire), puis se scinde en deux bulles
@@ -3988,6 +4012,43 @@
       }
 
       var pfStreak = 0;
+      // Prochain nombre à traiter : une feuille pas encore reconnue première
+      function pfNextSel() {
+        pfState.sel = -1;
+        pfState.nodes.forEach(function (c, k) {
+          var leaf = !pfState.nodes.some(function (o) { return o.parent === k; });
+          if (pfState.sel < 0 && leaf && !c.ok) pfState.sel = k;
+        });
+      }
+
+      // Bouton « premier » : on affirme que le nombre sélectionné est premier
+      function pfConfirm(i) {
+        var nd = pfState.nodes[i];
+        nd.ok = true;
+        SND.ok();
+        pfNextSel();
+        pfLayout();
+        var el = pfBoard.querySelector('.pf-node[data-i="' + i + '"]');
+        if (el) el.animate([{ transform: "translate(-50%,-50%) scale(1)" }, { transform: "translate(-50%,-50%) scale(1.25)" }, { transform: "translate(-50%,-50%) scale(1)" }], { duration: ms(500), easing: "ease-out" });
+        if (pfState.sel < 0) pfFinish();
+      }
+      var pfIsPrimeBtn = document.getElementById("pfIsPrime");
+      pfIsPrimeBtn.addEventListener("click", function () {
+        if (!pfState || pfState.ready || pfState.sel < 0) return;
+        var nd = pfState.nodes[pfState.sel];
+        if (isPrime(nd.v)) { pfConfirm(pfState.sel); return; }
+        // Pas premier : on montre brièvement un diviseur, en haut
+        pfState.mistake = true;
+        SND.bad();
+        var d = 2;
+        while (nd.v % d) d++;
+        pfIsPrimeBtn.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
+        var keep = pfEq.textContent;
+        pfEq.textContent = nd.v + " = " + d + " × " + (nd.v / d) + (LANG === "en" ? " — not prime" : " — pas premier");
+        pfEq.style.color = "var(--sign)";
+        setTimeout(function () { if (!pfState.ready) { pfEq.textContent = keep; pfEq.style.color = ""; } }, ms(1800));
+      });
+
       function pfFinish() {
         SND.ok();
         // Un nombre tapé soi-même ne compte pas pour réussir le chapitre
@@ -4004,7 +4065,7 @@
         ps.forEach(function (p) { counts[p] = (counts[p] || 0) + 1; });
         var SUP = { 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶" };
         var pow = Object.keys(counts).map(function (p) { return p + (counts[p] > 1 ? SUP[counts[p]] : ""); }).join(" · ");
-        var steps = [pfState.n + " = " + ps.join(" · ")];
+        var steps = ps.length === 1 ? [pfState.n + (LANG === "en" ? " is prime" : " est premier")] : [pfState.n + " = " + ps.join(" · ")];
         if (pow !== ps.join(" · ")) steps.push(pfState.n + " = " + pow);
         var chain = wait(500);
         steps.forEach(function (t) {
@@ -4756,6 +4817,9 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v51", text: "Premiers : en vert plein, seulement les diviseurs qui divisent vraiment le nombre en cours (pour 90 : 2, 3, 5 — pas 13). La fenêtre d'explication n'apparaît que pendant l'appui long et disparaît au relâcher." },
+        { v: "v50", text: "Premiers : septième écriture sur le bandeau, la division posée (potence). Un nombre premier reconnu affiche « 97 est premier »." },
+        { v: "v49", text: "Premiers : bouton « est premier » — les nombres premiers ne sont plus entourés d'office, c'est à toi de les reconnaître (ou de les diviser par eux-mêmes). Certaines questions sont elles-mêmes des nombres premiers, petits ou grands (97, 101…). Se tromper montre un diviseur (91 = 7 × 13)." },
         { v: "v48", text: "Premiers : les écritures de la division sont sur un bandeau coulissant, comme la roue du réveil iPhone à l'horizontale — une en grand au centre, on glisse pour choisir, elle s'aimante et le choix est retenu." },
         { v: "v47", text: "Premiers : sixième écriture de la division, avec le deux-points « : »." },
         { v: "v46", text: "Premiers : les cinq écritures de la division sur une seule ligne, reliées par « = ». La case du diviseur est un cercle, comme les boutons ; les diviseurs premiers sont pleins verts avec le chiffre en noir. On peut glisser un diviseur sur les écritures pour l'appliquer." },
