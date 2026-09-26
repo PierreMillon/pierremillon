@@ -1003,9 +1003,8 @@
             var AC = window.AudioContext || window.webkitAudioContext;
             if (!AC) return;
             actx = new AC();
-            // Chaîne douce : filtre passe-bas (rien d'agressif dans les
-            // aigus) + un petit écho qui s'éteint, comme une goutte dans
-            // une pièce calme
+            // Chaîne douce : filtre passe-bas, rien d'agressif dans les
+            // aigus. Pas d'écho (retiré à la demande de Pierre)
             master = actx.createGain();
             master.gain.value = 0.9;
             var lp = actx.createBiquadFilter();
@@ -1014,21 +1013,6 @@
             lp.Q.value = 0.3;
             master.connect(lp);
             lp.connect(actx.destination);
-            var delay = actx.createDelay(1);
-            delay.delayTime.value = 0.14;
-            var fb = actx.createGain();
-            fb.gain.value = 0.28;
-            var wet = actx.createGain();
-            wet.gain.value = 0.22;
-            var dlp = actx.createBiquadFilter();
-            dlp.type = "lowpass";
-            dlp.frequency.value = 1400;
-            lp.connect(delay);
-            delay.connect(dlp);
-            dlp.connect(fb);
-            fb.connect(delay);
-            dlp.connect(wet);
-            wet.connect(actx.destination);
           }
           if (actx.state !== "running") actx.resume();
           if (!unlocked) {
@@ -1073,9 +1057,10 @@
           // Une goutte d'eau, très douce (demande de Pierre : « zen, comme
           // un massage dans un spa ») : sinusoïde pure qui glisse vers le
           // haut — c'est ce glissement qui fait « goutte » —, attaque
-          // arrondie (pas de choc), extinction lente, un peu d'écho.
+          // arrondie (pas de choc), extinction lente. Une quinte et un peu
+          // plus sous la version précédente (230/300 Hz → 150/195 Hz).
           // Plus grave pour la perle du haut.
-          var f = (heavy ? 230 : 300) * (0.96 + Math.random() * 0.08);
+          var f = (heavy ? 150 : 195) * (0.96 + Math.random() * 0.08);
           tone(f, f * 1.9, 0.34 * vol, 0.42, w, "sine", 0.025, 0.07);
           tone(f * 2, f * 3.2, 0.035 * vol, 0.22, w + 0.01, "sine", 0.03, 0.06); // léger reflet
         } catch (e) {}
@@ -1087,7 +1072,7 @@
           if (!actx) return;
           var w = actx.currentTime + 0.02;
           // Carillon zen : gamme pentatonique, notes qui naissent lentement
-          [392, 440, 523, 659].forEach(function (f, i) {
+          [262, 294, 349, 440].forEach(function (f, i) {
             tone(f, f, 0.12, 1.8, w + i * 0.16, "sine", 0.06);
           });
         } catch (e) {}
@@ -1405,14 +1390,34 @@
           if (!pool.length) { level = lv = "direct"; save("level", lv); buildLevels(); }
           else lv = pool[Math.floor(Math.random() * pool.length)];
         }
+        // Le plan se calcule sur un boulier assez large, puis le boulier
+        // n'affiche que les tiges dont l'exercice a besoin (1 tige pour
+        // 3 + 6, 2 pour 7 + 4 = 11…), et le plan est refait à cette taille
+        RODS = GEN_RODS;
         ex = makeExercise(lv);
         ex.lv = lv;
+        ex.rods = rodsNeeded(ex);
+        buildBoard(ex.rods, 0);
+        buildPlan(ex);
         ex.k = 0;
         ex.watched = false;
         ex.solved = false;
         caption = { text: t("follow") };
-        clearBoard();
+        save("state", "0");
+        render();
         guideShow();
+      }
+
+      // Nombre de tiges utiles : le plus grand nombre que l'exercice fait
+      // apparaître sur le boulier, à n'importe quelle étape
+      var GEN_RODS = 6;
+      function rodsNeeded(e) {
+        var n = 1;
+        e.states.forEach(function (st) {
+          var v = valueOf(st);
+          n = Math.max(n, String(v).length);
+        });
+        return n;
       }
 
       function stateOn(D, b) {
@@ -1719,7 +1724,12 @@
         refreshMenu();
         caption = null;
         if (m === "ops") newExercise();
-        else { ex = null; guideShow(); render(); }
+        else {
+          ex = null;
+          if (RODS !== fitRods()) buildBoard(fitRods(), value());
+          guideShow();
+          render();
+        }
       }
 
       // ---------- Menu ☰ ----------
@@ -1830,6 +1840,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v13", text: "Le boulier s'adapte à l'exercice : il n'affiche que les tiges nécessaires (une seule pour 3 + 6, deux pour 7 + 4 = 11, etc.). Le bac à sable garde toutes les tiges. Son sans écho, une quinte plus grave." },
         { v: "v12", text: "Nouveau son : une goutte d'eau très douce, sans choc (sinusoïde qui glisse vers le haut, attaque arrondie, léger écho) — plus zen. Carillon de réussite plus lent et plus doux." },
         { v: "v11", text: "Les perles à bouger respirent : un feu doux qui monte et descend lentement, au lieu d'un clignotement sec. Les boutons du bas n'affichent plus que l'opération qu'ils font (+, +5, ×…), sans l'icône ✦ ; ils restent toujours allumés et apparaissent un par un, à mesure qu'on les débloque." },
         { v: "v10", text: "Un seul chemin : les niveaux se débloquent dans l'ordre. On ne voit que les niveaux gagnés et le prochain à gagner ; les suivants apparaissent un par un. Un badge ne fait que des techniques déjà gagnées. L'entraînement libre passe en tête des niveaux." },
@@ -1868,7 +1879,9 @@
       window.addEventListener("resize", function () {
         clearTimeout(resizeT);
         resizeT = setTimeout(function () {
-          var n = fitRods();
+          // En exercice, le boulier garde les tiges de l'exercice ; en bac à
+          // sable, autant que l'écran le permet
+          var n = mode === "ops" && ex ? ex.rods : fitRods();
           if (n === RODS || busy) return;
           buildBoard(n, value());
           if (ex && !ex.solved) {
