@@ -839,7 +839,7 @@
       margin-top: 0.6rem;
     }
 
-    .home-map { width: 100%; max-width: 420px; flex: none; height: min(52vh, 100vw, 420px); }
+    .home-map { width: 100%; max-width: 420px; flex: none; height: min(56vh, 130vw, 520px); touch-action: none; }
     .home-map ellipse { fill: rgba(61, 224, 138, 0.04); stroke: var(--ink-soft); stroke-width: 1.2; cursor: pointer; }
     .home-map ellipse.sel { stroke: var(--accent); stroke-width: 2; fill: rgba(61, 224, 138, 0.1); }
     .home-map ellipse.lock { stroke-dasharray: 4 5; fill: transparent; }
@@ -1185,7 +1185,7 @@
     </section>
 
     <section class="home" id="home" hidden>
-      <svg class="home-map" id="homeMap" viewBox="0 0 360 360" aria-label="Ensembles de nombres"></svg>
+      <svg class="home-map" id="homeMap" viewBox="0 0 300 424" aria-label="Ensembles de nombres"></svg>
       <p class="home-info" id="homeInfo"></p>
       <div class="home-list" id="homeList"></div>
     </section>
@@ -4297,6 +4297,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v34", text: "Accueil : ellipses verticales, dans le sens de l'écran. On glisse le doigt sur la carte et l'ensemble sélectionné suit en continu." },
         { v: "v33", text: "Singapour : le nombre n'est plus cliquable (c'était caché). À la place, deux boutons calés à gauche : « Voir la solution » (la manche est jouée pour toi, ne compte pas) et « Règles »." },
         { v: "v32", text: "Singapour : à la fin d'une manche, les jetons restants se regroupent dans un seul cadre, par colonnes de 2 (4 = un carré 2 × 2) ; les jetons retirés et le cadre vide s'effacent." },
         { v: "v31", text: "Accueil : la carte des ensembles ne bouge plus quand on change d'ensemble. Au-delà de ℂ, en teaser verrouillé : ℍ (quaternions, dim 4), 𝕆 (octonions, dim 8), 𝕊 (sédénions, dim 16), 𝕋 (trigintaduonions, dim 32) — chacun avec la propriété qu'il perd." },
@@ -4534,22 +4535,24 @@
       var LABS = { T: "𝕋", S: "𝕊", O: "𝕆", H: "ℍ", C: "ℂ", R: "ℝ", Q: "ℚ", Z: "ℤ", N: "ℕ" };
       // Chaque lettre au milieu de sa bande (entre son anneau et le
       // suivant), sur l'axe horizontal à droite — jamais sur un trait.
+      // Ellipses verticales, dans le sens de l'écran ; chaque lettre au
+      // milieu de sa bande, sur l'axe vertical en haut.
+      var MAP_CX = 150, MAP_CY = 212, STEP = 21;
       var ZONES = RINGS.map(function (k, i) {
-        var rx = 176 - i * 16.5, ry = rx * 0.86;
-        var inner = i < RINGS.length - 1 ? rx - 16.5 : 0;
-        return { k: k, rx: rx, ry: ry, lab: LABS[k], lx: 180 + (rx + inner) / 2, ly: 195 };
+        var ry = 206 - i * STEP, rx = ry * 0.66;
+        var inner = i < RINGS.length - 1 ? ry - STEP : 0;
+        return { k: k, rx: rx, ry: ry, lab: LABS[k], lx: MAP_CX, ly: MAP_CY - (ry + inner) / 2 + 5 };
       });
-      ZONES[ZONES.length - 1].lx = 180; // ℕ au centre
+      ZONES[ZONES.length - 1].ly = MAP_CY + 8; // ℕ au centre
       function renderHome() {
         homeMap.innerHTML = "";
         ZONES.forEach(function (z) {
-          var e = svgEl("ellipse", { cx: 180, cy: 190, rx: z.rx, ry: z.ry }, homeMap);
+          var e = svgEl("ellipse", { cx: MAP_CX, cy: MAP_CY, rx: z.rx, ry: z.ry }, homeMap);
           var tease = !!TEASE[z.k];
           var isLock = tease || !unlocked(z.k);
           if (isLock) e.classList.add("lock");
           if (!tease && setDone(z.k)) e.classList.add("done");
           if (z.k === homeSel) e.classList.add("sel");
-          e.addEventListener("click", function () { homeSel = z.k; SND.tick(); renderHome(); });
           var t = svgEl("text", { x: z.lx, y: z.k === "N" ? z.ly + 3 : z.ly, class: (isLock ? "lock" : "") + (z.k === "N" ? " big" : "") }, homeMap);
           t.textContent = z.lab;
         });
@@ -4585,6 +4588,38 @@
           list.appendChild(b);
         });
       }
+      // Toucher ou glisser sur la carte : l'ensemble sous le doigt est
+      // sélectionné en continu (l'ellipse la plus intérieure qui contient
+      // le point).
+      function zoneAt(ev) {
+        var pt = homeMap.createSVGPoint();
+        pt.x = ev.clientX; pt.y = ev.clientY;
+        var m = homeMap.getScreenCTM();
+        if (!m) return null;
+        var p = pt.matrixTransform(m.inverse());
+        var hit = null;
+        ZONES.forEach(function (z) {
+          var dx = (p.x - MAP_CX) / z.rx, dy = (p.y - MAP_CY) / z.ry;
+          if (dx * dx + dy * dy <= 1) hit = z.k; // les suivantes sont plus intérieures
+        });
+        return hit;
+      }
+      var mapDrag = false;
+      function mapPick(ev) {
+        var k = zoneAt(ev);
+        if (k && k !== homeSel) { homeSel = k; SND.tick(); renderHome(); }
+      }
+      homeMap.addEventListener("pointerdown", function (ev) {
+        ev.preventDefault();
+        mapDrag = true;
+        try { homeMap.setPointerCapture(ev.pointerId); } catch (e) {}
+        mapPick(ev);
+      });
+      homeMap.addEventListener("pointermove", function (ev) { if (mapDrag) mapPick(ev); });
+      ["pointerup", "pointercancel"].forEach(function (t) {
+        homeMap.addEventListener(t, function () { mapDrag = false; });
+      });
+
       function showHome() {
         calcRun++;
         closeChoice();
