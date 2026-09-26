@@ -132,6 +132,15 @@ Tri : priorité décroissante.
   s'affiche dans la consigne ; la réussite de ÷ et √ explique que le
   boulier montre le reste
 
+- [x] v20 — Chapitre 1 obligatoire : tables de multiplication. Grille 2…9
+  coupée par la diagonale (36 cases) ; « Trouver la case » (toucher la
+  case qui fait le nombre) ou « Écrire le résultat » (pavé de chiffres),
+  au choix ; badge = les deux grilles sans erreur. Boutons du bas centrés
+  sur deux lignes
+- [x] v21 — Racines précises (√5, √13… à 1 puis 2 chiffres après la
+  virgule) par la méthode des impairs ; écriture √5776 sans espace ;
+  puissances de nombres à virgule au dernier palier (1,3³ = 2,197)
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
