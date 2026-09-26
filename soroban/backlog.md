@@ -110,6 +110,10 @@ Tri : priorité décroissante.
 - [x] v14 — Entraînement libre retiré (le bac à sable joue ce rôle) ; bac à
   sable réduit au nombre en gros, décompte « 7 = 5 + 2 » retiré
 
+- [x] v15 — Bac à sable : boutons « − tige / + tige » (1 tige au minimum,
+  autant que l'écran permet avec des tiges ≥ 44 px au maximum : 8 en
+  portrait sur un iPhone standard), nombre gardé, choix mémorisé
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?

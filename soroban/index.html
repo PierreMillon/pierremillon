@@ -557,6 +557,7 @@
         fr: {
           back: "← Portfolio", hist: "Historique", free: "Libre", ops: "Opérations",
           sandboxOn: "Bac à sable", sandboxOff: "Retour aux opérations", sandbox: "Bac à sable : bouge les perles librement.",
+          rodLess: "− tige", rodMore: "+ tige",
           langItem: "English", erase: "Réinitialiser la progression", eraseSure: "Sûr ? Appuie encore pour tout remettre à zéro", erased: "Progression remise à zéro.",
           moved: "Perles déplacées depuis le début : {n}",
           reset: "Remettre à zéro", slow: "Voir au ralenti",
@@ -591,6 +592,7 @@
         en: {
           back: "← Portfolio", hist: "History", free: "Free", ops: "Operations",
           sandboxOn: "Sandbox", sandboxOff: "Back to operations", sandbox: "Sandbox: move the beads freely.",
+          rodLess: "− rod", rodMore: "+ rod",
           langItem: "Français", erase: "Reset progress", eraseSure: "Sure? Tap again to reset everything", erased: "Progress reset.",
           moved: "Beads moved since the start: {n}",
           reset: "Clear", slow: "Show slowly",
@@ -735,6 +737,42 @@
           n++;
         }
         return n;
+      }
+
+      // Bac à sable : nombre de tiges choisi avec « − tige / + tige »
+      // (0 = automatique : 5 en portrait, plus en paysage), jamais plus que
+      // ce que l'écran permet sans perles trop petites
+      var SANDBOX_MIN_ROD_PX = 44;
+      var sandboxRods = (function () {
+        var raw = load("sandboxRods");
+        return raw && /^[0-9]{1,2}$/.test(raw) ? Math.min(MAX_RODS, Number(raw)) : 0;
+      })();
+      function maxRods() {
+        var stage = document.querySelector(".stage");
+        var w = stage.clientWidth - 32, h = stage.clientHeight - 12;
+        if (w <= 0 || h <= 0) return 5;
+        var n = 1;
+        while (n < MAX_RODS) {
+          var scale = Math.min(w / (COL * (n + 1) + 12), h / (LABEL_Y + 22));
+          if (COL * scale < SANDBOX_MIN_ROD_PX) break;
+          n++;
+        }
+        return Math.max(n, 5);
+      }
+      function sandboxCount() {
+        return Math.max(1, Math.min(sandboxRods || fitRods(), maxRods()));
+      }
+      function changeRods(delta) {
+        if (busy || mode === "ops") return;
+        var n = Math.max(1, Math.min(RODS + delta, maxRods()));
+        if (n === RODS) return;
+        sandboxRods = n;
+        save("sandboxRods", String(n));
+        // Une tige ajoutée arrive à gauche (rang le plus haut) ; une tige
+        // retirée part à gauche aussi, avec son chiffre
+        buildBoard(n, value() % Math.pow(10, n));
+        save("state", String(value()));
+        toc(delta < 0, 0.7);
       }
 
       function makeBead(x, rod, kind, idx) {
@@ -1606,7 +1644,18 @@
       function buildBadgeBar() {
         var bar = document.getElementById("badgeBar");
         bar.textContent = "";
-        bar.hidden = mode !== "ops";
+        bar.hidden = false;
+        if (mode !== "ops") {
+          // Bac à sable : à la place des badges, retirer / ajouter une tige
+          [["rodLess", -1], ["rodMore", 1]].forEach(function (it) {
+            var b = document.createElement("button");
+            b.className = "bchip";
+            b.textContent = t(it[0]);
+            b.addEventListener("click", function () { changeRods(it[1]); });
+            bar.appendChild(b);
+          });
+          return;
+        }
         LEVELS.forEach(function (lv) {
           if (!badges[lv]) return;
           var b = document.createElement("button");
@@ -1693,7 +1742,7 @@
         if (m === "ops") newExercise();
         else {
           ex = null;
-          if (RODS !== fitRods()) buildBoard(fitRods(), value());
+          if (RODS !== sandboxCount()) buildBoard(sandboxCount(), value());
           guideShow();
           render();
         }
@@ -1807,6 +1856,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v15", text: "Bac à sable : deux boutons « − tige » et « + tige » pour retirer ou ajouter une tige (à gauche), en gardant le nombre posé. Le choix est gardé d'une visite à l'autre." },
         { v: "v14", text: "Entraînement libre retiré : le bac à sable joue ce rôle. Le bac à sable n'affiche plus que le nombre en gros ; le décompte sous le nombre (« 7 = 5 + 2 ») est retiré." },
         { v: "v13", text: "Le boulier s'adapte à l'exercice : il n'affiche que les tiges nécessaires (une seule pour 3 + 6, deux pour 7 + 4 = 11, etc.). Le bac à sable garde toutes les tiges. Son sans écho, une quinte plus grave." },
         { v: "v12", text: "Nouveau son : une goutte d'eau très douce, sans choc (sinusoïde qui glisse vers le haut, attaque arrondie, léger écho) — plus zen. Carillon de réussite plus lent et plus doux." },
@@ -1837,7 +1887,7 @@
 
       // ---------- Démarrage ----------
 
-      buildBoard(fitRods(), savedValue);
+      buildBoard(sandboxCount(), savedValue);
       applyLang();
       setMode(mode);
 
@@ -1849,7 +1899,7 @@
         resizeT = setTimeout(function () {
           // En exercice, le boulier garde les tiges de l'exercice ; en bac à
           // sable, autant que l'écran le permet
-          var n = mode === "ops" && ex ? ex.rods : fitRods();
+          var n = mode === "ops" && ex ? ex.rods : sandboxCount();
           if (n === RODS || busy) return;
           buildBoard(n, value());
           if (ex && !ex.solved) {
