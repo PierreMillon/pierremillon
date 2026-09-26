@@ -67,55 +67,56 @@
       max-width: 100dvh;
     }
 
+    /* Interface cachée : juste un ⓘ discret dans le coin, le reste est
+       dans le menu. La barre ne capte pas les doigts (les bulles passent
+       dessous). */
     .topbar {
       position: absolute;
       top: 0;
       left: 0;
       right: 0;
       z-index: 5;
-      padding: 1rem 16px 0;
-    }
-
-    header {
-      width: 100%;
+      padding: 0.6rem 10px 0;
       display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 1rem;
+      justify-content: flex-end;
+      pointer-events: none;
     }
 
-    .back {
+    .info-btn {
+      pointer-events: auto;
+      font-family: inherit;
+      font-size: 1.1rem;
       color: var(--ink-soft);
-      font-size: 0.68rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
+      background: none;
+      border: none;
+      padding: 0.4rem 0.5rem;
+      cursor: pointer;
+      opacity: 0.6;
+      touch-action: manipulation;
+    }
+
+    .info-btn:hover { color: var(--accent); opacity: 1; }
+
+    .menu-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn.small {
+      font-size: 0.66rem;
+      padding: 0.55rem 1rem;
       text-decoration: none;
     }
 
-    .back:hover { color: var(--accent); }
-
-    .subline {
-      width: 100%;
-      display: flex;
-      justify-content: flex-end;
-      margin-top: 0.3rem;
-    }
-
-    .hist-btn {
-      font-family: inherit;
-      color: var(--ink-soft);
+    .label {
       font-size: 0.68rem;
       letter-spacing: 0.18em;
       text-transform: uppercase;
-      background: none;
-      border: none;
-      padding: 0;
-      cursor: pointer;
+      color: var(--ink-soft);
+      margin-top: 0.4rem;
     }
-
-    .hist-btn:hover { color: var(--accent); }
-
-    .subline .hist-btn + .hist-btn { margin-left: 1.2rem; }
 
     .hist-list {
       width: 100%;
@@ -146,14 +147,6 @@
       margin-bottom: 0.1rem;
     }
 
-    h1 {
-      margin: 0;
-      font-family: "IBM Plex Mono", ui-monospace, monospace;
-      font-weight: 300;
-      font-size: clamp(1.6rem, 6vw, 2.2rem);
-      letter-spacing: 0.06em;
-    }
-
     .arena {
       position: fixed;
       inset: 0;
@@ -179,55 +172,12 @@
     }
 
     /* Oscilloscope : les bulles sont des contours seuls, vert phosphore,
-       sans remplissage (voir REGLES-JEUX.md). Le contour est recalculé à
-       chaque image à partir des points de la bulle molle. */
+       sans remplissage (voir REGLES-JEUX.md), dessinés sur un canvas qui
+       garde une traînée (persistance du phosphore). */
     .field {
       position: absolute;
       inset: 0;
-      width: 100%;
-      height: 100%;
-      overflow: visible;
-      filter: drop-shadow(0 0 3px rgba(61, 224, 138, 0.55));
-    }
-
-    .bubble {
-      fill: transparent;
-      stroke: var(--ink);
-      stroke-width: 2;
-      stroke-linejoin: round;
-      cursor: grab;
-      touch-action: none;
-    }
-
-    .bubble.held { cursor: grabbing; stroke: var(--accent); }
-
-    .charge {
-      fill: none;
-      stroke: var(--ink);
-      stroke-width: 1.5;
-      opacity: 0;
       pointer-events: none;
-      transition: opacity 0.08s linear;
-    }
-
-    .charge.on { opacity: 0.5; }
-
-    .particle {
-      position: absolute;
-      left: 0;
-      top: 0;
-      border-radius: 50%;
-      pointer-events: none;
-    }
-
-    .ring {
-      position: absolute;
-      left: 0;
-      top: 0;
-      border-radius: 50%;
-      border: 2px solid var(--ink);
-      pointer-events: none;
-      opacity: 0.7;
     }
 
     .overlay {
@@ -286,22 +236,19 @@
   <div class="arena" id="arena"></div>
 
   <div class="topbar">
-    <header>
-      <a class="back" href="../" data-t="back">← Portfolio</a>
-      <h1 data-t="title">Bulles Sonores</h1>
-    </header>
-
-    <div class="subline">
-      <button class="hist-btn" id="langBtn" aria-label="Language / Langue">EN</button>
-      <button class="hist-btn" id="histBtn" data-t="history">Historique</button>
-    </div>
-
+    <button class="info-btn" id="infoBtn" aria-label="Menu">ⓘ</button>
   </div>
 
-  <div class="overlay" id="histOverlay" hidden>
-    <div class="big" data-t="history">Historique</div>
+  <div class="overlay" id="menu" hidden>
+    <div class="big" data-t="title">Bulles Sonores</div>
+    <div class="menu-row">
+      <a class="btn small" href="../" data-t="back">← Portfolio</a>
+      <button class="btn small" id="langBtn">EN</button>
+      <button class="btn small" id="muteBtn">Son</button>
+    </div>
+    <div class="label" data-t="history">Historique</div>
     <ul class="hist-list" id="histList"></ul>
-    <button class="btn" id="histClose" data-t="close">Fermer</button>
+    <button class="btn" id="menuClose" data-t="close">Fermer</button>
   </div>
 
   <script type="module">
@@ -316,13 +263,17 @@
 
     var TEXTS = {
       fr: { title: "Bulles Sonores", back: "← Portfolio", history: "Historique", close: "Fermer", other: "EN",
+            soundOn: "Son : oui", soundOff: "Son : non",
             noEngine: "Moteur physique introuvable — recharge la page avec du réseau." },
       en: { title: "Sound Bubbles", back: "← Portfolio", history: "History", close: "Close", other: "FR",
+            soundOn: "Sound: on", soundOff: "Sound: off",
             noEngine: "Physics engine not found — reload the page while online." }
     };
     var lang = "fr";
     try { lang = localStorage.getItem("bulles-sonores-lang") || ""; } catch (e) { lang = ""; }
     if (!TEXTS[lang]) lang = /^fr\b/i.test(navigator.language || "fr") ? "fr" : "en";
+    var muted = false;
+    try { muted = localStorage.getItem("bulles-sonores-muted") === "1"; } catch (e) {}
 
     function applyTexts() {
       var t = TEXTS[lang];
@@ -330,6 +281,7 @@
       document.title = t.title;
       document.querySelectorAll("[data-t]").forEach(function (el) { el.textContent = t[el.dataset.t]; });
       document.getElementById("langBtn").textContent = t.other;
+      document.getElementById("muteBtn").textContent = muted ? t.soundOff : t.soundOn;
     }
     applyTexts();
 
@@ -350,14 +302,12 @@
       // par une pression interne qui défend son volume (modèle de Matyka,
       // « How to implement a pressure soft body model »), plus un léger
       // rappel vers la forme ronde (tension de surface, façon JellyCar).
-      // Rapier gère les contacts point à point : les bulles s'écrasent l'une
-      // contre l'autre, roulent quand on les frotte, se déforment quand on
-      // les tire. Le volume se conserve : couper en deux partage la surface,
-      // fusionner l'additionne, et rien n'apparaît jamais tout seul.
+      // Le volume se conserve : couper partage la surface, fusionner
+      // l'additionne, aspirer la transfère d'une bulle à l'autre, et rien
+      // n'apparaît jamais tout seul.
 
       // ---------- Réglages ----------
 
-      var START_COUNT = 5;
       var MAX_BUBBLES = 14;      // groupes de collision Rapier : 16 au plus
       var NODES = 20;            // points par bulle
       var SPLIT_HOLD_MS = 650;   // appui simple maintenu -> la bulle se coupe en deux
@@ -365,22 +315,26 @@
       var TAP_MAX_MS = 220;      // au-delà, un appui n'est plus un "tap" mais un maintien
       var JITTER_PX = 10;        // tolérance de mouvement pour rester "stationnaire"
       var SPLIT_STRETCH = 2.2;   // écart des doigts (× rayon) au-delà duquel la bulle cède
-      var MERGE_HOLD_MS = 300;   // bulle tenue collée contre une autre -> fusion
-      var GROW_BUMP = 1.18;      // double-tap rapide : rayon × 1.18
-      var GROW_RATE = 0.55;      // double-tap maintenu : rayon/s (× rayon de départ)
-      var MAX_R_FACTOR = 2.2;    // grossir : au plus ce multiple du rayon de départ
-      var MIN_R = 16;
+      var MERGE_CONTACT_MS = 700; // deux bulles restées collées -> fusion (gouttes d'eau)
+      var MERGE_SPEED = 220;     // px/s : un choc plus rapide que ça fusionne tout de suite
+      var SPLIT_COOLDOWN_MS = 1500; // deux moitiés tout juste coupées ne refusionnent pas
+      var COHESION_RANGE = 14;   // px : deux gouttes plus proches que ça s'attirent
+      var COHESION = 260;        // px/s² : force de cette attraction
+      var SIP_SHARE = 0.3;       // double-tap bref : gorgée = 30 % de la voisine
+      var SIP_RATE = 0.8;        // double-tap maintenu : surface aspirée par s (× surface de la preneuse)
+      var SIP_REACH = 1.2;       // portée d'aspiration (× rayon) : on boit une voisine proche, comme à la paille
+      var MIN_R = 14;            // en dessous, une bulle aspirée disparaît
       var ICE_DAMPING = 0.32;    // freinage de glisse (par seconde) — faible = glace
 
-      // Matière : bille d'eau (souple, se tasse et revient) plutôt que balle
-      var K_EDGE = 700;          // ressorts du contour
-      var C_EDGE = 14;           // amortissement des ressorts du contour
-      var K_PRESS = 1100;        // pression interne (défend le volume)
-      var K_SHAPE = 45;          // rappel doux vers le rond
-      var C_WOBBLE = 3;          // les tremblements s'éteignent en ~½ s
-      var DRIVE_K = 240;         // ressort doigt -> bulle
-      var DRIVE_C = 30;          // amortissement du ressort doigt (~critique)
-      var MAX_DRIVE = 9000;      // px/s², plafond : la bulle suit vite sans se froisser
+      // Matière : gelée d'eau — s'écrase et tremble, un peu plus tenue qu'en v8
+      var K_EDGE = 546;          // ressorts du contour (+30 % après essai)
+      var C_EDGE = 10;           // amortissement des ressorts du contour
+      var K_PRESS = 910;         // pression interne (défend le volume)
+      var K_SHAPE = 29;          // rappel doux vers le rond
+      var C_WOBBLE = 1.6;        // les tremblements s'éteignent en ~1 s
+      var DRIVE_K = 220;         // ressort doigt -> bulle
+      var DRIVE_C = 28;          // amortissement du ressort doigt (~critique)
+      var MAX_DRIVE = 8000;      // px/s², plafond : la bulle suit vite sans se froisser
       var BUBBLE_FRICTION = 0.4; // frotter une bulle contre une autre l'entraîne
       var WALL_BOUNCE = 0.3;
       var MAX_SPEED = 1600;      // px/s
@@ -389,16 +343,18 @@
       var WALL_THICK = 200;
       var STEP = 1 / 60;
 
-      // Gamme pentatonique (do majeur) : quelles que soient les bulles qui se
-      // touchent, ça sonne juste. Plus la bulle est grosse, plus c'est grave.
-      var PENTA = [0, 2, 4, 7, 9];
-      var REF_R = 40, REF_FREQ = 220; // une bulle de 40 px de rayon ≈ la 220 Hz
+      // Note libre, fixée par la taille : fréquence inversement
+      // proportionnelle au rayon (comme une vraie cavité qui résonne).
+      var REF_R = 40, REF_FREQ = 220;
+      function noteFor(r) { return clamp(REF_FREQ * REF_R / r, 70, 900); }
 
       var arena = document.getElementById("arena");
-      var SVGNS = "http://www.w3.org/2000/svg";
-      var svg = document.createElementNS(SVGNS, "svg");
-      svg.setAttribute("class", "field");
-      arena.appendChild(svg);
+      var canvas = document.createElement("canvas");
+      canvas.className = "field";
+      arena.appendChild(canvas);
+      var ctx = canvas.getContext("2d");
+      var dpr = 1;
+      var INK = "#3be08a", ACCENT = "#6dffb0";
 
       var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
       function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
@@ -406,6 +362,8 @@
       var bubbles = [];
       var nextId = 1;
       var lastTime = 0;
+      var effects = [];             // anneaux, ponts de matière, éclaboussures
+      var pointerOwner = {};        // pointerId -> bulle tenue
 
       // ---------- Monde Rapier ----------
 
@@ -417,12 +375,21 @@
       var walls = [];
       var wallSet = new Set();
       var wallBody = world.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-      var pairs = new Map();        // "idA:idB" -> { n: points en contact, since, lastNote }
+      var pairs = new Map();        // "idA:idB" -> { n, since, lastNote, start, pad }
       var accumulator = 0;
       var quietUntil = 0;           // pas de sons juste après un redimensionnement
       var usedGroups = 0;           // bits de groupe de collision pris
 
       function arenaSize() { return { w: arena.clientWidth, h: arena.clientHeight }; }
+
+      function fitCanvas() {
+        var s = arenaSize();
+        dpr = Math.min(2, window.devicePixelRatio || 1);
+        canvas.width = Math.round(s.w * dpr);
+        canvas.height = Math.round(s.h * dpr);
+        canvas.style.width = s.w + "px";
+        canvas.style.height = s.h + "px";
+      }
 
       function buildWalls() {
         walls.forEach(function (c) { wallSet.delete(c.handle); world.removeCollider(c, false); });
@@ -447,10 +414,12 @@
         });
       }
 
-      // ---------- Son : chaque bulle a sa note, fixée par sa taille ----------
+      // ---------- Son ----------
 
       var audio = null;
-      var master = null;   // volume général : coupé d'un coup quand on quitte
+      var master = null;   // volume général : coupé net quand on quitte ou en muet
+
+      function masterLevel() { return muted || document.hidden ? 0 : 1; }
 
       function initAudio() {
         if (!audio) {
@@ -459,33 +428,26 @@
             audio = new Ctx();
             master = audio.createGain();
             master.connect(audio.destination);
+            startPulse();
           }
         }
         if (audio && audio.state === "suspended") audio.resume();
-        if (audio && !document.hidden) {
-          master.gain.cancelScheduledValues(audio.currentTime);
-          master.gain.setValueAtTime(1, audio.currentTime);
-        }
+        setMaster();
       }
 
-      function noteFor(r) {
-        // demi-tons par rapport à la référence, arrondis à la gamme pentatonique
-        var semi = 12 * Math.log2(REF_R / r);
-        var best = 0, bestD = Infinity;
-        for (var oct = -2; oct <= 3; oct++) {
-          PENTA.forEach(function (p) {
-            var cand = oct * 12 + p - 9; // -9 : la gamme part de do, la réf est un la
-            var d = Math.abs(cand - semi);
-            if (d < bestD) { bestD = d; best = cand; }
-          });
-        }
-        return REF_FREQ * Math.pow(2, best / 12);
+      function setMaster() {
+        if (!master) return;
+        master.gain.cancelScheduledValues(audio.currentTime);
+        master.gain.setValueAtTime(masterLevel(), audio.currentTime);
       }
+      window.onMuteChange = function () { setMaster(); if (muted) stopAllTones(); };
+
+      function soundOk() { return audio && !muted && !document.hidden && performance.now() >= quietUntil; }
 
       // Timbre « goutte d'eau » : sinus rond, léger glissé vers la note, et
       // un partiel aigu très court pour l'attaque (façon marimba).
       function playNote(freq, gain) {
-        if (!audio || document.hidden || performance.now() < quietUntil) return;
+        if (!soundOk()) return;
         var t = audio.currentTime;
         var g = audio.createGain();
         g.connect(master);
@@ -515,9 +477,92 @@
 
       function sing(b, gain) {
         var now = performance.now();
+        b.singAmp = Math.max(b.singAmp, clamp(gain * 6, 0.15, 1));
+        wake();
         if (now - b.lastNote < 90) return;
         b.lastNote = now;
         playNote(noteFor(b.r), gain);
+      }
+
+      // Son tenu : une voix douce (sinus + vibrato) qui suit une fréquence.
+      function startTone(freq, gain) {
+        if (!audio) return null;
+        var t = audio.currentTime;
+        var g = audio.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(gain, t + 0.25);
+        g.connect(master);
+        var o = audio.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(freq, t);
+        var lfo = audio.createOscillator();
+        lfo.frequency.value = 5.5;
+        var depth = audio.createGain();
+        depth.gain.value = 0;
+        lfo.connect(depth);
+        depth.connect(o.frequency);
+        o.connect(g);
+        o.start(t);
+        lfo.start(t);
+        return { o: o, g: g, lfo: lfo, depth: depth, gain: gain };
+      }
+
+      function tuneTone(tone, freq, vibrato) {
+        if (!tone || !audio) return;
+        var t = audio.currentTime;
+        tone.o.frequency.setTargetAtTime(freq, t, 0.05);
+        tone.depth.gain.setTargetAtTime(freq * vibrato, t, 0.08);
+      }
+
+      function stopTone(tone) {
+        if (!tone || !audio) return;
+        var t = audio.currentTime;
+        try {
+          tone.g.gain.cancelScheduledValues(t);
+          tone.g.gain.setTargetAtTime(0.0001, t, 0.12);
+          tone.o.stop(t + 0.6);
+          tone.lfo.stop(t + 0.6);
+        } catch (e) {}
+      }
+
+      function stopAllTones() {
+        bubbles.forEach(function (b) { stopTone(b.tone); b.tone = null; });
+        pairs.forEach(function (p) { if (p.pad) { p.pad.forEach(stopTone); p.pad = null; } });
+      }
+
+      // Pulsation de fond : un battement grave et doux, qui accélère quand
+      // il y a du mouvement (lent au repos, ~50/min ; jusqu'à ~110/min).
+      var pulseTimer = null, nextBeat = 0;
+      function activity() {
+        var sp = 0, held = 0;
+        bubbles.forEach(function (b) { sp += Math.hypot(b.vx, b.vy); if (isHeld(b)) held++; });
+        return clamp(sp / 900 + held * 0.25, 0, 1);
+      }
+      function startPulse() {
+        if (pulseTimer) return;
+        nextBeat = audio.currentTime + 0.2;
+        pulseTimer = setInterval(function () {
+          if (!audio || document.hidden) return;
+          var bpm = 50 + 60 * activity();
+          while (nextBeat < audio.currentTime + 0.25) {
+            if (!muted && nextBeat > audio.currentTime) thump(nextBeat);
+            nextBeat += 60 / bpm;
+          }
+        }, 100);
+      }
+      function thump(t) {
+        var g = audio.createGain();
+        g.connect(master);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.07, t + 0.015);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+        var o = audio.createOscillator();
+        o.type = "sine";
+        o.frequency.setValueAtTime(62, t);
+        o.frequency.exponentialRampToValueAtTime(44, t + 0.3);
+        o.connect(g);
+        o.start(t);
+        o.stop(t + 0.4);
       }
 
       // Si l'appli passe en arrière-plan, on coupe le volume général net
@@ -564,30 +609,21 @@
             x = r + Math.random() * Math.max(1, s.w - 2 * r);
             y = r + Math.random() * Math.max(1, s.h - 2 * r);
             tries++;
-          } while (tries < 60 && bubbles.some(function (o) { return Math.hypot(o.x - x, o.y - y) < o.r + r + 6; }));
+          } while (tries < 80 && bubbles.some(function (o) { return Math.hypot(o.x - x, o.y - y) < o.r + r + 6; }));
         }
         if (vx === undefined) {
           var angle = Math.random() * Math.PI * 2;
-          var speed = 50 + Math.random() * 70;
+          var speed = 40 + Math.random() * 60;
           vx = Math.cos(angle) * speed;
           vy = Math.sin(angle) * speed;
         }
         var group = takeGroup();
         if (group < 0) return null;
 
-        var el = document.createElementNS(SVGNS, "path");
-        el.setAttribute("class", "bubble");
-        el.setAttribute("pointer-events", "all");
-        var charge = document.createElementNS(SVGNS, "circle");
-        charge.setAttribute("class", "charge");
-        svg.appendChild(el);
-        svg.appendChild(charge);
-
         var b = {
           id: nextId++,
-          el: el, charge: charge,
           group: group,
-          r: r, r0: r,
+          r: r,
           geo: ringGeometry(r),
           nodes: [],
           x: x, y: y, vx: vx, vy: vy,
@@ -597,8 +633,10 @@
           pinch: null,               // { ids: [idA, idB], sides: [0/1 par point] }
           history: [],
           pressStart: 0, pressPos: null, pressMoved: false,
-          isSecondTap: false, growingContinuous: false, splitTriggered: false,
-          lastReleaseTime: 0, lastNote: 0
+          isSecondTap: false, sipping: false, splitTriggered: false,
+          lastReleaseTime: 0, lastNote: 0, noMergeUntil: 0,
+          singAmp: 0, charge: 0, tone: null, sipFrom: null,
+          phase: Math.random() * 6.28
         };
 
         var groups = ((1 << group) << 16) | (0xffff & ~(1 << group)); // pas de contact avec ses propres points
@@ -626,14 +664,8 @@
           b.nodes.push({ body: body, col: col, th: th, x: 0, y: 0, vx: vx, vy: vy });
         }
 
-        el.addEventListener("pointerdown", function (ev) { onDown(ev, b); });
-        el.addEventListener("pointermove", function (ev) { onMove(ev, b); });
-        el.addEventListener("pointerup", function (ev) { onUp(ev, b); });
-        el.addEventListener("pointercancel", function (ev) { onUp(ev, b); });
-
         bubbles.push(b);
         readNodes(b);
-        draw(b);
         wake();
         return b;
       }
@@ -641,21 +673,22 @@
       function removeBubble(b) {
         var i = bubbles.indexOf(b);
         if (i >= 0) bubbles.splice(i, 1);
-        b.el.remove();
-        b.charge.remove();
+        stopTone(b.tone);
+        b.tone = null;
         b.nodes.forEach(function (n) { nodeOwner.delete(n.col.handle); world.removeRigidBody(n.body); });
         usedGroups &= ~(1 << b.group);
         pairs.forEach(function (p, key) {
           var ids = key.split(":").map(Number);
-          if (ids[0] === b.id || ids[1] === b.id) pairs.delete(key);
+          if (ids[0] === b.id || ids[1] === b.id) { if (p.pad) p.pad.forEach(stopTone); pairs.delete(key); }
         });
+        Object.keys(pointerOwner).forEach(function (id) { if (pointerOwner[id] === b) delete pointerOwner[id]; });
       }
 
-      // Change la taille de repos : la pression regonfle la bulle en douceur.
+      // Change la taille de repos : la pression regonfle (ou dégonfle) la
+      // bulle en douceur.
       function setRadius(b, r) {
-        r = clamp(r, MIN_R, Math.min(b.r0 * MAX_R_FACTOR, maxRadius()));
-        b.r = r;
-        b.geo = ringGeometry(r);
+        b.r = clamp(r, MIN_R, maxRadius());
+        b.geo = ringGeometry(b.r);
         b.nodes.forEach(function (n) { n.col.setRadius(b.geo.nodeR); });
       }
 
@@ -689,9 +722,10 @@
       function applyInternal(b) {
         var N = b.nodes.length, g = b.geo;
         var ax = new Array(N).fill(0), ay = new Array(N).fill(0);
+        var i, n;
 
         // Ressorts du contour (point i <-> i+1)
-        for (var i = 0; i < N; i++) {
+        for (i = 0; i < N; i++) {
           var p = b.nodes[i], q = b.nodes[(i + 1) % N];
           var dx = q.x - p.x, dy = q.y - p.y;
           var d = Math.hypot(dx, dy) || 0.001;
@@ -708,8 +742,7 @@
         var press = K_PRESS * (g.area - area) / g.area;
         for (i = 0; i < N; i++) {
           var a = b.nodes[i], c = b.nodes[(i + 1) % N];
-          // normale sortante de l'arête (points rangés dans le sens horaire à l'écran)
-          var nx = c.y - a.y, ny = -(c.x - a.x);
+          var nx = c.y - a.y, ny = -(c.x - a.x); // normale sortante de l'arête
           ax[i] += press * nx * 0.5; ay[i] += press * ny * 0.5;
           ax[(i + 1) % N] += press * nx * 0.5; ay[(i + 1) % N] += press * ny * 0.5;
         }
@@ -717,7 +750,7 @@
         // Rappel doux vers le rond, qui tourne avec la bulle (tension de surface)
         var sc = 0, ss = 0;
         for (i = 0; i < N; i++) {
-          var n = b.nodes[i];
+          n = b.nodes[i];
           var rx = n.x - b.x, ry = n.y - b.y;
           var ex = Math.cos(n.th), ey = Math.sin(n.th);
           sc += rx * ex + ry * ey;
@@ -733,13 +766,12 @@
           ay[i] += K_SHAPE * (iy - n.y) - C_WOBBLE * (n.vy - b.vy);
         }
 
-        // Doigts : un ressort amorti tire la bulle. À un doigt, surtout les
-        // points proches de l'endroit saisi (le reste suit avec un peu de
-        // retard, comme un vrai objet mou). À deux doigts, chaque moitié suit
-        // son doigt : la bulle s'étire réellement.
+        // Doigts : un ressort amorti tire la bulle. À un doigt, un peu plus
+        // les points proches de l'endroit saisi (le reste suit avec un léger
+        // retard, comme un objet mou). À deux doigts, chaque moitié suit son
+        // doigt : la bulle s'étire réellement.
         var ids = Object.keys(b.touches);
         if (ids.length === 1) {
-          // cible bornée à l'écran : un doigt qui sort ne froisse pas la bulle contre un coin
           var s = arenaSize();
           var gx = b.x + b.grabOff.x, gy = b.y + b.grabOff.y;
           var tx = clamp(b.dragTX, b.r + b.grabOff.x, s.w - b.r + b.grabOff.x);
@@ -785,7 +817,7 @@
         }
       }
 
-      // ---------- Contacts : notes, et fusion ----------
+      // ---------- Contacts : notes, nappes, fusion ----------
 
       function pairKey(a, c) { return Math.min(a.id, c.id) + ":" + Math.max(a.id, c.id); }
 
@@ -796,11 +828,12 @@
           var key = pairKey(a, c);
           var p = pairs.get(key);
           if (started) {
-            if (!p) { p = { n: 0, since: 0, lastNote: 0 }; pairs.set(key, p); }
+            if (!p) { p = { n: 0, lastNote: 0, start: performance.now(), fast: false, pad: null }; pairs.set(key, p); }
             p.n++;
             if (p.n === 1) {
               // Premier contact : les deux bulles résonnent, chacune sa note
               var speed = Math.hypot(a.vx - c.vx, a.vy - c.vy);
+              if (speed > MERGE_SPEED) p.fast = true;
               var gain = clamp(0.03 + speed / 2500, 0.03, 0.16);
               sing(a, gain);
               sing(c, gain * 0.8);
@@ -808,7 +841,7 @@
             }
           } else if (p) {
             p.n = Math.max(0, p.n - 1);
-            if (p.n === 0) pairs.delete(key);
+            if (p.n === 0) { if (p.pad) p.pad.forEach(stopTone); pairs.delete(key); }
           }
           return;
         }
@@ -820,10 +853,18 @@
         }
       }
 
-      // Frotter deux bulles l'une contre l'autre les fait chanter doucement,
-      // en continu : il y a toujours un peu de musique quand on joue.
-      function rubMusic() {
+      function bubbleById(id) {
+        for (var i = 0; i < bubbles.length; i++) if (bubbles[i].id === id) return bubbles[i];
+        return null;
+      }
+
+      function isHeld(b) { return Object.keys(b.touches).length > 0; }
+
+      // Musique continue : deux bulles qui restent collées tiennent un
+      // accord doux (leurs deux notes) ; les frotter les fait chanter.
+      function contactMusic() {
         var now = performance.now();
+        var pads = 0;
         pairs.forEach(function (p, key) {
           var ids = key.split(":").map(Number);
           var a = bubbleById(ids[0]), c = bubbleById(ids[1]);
@@ -835,31 +876,46 @@
             sing(a, g);
             sing(c, g * 0.8);
           }
+          if (soundOk() && !p.pad && now - p.start > 250 && pads < 5) {
+            p.pad = [startTone(noteFor(a.r), 0.014), startTone(noteFor(c.r), 0.012)];
+          }
+          if (p.pad) {
+            pads++;
+            tuneTone(p.pad[0], noteFor(a.r), 0);
+            tuneTone(p.pad[1], noteFor(c.r), 0);
+          }
         });
       }
 
-      function bubbleById(id) {
-        for (var i = 0; i < bubbles.length; i++) if (bubbles[i].id === id) return bubbles[i];
-        return null;
+      // Note tenue quand on tient une bulle ; vibrato quand on la secoue.
+      function heldMusic() {
+        bubbles.forEach(function (b) {
+          if (isHeld(b) && soundOk()) {
+            if (!b.tone) b.tone = startTone(noteFor(b.r), 0.018);
+            var wob = 0;
+            b.nodes.forEach(function (n) { wob += Math.hypot(n.vx - b.vx, n.vy - b.vy); });
+            wob /= b.nodes.length;
+            tuneTone(b.tone, noteFor(b.r), clamp(wob / 4000 + Math.hypot(b.vx, b.vy) / 40000, 0.001, 0.015));
+            b.singAmp = Math.max(b.singAmp, 0.25);
+          } else if (b.tone) {
+            stopTone(b.tone);
+            b.tone = null;
+          }
+        });
       }
 
-      function isHeld(b) { return Object.keys(b.touches).length > 0; }
-
+      // Comme deux gouttes d'eau : deux bulles qui se cognent assez vite, ou
+      // qui restent collées un moment, ne font plus qu'une. Pas besoin de
+      // geste. (Sauf pendant une aspiration, et juste après une coupe.)
       function checkMerges() {
         var now = performance.now();
         var todo = [];
         pairs.forEach(function (p, key) {
           var ids = key.split(":").map(Number);
           var a = bubbleById(ids[0]), c = bubbleById(ids[1]);
-          if (!a || !c || (!isHeld(a) && !isHeld(c))) { p.since = 0; return; }
-          if (isHeld(a) && isHeld(c)) { todo.push([a, c]); return; }
-          // Une seule tenue : il faut vraiment l'enfoncer dans l'autre (le
-          // doigt vise l'intérieur de l'autre bulle), pas juste l'effleurer.
-          var h = isHeld(a) ? a : c, o = h === a ? c : a;
-          var pushing = Math.hypot(h.dragTX - o.x, h.dragTY - o.y) < o.r + h.r * 0.4;
-          if (!pushing) { p.since = 0; return; }
-          if (!p.since) p.since = now;
-          if (now - p.since > MERGE_HOLD_MS) todo.push([a, c]);
+          if (!a || !c || a.sipping || c.sipping) return;
+          if (now < a.noMergeUntil || now < c.noMergeUntil) { p.start = now; p.fast = false; return; }
+          if (p.fast || now - p.start > MERGE_CONTACT_MS) todo.push([a, c]);
         });
         todo.forEach(function (pair) {
           if (bubbles.indexOf(pair[0]) >= 0 && bubbles.indexOf(pair[1]) >= 0) mergeBubbles(pair[0], pair[1]);
@@ -878,22 +934,23 @@
         var vx = a.vx * wa + c.vx * wc, vy = a.vy * wa + c.vy * wc;
         var touches = {};
         [a, c].forEach(function (o) { Object.keys(o.touches).forEach(function (id) { touches[id] = o.touches[id]; }); });
+        var ax = a.x, ay = a.y, cx = c.x, cy = c.y;
         removeBubble(a);
         removeBubble(c);
         var m = spawnBubble(x, y, r, vx, vy);
         if (!m) return;
-        m.r0 = Math.max(a.r0, c.r0, r);
         adoptTouches(m, touches);
-        m.lastReleaseTime = 0;
-        m.lastNote = 0;
+        m.noMergeUntil = performance.now() + 250;
         sing(m, 0.18);
-        ringAt(m.x, m.y, m.r);
+        addRing(m.x, m.y, m.r);
+        addBridge(ax, ay, cx, cy, Math.min(a.r, c.r) * 0.7, "merge");
+        addSplash(x, y, m.r, 10);
       }
 
       function adoptTouches(b, touches) {
         var ids = Object.keys(touches);
         ids.forEach(function (id) {
-          try { b.el.setPointerCapture(Number(id)); } catch (e) {}
+          pointerOwner[id] = b;
           b.touches[id] = touches[id];
         });
         if (ids.length === 1) {
@@ -930,55 +987,234 @@
           halves[0].x = mx - dx / d * need / 2; halves[0].y = my - dy / d * need / 2;
           halves[1].x = mx + dx / d * need / 2; halves[1].y = my + dy / d * need / 2;
         }
-        var r0 = Math.max(MIN_R, b.r0 / Math.SQRT2);
+        var ox = b.x, oy = b.y;
         removeBubble(b);
+        addBridge(halves[0].x, halves[0].y, halves[1].x, halves[1].y, r2 * 0.7, "split");
+        addSplash(ox, oy, r2, 12);
         return halves.map(function (h, k) {
           var sgn = k === 0 ? -1 : 1;
           var nb = spawnBubble(h.x, h.y, r2, h.vx + sgn * (pushX || 0), h.vy + sgn * (pushY || 0));
-          if (nb) { nb.r0 = r0; sing(nb, 0.13); ringAt(nb.x, nb.y, nb.r); }
+          if (nb) { nb.noMergeUntil = performance.now() + SPLIT_COOLDOWN_MS; sing(nb, 0.13); addRing(nb.x, nb.y, nb.r); }
           return nb;
         });
       }
 
-      function ringAt(x, y, r) {
-        var ring = document.createElement("div");
-        ring.className = "ring";
-        ring.style.width = ring.style.height = (r * 2) + "px";
-        ring.style.left = (x - r) + "px";
-        ring.style.top = (y - r) + "px";
-        arena.appendChild(ring);
-        var a = ring.animate([
-          { opacity: 0.6, transform: "scale(1)" },
-          { opacity: 0, transform: "scale(1.6)" }
-        ], { duration: reduced ? 1 : 500, easing: "ease-out", fill: "forwards" });
-        a.finished.catch(function () {}).then(function () { ring.remove(); });
+      // ---------- Aspirer : une bulle boit le volume d'une voisine ----------
+
+      function neighbourFor(b) {
+        var best = null, bestD = Infinity;
+        bubbles.forEach(function (o) {
+          if (o === b) return;
+          var gap = Math.hypot(o.x - b.x, o.y - b.y) - o.r - b.r;
+          var touching = pairs.has(pairKey(b, o)) || gap < b.r * SIP_REACH;
+          if (touching && gap < bestD) { best = o; bestD = gap; }
+        });
+        return best;
       }
 
-      // ---------- Dessin : contour lisse qui épouse les points ----------
+      // Transfère une surface de « from » vers « to ». Si « from » devient
+      // trop petite, elle est bue entièrement et disparaît.
+      function transfer(to, from, dA) {
+        var room = maxRadius() * maxRadius() - to.r * to.r;
+        dA = Math.min(dA, room, from.r * from.r);
+        if (dA <= 0) return false;
+        var left = from.r * from.r - dA;
+        if (left < MIN_R * MIN_R * 1.2) {
+          // bue jusqu'au bout
+          var all = from.r * from.r;
+          if (all > room) return false;
+          var fx = from.x, fy = from.y;
+          removeBubble(from);
+          setRadius(to, Math.sqrt(to.r * to.r + all));
+          addSplash(fx, fy, MIN_R * 1.5, 8);
+          playNote(noteFor(MIN_R) * 1.5, 0.08);
+          sing(to, 0.12);
+          return true;
+        }
+        setRadius(from, Math.sqrt(left));
+        setRadius(to, Math.sqrt(to.r * to.r + dA));
+        return true;
+      }
 
-      function draw(b) {
+      function sipOnce(b) {
+        var o = neighbourFor(b);
+        if (!o) { b.singAmp = Math.max(b.singAmp, 0.3); return; }
+        transfer(b, o, o.r * o.r * SIP_SHARE);
+        addBridge(o.x, o.y, b.x, b.y, Math.min(o.r, b.r) * 0.35, "sip");
+        sing(b, 0.14);
+        addRing(b.x, b.y, b.r);
+      }
+
+      function sipContinuous(b, dt) {
+        var o = neighbourFor(b);
+        b.sipFrom = o;
+        if (!o) return;
+        transfer(b, o, SIP_RATE * b.r * b.r * dt);
+      }
+
+      // ---------- Effets : anneau, pont de matière, éclaboussure ----------
+
+      function addRing(x, y, r) { effects.push({ kind: "ring", x: x, y: y, r: r, t: 0, life: 0.5 }); wake(); }
+
+      function addBridge(x1, y1, x2, y2, w, mode) {
+        effects.push({ kind: "bridge", x1: x1, y1: y1, x2: x2, y2: y2, w: w, mode: mode, t: 0, life: 0.35 });
+        wake();
+      }
+
+      function addSplash(x, y, r, n) {
+        for (var i = 0; i < n; i++) {
+          var a = Math.random() * Math.PI * 2, sp = 80 + Math.random() * 180;
+          effects.push({ kind: "drop", x: x + Math.cos(a) * r * 0.8, y: y + Math.sin(a) * r * 0.8,
+                         vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, s: 1.5 + Math.random() * 2.5, t: 0, life: 0.45 + Math.random() * 0.25 });
+        }
+        wake();
+      }
+
+      // ---------- Dessin (canvas, persistance phosphore) ----------
+
+      function outline(b, time) {
         var N = b.nodes.length, nr = b.geo.nodeR;
         var pts = [];
+        var k = Math.max(2, Math.round(noteFor(b.r) / 70)); // plus aiguë = ondule plus serré
+        var vib = b.singAmp * b.r * 0.06;
         for (var i = 0; i < N; i++) {
           var p = b.nodes[(i + N - 1) % N], c = b.nodes[i], q = b.nodes[(i + 1) % N];
           var tx = q.x - p.x, ty = q.y - p.y;
           var tl = Math.hypot(tx, ty) || 1;
-          // décalé vers l'extérieur du rayon des points : le trait = le bord réel
-          pts.push({ x: c.x + (ty / tl) * nr, y: c.y - (tx / tl) * nr });
+          // décalé vers l'extérieur du rayon des points : le trait = le bord réel,
+          // plus une vibration quand la bulle chante
+          var off = nr + vib * Math.sin(k * c.th + time * 18 + b.phase);
+          pts.push({ x: c.x + (ty / tl) * off, y: c.y - (tx / tl) * off });
         }
-        var d = "";
-        for (i = 0; i < N; i++) {
+        return pts;
+      }
+
+      function tracePath(pts) {
+        var N = pts.length;
+        ctx.beginPath();
+        var last = pts[N - 1];
+        ctx.moveTo((last.x + pts[0].x) / 2, (last.y + pts[0].y) / 2);
+        for (var i = 0; i < N; i++) {
           var a = pts[i], z = pts[(i + 1) % N];
-          var mx = (a.x + z.x) / 2, my = (a.y + z.y) / 2;
-          if (i === 0) {
-            var last = pts[N - 1];
-            d += "M" + ((last.x + a.x) / 2).toFixed(1) + " " + ((last.y + a.y) / 2).toFixed(1);
-          }
-          d += "Q" + a.x.toFixed(1) + " " + a.y.toFixed(1) + " " + mx.toFixed(1) + " " + my.toFixed(1);
+          ctx.quadraticCurveTo(a.x, a.y, (a.x + z.x) / 2, (a.y + z.y) / 2);
         }
-        b.el.setAttribute("d", d + "Z");
-        b.charge.setAttribute("cx", b.x.toFixed(1));
-        b.charge.setAttribute("cy", b.y.toFixed(1));
+        ctx.closePath();
+      }
+
+      function render(dt, time) {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        // Persistance phosphore : l'image précédente s'efface lentement au
+        // lieu de disparaître d'un coup — le tracé laisse une traînée.
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.fillStyle = "rgba(0,0,0," + (reduced ? 1 : 0.3) + ")";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = "source-over";
+        ctx.lineJoin = "round";
+
+        bubbles.forEach(function (b) {
+          var pts = outline(b, time);
+          var col = isHeld(b) ? ACCENT : INK;
+
+          // Onde à l'intérieur : une sinusoïde à la fréquence (visuelle) de
+          // sa note, qui s'anime quand la bulle chante.
+          ctx.save();
+          tracePath(pts);
+          ctx.clip();
+          var cycles = clamp(noteFor(b.r) / 90, 1.2, 7);
+          var amp = b.r * (0.06 + 0.22 * b.singAmp);
+          ctx.beginPath();
+          for (var x = -b.r; x <= b.r; x += 3) {
+            var y = Math.sin((x / (2 * b.r)) * cycles * Math.PI * 2 + time * 6 + b.phase) * amp;
+            if (x === -b.r) ctx.moveTo(b.x + x, b.y + y); else ctx.lineTo(b.x + x, b.y + y);
+          }
+          ctx.strokeStyle = col;
+          ctx.globalAlpha = 0.35 + 0.5 * b.singAmp;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+          ctx.restore();
+
+          // Contour : halo large et pâle + trait fin
+          tracePath(pts);
+          ctx.strokeStyle = col;
+          ctx.globalAlpha = 0.18;
+          ctx.lineWidth = 6;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Maintien pour couper : un cercle qui grandit au centre
+          if (b.charge > 0) {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, Math.max(1, b.r * 0.85 * b.charge), 0, Math.PI * 2);
+            ctx.globalAlpha = 0.5;
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+
+          // Aspiration en cours : un filet de matière vers la voisine
+          if (b.sipping && b.sipFrom && bubbles.indexOf(b.sipFrom) >= 0) {
+            var o = b.sipFrom;
+            ctx.beginPath();
+            ctx.moveTo(o.x, o.y);
+            var mx = (o.x + b.x) / 2 + Math.sin(time * 20) * 4, my = (o.y + b.y) / 2 + Math.cos(time * 20) * 4;
+            ctx.quadraticCurveTo(mx, my, b.x, b.y);
+            ctx.globalAlpha = 0.6;
+            ctx.lineWidth = 1.5 + Math.min(o.r, b.r) * 0.08;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+          }
+        });
+
+        // Effets
+        effects = effects.filter(function (e) {
+          e.t += dt;
+          var k = e.t / e.life;
+          if (k >= 1) return false;
+          ctx.strokeStyle = INK;
+          ctx.fillStyle = INK;
+          if (e.kind === "ring") {
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.r * (1 + 0.6 * k), 0, Math.PI * 2);
+            ctx.globalAlpha = 0.6 * (1 - k);
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          } else if (e.kind === "bridge") {
+            // coupe : le filament s'amincit puis casse au milieu ;
+            // fusion / aspiration : il s'épaissit puis se résorbe
+            var w = e.mode === "split" ? e.w * (1 - k) : e.w * Math.sin(k * Math.PI);
+            var gap = e.mode === "split" ? k * 0.5 : 0;
+            ctx.globalAlpha = 0.8 * (1 - k * 0.6);
+            ctx.lineWidth = Math.max(1, w * 0.4);
+            ctx.lineCap = "round";
+            var mx = (e.x1 + e.x2) / 2, my = (e.y1 + e.y2) / 2;
+            ctx.beginPath();
+            ctx.moveTo(e.x1, e.y1);
+            ctx.lineTo(mx + (e.x1 - mx) * gap, my + (e.y1 - my) * gap);
+            ctx.moveTo(e.x2, e.y2);
+            ctx.lineTo(mx + (e.x2 - mx) * gap, my + (e.y2 - my) * gap);
+            ctx.stroke();
+            ctx.lineCap = "butt";
+          } else if (e.kind === "drop") {
+            e.x += e.vx * dt; e.y += e.vy * dt;
+            e.vx *= 0.9; e.vy *= 0.9;
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.s * (1 - k * 0.5), 0, Math.PI * 2);
+            ctx.globalAlpha = 1 - k;
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+          ctx.globalAlpha = 1;
+          return true;
+        });
+      }
+
+      // Image nette (sans traînée) : quand l'animation s'arrête au repos
+      function renderClean(time) {
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        render(0, time);
       }
 
       // ---------- Pointeur : glisser / pincer / tap / maintien ----------
@@ -986,6 +1222,16 @@
       function localPos(ev) {
         var rect = arena.getBoundingClientRect();
         return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+      }
+
+      function inside(b, p) {
+        // point dans le contour (points + leur rayon), test par rayons croisés
+        var nodes = b.nodes, N = nodes.length, hit = false;
+        for (var i = 0, j = N - 1; i < N; j = i++) {
+          var a = nodes[i], c = nodes[j];
+          if (((a.y > p.y) !== (c.y > p.y)) && (p.x < (c.x - a.x) * (p.y - a.y) / (c.y - a.y) + a.x)) hit = !hit;
+        }
+        return hit || Math.hypot(p.x - b.x, p.y - b.y) < b.r;
       }
 
       function startPinch(b) {
@@ -998,35 +1244,51 @@
           sides: b.nodes.map(function (n) { return ((n.x - mx) * ax + (n.y - my) * ay) < 0 ? 0 : 1; })
         };
         b.pressStart = 0;
-        b.charge.classList.remove("on");
+        b.charge = 0;
       }
 
-      // Deuxième doigt posé à côté d'une bulle déjà tenue (fréquent sur une
-      // petite bulle) : on le rattache quand même à elle pour pincer.
       arena.addEventListener("pointerdown", function (ev) {
-        if (ev.target !== arena && ev.target !== svg) return;
         var p = localPos(ev);
-        var best = null, bestD = Infinity;
+        var hit = null, best = Infinity;
         bubbles.forEach(function (o) {
-          if (Object.keys(o.touches).length !== 1) return;
           var d = Math.hypot(p.x - o.x, p.y - o.y);
-          if (d < o.r * 3.5 && d < bestD) { best = o; bestD = d; }
+          if (inside(o, p) && d < best) { hit = o; best = d; }
         });
-        if (best) onDown(ev, best);
-      });
-
-      function onDown(ev, b) {
+        // Deuxième doigt posé à côté d'une bulle déjà tenue : on le rattache
+        // quand même à elle pour pincer.
+        if (!hit) {
+          bubbles.forEach(function (o) {
+            if (Object.keys(o.touches).length !== 1) return;
+            var d = Math.hypot(p.x - o.x, p.y - o.y);
+            if (d < o.r * 3.5 && d < best) { hit = o; best = d; }
+          });
+        }
         initAudio();
+        if (!hit) return;
+        try { arena.setPointerCapture(ev.pointerId); } catch (e) {}
+        pointerOwner[ev.pointerId] = hit;
+        onDown(ev, hit, p);
+      });
+      arena.addEventListener("pointermove", function (ev) {
+        var b = pointerOwner[ev.pointerId];
+        if (b) onMove(ev, b, localPos(ev));
+      });
+      function release(ev) {
+        var b = pointerOwner[ev.pointerId];
+        delete pointerOwner[ev.pointerId];
+        if (b) onUp(ev, b);
+      }
+      arena.addEventListener("pointerup", release);
+      arena.addEventListener("pointercancel", release);
+
+      function onDown(ev, b, p) {
         wake();
         ev.preventDefault();
-        try { b.el.setPointerCapture(ev.pointerId); } catch (e) {}
-        var p = localPos(ev);
         b.touches[ev.pointerId] = p;
 
         var count = Object.keys(b.touches).length;
         if (count === 1) {
           var now = performance.now();
-          b.el.classList.add("held");
           b.dragTX = p.x; b.dragTY = p.y;
           b.grabOff = { x: p.x - b.x, y: p.y - b.y };
           b.history = [{ t: now, x: p.x, y: p.y }];
@@ -1034,19 +1296,18 @@
           b.pressPos = p;
           b.pressMoved = false;
           b.splitTriggered = false;
-          b.growingContinuous = false;
-          // Double-tap bref (grossit d'un coup) ou maintenu (grossit en
-          // continu) : ça se tranche à la relâche, ou dans la boucle.
+          b.sipping = false;
+          // Double-tap bref (une gorgée) ou maintenu (aspire en continu) :
+          // ça se tranche à la relâche, ou dans la boucle.
           b.isSecondTap = (now - b.lastReleaseTime) < DOUBLE_TAP_MS;
-          sing(b, 0.07);
+          sing(b, 0.06);
         } else if (count === 2) {
           startPinch(b);
         }
       }
 
-      function onMove(ev, b) {
+      function onMove(ev, b, p) {
         if (!b.touches[ev.pointerId]) return;
-        var p = localPos(ev);
         b.touches[ev.pointerId] = p;
         var ids = Object.keys(b.touches);
 
@@ -1081,11 +1342,10 @@
         var now = performance.now();
 
         if (ids.length === 0) {
-          b.el.classList.remove("held");
-          b.charge.classList.remove("on");
+          b.charge = 0;
           b.pinch = null;
           var held = b.pressStart ? now - b.pressStart : 999;
-          var quickTap = b.pressStart && !b.pressMoved && held < TAP_MAX_MS && !b.splitTriggered && !b.growingContinuous;
+          var quickTap = b.pressStart && !b.pressMoved && held < TAP_MAX_MS && !b.splitTriggered && !b.sipping;
 
           // Vitesse de lâcher : mesurée sur les derniers points du geste, pas
           // juste la dernière image — le geste garde son élan. Les
@@ -1100,13 +1360,11 @@
             });
           }
 
-          if (b.growingContinuous) {
+          if (b.sipping) {
             b.lastReleaseTime = 0;
           } else if (quickTap) {
             if (b.isSecondTap) {
-              setRadius(b, b.r * GROW_BUMP);
-              sing(b, 0.14);
-              ringAt(b.x, b.y, b.r);
+              sipOnce(b);
               b.lastReleaseTime = 0;
             } else {
               b.lastReleaseTime = now;
@@ -1114,7 +1372,8 @@
           } else {
             b.lastReleaseTime = 0;
           }
-          b.growingContinuous = false;
+          b.sipping = false;
+          b.sipFrom = null;
           b.pressStart = 0;
         } else if (ids.length === 1) {
           b.pinch = null;
@@ -1131,17 +1390,37 @@
         var ang = Math.random() * Math.PI;
         var ux = Math.cos(ang), uy = Math.sin(ang);
         var sides = b.nodes.map(function (n) { return ((n.x - b.x) * ux + (n.y - b.y) * uy) < 0 ? 0 : 1; });
-        Object.keys(b.touches).forEach(function (id) { try { b.el.releasePointerCapture(Number(id)); } catch (e) {} });
         b.touches = {};
         splitBubble(b, sides, ux * 70, uy * 70);
       }
 
       // ---------- Boucle ----------
 
+      // Deux gouttes presque en contact s'attirent (tension de surface) :
+      // même lentement, elles finissent par se coller puis fusionner.
+      function cohesion() {
+        var now = performance.now();
+        for (var i = 0; i < bubbles.length; i++) {
+          for (var j = i + 1; j < bubbles.length; j++) {
+            var a = bubbles[i], c = bubbles[j];
+            if (now < a.noMergeUntil || now < c.noMergeUntil || a.sipping || c.sipping) continue;
+            var dx = c.x - a.x, dy = c.y - a.y;
+            var d = Math.hypot(dx, dy) || 1;
+            var gap = d - a.r - c.r;
+            if (gap > COHESION_RANGE) continue;
+            var k = COHESION * STEP * (1 - Math.max(0, gap) / COHESION_RANGE);
+            var ux = dx / d * k, uy = dy / d * k;
+            a.nodes.forEach(function (n) { var v = n.body.linvel(); n.body.setLinvel({ x: v.x + ux, y: v.y + uy }, true); });
+            c.nodes.forEach(function (n) { var v = n.body.linvel(); n.body.setLinvel({ x: v.x - ux, y: v.y - uy }, true); });
+          }
+        }
+      }
+
       function stepPhysics(dt) {
         accumulator = Math.min(accumulator + dt, STEP * 4);
         while (accumulator >= STEP) {
           bubbles.forEach(function (b) { readNodes(b); applyInternal(b); });
+          cohesion();
           world.step(events);
           accumulator -= STEP;
           events.drainCollisionEvents(onContact);
@@ -1158,45 +1437,44 @@
         });
       }
 
-      function update(dt) {
+      function update(dt, time) {
         stepPhysics(dt);
         checkMerges();
-        rubMusic();
+        contactMusic();
+        heldMusic();
 
         bubbles.slice().forEach(function (b) {
           if (bubbles.indexOf(b) < 0) return;
+          b.singAmp *= Math.max(0, 1 - dt * 3);
           if (b.pressStart && Object.keys(b.touches).length === 1 && !b.pressMoved) {
             var held = performance.now() - b.pressStart;
             if (b.isSecondTap) {
               // Passé le seuil d'un tap franc sans relâcher : double-tap
-              // maintenu, la bulle grossit en continu.
-              if (held > TAP_MAX_MS) b.growingContinuous = true;
-              if (b.growingContinuous) {
-                setRadius(b, b.r + GROW_RATE * b.r0 * dt);
-                b.charge.classList.add("on");
-                b.charge.setAttribute("r", (b.r * (0.5 + 0.15 * Math.sin(performance.now() / 110))).toFixed(1));
-              }
+              // maintenu, la bulle aspire en continu sa voisine.
+              if (held > TAP_MAX_MS) b.sipping = true;
+              if (b.sipping) sipContinuous(b, dt);
+              b.charge = 0;
             } else {
-              b.charge.classList.add("on");
-              b.charge.setAttribute("r", (b.r * 0.85 * clamp(held / SPLIT_HOLD_MS, 0.05, 1)).toFixed(1));
-              if (held > SPLIT_HOLD_MS && !b.splitTriggered) { splitInPlace(b); return; }
+              b.charge = clamp(held / SPLIT_HOLD_MS, 0.05, 1);
+              if (held > SPLIT_HOLD_MS && !b.splitTriggered) splitInPlace(b);
             }
           } else {
-            b.charge.classList.remove("on");
+            b.charge = 0;
           }
-          draw(b);
         });
+        render(dt, time);
       }
 
       // Batterie : la boucle s'arrête quand plus rien ne bouge (ou que
-      // l'appli passe en arrière-plan) et repart au premier toucher, à
-      // l'apparition d'une bulle ou au retour sur l'appli.
+      // l'appli passe en arrière-plan) et repart au premier toucher, à un
+      // son ou au retour sur l'appli. La pulsation continue, elle, en fond.
       var looping = false;
       var restSince = 0;
 
       function atRest() {
+        if (effects.length) return false;
         return bubbles.every(function (b) {
-          if (isHeld(b)) return false;
+          if (isHeld(b) || b.singAmp > 0.02) return false;
           if (Math.hypot(b.vx, b.vy) > 4) return false;
           return b.nodes.every(function (n) { return Math.hypot(n.vx - b.vx, n.vy - b.vy) < 4; });
         });
@@ -1212,13 +1490,16 @@
 
       function loop(time) {
         if (document.hidden) { looping = false; return; }
+        if (time - lastSave > 2000) { lastSave = time; save(); }
         var dt = Math.min(0.05, (time - lastTime) / 1000 || 0);
         lastTime = time;
-        update(dt);
+        update(dt, time / 1000);
         if (atRest()) {
           if (!restSince) restSince = time;
           else if (time - restSince > 1500) {
             bubbles.forEach(function (b) { b.nodes.forEach(function (n) { n.body.setLinvel({ x: 0, y: 0 }, true); }); });
+            renderClean(time / 1000);
+            save();
             looping = false;
             return;
           }
@@ -1228,9 +1509,12 @@
         requestAnimationFrame(loop);
       }
 
-      // ---------- Historique ----------
+      // ---------- Menu ⓘ : portfolio, langue, son, historique ----------
 
       var VERSIONS = [
+        { v: "v9",
+          fr: "Gouttes d'eau : deux bulles qui se cognent assez vite, ou qui restent collées (elles s'attirent de près), fusionnent toutes seules. Matière un peu plus tenue (+30 %). Double-tap = aspirer une voisine proche (bref : une gorgée ; maintenu : jusqu'à la boire entièrement) — le volume se conserve, plus de croissance sans fin. Note libre selon la taille ; tenir une bulle la fait chanter doucement (vibrato si on la secoue) ; deux bulles collées tiennent un accord ; pulsation grave en fond qui accélère avec le mouvement. Oscilloscope : traînée phosphore, onde à la fréquence de la note dans chaque bulle, contour qui vibre en chantant, pont de matière et éclaboussures en coupant/fusionnant. Interface cachée derrière ⓘ (portfolio, langue, son, historique). La partie est sauvegardée : plus de remise à zéro en cours de jeu (la mise à jour automatique rechargeait la page à tort).",
+          en: "Water drops: two bubbles that bump fast enough, or stay stuck together (they attract at close range), merge on their own. Slightly firmer material (+30%). Double-tap = sip a nearby neighbour (short: one sip; hold: drink it whole) — volume is conserved, no more endless growth. Free pitch from size; holding a bubble makes it hum softly (vibrato when shaken); two stuck bubbles hold a chord; a low background pulse speeds up with movement. Oscilloscope: phosphor trail, a wave at the note's frequency inside each bubble, outline that trembles while singing, matter bridge and splashes when splitting/merging. Interface hidden behind ⓘ (portfolio, language, sound, history). The game is saved: no more reset mid-play (auto-update was wrongly reloading the page)." },
         { v: "v8",
           fr: "Bulles molles, entre bille d'eau et bulle de savon : chaque bulle est un anneau souple gonflé par une pression interne — elle s'écrase contre les autres, roule quand on la frotte, s'étire vraiment entre deux doigts. Le volume se conserve : couper partage la surface, fusionner l'additionne, et plus aucune bulle n'apparaît toute seule. Fusion plus franche : enfoncer une bulle dans l'autre, ou en rapprocher deux tenues. Son : chaque bulle a sa note selon sa taille (gamme pentatonique, grosse = grave) ; au contact les deux chantent, les frotter fait de la musique en continu. Marche hors ligne et s'installe sur l'écran d'accueil. L'animation s'arrête quand plus rien ne bouge (batterie). Français / anglais. Sur un écran plus large que carré, l'arène reste carrée au centre.",
           en: "Soft bubbles, somewhere between a water bead and a soap bubble: each bubble is a supple ring inflated by internal pressure — it squashes against the others, rolls when rubbed, and really stretches between two fingers. Volume is conserved: splitting shares the area, merging adds it up, and no bubble ever appears on its own. Clearer merging: push one bubble into another, or bring two held bubbles together. Sound: each bubble has its own note from its size (pentatonic scale, bigger = lower); on contact both sing, rubbing them makes continuous music. Works offline and can be added to the home screen. Animation stops when nothing moves (battery). French / English. On screens wider than square, the arena stays square in the middle." },
@@ -1257,39 +1541,43 @@
           en: "First prototype: memorise a melody played by the game and play it back in order, Simon-style." }
       ];
 
-      var histBtn = document.getElementById("histBtn");
-      var histOverlay = document.getElementById("histOverlay");
+      var menu = document.getElementById("menu");
       var histList = document.getElementById("histList");
-      var histClose = document.getElementById("histClose");
 
       function renderHistory() {
         histList.textContent = "";
         VERSIONS.forEach(function (entry) {
-        var li = document.createElement("li");
-        var bEl = document.createElement("b");
-        bEl.textContent = entry.v;
-        li.appendChild(bEl);
-        li.appendChild(document.createTextNode(entry[lang]));
-        histList.appendChild(li);
+          var li = document.createElement("li");
+          var bEl = document.createElement("b");
+          bEl.textContent = entry.v;
+          li.appendChild(bEl);
+          li.appendChild(document.createTextNode(entry[lang]));
+          histList.appendChild(li);
         });
       }
       renderHistory();
 
+      document.getElementById("infoBtn").addEventListener("click", function () { menu.hidden = false; });
+      document.getElementById("menuClose").addEventListener("click", function () { menu.hidden = true; });
       document.getElementById("langBtn").addEventListener("click", function () {
         lang = lang === "fr" ? "en" : "fr";
         try { localStorage.setItem("bulles-sonores-lang", lang); } catch (e) {}
         applyTexts();
         renderHistory();
       });
-
-      histBtn.addEventListener("click", function () { histOverlay.hidden = false; });
-      histClose.addEventListener("click", function () { histOverlay.hidden = true; });
-
+      document.getElementById("muteBtn").addEventListener("click", function () {
+        muted = !muted;
+        try { localStorage.setItem("bulles-sonores-muted", muted ? "1" : "0"); } catch (e) {}
+        applyTexts();
+        initAudio();
+        window.onMuteChange();
+      });
 
       window.addEventListener("resize", function () {
         // Quitter l'appli redimensionne l'écran sur iPhone : les bulles se
         // retrouvent collées d'un coup — pas de rafale de sons.
         quietUntil = performance.now() + 800;
+        fitCanvas();
         buildWalls();
         wake();
       });
@@ -1314,16 +1602,64 @@
       }, { passive: false });
 
       // ---------- Démarrage ----------
-      // Pas d'écran d'accueil : ça commence tout de suite. Cinq bulles, et
-      // plus jamais de nouvelle bulle tombée du ciel : tout vient de celles-là.
+      // Pas d'écran d'accueil : ça commence tout de suite. Des bulles de
+      // tailles variées (donc des notes variées), et plus jamais de nouvelle
+      // bulle tombée du ciel : tout vient de celles-là.
 
-      function baseRadius() {
-        var s = arenaSize();
-        return Math.max(28, Math.min(46, Math.sqrt((s.w * s.h) / (START_COUNT * Math.PI)) * 0.4));
-      }
+      // Sonde en lecture seule pour les tests automatiques (Playwright)
+      window.__bulles = function () {
+        return bubbles.map(function (b) { return { x: b.x, y: b.y, r: b.r, held: isHeld(b), touches: Object.keys(b.touches).length, pinch: !!b.pinch }; });
+      };
 
+      fitCanvas();
       buildWalls();
-      for (var i = 0; i < START_COUNT; i++) spawnBubble(undefined, undefined, baseRadius());
+      // Sauvegarde locale de la partie (positions et tailles), pour qu'un
+      // rechargement — mise à jour, iOS qui libère la mémoire, appli fermée —
+      // ne remette pas tout à zéro. Relue avec méfiance : que des nombres
+      // bornés, jamais interprétés autrement (REGLES-JEUX.md, sécurité).
+      var SAVE_KEY = "bulles-sonores-etat";
+      var lastSave = 0;
+      function save() {
+        var s = arenaSize();
+        if (!s.w || !s.h) return;
+        var data = { v: 1, b: bubbles.map(function (b) {
+          return [+(b.x / s.w).toFixed(4), +(b.y / s.h).toFixed(4), +b.r.toFixed(2)];
+        }) };
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
+      }
+      window.__bullesSave = save;
+      function restore() {
+        var raw = null;
+        try { raw = localStorage.getItem(SAVE_KEY); } catch (e) {}
+        if (!raw || raw.length > 4000) return false;
+        var data;
+        try { data = JSON.parse(raw); } catch (e) { return false; }
+        if (!data || data.v !== 1 || !Array.isArray(data.b) || !data.b.length || data.b.length > MAX_BUBBLES) return false;
+        var s = arenaSize();
+        var list = [];
+        for (var i = 0; i < data.b.length; i++) {
+          var e = data.b[i];
+          if (!Array.isArray(e) || e.length !== 3) return false;
+          var fx = Number(e[0]), fy = Number(e[1]), r = Number(e[2]);
+          if (!isFinite(fx) || !isFinite(fy) || !isFinite(r)) return false;
+          list.push([clamp(fx, 0, 1) * s.w, clamp(fy, 0, 1) * s.h, clamp(r, MIN_R, maxRadius())]);
+        }
+        list.forEach(function (e) {
+          spawnBubble(clamp(e[0], e[2], s.w - e[2]), clamp(e[1], e[2], s.h - e[2]), e[2], 0, 0);
+        });
+        return bubbles.length > 0;
+      }
+      document.addEventListener("visibilitychange", function () { if (document.hidden) save(); });
+      window.addEventListener("pagehide", save);
+
+      if (!restore()) (function () {
+        var s = arenaSize();
+        var unit = clamp(Math.sqrt((s.w * s.h) / (5 * Math.PI)) * 0.4, 26, 40); // taille moyenne selon l'écran
+        var count = 4 + Math.floor(Math.random() * 4);
+        for (var i = 0; i < count; i++) {
+          spawnBubble(undefined, undefined, clamp(unit * (0.6 + Math.random() * 0.75), 18, 52));
+        }
+      })();
       wake();
     })();
   </script>
@@ -1354,9 +1690,14 @@
           var url = (location.pathname || "index.html") + "?_cb=" + now0;
           var res = await fetch(url, { cache: "no-store" });
           if (!res.ok) return;
-          var tag = res.headers.get("etag") || res.headers.get("last-modified");
-          if (!tag) return;
-          var key = "pm_pageVersion_" + PAGE;
+          // Empreinte du contenu, pas l'ETag : les serveurs de GitHub Pages
+          // ne donnent pas tous le même ETag pour la même page, ce qui
+          // rechargeait l'appli en pleine partie sans raison.
+          var text = await res.text();
+          var h = 2166136261;
+          for (var i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); }
+          var tag = "h" + (h >>> 0).toString(36) + "-" + text.length;
+          var key = "pm_pageHash_" + PAGE;
           var stored = localStorage.getItem(key);
           if (stored === null) { localStorage.setItem(key, tag); return; }
           if (tag !== stored) {
@@ -1369,6 +1710,7 @@
               localStorage.setItem(key, tag);
               sessionStorage.setItem(guard, String(now));
             } catch (e) {}
+            if (window.__bullesSave) window.__bullesSave(); // la partie survit à la mise à jour
             location.replace(location.pathname + "?_r=" + now);
           }
         } catch (e) {}
