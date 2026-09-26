@@ -2377,7 +2377,18 @@
             var o = old[id];
             if (o && !vanished[id]) {
               var dx = o.x - n.x, dy = o.y - n.y;
-              if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+              if (Math.abs(dx) > 30) {
+                // Changement de place : le jeton décrit un demi-cercle. Vers
+                // la droite il passe au-dessus, vers la gauche en dessous —
+                // deux termes qui s'échangent se croisent sans se heurter.
+                var lift = Math.min(70, Math.abs(dx) * 0.45) * (dx < 0 ? -1 : 1);
+                var kf = [];
+                for (var q = 0; q <= 8; q++) {
+                  var t = q / 8, sn = Math.sin(Math.PI * t);
+                  kf.push({ transform: "translate(" + (dx * (1 - t)) + "px," + (dy * (1 - t) + lift * sn) + "px) scale(" + (1 + 0.12 * sn) + ")" });
+                }
+                anims.push(done(n.el.animate(kf, { duration: ms(1100), easing: "cubic-bezier(.45,0,.3,1)" })));
+              } else if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
                 anims.push(done(n.el.animate([
                   { transform: "translate(" + dx + "px," + dy + "px)" },
                   { transform: "translate(0,0)" }
@@ -3842,6 +3853,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v28", text: "Les termes qui changent de place décrivent un demi-cercle (vers la droite par-dessus, vers la gauche par-dessous) : on les voit se croiser au lieu de glisser en ligne droite." },
         { v: "v27", text: "Écran d'accueil (⌂) : les ensembles emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ, on touche une zone pour voir ses chapitres. Déblocage : tous les chapitres d'un ensemble réussis ouvrent le suivant (démo animée = 3 fois sans faute en mode jeu). Mode prof dans le menu : tout ouvert. ℍ en teaser verrouillé. Petits bips (fusion, juste, faux, badge), coupables dans le menu." },
         { v: "v26", text: "Nouveau chapitre Calcul : calcul mental animé en continu, sans clics. Dizaines en barres, unités en jetons rangés par 5. 16 + 27 → 10 + 6 + 20 + 7 → 5 + 1 et 5 + 2 → les deux 5 font une dizaine → 40 + 3 → 43. Si un seul nombre dépasse 5 : complément à 10. Enchaîne tout seul ; → pour passer au suivant." },
         { v: "v25", text: "Notation : pendant les calculs, chaque produit a son point (2·x, a·b, 2·(○ + □)) ; une dernière étape passe à l'écriture usuelle (2x, ab, 2(○ + □)) — le même produit, écrit plus court." },
