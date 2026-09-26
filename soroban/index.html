@@ -245,20 +245,28 @@
 
     /* Badges gagnés = outils. Hauteur fixe, même vide ou en mode Libre,
        pour que le boulier ne change jamais de taille */
+    /* Boutons de badges : centrés, sur deux lignes au plus (place
+       réservée), jamais une rangée qui déborde et se décale */
     .badgebar {
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
+      align-content: center;
       gap: 0.3rem;
-      height: 2.6rem;
+      height: 4.6rem;
       padding: 0 16px 0.4rem;
       overflow: hidden;
     }
     .badgebar[hidden] { display: flex; visibility: hidden; }
     .bchip {
-      flex: 0 1 auto;
-      min-width: 0;
-      height: 2.2rem;
-      padding: 0 0.55rem;
+      flex: 0 0 auto;
+      min-width: 2.6rem;
+      height: 2rem;
+      padding: 0 0.6rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
       font-family: inherit;
       font-size: 0.72rem;
       white-space: nowrap;
@@ -427,7 +435,7 @@
       .value { font-size: 2rem; }
       .task { font-size: 0.9rem; }
       .split { font-size: 0.78rem; }
-      .badgebar { flex-wrap: wrap; height: auto; max-height: 4.6rem; }
+      .badgebar { height: 4.6rem; }
       /* Réussite : dans la colonne de gauche, le boulier reste entier à droite */
       .overlay.win {
         inset: 0 auto 0 0;
@@ -438,6 +446,93 @@
         border-right: 1px solid var(--accent);
       }
     }
+
+    /* ---- Tables de multiplication ---- */
+    /* Pas de boulier dans ce chapitre : on replie ce qui lui réservait de
+       la place (niveaux verrouillés, gros nombre) pour agrandir la grille */
+    body.tables-mode .levels .chip.locked { display: none; }
+    body.tables-mode .value { display: none; }
+    body.tables-mode .task {
+      height: auto;
+      display: block;
+      -webkit-line-clamp: unset;
+      margin-top: 0.3rem;
+    }
+    .task .tnum {
+      font-size: 1.8rem;
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(61, 224, 138, 0.45);
+      margin-left: 0.3rem;
+    }
+    .task .tprog { display: block; font-size: 0.75rem; color: var(--ink-soft); }
+    .stage.tables-on svg.soroban { display: none; }
+    .tables {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+    }
+    .tables[hidden] { display: none; }
+    .tgrid {
+      --cell: 34px;
+      display: grid;
+      grid-template-columns: repeat(9, var(--cell));
+      grid-auto-rows: var(--cell);
+      gap: 2px;
+    }
+    .tcell {
+      font-family: inherit;
+      font-size: calc(var(--cell) * 0.38);
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--hairline);
+      border-radius: 6px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+    }
+    .tcell.head { border: none; color: var(--accent); cursor: default; font-weight: 500; }
+    .tcell.off { visibility: hidden; }
+    .tcell.done {
+      color: var(--accent);
+      border-color: var(--ink-soft);
+      background: var(--accent-soft);
+      cursor: default;
+    }
+    /* Case à écrire : elle respire, comme les perles à bouger */
+    .tcell.target {
+      border-color: rgba(242, 255, 248, calc(0.3 + 0.7 * var(--breath, 1)));
+      border-width: 2px;
+      background: rgba(200, 255, 225, calc(0.04 + 0.22 * var(--breath, 1)));
+    }
+    .tcell.bad { border-color: #ff9d8a; color: #ff9d8a; }
+    .keypad {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.35rem;
+      width: min(100%, 360px);
+    }
+    .keypad[hidden] { display: none; }
+    .key {
+      font-family: inherit;
+      font-size: 1.05rem;
+      height: 2.2rem;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--ink-soft);
+      border-radius: 10px;
+      cursor: pointer;
+    }
+    .key:active { background: var(--accent-soft); }
+    .key.ok { border-color: var(--accent); color: var(--accent); }
+    .bchip.mode { background: transparent; color: var(--ink-soft); border-color: var(--hairline); }
+    .bchip.mode[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
 
     @media (prefers-reduced-motion: reduce) {
       .bead .shape { transition: none; }
@@ -461,8 +556,13 @@
     <div class="split" id="split"></div>
   </div>
 
-  <div class="stage">
+  <div class="stage" id="stage">
     <svg class="soroban" id="soroban" role="group" aria-label="Soroban"></svg>
+    <!-- Chapitre 1 : tables de multiplication (remplace le boulier) -->
+    <div class="tables" id="tables" hidden>
+      <div class="tgrid" id="tgrid"></div>
+      <div class="keypad" id="keypad"></div>
+    </div>
   </div>
 
   <div class="badgebar" id="badgeBar" hidden></div>
@@ -579,7 +679,7 @@
           badge: "Badge gagné : {b}. Il apparaît en bas : appuie dessus et il fait ces gestes tout seul.",
           badgeCant: "Le badge {b} ne sait pas faire ce geste : à toi !",
           badgeDone: "Le badge {b} a fait sa part. À toi :",
-          levels: { direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×", div: "÷", pow: "puissance", sqrt: "√" },
+          levels: { tables: "tables ×", direct: "+ direct", c5: "+ avec 5", c10: "+ avec 10", sdirect: "− direct", s5: "− avec 5", s10: "− avec 10", mul: "×", div: "÷", pow: "puissance", sqrt: "√" },
           techs: { direct: "l'ajout direct", c5: "le complément à 5", c10: "le complément à 10 (retenue)", sdirect: "le retrait direct", s5: "le complément à 5 en retirant", s10: "le complément à 10 (emprunt)" },
           blk: {
             pose: "pose {n}", add: "ajoute {n}", sub: "retire {n}",
@@ -587,13 +687,22 @@
             div1: "retire {v} → quotient {q}",
             divN: "retire {v} (= {b} × {m}) → quotient {q}",
             pow: "{v} × {a} : ajoute {v} ({i}/{m})",
-            sqrt1: "{t}² = {q} → retire {q}",
-            sqrt2: "({d} + {u}) × {u} = {x} → retire {x}",
-            sqrtPose: "pose {m} (= {n},00 : un chiffre après la virgule)"
+            sqrtOdd: "retire {v} (impair suivant) → racine {r}",
+            sqrtPose: "pose {m} (= {n},{z} : {d} chiffre(s) après la virgule) ; on retire les impairs 1, 3, 5…",
+            pow10: "{v} × {a} : ajoute {v} × 10",
+            powPose: "pose {m} (= {x} sans la virgule)"
           },
           rest: "reste {r}",
+          tFind: "Trouver la case", tWrite: "Écrire le résultat", tRestart: "Recommencer la grille",
+          tFindTask: "Touche une case qui fait", tWriteTask: "{a} × {b} =",
+          tYes: "Oui : {a} × {b} = {p}", tNo: "Non : {a} × {b} = {p}",
+          tProgress: "{d}/36 · erreurs : {e}",
+          tFull: "Grille remplie : {d}/36.", tClean: "Sans aucune erreur !", tDirty: "{e} erreur(s) : recommence pour une grille sans erreur.",
+          tOther: "Il reste l'autre exercice à réussir sans erreur.",
+          tBadge: "Badge gagné : tables ×. Le boulier s'ouvre : niveau « + direct ».",
           divNote: "Le résultat, c'est le nombre de fois qu'on a retiré {b} : {q}. Le boulier montre ce qui reste : {r}.",
-          sqrtNote: "La racine se lit dans les étapes ({root}). Le boulier montre ce qui reste : {r}.", pasapas: "Même idée que le badge ✦ 10 de Pas à Pas (faire 10).",
+          sqrtNote: "La racine, c'est le nombre d'impairs retirés, virgule remise : {root}. Le boulier montre ce qui reste : {r}.",
+          powDecNote: "Le boulier montre {v} : on remet la virgule, {d} chiffres après (un par facteur {x}) → {ans}.", pasapas: "Même idée que le badge ✦ 10 de Pas à Pas (faire 10).",
           cap: {
             zero: "on remet à zéro", pose: "",
             direct: "+{a} : direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "retenue : +1 à gauche",
@@ -617,7 +726,7 @@
           badge: "Badge earned: {b}. It shows up at the bottom: tap it and it does these moves by itself.",
           badgeCant: "The {b} badge can't do this move: your turn!",
           badgeDone: "The {b} badge did its part. Your turn:",
-          levels: { direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×", div: "÷", pow: "power", sqrt: "√" },
+          levels: { tables: "× tables", direct: "+ direct", c5: "+ with 5", c10: "+ with 10", sdirect: "− direct", s5: "− with 5", s10: "− with 10", mul: "×", div: "÷", pow: "power", sqrt: "√" },
           techs: { direct: "direct adding", c5: "the 5-complement", c10: "the 10-complement (carry)", sdirect: "direct taking away", s5: "the 5-complement when taking away", s10: "the 10-complement (borrow)" },
           blk: {
             pose: "set {n}", add: "add {n}", sub: "take away {n}",
@@ -625,13 +734,22 @@
             div1: "take away {v} → quotient {q}",
             divN: "take away {v} (= {b} × {m}) → quotient {q}",
             pow: "{v} × {a}: add {v} ({i}/{m})",
-            sqrt1: "{t}² = {q} → take away {q}",
-            sqrt2: "({d} + {u}) × {u} = {x} → take away {x}",
-            sqrtPose: "set {m} (= {n}.00: one digit after the point)"
+            sqrtOdd: "take away {v} (next odd number) → root {r}",
+            sqrtPose: "set {m} (= {n}.{z}: {d} digit(s) after the point); take away the odd numbers 1, 3, 5…",
+            pow10: "{v} × {a}: add {v} × 10",
+            powPose: "set {m} (= {x} without the point)"
           },
           rest: "remainder {r}",
+          tFind: "Find the cell", tWrite: "Write the answer", tRestart: "Restart the grid",
+          tFindTask: "Tap a cell that makes", tWriteTask: "{a} × {b} =",
+          tYes: "Yes: {a} × {b} = {p}", tNo: "No: {a} × {b} = {p}",
+          tProgress: "{d}/36 · mistakes: {e}",
+          tFull: "Grid complete: {d}/36.", tClean: "No mistakes at all!", tDirty: "{e} mistake(s): start again for a mistake-free grid.",
+          tOther: "The other exercise still has to be done without mistakes.",
+          tBadge: "Badge earned: × tables. The abacus opens: level “+ direct”.",
           divNote: "The result is how many times {b} was taken away: {q}. The abacus shows what is left: {r}.",
-          sqrtNote: "The root is read from the steps ({root}). The abacus shows what is left: {r}.", pasapas: "Same idea as the ✦ 10 badge in Pas à Pas (making ten).",
+          sqrtNote: "The root is the number of odd numbers taken away, point put back: {root}. The abacus shows what is left: {r}.",
+          powDecNote: "The abacus shows {v}: put the point back, {d} digits after it (one per factor {x}) → {ans}.", pasapas: "Same idea as the ✦ 10 badge in Pas à Pas (making ten).",
           cap: {
             zero: "clearing the board", pose: "",
             direct: "+{a}: direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "carry: +1 on the left",
@@ -1211,7 +1329,9 @@
       // clignotent, la ligne du haut dit l'étape du calcul, celle du bas la
       // technique (complément à 5, à 10…).
 
-      var LEVELS = ["direct", "c5", "c10", "sdirect", "s5", "s10", "mul", "div", "pow", "sqrt"];
+      // Chapitre 1 : les tables de multiplication (grille, pas de boulier),
+      // obligatoires avant le boulier
+      var LEVELS = ["tables", "direct", "c5", "c10", "sdirect", "s5", "s10", "mul", "div", "pow", "sqrt"];
       var SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
       function sup(n) { return String(n).replace(/\d/g, function (c) { return SUP.charAt(+c); }); }
 
@@ -1247,7 +1367,10 @@
         var B = TXT[lang].blk;
         var p = planner(digitsOf(0));
         if (e.op === "√" && e.approx) {
-          p.block(fmt(B.sqrtPose, { m: numStr(e.a), n: numStr(e.n) }));
+          p.block(fmt(B.sqrtPose, { m: numStr(e.a), n: numStr(e.n), z: new Array(2 * e.dec + 1).join("0"), d: e.dec }));
+          p.pose(e.a);
+        } else if (e.op === "^" && e.decBase) {
+          p.block(fmt(B.powPose, { m: numStr(e.a), x: decStr(e.a, 1) }));
           p.pose(e.a);
         } else if (e.op !== "×") {
           p.block(fmt(B.pose, { n: numStr(e.a) }));
@@ -1289,6 +1412,18 @@
           // fois v à ce qui est déjà posé, une addition à la fois
           var v = e.a;
           for (var k = 2; k <= e.b; k++) {
+            // Base 11…19 (1,1…1,9 sans virgule) : × 13 = × 10 + × 3, soit
+            // ajouter v décalé d'une tige, puis v encore 2 fois
+            if (e.a >= 10) {
+              p.block(fmt(B.pow10, { a: e.a, v: numStr(v) }), "pow");
+              p.addN(v, 1);
+              for (var r3 = 1; r3 <= e.a - 11; r3++) {
+                p.block(fmt(B.pow, { a: e.a, v: numStr(v), i: r3, m: e.a - 11 }), "pow");
+                p.addN(v);
+              }
+              v *= e.a;
+              continue;
+            }
             for (var r2 = 1; r2 <= e.a - 1; r2++) {
               p.block(fmt(B.pow, { a: e.a, v: numStr(v), i: r2, m: e.a - 1 }), "pow");
               p.addN(v);
@@ -1297,19 +1432,23 @@
           }
         }
         else if (e.op === "√") {
-          // Racine à deux chiffres (10t + u)² = 100t² + (20t + u)·u :
-          // on retire d'abord (10t)², puis (20t + u) × u — il reste 0
-          var r = e.result, tt = Math.floor(r / 10), u = r % 10;
-          if (tt) {
-            p.block(fmt(B.sqrt1, { t: numStr(tt * 10), q: numStr(tt * tt * 100) }), "sqrt");
-            p.subN(tt * tt, 2);
-          }
-          if (u && !tt) {
-            p.block(fmt(B.sqrt1, { t: u, q: numStr(u * u) }), "sqrt");
-            p.subN(u * u);
-          } else if (u) {
-            p.block(fmt(B.sqrt2, { d: numStr(20 * tt), u: u, x: numStr((20 * tt + u) * u) }), "sqrt");
-            p.subN((20 * tt + u) * u);
+          // Méthode des impairs (aucune table à connaître) : 1 + 3 + 5 + … +
+          // (2n − 1) = n². Chiffre par chiffre, de gauche à droite : pour
+          // chaque tranche de 2 chiffres, on retire les impairs 20R + 1,
+          // 20R + 3, … (décalés au bon rang) tant que c'est possible ; le
+          // nombre de retraits est le chiffre suivant de la racine R.
+          var pairs = Math.ceil(String(e.a).length / 2), Rv = 0, remv = e.a;
+          for (var pos = pairs - 1; pos >= 0; pos--) {
+            var cnt = 0;
+            while (true) {
+              var odd = 20 * Rv + 2 * cnt + 1, big = odd * Math.pow(100, pos);
+              if (big > remv) break;
+              p.block(fmt(B.sqrtOdd, { v: numStr(big), r: numStr(10 * Rv + cnt + 1) }), "sqrt");
+              p.subN(odd, 2 * pos);
+              remv -= big;
+              cnt++;
+            }
+            Rv = 10 * Rv + cnt;
           }
         }
         // États successifs du boulier : states[0] = vide, states[i+1] = après le geste i
@@ -1320,9 +1459,15 @@
         e.tech = p.tech;
       }
 
+      // Nombre à virgule écrit à la française (ou à l'anglaise) : 13, 1 → « 1,3 »
+      function decStr(intVal, dec) {
+        return (intVal / Math.pow(10, dec)).toLocaleString(lang === "fr" ? "fr-FR" : "en-US",
+          { minimumFractionDigits: dec, maximumFractionDigits: dec, useGrouping: false });
+      }
+
       function exprOf(e) {
-        if (e.op === "^") return numStr(e.a) + sup(e.b);
-        if (e.op === "√") return "√" + numStr(e.approx ? e.n : e.a);
+        if (e.op === "^") return (e.decBase ? decStr(e.a, 1) : numStr(e.a)) + sup(e.b);
+        if (e.op === "√") return "√" + String(e.approx ? e.n : e.a);
         return numStr(e.a) + " " + e.op + " " + numStr(e.b);
       }
 
@@ -1330,7 +1475,8 @@
       // la racine approchée (√2 ≈ 1,4 : on a calculé √200 ≈ 14)
       function answerOf(e) {
         if (e.op === "÷" && e.rem) return "= " + numStr(e.result) + ", " + t("rest", { r: e.rem });
-        if (e.op === "√" && e.approx) return "≈ " + (e.result / 10).toLocaleString(lang === "fr" ? "fr-FR" : "en-US", { minimumFractionDigits: 1 });
+        if (e.op === "√" && e.approx) return "≈ " + decStr(e.result, e.dec || 1);
+        if (e.op === "^" && e.decBase) return "= " + decStr(e.result, e.b);
         return "= " + numStr(e.result);
       }
 
@@ -1380,20 +1526,26 @@
             var q = tier === 0 ? rnd(2, 9) : (tier === 1 ? rnd(2, Math.floor((99 - rem) / b)) : rnd(11, Math.floor((999 - rem) / b)));
             return { op: "÷", a: b * q + rem, b: b, result: q, rem: rem };
           case "pow":
+            // Dernier palier : une fois sur deux, un nombre à virgule (1,3³) :
+            // on calcule 13³ sans la virgule, puis on la remet
+            if (tier === 2 && Math.random() < 0.5) {
+              var db = rnd(11, 19), dn = rnd(2, 3);
+              return { op: "^", a: db, b: dn, result: Math.pow(db, dn), decBase: true };
+            }
             var base = rnd(2, tier === 0 ? 5 : 9);
             var n = tier === 0 ? 2 : (base <= 3 ? rnd(2, 5) : (base <= 6 ? rnd(2, 3) : 2));
             return { op: "^", a: base, b: n, result: Math.pow(base, n) };
           case "sqrt":
-            if (tier === 0) { var r0 = rnd(2, 9); return { op: "√", a: r0 * r0, b: 0, result: r0 }; }
-            if (tier === 2 && tries % 2 === 0) {
-              // Racine approchée à un chiffre après la virgule : √N ≈ √(N × 100) / 10
-              var N = rnd(2, 99);
-              if (Math.sqrt(N) % 1 === 0) N++;
-              var M = N * 100;
-              return { op: "√", a: M, n: N, b: 0, result: Math.floor(Math.sqrt(M)), approx: true };
-            }
-            var rt = rnd(11, 99);
-            return { op: "√", a: rt * rt, b: 0, result: rt };
+            // Seulement des racines qui ne tombent pas juste (√4 n'apprend
+            // rien) : √5, √13… à 1 chiffre après la virgule, puis 2
+            var N = rnd(2, tier === 0 ? 20 : 99);
+            while (Math.sqrt(N) % 1 === 0) N = rnd(2, tier === 0 ? 20 : 99);
+            var dec = tier === 2 ? 2 : 1;
+            var M = N * Math.pow(100, dec);
+            var R = Math.floor(Math.sqrt(M));
+            while (R * R > M) R--;
+            while ((R + 1) * (R + 1) <= M) R++;
+            return { op: "√", a: M, n: N, b: 0, result: R, approx: true, dec: dec };
         }
         var a = rnd(1, hi), c = rnd(1, hi), op = lv.charAt(0) === "s" ? "−" : "+";
         if (op === "−" && c > a) { var tmp = a; a = c; c = tmp; }
@@ -1427,6 +1579,8 @@
 
       function newExercise() {
         clampLevel();
+        if (level === "tables") { enterTables(); return; }
+        leaveTables();
         var lv = level;
         // Le plan se calcule sur un boulier assez large, puis le boulier
         // n'affiche que les tiges dont l'exercice a besoin (1 tige pour
@@ -1471,7 +1625,7 @@
           if (h) any = true;
           if (h !== b.hint) { b.hint = h; applyCls(b); }
         });
-        blink(any);
+        blink(any || (tablesActive() && TB.mode === "write"));
       }
 
       // Respiration : une sinusoïde lente (2,8 s pour monter et redescendre),
@@ -1484,12 +1638,12 @@
           breathStart = performance.now();
           blinkT = setInterval(function () {
             var ph = ((performance.now() - breathStart) % BREATH_MS) / BREATH_MS;
-            svg.style.setProperty("--breath", (0.5 - 0.5 * Math.cos(ph * 2 * Math.PI)).toFixed(3));
+            document.body.style.setProperty("--breath", (0.5 - 0.5 * Math.cos(ph * 2 * Math.PI)).toFixed(3));
           }, 50);
         } else if (!on && blinkT) {
           clearInterval(blinkT);
           blinkT = 0;
-          svg.style.setProperty("--breath", "1");
+          document.body.style.setProperty("--breath", "1");
         }
       }
 
@@ -1570,6 +1724,7 @@
           var left = numStr(valueOf(ex.states[ex.states.length - 1]));
           if (ex.op === "÷") used = t("divNote", { b: ex.b, q: numStr(ex.result), r: left }) + " " + used;
           if (ex.op === "√") used = t("sqrtNote", { root: answerOf(ex).replace(/^[=≈] /, ""), r: left }) + " " + used;
+          if (ex.op === "^" && ex.decBase) used = t("powDecNote", { v: String(ex.result), d: ex.b, x: decStr(ex.a, 1), ans: answerOf(ex).replace(/^= /, "") }) + " " + used;
           document.getElementById("winUsed").textContent = used;
           var badgeLine = earned ? t("badge", { b: TXT[lang].levels[ex.lv] }) : "";
           if (ex.tech.c10 && pasapasTen()) badgeLine = (badgeLine ? badgeLine + " " : "") + t("pasapas");
@@ -1587,6 +1742,7 @@
       function updateButtons() {
         var ops = mode === "ops" && ex;
         document.getElementById("slowBtn").hidden = !ops || ex.solved;
+        document.getElementById("resetBtn").textContent = tablesActive() ? t("tRestart") : t("reset");
         buildBadgeBar();
       }
 
@@ -1663,8 +1819,9 @@
       // directe, donc le bouton + la fait (demande de Pierre). On ne regarde
       // que la technique du geste, pas l'opération dont il fait partie.
       function covers(lv, mv) {
-        var i = LEVELS.indexOf(lv);
-        if (TECH_ORDER.indexOf(mv.tech) > Math.min(i, TECH_ORDER.length - 1)) return false;
+        var i = TECH_ORDER.indexOf(lv);
+        if (i < 0) i = TECH_ORDER.length - 1; // ×, ÷, xⁿ, √ : toutes les techniques
+        if (TECH_ORDER.indexOf(mv.tech) > i) return false;
         return !!badges[mv.tech];
       }
 
@@ -1683,8 +1840,20 @@
           });
           return;
         }
+        if (tablesActive()) {
+          // Tables : les deux exercices au choix
+          [["find", "tFind"], ["write", "tWrite"]].forEach(function (it) {
+            var b = document.createElement("button");
+            b.className = "bchip mode";
+            b.textContent = t(it[1]);
+            b.setAttribute("aria-pressed", TB.mode === it[0] ? "true" : "false");
+            b.addEventListener("click", function () { setTablesMode(it[0]); });
+            bar.appendChild(b);
+          });
+          return;
+        }
         LEVELS.forEach(function (lv) {
-          if (!badges[lv]) return;
+          if (!badges[lv] || lv === "tables") return;
           var b = document.createElement("button");
           b.className = "bchip";
           b.textContent = SHORT[lv];
@@ -1720,6 +1889,254 @@
           caption = { text: t("badgeDone", { b: name }) + " " + ex.moves[ex.k].cap };
           renderSplit();
         });
+      }
+
+      // ---------- Chapitre 1 : tables de multiplication ----------
+      // Une grille 2…9 × 2…9 ; la multiplication est symétrique, donc on ne
+      // joue que la moitié au-dessus de la diagonale (diagonale comprise) :
+      // 36 cases. Deux exercices au choix :
+      // - « Trouver la case » : un nombre s'affiche, on touche une case qui
+      //   le donne (12 → 2 × 6 ou 3 × 4) ;
+      // - « Écrire le résultat » : une case respire, on tape son produit.
+      // Chaque bonne réponse remplit la case. Badge : les deux grilles
+      // remplies sans aucune erreur.
+
+      var TKEYS = [];
+      for (var ta = 2; ta <= 9; ta++) for (var tb = ta; tb <= 9; tb++) TKEYS.push("" + ta + tb);
+
+      function freshTables() {
+        return { mode: "find", done: { find: {}, write: {} }, errors: { find: 0, write: 0 },
+                 clean: { find: false, write: false }, target: null, input: "" };
+      }
+      // Sauvegarde relue avec une validation stricte (REGLES-JEUX.md,
+      // Sécurité) : seulement des clés de cases connues et des entiers
+      var TB = (function () {
+        var tb0 = freshTables();
+        try {
+          var o = JSON.parse(load("tables") || "null");
+          if (!o || typeof o !== "object") return tb0;
+          if (o.mode === "find" || o.mode === "write") tb0.mode = o.mode;
+          ["find", "write"].forEach(function (m) {
+            if (o.done && Array.isArray(o.done[m])) {
+              o.done[m].forEach(function (k) { if (TKEYS.indexOf(k) >= 0) tb0.done[m][k] = 1; });
+            }
+            if (o.errors && Number.isInteger(o.errors[m]) && o.errors[m] >= 0 && o.errors[m] < 1e6) tb0.errors[m] = o.errors[m];
+            if (o.clean && o.clean[m] === true) tb0.clean[m] = true;
+          });
+        } catch (e) {}
+        return tb0;
+      })();
+      function saveTables() {
+        save("tables", JSON.stringify({
+          mode: TB.mode,
+          done: { find: Object.keys(TB.done.find), write: Object.keys(TB.done.write) },
+          errors: TB.errors, clean: TB.clean
+        }));
+      }
+
+      function tablesActive() { return mode === "ops" && level === "tables"; }
+      function doneCount(m) { return Object.keys(TB.done[m]).length; }
+      function remainingKeys(m) { return TKEYS.filter(function (k) { return !TB.done[m][k]; }); }
+      function kA(k) { return +k.charAt(0); }
+      function kB(k) { return +k.charAt(1); }
+
+      var stageEl = document.getElementById("stage");
+      var tablesEl = document.getElementById("tables");
+      var tgrid = document.getElementById("tgrid");
+      var keypad = document.getElementById("keypad");
+      var tFlash = null;
+
+      function enterTables() {
+        ex = null;
+        setHints(null);
+        stageEl.classList.add("tables-on");
+        document.body.classList.add("tables-mode");
+        tablesEl.hidden = false;
+        buildKeypad();
+        pickTarget();
+        renderTables();
+      }
+      function leaveTables() {
+        stageEl.classList.remove("tables-on");
+        document.body.classList.remove("tables-mode");
+        tablesEl.hidden = true;
+      }
+
+      function setTablesMode(m) {
+        if (!tablesActive() || TB.mode === m) return;
+        TB.mode = m;
+        TB.input = "";
+        saveTables();
+        pickTarget();
+        renderTables();
+      }
+
+      function pickTarget() {
+        var rem = remainingKeys(TB.mode);
+        if (!rem.length) { TB.target = null; return; }
+        var k = rem[Math.floor(Math.random() * rem.length)];
+        TB.target = TB.mode === "find" ? kA(k) * kB(k) : k;
+        TB.input = "";
+      }
+
+      function restartTablesMode() {
+        TB.done[TB.mode] = {};
+        TB.errors[TB.mode] = 0;
+        TB.clean[TB.mode] = false;
+        saveTables();
+        caption = null;
+        pickTarget();
+        renderTables();
+      }
+
+      function sizeTables() {
+        if (tablesEl.hidden) return;
+        var w = stageEl.clientWidth - 32, h = stageEl.clientHeight - 12;
+        var kp = TB.mode === "write" ? keypad.offsetHeight + 10 : 0;
+        var side = Math.max(120, Math.min(w, h - kp));
+        tgrid.style.setProperty("--cell", Math.floor((side - 16) / 9) + "px");
+      }
+
+      function buildKeypad() {
+        keypad.textContent = "";
+        ["1", "2", "3", "4", "5", "⌫", "6", "7", "8", "9", "0", "OK"].forEach(function (k) {
+          var b = document.createElement("button");
+          b.className = "key" + (k === "OK" ? " ok" : "");
+          b.textContent = k;
+          b.addEventListener("click", function () { typeKey(k); });
+          keypad.appendChild(b);
+        });
+      }
+
+      function renderTables() {
+        if (!tablesActive()) return;
+        var m = TB.mode;
+        tgrid.textContent = "";
+        for (var r = 1; r <= 9; r++) {
+          for (var c = 1; c <= 9; c++) {
+            var cell = document.createElement("button");
+            cell.className = "tcell";
+            if (r === 1 && c === 1) { cell.className += " head"; cell.textContent = "×"; }
+            else if (r === 1) { cell.className += " head"; cell.textContent = c; }
+            else if (c === 1) { cell.className += " head"; cell.textContent = r; }
+            else if (r > c) { cell.className += " off"; }
+            else {
+              var k = "" + r + c;
+              if (TB.done[m][k]) { cell.className += " done"; cell.textContent = r * c; }
+              if (m === "write" && TB.target === k) cell.className += " target";
+              if (tFlash === k) cell.className += " bad";
+              (function (key) { cell.addEventListener("click", function () { tapCell(key); }); })(k);
+            }
+            tgrid.appendChild(cell);
+          }
+        }
+        keypad.hidden = m !== "write";
+        // En haut : la consigne et la progression ; au centre : le nombre
+        var task = document.getElementById("task");
+        task.hidden = false;
+        task.textContent = "";
+        // Une seule consigne, avec le nombre en gros : le nombre à trouver,
+        // ou ce qu'on tape au clavier
+        if (TB.target === null) task.appendChild(document.createTextNode(t("tFull", { d: doneCount(m) })));
+        else {
+          task.appendChild(document.createTextNode(m === "find" ? t("tFindTask") : t("tWriteTask", { a: kA(TB.target), b: kB(TB.target) })));
+          var num = document.createElement("span");
+          num.className = "tnum";
+          num.textContent = m === "find" ? String(TB.target) : (TB.input || "?");
+          task.appendChild(num);
+        }
+        var sp = document.createElement("span");
+        sp.className = "tprog";
+        sp.textContent = t("tProgress", { d: doneCount(m), e: TB.errors[m] });
+        task.appendChild(sp);
+        renderSplit();
+        buildBadgeBar();
+        updateButtons();
+        blink(m === "write" && TB.target !== null);
+        sizeTables();
+      }
+
+      function tablesRight(k) {
+        TB.done[TB.mode][k] = 1;
+        caption = { text: t("tYes", { a: kA(k), b: kB(k), p: kA(k) * kB(k) }), good: true };
+        toc(false, 0.8);
+        buzz(8);
+        saveTables();
+        pickTarget();
+        renderTables();
+        if (TB.target === null) tablesGridDone();
+      }
+      function tablesWrong(k) {
+        TB.errors[TB.mode]++;
+        caption = { text: t("tNo", { a: kA(k), b: kB(k), p: kA(k) * kB(k) }) };
+        try { unlockAudio(); if (actx) tone(120, 95, 0.3, 0.35, actx.currentTime + 0.01, "sine", 0.03); } catch (e) {}
+        buzz(25);
+        saveTables();
+        tFlash = k;
+        renderTables();
+        setTimeout(function () { tFlash = null; if (tablesActive()) renderTables(); }, 700);
+      }
+
+      function tapCell(k) {
+        if (!tablesActive() || TB.mode !== "find" || TB.target === null || TB.done.find[k]) return;
+        if (kA(k) * kB(k) === TB.target) tablesRight(k);
+        else tablesWrong(k);
+      }
+
+      function typeKey(key) {
+        if (!tablesActive() || TB.mode !== "write" || TB.target === null) return;
+        if (key === "⌫") TB.input = TB.input.slice(0, -1);
+        else if (key === "OK") {
+          if (!TB.input) return;
+          var k = TB.target;
+          if (Number(TB.input) === kA(k) * kB(k)) tablesRight(k);
+          else { TB.input = ""; tablesWrong(k); }
+          return;
+        }
+        else if (TB.input.length < 2) TB.input += key;
+        renderTables();
+      }
+
+      // Grille pleine : bilan dans le bandeau, badge si les deux grilles
+      // ont été remplies sans erreur
+      function tablesGridDone() {
+        var m = TB.mode;
+        TB.clean[m] = TB.errors[m] === 0;
+        saveTables();
+        var earned = false;
+        if (TB.clean.find && TB.clean.write && !badges.tables) {
+          badges.tables = 1;
+          saveBadges();
+          buildLevels();
+          earned = true;
+        }
+        setTimeout(function () {
+          var cheers = TXT[lang].cheers;
+          document.getElementById("winTitle").textContent = TB.clean[m] ? cheers[Math.floor(Math.random() * cheers.length)] : t("tFull", { d: 36 });
+          document.getElementById("winAnswer").textContent = TB.clean[m] ? t("tClean") : "";
+          document.getElementById("winUsed").textContent = TB.clean[m] ? (earned ? "" : (TB.clean.find && TB.clean.write ? "" : t("tOther"))) : t("tDirty", { e: TB.errors[m] });
+          document.getElementById("winBadge").textContent = earned ? t("tBadge") : "";
+          var win = document.getElementById("winOverlay");
+          win.hidden = false;
+          win.classList.remove("show");
+          void win.offsetWidth;
+          win.classList.add("show");
+          if (TB.clean[m]) chime();
+        }, 700);
+      }
+
+      // Après le bandeau d'une grille pleine (badge pas encore gagné) :
+      // on recommence la grille ratée, ou on passe à l'autre exercice
+      function tablesAfterGrid() {
+        var m = TB.mode;
+        if (!TB.clean[m]) { restartTablesMode(); return; }
+        var other = m === "find" ? "write" : "find";
+        TB.mode = other;
+        if (!remainingKeys(other).length) { TB.done[other] = {}; TB.errors[other] = 0; TB.clean[other] = false; }
+        saveTables();
+        caption = null;
+        pickTarget();
+        renderTables();
       }
 
       // ---------- Interface ----------
@@ -1769,6 +2186,7 @@
         if (m === "ops") newExercise();
         else {
           ex = null;
+          leaveTables();
           if (RODS !== sandboxCount()) buildBoard(sandboxCount(), value());
           guideShow();
           render();
@@ -1825,6 +2243,8 @@
         saveBadges();
         saveWins();
         save("moved", "0");
+        TB = freshTables();
+        saveTables();
         level = "direct";
         save("level", level);
         refreshMenu();
@@ -1835,6 +2255,7 @@
       document.getElementById("slowBtn").addEventListener("click", demo);
       document.getElementById("nextBtn").addEventListener("click", function () {
         document.getElementById("winOverlay").hidden = true;
+        if (level === "tables" && !badges.tables) { tablesAfterGrid(); return; }
         // Badge tout juste gagné : on passe au niveau suivant pas encore acquis
         if (badges[level]) {
           for (var i = LEVELS.indexOf(level) + 1; i < LEVELS.length; i++) {
@@ -1845,6 +2266,7 @@
       });
       document.getElementById("resetBtn").addEventListener("click", function () {
         if (busy) return;
+        if (tablesActive()) { restartTablesMode(); return; }
         var any = value() !== 0;
         caption = null;
         clearBoard();
@@ -1859,6 +2281,7 @@
         if (ex && !ex.solved) { var k = ex.k; buildPlan(ex); ex.k = k; }
         applyLang();
         guideShow();
+        if (tablesActive()) renderTables();
       });
 
       // ---------- Écran figé ----------
@@ -1883,6 +2306,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v21", text: "Racines précises : plus que des racines qui ne tombent pas juste (√5, √13…), à 1 puis 2 chiffres après la virgule, par la méthode des impairs (on retire 1, 3, 5… : le nombre de retraits est la racine) — aucune table à connaître. Écriture sans ambiguïté (√5776, plus « √5 776 »). Puissances de nombres à virgule au dernier palier (1,3³ : on calcule 13³ = 2197, puis on remet la virgule → 2,197 ; × 13 = × 10 + × 3)." },
+        { v: "v20", text: "Nouveau premier chapitre, obligatoire : les tables de multiplication. Une grille 2 à 9, coupée en deux par la diagonale (la multiplication est symétrique) : 36 cases. Deux exercices au choix : trouver la case qui fait un nombre, ou écrire le résultat d'une case au clavier. Chaque bonne réponse remplit la case ; le badge se gagne en remplissant les deux grilles sans erreur, et ouvre le boulier. Boutons du bas centrés, sur deux lignes si besoin." },
         { v: "v19", text: "Multiplications et puissances en additions répétées, avec une consigne claire : 8 × 2 → « ajoute 8 (1/2) », puis « ajoute 8 (2/2) ». Plus besoin de connaître la table par cœur, et les boutons d'addition peuvent faire ces additions tout seuls. Division en soustractions répétées (retire 3 → quotient 1, 2, 3…, par dizaines d'abord pour les grands nombres) : la consigne affiche le quotient qui grandit, et la réussite explique que le boulier montre le reste (le résultat, c'est le nombre de fois qu'on a retiré le diviseur). Pareil pour les racines." },
         { v: "v18", text: "Les boutons font leurs gestes dans toutes les opérations : dans 2 × 6, le bouton + fait « ajoute 12 », car c'est une addition directe." },
         { v: "v17", text: "En-tête sur une seule ligne : flèche de retour à gauche, titre Soroban au centre, menu à droite. Niveaux rangés en grille régulière, 3 par ligne." },
@@ -1927,6 +2352,7 @@
       var resizeT = 0;
       window.addEventListener("resize", function () {
         clearTimeout(resizeT);
+        setTimeout(sizeTables, 160);
         resizeT = setTimeout(function () {
           // En exercice, le boulier garde les tiges de l'exercice ; en bac à
           // sable, autant que l'écran le permet
