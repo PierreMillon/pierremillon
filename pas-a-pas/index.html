@@ -1048,6 +1048,7 @@
 
     <div class="menu-panel" id="menuPanel" hidden>
       <a class="menu-item" href="../">← Portfolio</a>
+      <a class="menu-item" href="fiche.html" data-tr="Fiche des règles">Fiche des règles</a>
       <button class="menu-item" id="histBtn" data-tr="Historique">Historique</button>
       <button class="menu-item" id="badgeReset" data-tr="Effacer le badge">Effacer le badge</button>
       <button class="menu-item" id="langBtn" data-tr="English">English</button>
@@ -1633,7 +1634,7 @@
         "« On passe le 2 de l'autre côté en divisant. »": "“Move the 2 to the other side by dividing.”",
         "« (a + b)² = a² + 2ab + b² »": "“(a + b)² = a² + 2ab + b²”",
         "départ": "start", "résultat": "result", "sauter des étapes": "skip steps", "pas à pas": "step by step",
-        "Historique": "History", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
+        "Historique": "History", "Fiche des règles": "Rules sheet", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
       };
       function tr(t) { return LANG === "en" && EN[t] ? EN[t] : t; }
 
@@ -3853,6 +3854,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v29", text: "Menu ☰ → Fiche des règles : toutes les règles de calcul jusqu'en terminale, et les gestes d'exercice (écrire 1 = c/c, ajouter et retrancher, découper 25 = 24 + 1, quantité conjuguée, facteur dominant…)." },
         { v: "v28", text: "Les termes qui changent de place décrivent un demi-cercle (vers la droite par-dessus, vers la gauche par-dessous) : on les voit se croiser au lieu de glisser en ligne droite." },
         { v: "v27", text: "Écran d'accueil (⌂) : les ensembles emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ, on touche une zone pour voir ses chapitres. Déblocage : tous les chapitres d'un ensemble réussis ouvrent le suivant (démo animée = 3 fois sans faute en mode jeu). Mode prof dans le menu : tout ouvert. ℍ en teaser verrouillé. Petits bips (fusion, juste, faux, badge), coupables dans le menu." },
         { v: "v26", text: "Nouveau chapitre Calcul : calcul mental animé en continu, sans clics. Dizaines en barres, unités en jetons rangés par 5. 16 + 27 → 10 + 6 + 20 + 7 → 5 + 1 et 5 + 2 → les deux 5 font une dizaine → 40 + 3 → 43. Si un seul nombre dépasse 5 : complément à 10. Enchaîne tout seul ; → pour passer au suivant." },

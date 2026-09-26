@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05100a">
+  <title>Règles de calcul</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+  <style>
+    /* Fiche : toutes les règles de calcul utiles jusqu'en terminale, puis
+       les « astuces » d'exercice (faire apparaître quelque chose). Même
+       esthétique que Pas à Pas. La page ne rebondit pas ; seule la fiche
+       défile, dans son cadre. */
+    :root {
+      --bg: #05100a;
+      --bg-soft: #0a1a12;
+      --ink: #3be08a;
+      --ink-soft: #2a8f5c;
+      --hairline: #123322;
+      --accent: #6dffb0;
+      --accent-soft: rgba(61, 224, 138, 0.12);
+      --sign: #ffd166;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    body {
+      position: fixed;
+      inset: 0;
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+      -webkit-font-smoothing: antialiased;
+      touch-action: manipulation;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+    }
+
+    .scroll {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      padding: max(0.8rem, env(safe-area-inset-top)) 16px max(2rem, env(safe-area-inset-bottom));
+    }
+
+    main { max-width: 640px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+    }
+
+    header a { color: var(--ink-soft); text-decoration: none; }
+    header a:hover { color: var(--accent); }
+
+    h1 {
+      margin: 1.4rem 0 0.3rem;
+      font-weight: 400;
+      font-size: 1.3rem;
+      letter-spacing: 0.06em;
+    }
+
+    .lead { margin: 0 0 1.4rem; font-size: 0.82rem; line-height: 1.6; color: var(--ink-soft); }
+
+    nav.toc { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 1.2rem; }
+
+    nav.toc a {
+      font-size: 0.66rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      text-decoration: none;
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      padding: 0.35rem 0.65rem;
+    }
+
+    nav.toc a:hover { color: var(--accent); border-color: var(--accent); }
+
+    h2 {
+      margin: 2rem 0 0.6rem;
+      padding-top: 0.8rem;
+      border-top: 1px solid var(--hairline);
+      font-weight: 400;
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    h2 small { color: var(--ink-soft); letter-spacing: 0.1em; margin-left: 0.4rem; }
+
+    .rule {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.2rem;
+      padding: 0.7rem 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .rule .f { font-size: 1.02rem; line-height: 1.7; color: var(--ink); }
+    .rule .ex { font-size: 0.78rem; line-height: 1.6; color: var(--ink-soft); }
+    .rule .ex b { color: var(--ink); font-weight: 400; }
+    .warn { color: var(--sign); }
+    i { font-style: italic; }
+
+    /* Fraction à barre horizontale */
+    .fr {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      vertical-align: middle;
+      margin: 0 0.12em;
+      line-height: 1.15;
+      font-size: 0.92em;
+    }
+
+    .fr > span:last-child { border-top: 1.5px solid currentColor; padding-top: 0.05em; width: 100%; text-align: center; }
+    .fr > span:first-child { padding: 0 0.15em 0.05em; }
+
+    .rt { border-top: 1.5px solid currentColor; padding: 0 0.1em; margin-left: -0.05em; }
+    sup { font-size: 0.7em; }
+
+    .tag {
+      display: inline-block;
+      margin-left: 0.3rem;
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
+      border: 1px solid var(--hairline);
+      border-radius: 4px;
+      padding: 0.05rem 0.3rem;
+      vertical-align: middle;
+    }
+
+    .trick {
+      padding: 0.8rem 0;
+      border-bottom: 1px solid var(--hairline);
+    }
+
+    .trick h3 { margin: 0 0 0.3rem; font-weight: 500; font-size: 0.88rem; color: var(--ink); }
+    .trick p { margin: 0.15rem 0; font-size: 0.8rem; line-height: 1.65; color: var(--ink-soft); }
+    .trick .calc { color: var(--ink); font-size: 0.95rem; }
+
+    footer { margin-top: 2rem; font-size: 0.7rem; color: var(--ink-soft); line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="scroll" id="scroll">
+  <main>
+    <header>
+      <a href="./">← Pas à Pas</a>
+      <span>Fiche</span>
+    </header>
+
+    <h1>Règles de calcul, jusqu'en terminale</h1>
+    <p class="lead">Il n'y a pas tant de règles. La difficulté, c'est de choisir laquelle appliquer : développer ou factoriser, réduire au même dénominateur, faire apparaître un 1, un carré, un facteur commun. D'abord les règles, ensuite les gestes d'exercice.</p>
+
+    <nav class="toc">
+      <a href="#ordre">Priorités</a><a href="#signes">Signes</a><a href="#fractions">Fractions</a>
+      <a href="#puissances">Puissances</a><a href="#racines">Racines</a><a href="#developper">Développer</a>
+      <a href="#identites">Identités</a><a href="#egalites">Équations</a><a href="#inegalites">Inégalités</a>
+      <a href="#abs">Valeur absolue</a><a href="#explog">exp / ln</a><a href="#trigo">Trigo</a>
+      <a href="#sommes">Sommes</a><a href="#complexes">Complexes</a><a href="#astuces">Faire apparaître</a>
+    </nav>
+
+    <h2 id="ordre">Priorités opératoires</h2>
+    <div class="rule"><div class="f">parenthèses → puissances → × et ÷ → + et −</div>
+      <div class="ex">2 + 3 · 4<sup>2</sup> = 2 + 3 · 16 = 50. À priorité égale, de gauche à droite : 12 ÷ 3 · 2 = 8.</div></div>
+    <div class="rule"><div class="f">−<i>a</i><sup>2</sup> ≠ (−<i>a</i>)<sup>2</sup></div>
+      <div class="ex">La puissance passe avant le signe : −3<sup>2</sup> = −9, (−3)<sup>2</sup> = 9.</div></div>
+
+    <h2 id="signes">Signes <small>ℤ</small></h2>
+    <div class="rule"><div class="f"><i>a</i> − <i>b</i> = <i>a</i> + (−<i>b</i>)</div>
+      <div class="ex">Soustraire, c'est ajouter l'opposé.</div></div>
+    <div class="rule"><div class="f">(−<i>a</i>) · (−<i>b</i>) = <i>a</i> · <i>b</i> &nbsp;&nbsp; (−<i>a</i>) · <i>b</i> = −<i>a</i> · <i>b</i></div>
+      <div class="ex">Multiplier par −1 = demi-tour sur la droite des réels ; deux demi-tours = un tour.</div></div>
+    <div class="rule"><div class="f">−(<i>a</i> + <i>b</i> − <i>c</i>) = −<i>a</i> − <i>b</i> + <i>c</i></div>
+      <div class="ex">C'est (−1) · ( … ) distribué terme à terme.</div></div>
+
+    <h2 id="fractions">Fractions <small>ℚ</small></h2>
+    <div class="rule"><div class="f"><span class="fr"><span><i>a</i></span><span><i>b</i></span></span> = <span class="fr"><span><i>a</i> · <i>k</i></span><span><i>b</i> · <i>k</i></span></span> &nbsp; (<i>k</i> ≠ 0)</div>
+      <div class="ex">Multiplier ou diviser en haut et en bas par le même nombre non nul ne change rien. C'est la seule façon de simplifier.</div></div>
+    <div class="rule"><div class="f"><span class="fr"><span><i>a</i></span><span><i>c</i></span></span> + <span class="fr"><span><i>b</i></span><span><i>c</i></span></span> = <span class="fr"><span><i>a</i> + <i>b</i></span><span><i>c</i></span></span> &nbsp;&nbsp; <span class="fr"><span><i>a</i></span><span><i>b</i></span></span> + <span class="fr"><span><i>c</i></span><span><i>d</i></span></span> = <span class="fr"><span><i>a d</i> + <i>b c</i></span><span><i>b d</i></span></span></div>
+      <div class="ex">On n'additionne que des fractions de même dénominateur : on y ramène d'abord.</div></div>
+    <div class="rule"><div class="f"><span class="fr"><span><i>a</i></span><span><i>b</i></span></span> · <span class="fr"><span><i>c</i></span><span><i>d</i></span></span> = <span class="fr"><span><i>a c</i></span><span><i>b d</i></span></span> &nbsp;&nbsp; <span class="fr"><span><span class="fr"><span><i>a</i></span><span><i>b</i></span></span></span><span><span class="fr"><span><i>c</i></span><span><i>d</i></span></span></span></span> = <span class="fr"><span><i>a</i></span><span><i>b</i></span></span> · <span class="fr"><span><i>d</i></span><span><i>c</i></span></span></div>
+      <div class="ex">Diviser, c'est multiplier par l'inverse.</div></div>
+    <div class="rule"><div class="f warn"><span class="fr"><span><i>x</i> + 3</span><span>3</span></span> ≠ <i>x</i> + 1 &nbsp;&nbsp; <span class="fr"><span><i>a</i></span><span><i>b</i> + <i>c</i></span></span> ≠ <span class="fr"><span><i>a</i></span><span><i>b</i></span></span> + <span class="fr"><span><i>a</i></span><span><i>c</i></span></span></div>
+      <div class="ex">On simplifie des facteurs, jamais des termes. Le bas ne se sépare pas.</div></div>
+
+    <h2 id="puissances">Puissances</h2>
+    <div class="rule"><div class="f"><i>a</i><sup>n</sup> · <i>a</i><sup>m</sup> = <i>a</i><sup>n+m</sup> &nbsp;&nbsp; <span class="fr"><span><i>a</i><sup>n</sup></span><span><i>a</i><sup>m</sup></span></span> = <i>a</i><sup>n−m</sup> &nbsp;&nbsp; (<i>a</i><sup>n</sup>)<sup>m</sup> = <i>a</i><sup>n·m</sup></div>
+      <div class="ex">2<sup>3</sup> · 2<sup>4</sup> = 2<sup>7</sup> ; (2<sup>3</sup>)<sup>2</sup> = 2<sup>6</sup>.</div></div>
+    <div class="rule"><div class="f">(<i>a b</i>)<sup>n</sup> = <i>a</i><sup>n</sup> <i>b</i><sup>n</sup> &nbsp;&nbsp; <i>a</i><sup>0</sup> = 1 &nbsp;&nbsp; <i>a</i><sup>−n</sup> = <span class="fr"><span>1</span><span><i>a</i><sup>n</sup></span></span></div>
+      <div class="ex">Pour <i>a</i> ≠ 0. 10<sup>−3</sup> = 0,001.</div></div>
+    <div class="rule"><div class="f warn">(<i>a</i> + <i>b</i>)<sup>n</sup> ≠ <i>a</i><sup>n</sup> + <i>b</i><sup>n</sup></div>
+      <div class="ex">(2 + 3)<sup>2</sup> = 25, 2<sup>2</sup> + 3<sup>2</sup> = 13. Voir les identités remarquables.</div></div>
+
+    <h2 id="racines">Racines <small>ℝ</small></h2>
+    <div class="rule"><div class="f">√<span class="rt"><i>a b</i></span> = √<span class="rt"><i>a</i></span> · √<span class="rt"><i>b</i></span> &nbsp;&nbsp; √<span class="rt"><span class="fr"><span><i>a</i></span><span><i>b</i></span></span></span> = <span class="fr"><span>√<span class="rt"><i>a</i></span></span><span>√<span class="rt"><i>b</i></span></span></span></div>
+      <div class="ex">Pour <i>a</i>, <i>b</i> ≥ 0 (<i>b</i> &gt; 0 en bas). √<span class="rt">50</span> = √<span class="rt">25 · 2</span> = 5√<span class="rt">2</span>.</div></div>
+    <div class="rule"><div class="f">(√<span class="rt"><i>a</i></span>)<sup>2</sup> = <i>a</i> &nbsp;&nbsp; √<span class="rt"><i>a</i><sup>2</sup></span> = |<i>a</i>|</div>
+      <div class="ex">√<span class="rt">(−3)<sup>2</sup></span> = 3, pas −3.</div></div>
+    <div class="rule"><div class="f warn">√<span class="rt"><i>a</i> + <i>b</i></span> ≠ √<span class="rt"><i>a</i></span> + √<span class="rt"><i>b</i></span></div>
+      <div class="ex">√<span class="rt">9 + 16</span> = 5, √<span class="rt">9</span> + √<span class="rt">16</span> = 7.</div></div>
+
+    <h2 id="developper">Développer, factoriser <small>ℝ</small></h2>
+    <div class="rule"><div class="f"><i>k</i> · (<i>a</i> + <i>b</i>) = <i>k a</i> + <i>k b</i></div>
+      <div class="ex">Lu de gauche à droite : développer. De droite à gauche : factoriser. Même égalité.</div></div>
+    <div class="rule"><div class="f">(<i>a</i> + <i>b</i>)(<i>c</i> + <i>d</i>) = <i>a c</i> + <i>a d</i> + <i>b c</i> + <i>b d</i></div>
+      <div class="ex">Chaque terme du premier multiplie chaque terme du second : 4 produits.</div></div>
+    <div class="rule"><div class="f"><i>a x</i><sup>2</sup> + <i>b x</i> + <i>c</i> = <i>a</i>(<i>x</i> − <i>x</i><sub>1</sub>)(<i>x</i> − <i>x</i><sub>2</sub>)</div>
+      <div class="ex">Si Δ = <i>b</i><sup>2</sup> − 4<i>ac</i> ≥ 0, avec <i>x</i><sub>1,2</sub> = <span class="fr"><span>−<i>b</i> ± √<span class="rt">Δ</span></span><span>2<i>a</i></span></span>. Si Δ &lt; 0 : pas de factorisation dans ℝ (mais oui dans ℂ).</div></div>
+
+    <h2 id="identites">Identités remarquables</h2>
+    <div class="rule"><div class="f">(<i>a</i> + <i>b</i>)<sup>2</sup> = <i>a</i><sup>2</sup> + 2<i>ab</i> + <i>b</i><sup>2</sup></div><div class="ex">Le double produit 2<i>ab</i> vient des deux termes du milieu, égaux.</div></div>
+    <div class="rule"><div class="f">(<i>a</i> − <i>b</i>)<sup>2</sup> = <i>a</i><sup>2</sup> − 2<i>ab</i> + <i>b</i><sup>2</sup></div><div class="ex">(−<i>b</i>)<sup>2</sup> = +<i>b</i><sup>2</sup>.</div></div>
+    <div class="rule"><div class="f">(<i>a</i> + <i>b</i>)(<i>a</i> − <i>b</i>) = <i>a</i><sup>2</sup> − <i>b</i><sup>2</sup></div><div class="ex">Les termes du milieu sont opposés et s'annulent.</div></div>
+    <div class="rule"><div class="f">(<i>a</i> + <i>b</i>)<sup>3</sup> = <i>a</i><sup>3</sup> + 3<i>a</i><sup>2</sup><i>b</i> + 3<i>a b</i><sup>2</sup> + <i>b</i><sup>3</sup> <span class="tag">terminale</span></div><div class="ex">Coefficients 1, 3, 3, 1 : triangle de Pascal. En général : binôme de Newton.</div></div>
+    <div class="rule"><div class="f"><i>a</i><sup>3</sup> − <i>b</i><sup>3</sup> = (<i>a</i> − <i>b</i>)(<i>a</i><sup>2</sup> + <i>a b</i> + <i>b</i><sup>2</sup>) <span class="tag">terminale</span></div><div class="ex"><i>a</i><sup>n</sup> − <i>b</i><sup>n</sup> se factorise toujours par (<i>a</i> − <i>b</i>).</div></div>
+    <div class="rule"><div class="f"><i>a</i><sup>2</sup> + <i>b</i><sup>2</sup> = (<i>a</i> + <i>i b</i>)(<i>a</i> − <i>i b</i>) <span class="tag">ℂ</span></div><div class="ex">Impossible dans ℝ, possible dans ℂ grâce à <i>i</i><sup>2</sup> = −1.</div></div>
+
+    <h2 id="egalites">Équations</h2>
+    <div class="rule"><div class="f"><i>A</i> = <i>B</i> ⇔ <i>A</i> + <i>c</i> = <i>B</i> + <i>c</i> ⇔ <i>k A</i> = <i>k B</i> &nbsp; (<i>k</i> ≠ 0)</div>
+      <div class="ex">On fait la même opération des deux côtés. « Passer de l'autre côté » n'est qu'un raccourci.</div></div>
+    <div class="rule"><div class="f"><i>A</i> · <i>B</i> = 0 ⇔ <i>A</i> = 0 ou <i>B</i> = 0</div>
+      <div class="ex">Produit nul : d'où l'intérêt de factoriser avant de résoudre.</div></div>
+    <div class="rule"><div class="f"><span class="fr"><span><i>A</i></span><span><i>B</i></span></span> = 0 ⇔ <i>A</i> = 0 et <i>B</i> ≠ 0</div>
+      <div class="ex">Toujours vérifier que le dénominateur ne s'annule pas.</div></div>
+    <div class="rule"><div class="f warn">diviser par <i>x</i> : seulement si <i>x</i> ≠ 0</div>
+      <div class="ex"><i>x</i><sup>2</sup> = <i>x</i> : diviser par <i>x</i> fait perdre la solution 0. Factoriser : <i>x</i>(<i>x</i> − 1) = 0.</div></div>
+
+    <h2 id="inegalites">Inégalités</h2>
+    <div class="rule"><div class="f"><i>a</i> &lt; <i>b</i> ⇔ <i>a</i> + <i>c</i> &lt; <i>b</i> + <i>c</i></div><div class="ex">Ajouter ne change pas le sens.</div></div>
+    <div class="rule"><div class="f"><i>k</i> &gt; 0 : <i>k a</i> &lt; <i>k b</i> &nbsp;&nbsp; <span class="warn"><i>k</i> &lt; 0 : <i>k a</i> &gt; <i>k b</i></span></div><div class="ex">Multiplier par un négatif retourne l'inégalité (c'est encore le demi-tour).</div></div>
+    <div class="rule"><div class="f">0 &lt; <i>a</i> &lt; <i>b</i> ⇒ <span class="fr"><span>1</span><span><i>a</i></span></span> &gt; <span class="fr"><span>1</span><span><i>b</i></span></span></div><div class="ex">La fonction inverse est décroissante sur ]0 ; +∞[. Une fonction croissante conserve l'ordre, une décroissante l'inverse.</div></div>
+
+    <h2 id="abs">Valeur absolue</h2>
+    <div class="rule"><div class="f">|<i>a b</i>| = |<i>a</i>| · |<i>b</i>| &nbsp;&nbsp; |<i>a</i> + <i>b</i>| ≤ |<i>a</i>| + |<i>b</i>|</div>
+      <div class="ex">|<i>x</i> − <i>a</i>| = distance entre <i>x</i> et <i>a</i>. |<i>x</i> − 2| &lt; 1 ⇔ 1 &lt; <i>x</i> &lt; 3.</div></div>
+
+    <h2 id="explog">Exponentielle et logarithme <small>terminale</small></h2>
+    <div class="rule"><div class="f">e<sup><i>a</i>+<i>b</i></sup> = e<sup><i>a</i></sup> · e<sup><i>b</i></sup> &nbsp;&nbsp; e<sup>−<i>a</i></sup> = <span class="fr"><span>1</span><span>e<sup><i>a</i></sup></span></span> &nbsp;&nbsp; (e<sup><i>a</i></sup>)<sup>n</sup> = e<sup>n<i>a</i></sup></div>
+      <div class="ex">Mêmes règles que les puissances. e<sup><i>x</i></sup> &gt; 0 toujours.</div></div>
+    <div class="rule"><div class="f">ln(<i>a b</i>) = ln <i>a</i> + ln <i>b</i> &nbsp;&nbsp; ln <span class="fr"><span><i>a</i></span><span><i>b</i></span></span> = ln <i>a</i> − ln <i>b</i> &nbsp;&nbsp; ln(<i>a</i><sup>n</sup>) = n ln <i>a</i></div>
+      <div class="ex">Pour <i>a</i>, <i>b</i> &gt; 0. Le logarithme transforme les produits en sommes.</div></div>
+    <div class="rule"><div class="f">e<sup>ln <i>x</i></sup> = <i>x</i> (<i>x</i> &gt; 0) &nbsp;&nbsp; ln(e<sup><i>x</i></sup>) = <i>x</i> &nbsp;&nbsp; ln 1 = 0 &nbsp;&nbsp; ln e = 1</div>
+      <div class="ex"><i>a</i><sup><i>b</i></sup> = e<sup><i>b</i> ln <i>a</i></sup> : c'est ainsi qu'on étudie 2<sup><i>x</i></sup> ou <i>x</i><sup><i>x</i></sup>.</div></div>
+    <div class="rule"><div class="f warn">ln(<i>a</i> + <i>b</i>) ≠ ln <i>a</i> + ln <i>b</i></div><div class="ex">Rien à faire avec une somme à l'intérieur.</div></div>
+
+    <h2 id="trigo">Trigonométrie</h2>
+    <div class="rule"><div class="f">cos<sup>2</sup> <i>x</i> + sin<sup>2</sup> <i>x</i> = 1</div><div class="ex">Pythagore sur le cercle unité.</div></div>
+    <div class="rule"><div class="f">cos(<i>a</i> + <i>b</i>) = cos <i>a</i> cos <i>b</i> − sin <i>a</i> sin <i>b</i> &nbsp;&nbsp; sin(<i>a</i> + <i>b</i>) = sin <i>a</i> cos <i>b</i> + cos <i>a</i> sin <i>b</i></div>
+      <div class="ex">D'où cos 2<i>a</i> = cos<sup>2</sup> <i>a</i> − sin<sup>2</sup> <i>a</i> = 2cos<sup>2</sup> <i>a</i> − 1 et sin 2<i>a</i> = 2 sin <i>a</i> cos <i>a</i>. Se retrouve avec e<sup><i>i</i>(<i>a</i>+<i>b</i>)</sup> = e<sup><i>ia</i></sup> e<sup><i>ib</i></sup>.</div></div>
+    <div class="rule"><div class="f">cos(−<i>x</i>) = cos <i>x</i> &nbsp;&nbsp; sin(−<i>x</i>) = −sin <i>x</i> &nbsp;&nbsp; cos(π − <i>x</i>) = −cos <i>x</i></div><div class="ex">Se lisent sur le cercle : symétries.</div></div>
+
+    <h2 id="sommes">Sommes <small>terminale</small></h2>
+    <div class="rule"><div class="f">1 + 2 + … + <i>n</i> = <span class="fr"><span><i>n</i>(<i>n</i> + 1)</span><span>2</span></span></div><div class="ex">Écrire la somme à l'endroit et à l'envers, additionner : <i>n</i> fois (<i>n</i> + 1).</div></div>
+    <div class="rule"><div class="f">1 + <i>q</i> + <i>q</i><sup>2</sup> + … + <i>q</i><sup>n</sup> = <span class="fr"><span>1 − <i>q</i><sup>n+1</sup></span><span>1 − <i>q</i></span></span> &nbsp; (<i>q</i> ≠ 1)</div><div class="ex">Multiplier par (1 − <i>q</i>) : tout se télescope.</div></div>
+    <div class="rule"><div class="f">(<i>n</i> + 1)! = (<i>n</i> + 1) · <i>n</i>!</div><div class="ex">Pour simplifier <span class="fr"><span>(<i>n</i> + 1)!</span><span><i>n</i>!</span></span> = <i>n</i> + 1.</div></div>
+
+    <h2 id="complexes">Complexes <small>ℂ · maths expertes</small></h2>
+    <div class="rule"><div class="f"><i>i</i><sup>2</sup> = −1 &nbsp;&nbsp; <i>z</i> · <i>z̄</i> = |<i>z</i>|<sup>2</sup> = <i>a</i><sup>2</sup> + <i>b</i><sup>2</sup></div>
+      <div class="ex">Pour <i>z</i> = <i>a</i> + <i>ib</i>. D'où <span class="fr"><span>1</span><span><i>z</i></span></span> = <span class="fr"><span><i>z̄</i></span><span>|<i>z</i>|<sup>2</sup></span></span>.</div></div>
+    <div class="rule"><div class="f">e<sup><i>iθ</i></sup> = cos θ + <i>i</i> sin θ &nbsp;&nbsp; e<sup><i>iθ</i></sup> · e<sup><i>iφ</i></sup> = e<sup><i>i</i>(θ+φ)</sup></div>
+      <div class="ex">Multiplier par e<sup><i>iθ</i></sup> = tourner de θ. Par −1 = e<sup><i>iπ</i></sup> : le demi-tour.</div></div>
+
+    <h2 id="astuces">Faire apparaître <small>les gestes d'exercice</small></h2>
+    <p class="lead">Les règles ne s'appliquent que si l'expression a la bonne forme. Le travail, c'est de la lui donner — sans changer sa valeur.</p>
+
+    <div class="trick"><h3>Écrire 1 sous une autre forme</h3>
+      <p class="calc">1 + <span class="fr"><span>1</span><span><i>c</i></span></span> = <span class="fr"><span><i>c</i></span><span><i>c</i></span></span> + <span class="fr"><span>1</span><span><i>c</i></span></span> = <span class="fr"><span><i>c</i> + 1</span><span><i>c</i></span></span></p>
+      <p>1 = <span class="fr"><span><i>c</i></span><span><i>c</i></span></span> (même dénominateur), 1 = cos<sup>2</sup> + sin<sup>2</sup>, 1 = e<sup>0</sup>, 1 = ln e.</p></div>
+
+    <div class="trick"><h3>Ajouter et retrancher la même chose</h3>
+      <p class="calc"><i>x</i><sup>2</sup> + 6<i>x</i> = <i>x</i><sup>2</sup> + 6<i>x</i> + 9 − 9 = (<i>x</i> + 3)<sup>2</sup> − 9</p>
+      <p>Forme canonique : on complète le carré. Aussi <span class="fr"><span><i>x</i></span><span><i>x</i> + 1</span></span> = <span class="fr"><span><i>x</i> + 1 − 1</span><span><i>x</i> + 1</span></span> = 1 − <span class="fr"><span>1</span><span><i>x</i> + 1</span></span>.</p></div>
+
+    <div class="trick"><h3>Découper un nombre</h3>
+      <p class="calc">25 = 24 + 1 &nbsp;&nbsp; 99<sup>2</sup> = (100 − 1)<sup>2</sup> = 9801 &nbsp;&nbsp; 49 · 51 = (50 − 1)(50 + 1) = 2499</p>
+      <p>On choisit le découpage qui fait apparaître une puissance de 10, un facteur commun ou une identité.</p></div>
+
+    <div class="trick"><h3>Faire apparaître un facteur commun</h3>
+      <p class="calc">2<sup>n+1</sup> + 2<sup>n</sup> = 2<sup>n</sup> · 2 + 2<sup>n</sup> = 2<sup>n</sup>(2 + 1) = 3 · 2<sup>n</sup></p>
+      <p>Aussi e<sup>2<i>x</i></sup> − e<sup><i>x</i></sup> = e<sup><i>x</i></sup>(e<sup><i>x</i></sup> − 1), et <i>x</i><sup>3</sup> − <i>x</i> = <i>x</i>(<i>x</i> − 1)(<i>x</i> + 1).</p></div>
+
+    <div class="trick"><h3>Multiplier par la quantité conjuguée</h3>
+      <p class="calc"><span class="fr"><span>1</span><span>√<span class="rt">2</span> − 1</span></span> = <span class="fr"><span>√<span class="rt">2</span> + 1</span><span>(√<span class="rt">2</span> − 1)(√<span class="rt">2</span> + 1)</span></span> = √<span class="rt">2</span> + 1</p>
+      <p>(<i>a</i> − <i>b</i>)(<i>a</i> + <i>b</i>) = <i>a</i><sup>2</sup> − <i>b</i><sup>2</sup> fait disparaître les racines. Même idée dans ℂ : multiplier par <i>z̄</i>.</p></div>
+
+    <div class="trick"><h3>Mettre en facteur le terme dominant</h3>
+      <p class="calc"><span class="fr"><span>2<i>x</i><sup>2</sup> + <i>x</i></span><span><i>x</i><sup>2</sup> − 3</span></span> = <span class="fr"><span><i>x</i><sup>2</sup>(2 + <span class="fr"><span>1</span><span><i>x</i></span></span>)</span><span><i>x</i><sup>2</sup>(1 − <span class="fr"><span>3</span><span><i>x</i><sup>2</sup></span></span>)</span></span> → 2 quand <i>x</i> → +∞</p>
+      <p>Pour lever une forme indéterminée ∞/∞ ou ∞ − ∞.</p></div>
+
+    <div class="trick"><h3>Séparer une fraction pour télescoper</h3>
+      <p class="calc"><span class="fr"><span>1</span><span><i>n</i>(<i>n</i> + 1)</span></span> = <span class="fr"><span>1</span><span><i>n</i></span></span> − <span class="fr"><span>1</span><span><i>n</i> + 1</span></span></p>
+      <p>Dans une somme, tous les termes intermédiaires s'annulent deux à deux.</p></div>
+
+    <div class="trick"><h3>Passer à l'exponentielle ou au logarithme</h3>
+      <p class="calc"><i>x</i><sup><i>x</i></sup> = e<sup><i>x</i> ln <i>x</i></sup> &nbsp;&nbsp; 2<sup><i>n</i></sup> &gt; 1000 ⇔ <i>n</i> ln 2 &gt; ln 1000</p>
+      <p>Une inconnue en exposant descend grâce au ln.</p></div>
+
+    <div class="trick"><h3>Changer de variable</h3>
+      <p class="calc"><i>x</i><sup>4</sup> − 5<i>x</i><sup>2</sup> + 4 = 0 &nbsp; avec <i>X</i> = <i>x</i><sup>2</sup> : &nbsp; <i>X</i><sup>2</sup> − 5<i>X</i> + 4 = 0</p>
+      <p>Aussi <i>X</i> = e<sup><i>x</i></sup> pour e<sup>2<i>x</i></sup> − 3e<sup><i>x</i></sup> + 2 = 0.</p></div>
+
+    <div class="trick"><h3>Racine évidente, puis factoriser</h3>
+      <p class="calc"><i>x</i><sup>3</sup> − 1 : <i>x</i> = 1 annule, donc (<i>x</i> − 1)(<i>x</i><sup>2</sup> + <i>x</i> + 1)</p>
+      <p>Tester 0, 1, −1, 2 : une racine <i>r</i> donne le facteur (<i>x</i> − <i>r</i>).</p></div>
+
+    <div class="trick"><h3>Écrire un nombre en produit de facteurs premiers</h3>
+      <p class="calc"><span class="fr"><span>84</span><span>126</span></span> = <span class="fr"><span>2<sup>2</sup> · 3 · 7</span><span>2 · 3<sup>2</sup> · 7</span></span> = <span class="fr"><span>2</span><span>3</span></span></p>
+      <p>On voit tout de suite les facteurs communs.</p></div>
+
+    <footer>Chaque geste ci-dessus deviendra un « pouvoir » dans Pas à Pas : on l'obtient après l'avoir fait à la main, pas à pas.</footer>
+  </main>
+  </div>
+
+  <script>
+    // Empêche le rebond de la page entière (seul le cadre défile)
+    document.addEventListener("gesturestart", function (e) { e.preventDefault(); }, { passive: false });
+    document.addEventListener("gesturechange", function (e) { e.preventDefault(); }, { passive: false });
+  </script>
+
+  <script>
+    // Mise à jour automatique (copié de la page d'accueil du portfolio)
+    (function () {
+      var PAGE = "pas-a-pas-fiche";
+      var lastCheck = 0;
+      async function checkForUpdate() {
+        var now0 = Date.now();
+        if (now0 - lastCheck < 1500) return;
+        lastCheck = now0;
+        try {
+          var url = (location.pathname || "fiche.html") + "?_cb=" + now0;
+          var res = await fetch(url, { cache: "no-store" });
+          if (!res.ok) return;
+          var tag = res.headers.get("etag") || res.headers.get("last-modified");
+          if (!tag) return;
+          var key = "pm_pageVersion_" + PAGE;
+          var stored = localStorage.getItem(key);
+          if (stored === null) { localStorage.setItem(key, tag); return; }
+          if (tag !== stored) {
+            var now = Date.now();
+            var guard = "pm_lastUpdateReload_" + PAGE;
+            var lastReload = 0;
+            try { lastReload = Number(sessionStorage.getItem(guard)) || 0; } catch (e) {}
+            if (now - lastReload < 10000) return;
+            try {
+              localStorage.setItem(key, tag);
+              sessionStorage.setItem(guard, String(now));
+            } catch (e) {}
+            location.replace(location.pathname + "?_r=" + now);
+          }
+        } catch (e) {}
+      }
+      checkForUpdate();
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) checkForUpdate(); });
+      document.addEventListener("pointerdown", checkForUpdate, { passive: true });
+    })();
+  </script>
+</body>
+</html>
