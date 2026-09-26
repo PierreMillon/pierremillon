@@ -3769,6 +3769,35 @@
         nextBtn.textContent = "→";
         nextBtn.classList.remove("text");
         pfLayout();
+        // Le nombre du haut descend dans la bulle : c'est le même nombre
+        var root = pfBoard.querySelector('.pf-node[data-i="0"]');
+        if (root) {
+          var re = pfEq.getBoundingClientRect(), rr = root.getBoundingClientRect();
+          var dx = re.left + re.width / 2 - (rr.left + rr.width / 2), dy = re.top + re.height / 2 - (rr.top + rr.height / 2);
+          root.animate([
+            { transform: "translate(" + dx + "px," + dy + "px) translate(-50%,-50%) scale(0.6)", opacity: 0.3 },
+            { transform: "translate(-50%,-50%) scale(1.1)", opacity: 1, offset: 0.75 },
+            { transform: "translate(-50%,-50%) scale(1)" }
+          ], { duration: ms(900), easing: "cubic-bezier(.3,1.1,.5,1)" });
+        }
+      }
+
+      // Ligne du haut : le même nombre, écrit comme le produit des bulles
+      // du bas de l'arbre au fur et à mesure (117 → 117 = 3 · 39 → …)
+      function pfUpdateTop() {
+        if (!pfState || pfState.ready) return;
+        var leaves = [];
+        (function walk(i) {
+          var kids = [];
+          pfState.nodes.forEach(function (c, k) { if (c.parent === i) kids.push(k); });
+          if (!kids.length) { leaves.push(pfState.nodes[i].v); return; }
+          kids.sort(function (a, b) { return pfState.nodes[a].side - pfState.nodes[b].side; }).forEach(walk);
+        })(0);
+        var t = leaves.length > 1 ? pfState.n + " = " + leaves.join(" · ") : String(pfState.n);
+        if (pfEq.textContent !== t && !pfEq.querySelector("input")) {
+          pfEq.textContent = t;
+          if (leaves.length > 1) pfEq.animate([{ opacity: 0.3 }, { opacity: 1 }], { duration: ms(500) });
+        }
       }
 
       // Toucher le nombre du haut : on tape son propre nombre (2 à 9999).
@@ -3917,6 +3946,7 @@
       var pfHeadHold = false;
       function pfRender() {
         if (!pfHeadHold) pfUpdateHead();
+        pfUpdateTop();
         pfBoard.innerHTML = "";
         var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         pfBoard.appendChild(svg);
@@ -4817,6 +4847,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v52", text: "Premiers : au départ, le nombre du haut descend dans la bulle de l'arbre (c'est le même nombre) ; ensuite la ligne du haut suit la décomposition, 117 → 117 = 3 · 39 → 117 = 3 · 3 · 13." },
         { v: "v51", text: "Premiers : en vert plein, seulement les diviseurs qui divisent vraiment le nombre en cours (pour 90 : 2, 3, 5 — pas 13). La fenêtre d'explication n'apparaît que pendant l'appui long et disparaît au relâcher." },
         { v: "v50", text: "Premiers : septième écriture sur le bandeau, la division posée (potence). Un nombre premier reconnu affiche « 97 est premier »." },
         { v: "v49", text: "Premiers : bouton « est premier » — les nombres premiers ne sont plus entourés d'office, c'est à toi de les reconnaître (ou de les diviser par eux-mêmes). Certaines questions sont elles-mêmes des nombres premiers, petits ou grands (97, 101…). Se tromper montre un diviseur (91 = 7 × 13)." },
