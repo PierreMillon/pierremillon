@@ -15,12 +15,14 @@ Tri : priorité décroissante.
 - [x] v6 — Physique confiée à Rapier (`@dimforge/rapier2d-compat@0.14.0`)
 - [x] v7 — Tenue élastique, pincer dans l'axe des doigts, fusion, son coupé en quittant, loupe iOS bloquée, style Oscilloscope seul
 - [x] v8 — Bulles molles (anneau de points Rapier + ressorts + pression interne, modèle de Matyka / JellyCar), volume conservé (plus de réapparition), note par taille (pentatonique) et contacts qui chantent, hors ligne (Rapier copié dans `vendor/` + service worker), PWA, batterie (boucle arrêtée au repos), français / anglais, letterbox au-delà du carré
+- [x] v9 — Fusion automatique façon gouttes d'eau (choc rapide ou contact prolongé, attraction de près), matière +30 %, double-tap = aspirer une voisine (volume conservé, plus de croissance sans fin), note libre selon la taille, note tenue au doigt, accord au contact, pulsation de fond selon le mouvement, traînée phosphore / onde intérieure / contour qui vibre, pont de matière et éclaboussures, interface cachée derrière ⓘ (portfolio, langue, son, historique), partie sauvegardée, mise à jour automatique par empreinte du contenu (corrige les remises à zéro)
 - [x] Ajouté au menu du portfolio (XIII)
 
 ## À faire
 
-- [ ] P1 — Tester la v8 sur iPhone : sensation bille d'eau, pincer, fusion, notes, pas de loupe ni de son en quittant, installation sur l'écran d'accueil (Pierre)
-- [ ] P2 — Régler la matière d'après le ressenti (constantes `K_EDGE`, `K_PRESS`, `K_SHAPE`, `C_WOBBLE`, `DRIVE_K` en tête du script)
+- [ ] P1 — Tester la v9 sur iPhone : gouttes qui fusionnent, aspiration, sons (note tenue, accords, pulsation), plus de remise à zéro (Pierre)
+- [ ] P2 — Régler d'après le ressenti : matière (`K_EDGE`, `K_PRESS`, `K_SHAPE`, `C_WOBBLE`), fusion (`MERGE_CONTACT_MS`, `MERGE_SPEED`, `COHESION`), aspiration (`SIP_SHARE`, `SIP_RATE`, `SIP_REACH`) — tout en tête du script
+- [ ] P3 — Toutes les bulles finissent par fusionner si on les laisse faire : à voir si c'est voulu ou s'il faut un contrepoids
 - [ ] P3 — Si ça devient un jeu : lui donner un but, puis reprendre la partie « jeu » de la charte
 
 ## Abandonné (jeu Simon, v1)
@@ -44,8 +46,12 @@ Conforme :
   à l'identique du paquet npm, licence Apache-2.0)
 - [x] Hors ligne complet (service worker, moteur servi avec la page)
 - [x] Installable en PWA (manifeste + service worker)
-- [x] Mise à jour automatique (vérification ETag), aucune sauvegarde à perdre
-  (seule la langue est gardée, en `localStorage` dans un try/catch)
+- [x] Mise à jour automatique (empreinte du contenu de la page — l'ETag
+  variait d'un serveur à l'autre et rechargeait l'appli à tort)
+- [x] Sauvegarde locale de la partie (positions, tailles), langue et son,
+  en `localStorage` dans des try/catch ; conservée à travers les mises à jour
+- [x] Sauvegarde relue avec méfiance : JSON borné en taille, uniquement des
+  nombres bornés, jamais interprété comme du code
 - [x] Batterie : boucle d'animation arrêtée au repos et en arrière-plan
 - [x] Français et anglais
 - [x] Letterbox au-delà du carré ; testé en 390×844 (Playwright)
