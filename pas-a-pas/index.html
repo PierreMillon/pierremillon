@@ -4678,11 +4678,13 @@
       }
       function Fa(k, inner) { return { t: "f", k: k, inner: sortMonos(inner), id: ++fusUid }; }
       function Fr(num, den) { return { t: "q", num: sortMonos(num), den: den, id: ++fusUid }; }
+      function Sq(base, n) { return { t: "p", base: base, n: n, id: ++fusUid }; }
       // Forme canonique d'une bulle, pour comparer au but sans tenir compte
       // de l'ordre des bulles (l'addition est commutative)
       function canon(c) {
         if (c.t === "m") return (c.k < 0 ? "-" : "+") + Math.abs(c.k) + "*" + c.s;
         if (c.t === "f") return "+" + c.k + "*(" + sortMonos(c.inner).map(canon).join("") + ")";
+        if (c.t === "p") return "+(" + c.base + "+" + c.n + ")^2";
         return "+(" + sortMonos(c.num).map(canon).join("") + ")/" + c.den;
       }
       function boardKey(list) { return list.map(canon).sort().join("|"); }
@@ -4701,6 +4703,14 @@
         { chips: function () { return [Fa(3, [M(1, "x"), M(2)]), M(1, "x")]; }, goal: "4·x + 6", power: "dev", want: function () { return [M(4, "x"), M(6)]; } },
         // Découper un nombre pour faire apparaître un facteur (gagné avec Calcul)
         { chips: function () { return [M(5, "x"), M(7)]; }, goal: "5·(x + 1) + 2", power: "cut", want: function () { return [Fa(5, [M(1, "x"), M(1)]), M(2)]; } },
+        // Compléter le carré : + 9 − 9 fait apparaître (x + 3)² (gagné avec (a+b)²)
+        { chips: function () { return [M(1, "x²"), M(6, "x")]; }, goal: "(x + 3)² − 9", power: "sq", want: function () { return [Sq("x", 3), M(-9)]; } },
+        // Puissances : 2ⁿ⁺¹ = 2·2ⁿ (gagné avec Pascal, où chaque ligne double)
+        { chips: function () { return [M(1, "2ⁿ⁺¹"), M(1, "2ⁿ")]; }, goal: "3·2ⁿ", power: "pow", want: function () { return [M(3, "2ⁿ")]; } },
+        // Quantité conjuguée : 1/(√2 − 1) = √2 + 1 (gagné avec (a+b)(a−b))
+        { chips: function () { return [Fr([M(1)], "√2 − 1"), M(-1)]; }, goal: "√2", power: "conj", want: function () { return [M(1, "√2")]; } },
+        // Télescopage : 1/(k·(k+1)) = 1/k − 1/(k+1) (gagné avec Piège, qui sépare une fraction)
+        { chips: function () { return [Fr([M(1)], "1·2"), Fr([M(1)], "2·3"), Fr([M(1)], "3·4")]; }, goal: "1 − 1/4", power: "tel", want: function () { return [M(1), Fr([M(-1)], "4")]; } },
         { chips: function () { return [M(2), Fr([M(3)], "c"), Fr([M(1)], "c")]; }, goal: "(2·c + 4)/c", want: function () { return [Fr([M(2, "c"), M(4)], "c")]; }, power: true }
       ];
       var fus = { level: 0, chips: [], sel: null, won: false };
@@ -4718,6 +4728,7 @@
         if (c.t === "m") return monoStr(c, lead);
         var pre = lead ? "" : "+ ";
         if (c.t === "f") return pre + c.k + "·(" + sumStr(c.inner) + ")";
+        if (c.t === "p") return pre + "(" + c.base + " + " + c.n + ")²";
         return pre + "(" + sumStr(c.num) + ")/" + c.den;
       }
       function boardStr() {
@@ -4736,6 +4747,12 @@
       // "zero" si elles s'annulent, ou null si aucune règle ne s'applique.
       function fuse(A, B) {
         if (A.t === "m" && B.t === "m") {
+          // x² + 2n·x + n² → (x + n)² : la troisième bulle (x²) est prise au plateau
+          var lin = A.s === "x" ? A : B.s === "x" ? B : null, cst = lin === A ? B : A;
+          if (lin && !cst.s && cst.k > 0 && (lin.k / 2) * (lin.k / 2) === cst.k) {
+            var x2 = fus.chips.find(function (z) { return z.t === "m" && z.s === "x²" && z.k === 1; });
+            if (x2) { var sq = Sq("x", lin.k / 2); sq.also = [x2.id]; return sq; }
+          }
           if (A.s === B.s) { var k = A.k + B.k; return k === 0 ? "zero" : M(k, A.s); }
           // Facteur commun : même nombre devant ; avec le pouvoir « premiers »,
           // le plus grand facteur commun (PGCD) des deux nombres
@@ -4746,7 +4763,10 @@
         }
         if (A.t === "m" && B.t === "f" && A.s && A.k === B.k) return Fa(B.k, B.inner.concat([M(1, A.s)]));
         if (A.t === "f" && B.t === "m" && B.s && A.k === B.k) return Fa(A.k, [M(1, B.s)].concat(A.inner));
-        if (A.t === "q" && B.t === "q" && A.den === B.den) return Fr(reduce(B.num.concat(A.num)), B.den);
+        if (A.t === "q" && B.t === "q" && A.den === B.den) {
+          var nu = reduce(B.num.concat(A.num));
+          return nu.length ? Fr(nu, B.den) : "zero";
+        }
         return null;
       }
 
@@ -4792,9 +4812,8 @@
           });
           fusPowers.appendChild(pp);
           if (!hasPower("Premiers")) document.getElementById("fusMsg").textContent = LANG === "en" ? "Power locked: pass the Primes chapter." : "Pouvoir verrouillé : réussis le chapitre Premiers.";
-        } else if (L.power === "dev" || L.power === "cut") {
-          var P = L.power === "dev" ? { ch: "Distribuer", btn: "k·(a + b) → k·a + k·b", fn: fusDevelop }
-                                    : { ch: "Calcul", btn: "n → a + b", fn: fusCut };
+        } else if (FUS_PW[L.power]) {
+          var P = FUS_PW[L.power];
           var pd = document.createElement("button");
           pd.textContent = P.btn;
           pd.disabled = !hasPower(P.ch);
@@ -4815,12 +4834,13 @@
 
       function chipHTML(c, lead) {
         function sum(list) { return sumStr(list).replace(/([a-z])/g, "<i>$1</i>"); }
-        if (c.t === "q") return (lead ? "" : "") + '<span class="fr"><span>' + sum(c.num) + "</span><span><i>" + c.den + "</i></span></span>";
+        if (c.t === "q") return (lead ? "" : "") + '<span class="fr"><span>' + sum(c.num) + "</span><span>" + c.den.replace(/([a-z])/g, "<i>$1</i>") + "</span></span>";
         return chipStr(c, true).replace(/([a-z])/g, "<i>$1</i>");
       }
 
       // Rendu avec animation FLIP : chaque bulle part de son ancienne place
       // (en arc si elle change beaucoup de place), les nouvelles éclosent.
+      function isNeg(c) { return (c.t === "m" && c.k < 0) || (c.t === "q" && c.num.length === 1 && c.num[0].k < 0); }
       function fusRender(bornId) {
         var old = {};
         fusBoard.querySelectorAll(".chip").forEach(function (e) { old[e.dataset.id] = e.getBoundingClientRect(); });
@@ -4829,13 +4849,14 @@
           if (i > 0) {
             var sp = document.createElement("span");
             sp.className = "fus-sep";
-            sp.textContent = (c.t === "m" && c.k < 0) ? "−" : "+";
+            sp.textContent = isNeg(c) ? "−" : "+";
             fusBoard.appendChild(sp);
           }
           var e = document.createElement("span");
           e.className = "chip" + (fus.sel === c.id ? " sel" : "");
           e.dataset.id = c.id;
-          var cc = c.t === "m" && c.k < 0 && i > 0 ? M(-c.k, c.s) : c;
+          var cc = c;
+          if (i > 0 && isNeg(c)) cc = c.t === "m" ? M(-c.k, c.s) : { t: "q", num: [M(-c.num[0].k, c.num[0].s)], den: c.den };
           e.innerHTML = chipHTML(cc, true);
           fusBoard.appendChild(e);
           fusDraggable(e, c);
@@ -4917,6 +4938,7 @@
             setTimeout(function () { fusRender(null); fusCheck(); }, ms(330));
           } else {
             fus.chips.splice(iB, 1, res);
+            if (res.also) fus.chips = fus.chips.filter(function (z) { return res.also.indexOf(z.id) < 0; });
             fusRender(res.id);
             fusCheck();
           }
@@ -4980,6 +5002,48 @@
         fusRender(null);
         fusCheck();
       }
+      // Compléter le carré : devant 2n·x, on ajoute n² et on le retranche
+      function fusSquare() {
+        if (!hasPower("(a+b)²")) return;
+        var c = fusSelected(function (x) { return x.t === "m" && x.s === "x" && x.k % 2 === 0 && x.k > 0; }, "Touche d'abord la bulle 2n·x.", "Tap the 2n·x bubble first.");
+        if (!c) return;
+        var n = c.k / 2;
+        fusReplace(c, [c, M(n * n), M(-n * n)]);
+        document.getElementById("fusMsg").textContent = "+ " + (n * n) + " − " + (n * n) + " = 0 : " + (LANG === "en" ? "same value" : "même valeur");
+      }
+      // Puissances : aⁿ⁺¹ = a·aⁿ
+      function fusPow() {
+        if (!hasPower("Pascal")) return;
+        var c = fusSelected(function (x) { return x.t === "m" && /ⁿ⁺¹$/.test(x.s); }, "Touche d'abord la bulle aⁿ⁺¹.", "Tap the aⁿ⁺¹ bubble first.");
+        if (!c) return;
+        var a = Number(c.s.replace("ⁿ⁺¹", "")), r = M(c.k * a, a + "ⁿ");
+        r.id = c.id;
+        fusReplace(c, [r]);
+        document.getElementById("fusMsg").textContent = a + "ⁿ⁺¹ = " + a + "·" + a + "ⁿ";
+      }
+      // Quantité conjuguée : 1/(√a − b) · (√a + b)/(√a + b)
+      function fusConj() {
+        if (!hasPower("(a+b)(a−b)")) return;
+        var c = fusSelected(function (x) { return x.t === "q" && /^√\d+ − \d+$/.test(x.den); }, "Touche d'abord la fraction.", "Tap the fraction first.");
+        if (!c) return;
+        var m = /^√(\d+) − (\d+)$/.exec(c.den), a = Number(m[1]), b = Number(m[2]), d = a - b * b;
+        if (d !== 1 || c.num.length !== 1 || c.num[0].s) { SND.bad(); return; }
+        var k = c.num[0].k;
+        fusReplace(c, [M(k, "√" + a), M(k * b)]);
+        document.getElementById("fusMsg").textContent = "(√" + a + " − " + b + ")(√" + a + " + " + b + ") = " + a + " − " + (b * b) + " = 1";
+      }
+      // Télescopage : 1/(k·(k+1)) = 1/k − 1/(k+1)
+      function fusTel() {
+        if (!hasPower("Piège")) return;
+        var c = fusSelected(function (x) { return x.t === "q" && /^\d+·\d+$/.test(x.den); }, "Touche d'abord une fraction 1/(k·(k + 1)).", "Tap a 1/(k·(k + 1)) fraction first.");
+        if (!c) return;
+        var ab = c.den.split("·").map(Number), k = ab[0];
+        if (ab[1] !== k + 1 || c.num.length !== 1 || c.num[0].s || c.num[0].k !== 1) { SND.bad(); return; }
+        var first = k === 1 ? M(1) : Fr([M(1)], String(k));
+        first.id = c.id;
+        fusReplace(c, [first, Fr([M(-1)], String(k + 1))]);
+        document.getElementById("fusMsg").textContent = "1/(" + k + "·" + (k + 1) + ") = 1/" + k + " − 1/" + (k + 1);
+      }
       // Développer : k·(a + b) → k·a + k·b
       function fusDevelop() {
         if (!hasPower("Distribuer")) return;
@@ -5004,6 +5068,15 @@
         fusReplace(c, [a, b]);
         document.getElementById("fusMsg").textContent = c.k + " = " + k + " + " + (c.k - k);
       }
+
+      var FUS_PW = {
+        dev: { ch: "Distribuer", btn: "k·(a + b) → k·a + k·b", fn: fusDevelop },
+        cut: { ch: "Calcul", btn: "n → a + b", fn: fusCut },
+        sq: { ch: "(a+b)²", btn: "+ c − c", fn: fusSquare },
+        pow: { ch: "Pascal", btn: "aⁿ⁺¹ → a·aⁿ", fn: fusPow },
+        conj: { ch: "(a+b)(a−b)", btn: "× (√a + b)/(√a + b)", fn: fusConj },
+        tel: { ch: "Piège", btn: "1/(k(k+1)) → 1/k − 1/(k+1)", fn: fusTel }
+      };
 
       function fusCheck() {
         if (boardKey(fus.chips) !== boardKey(FUS_LEVELS[fus.level].want())) return;
@@ -5449,6 +5522,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v69", text: "Fusion : les 4 derniers pouvoirs de la fiche. Compléter le carré « + c − c » (gagné avec (a+b)²), puissances 2ⁿ⁺¹ = 2·2ⁿ (Pascal), quantité conjuguée 1/(√2 − 1) = √2 + 1 ((a+b)(a−b)), télescopage 1/(k(k+1)) = 1/k − 1/(k+1) (Piège). 16 buts en tout." },
         { v: "v68", text: "Fusion : deux pouvoirs de plus. « Développer » k·(a + b) → k·a + k·b (gagné avec Distribuer) et « découper un nombre » 7 → 5 + 2 pour faire apparaître un facteur (gagné avec Calcul). Deux buts en plus ; 5·x + 5 fusionne en 5·(x + 1)." },
         { v: "v67", text: "Trois passages, trois exercices différents : chaque chapitre du jeu (−( … ), Opposés, Fraction, Piège, Distribuer, Factoriser, Double, identités, ℂ, Équation, et leurs versions ℕ) change de nombres à chaque passage ; le premier reste l'exemple d'origine." },
         { v: "v66", text: "Cadre de dix : il reste affiché, c'est la flèche qui lance le résultat. Soustraction posée : « = 0 » sous la barre. Badges en haut : un appui explique ce qu'ils veulent dire (✦ 10, ✦ (−1)·(−1))." },
@@ -5712,6 +5786,14 @@
                         en: ["Expand", "In Fusion, tap a k·( … ) bubble then this power: it expands. It is the reverse of factoring."] },
         "Calcul": { btn: "n → a + b", fr: ["Découper un nombre", "Comme en calcul mental (16 = 10 + 6) : dans Fusion, une bulle nombre se découpe pour faire apparaître le nombre d'une voisine. 7 = 5 + 2, puis 5·x + 5 = 5·(x + 1)."],
                     en: ["Split a number", "As in mental maths (16 = 10 + 6): in Fusion, a number bubble splits to reveal a neighbour's number. 7 = 5 + 2, then 5·x + 5 = 5·(x + 1)."] },
+        "(a+b)²": { btn: "+ c − c", fr: ["Compléter le carré", "Dans Fusion, touche la bulle 6·x puis ce pouvoir : + 9 − 9 apparaît (ça vaut 0). x² + 6·x + 9 se referme alors en (x + 3)²."],
+                    en: ["Complete the square", "In Fusion, tap the 6·x bubble then this power: + 9 − 9 appears (worth 0). x² + 6·x + 9 then closes into (x + 3)²."] },
+        "Pascal": { btn: "aⁿ⁺¹ → a·aⁿ", fr: ["Puissances", "Chaque ligne du triangle double : 2ⁿ⁺¹ = 2·2ⁿ. Dans Fusion, 2ⁿ⁺¹ + 2ⁿ = 2·2ⁿ + 2ⁿ = 3·2ⁿ."],
+                    en: ["Powers", "Each row of the triangle doubles: 2ⁿ⁺¹ = 2·2ⁿ. In Fusion, 2ⁿ⁺¹ + 2ⁿ = 2·2ⁿ + 2ⁿ = 3·2ⁿ."] },
+        "(a+b)(a−b)": { btn: "× (√a + b)/(√a + b)", fr: ["Quantité conjuguée", "(a − b)(a + b) = a² − b² fait disparaître la racine : 1/(√2 − 1) = (√2 + 1)/(2 − 1) = √2 + 1."],
+                        en: ["Conjugate", "(a − b)(a + b) = a² − b² removes the root: 1/(√2 − 1) = (√2 + 1)/(2 − 1) = √2 + 1."] },
+        "Piège": { btn: "1/(k(k+1)) → 1/k − 1/(k+1)", fr: ["Séparer une fraction", "Comme (x + 3)/3 = x/3 + 1 : une fraction se sépare. 1/(2·3) = 1/2 − 1/3, et dans une somme tout s'annule en chaîne (télescopage)."],
+                   en: ["Split a fraction", "Like (x + 3)/3 = x/3 + 1: a fraction splits. 1/(2·3) = 1/2 − 1/3, and in a sum everything cancels in a chain (telescoping)."] },
         "Fraction": { btn: "1 → c/c", fr: ["Même dénominateur", "Une bulle nombre prend le dénominateur d'une fraction voisine : 1 = c/c."],
                       en: ["Same denominator", "A number bubble takes the denominator of a nearby fraction: 1 = c/c."] }
       };
