@@ -221,18 +221,14 @@
       fill: var(--accent-soft);
       filter: url(#glow);
     }
-    /* Perle à bouger pour l'étape suivante : elle clignote (allumée /
-       éteinte, basculé en JS — une animation CSS était coupée par
-       « Réduire les animations » sur iPhone, et Pierre veut le clignotement) */
+    /* Perle à bouger pour l'étape suivante : elle « respire » — un feu
+       doux qui monte et descend lentement. --breath (0 → 1) est piloté en
+       JS : une animation CSS était coupée par « Réduire les animations »
+       sur iPhone, et Pierre veut voir ce mouvement */
     .bead.hint polygon {
-      stroke: #f2fff8;
-      stroke-width: 3.4;
-      fill: rgba(234, 255, 243, 0.28);
-    }
-    svg.blink-off .bead.hint polygon {
-      stroke: var(--ink-soft);
-      stroke-width: 2;
-      fill: rgba(0, 0, 0, 0);
+      stroke: rgba(242, 255, 248, calc(0.3 + 0.7 * var(--breath, 1)));
+      stroke-width: 3.2;
+      fill: rgba(200, 255, 225, calc(0.04 + 0.26 * var(--breath, 1)));
     }
     .bead:focus-visible polygon { stroke: var(--accent); stroke-dasharray: 5 4; }
     .digit {
@@ -269,7 +265,6 @@
       cursor: pointer;
     }
     .bchip:active { background: rgba(61, 224, 138, 0.35); }
-    .bchip:disabled { opacity: 0.35; cursor: default; }
 
     .bottombar {
       display: flex;
@@ -1411,16 +1406,22 @@
         blink(any);
       }
 
-      // Clignotement : un minuteur seulement tant qu'une perle est à bouger
-      var blinkT = 0;
+      // Respiration : une sinusoïde lente (2,8 s pour monter et redescendre),
+      // mise à jour ~20 fois par seconde, seulement tant qu'une perle est à
+      // bouger (batterie)
+      var BREATH_MS = 2800;
+      var blinkT = 0, breathStart = 0;
       function blink(on) {
         if (on && !blinkT) {
-          svg.classList.remove("blink-off");
-          blinkT = setInterval(function () { svg.classList.toggle("blink-off"); }, 420);
+          breathStart = performance.now();
+          blinkT = setInterval(function () {
+            var ph = ((performance.now() - breathStart) % BREATH_MS) / BREATH_MS;
+            svg.style.setProperty("--breath", (0.5 - 0.5 * Math.cos(ph * 2 * Math.PI)).toFixed(3));
+          }, 50);
         } else if (!on && blinkT) {
           clearInterval(blinkT);
           blinkT = 0;
-          svg.classList.remove("blink-off");
+          svg.style.setProperty("--breath", "1");
         }
       }
 
@@ -1485,6 +1486,7 @@
           badges[ex.lv] = 1;
           saveBadges();
           buildLevels();
+          buildBadgeBar(); // le nouveau bouton apparaît tout de suite
           earned = true;
         }
         // Une petite seconde pour voir le boulier juste, puis les félicitations,
@@ -1598,9 +1600,8 @@
           if (!badges[lv]) return;
           var b = document.createElement("button");
           b.className = "bchip";
-          b.textContent = "✦ " + SHORT[lv];
+          b.textContent = SHORT[lv];
           b.title = TXT[lang].levels[lv];
-          b.disabled = busy || !ex || ex.solved;
           b.addEventListener("click", function () { useBadge(lv); });
           bar.appendChild(b);
         });
@@ -1804,6 +1805,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v11", text: "Les perles à bouger respirent : un feu doux qui monte et descend lentement, au lieu d'un clignotement sec. Les boutons du bas n'affichent plus que l'opération qu'ils font (+, +5, ×…), sans l'icône ✦ ; ils restent toujours allumés et apparaissent un par un, à mesure qu'on les débloque." },
         { v: "v10", text: "Un seul chemin : les niveaux se débloquent dans l'ordre. On ne voit que les niveaux gagnés et le prochain à gagner ; les suivants apparaissent un par un. Un badge ne fait que des techniques déjà gagnées. L'entraînement libre passe en tête des niveaux." },
         { v: "v9", text: "Entraînement libre (∞, à la fin des niveaux, dès le premier badge) : des questions sans fin tirées au hasard parmi les niveaux dont tu as le badge ; on les fait en appuyant sur les badges, et à la main quand aucun badge ne couvre un geste (les perles clignotent)." },
         { v: "v8", text: "La perle tenue suit le doigt dans les deux sens tant qu'on ne la lâche pas (après le petit cran de départ). Elle pousse les perles qu'elle rencontre, et celles-ci reviennent avec elle si on repart dans l'autre sens pendant le même geste. Le chiffre change en direct quand une perle passe le milieu ; au lâcher, tout se range à la place la plus proche. Le son ne se coupe plus après un passage par le menu ou une autre appli. Menu : « Réinitialiser la progression » remet aussi le compteur de perles à zéro. Les perles à bouger clignotent vraiment (même avec « Réduire les animations »)." },
