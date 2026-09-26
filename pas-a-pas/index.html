@@ -3524,29 +3524,47 @@
       function pfHideTip() { pfTip.hidden = true; }
 
       // Pourquoi n n'est pas divisible par p : la règle, faite sur n
-      function whyNot(n, p) {
-        var en = LANG === "en", str = String(n), last = n % 10, rest = Math.floor(n / 10);
-        var q = Math.floor(n / p), r = n % p;
-        var why = "";
-        if (p === 2) why = en ? n + " ends in " + last + ", not 0, 2, 4, 6 or 8." : n + " se termine par " + last + ", pas par 0, 2, 4, 6 ou 8.";
-        else if (p === 5) why = en ? n + " ends in " + last + ", not 0 or 5." : n + " se termine par " + last + ", pas par 0 ou 5.";
-        else if (p === 3) {
-          var sum = str.split("").reduce(function (a, c) { return a + Number(c); }, 0);
-          why = str.split("").join(" + ") + " = " + sum + (en ? ", not in the 3 times table." : ", pas dans la table de 3.");
-        } else if (p === 7 && n >= 10) {
-          var v7 = rest - 2 * last;
-          why = rest + " − 2 × " + last + " = " + v7 + (en ? ", not in the 7 times table." : ", pas dans la table de 7.");
-        } else if (p === 11 && n >= 10) {
-          var alt = 0, terms = [];
-          str.split("").forEach(function (c, i) { var sg = i % 2 === 0 ? 1 : -1; alt += sg * Number(c); terms.push((i ? (sg > 0 ? " + " : " − ") : "") + c); });
-          why = terms.join("") + " = " + alt + (en ? ", not in the 11 times table." : ", pas dans la table de 11.");
-        } else if (p === 13 && n >= 10) {
-          var v13 = rest + 4 * last;
-          why = rest + " + 4 × " + last + " = " + v13 + (en ? ", not in the 13 times table." : ", pas dans la table de 13.");
+      // La règle de divisibilité appliquée au nombre de l'exercice, avec
+      // le verdict (✓ ou ✗) et, à la fin, la division écrite en entier.
+      function ruleOn(n, p) {
+        var en = LANG === "en";
+        function digits(x) { return String(Math.abs(x)).split("").map(Number); }
+        var lines = [], ok = n % p === 0;
+        if (p === 0) return (en ? DIV_INFO_EN : DIV_INFO)[0];
+        if (p === 1) return (en ? "Useless: " : "Inutile : ") + n + " ÷ 1 = " + n + ".";
+        if (!isPrime(p)) {
+          var fs = [], m = p, dv = 2;
+          while (m > 1) { while (m % dv === 0) { fs.push(dv); m /= dv; } dv++; }
+          var f = fs.join(" × ");
+          return (en ? "Not prime: " : "Pas premier : ") + p + " = " + f + (en ? ". Divide " + n + " by its prime factors instead." : ". Divise plutôt " + n + " par ses facteurs premiers.");
         }
-        var rem = n + " = " + p + " × " + q + " + " + r + (en ? " : remainder " + r + " ≠ 0." : " : reste " + r + " ≠ 0.");
-        return (en ? "÷" + p + " doesn't work. " : "÷" + p + " ne marche pas. ") + (why ? why + " " : "") + rem;
+        if (p === 2) lines.push((en ? "Ends in an even digit? " : "Se termine par un chiffre pair ? ") + n + (en ? " ends in " : " se termine par ") + (n % 10) + ".");
+        else if (p === 5) lines.push((en ? "Ends in 0 or 5? " : "Se termine par 0 ou 5 ? ") + n + (en ? " ends in " : " se termine par ") + (n % 10) + ".");
+        else if (p === 3) {
+          var x = n, chain = [];
+          while (x >= 10) { var d = digits(x), sm = d.reduce(function (a, c) { return a + c; }, 0); chain.push(d.join(" + ") + " = " + sm); x = sm; }
+          lines.push((en ? "Digit sum: " : "Somme des chiffres : ") + (chain.join(", ") || String(n)) + (en ? " — in the 3 times table?" : " — dans la table de 3 ?"));
+        } else if (p === 7 || p === 13) {
+          var y = n, ch = [];
+          while (Math.abs(y) >= (p === 7 ? 70 : 130) || (ch.length === 0 && Math.abs(y) >= 10)) {
+            var r = Math.floor(Math.abs(y) / 10), l = Math.abs(y) % 10;
+            var v = p === 7 ? r - 2 * l : r + 4 * l;
+            ch.push(r + (p === 7 ? " − 2 × " : " + 4 × ") + l + " = " + String(v).replace("-", "−"));
+            if (Math.abs(v) >= Math.abs(y)) break;
+            y = v;
+          }
+          lines.push((p === 7 ? (en ? "Rest − 2 × last digit: " : "Reste − 2 × dernier chiffre : ") : (en ? "Rest + 4 × last digit: " : "Reste + 4 × dernier chiffre : ")) + ch.join(", ") + (en ? " — in the " + p + " times table?" : " — dans la table de " + p + " ?"));
+        } else if (p === 11) {
+          var dd = digits(n), alt = 0, t = [];
+          dd.forEach(function (c, i) { var sg = i % 2 === 0 ? 1 : -1; alt += sg * c; t.push((i ? (sg > 0 ? " + " : " − ") : "") + c); });
+          lines.push((en ? "Alternating sum: " : "Somme alternée : ") + t.join("") + " = " + alt + (en ? " — in the 11 times table?" : " — dans la table de 11 ?"));
+        }
+        var q = Math.floor(n / p), rm = n % p;
+        lines.push(ok ? "✓ " + n + " = " + p + " × " + q
+                      : "✗ " + n + " = " + p + " × " + q + " + " + rm + (en ? " (remainder " + rm + ")" : " (reste " + rm + ")"));
+        return lines.join(" ");
       }
+      function whyNot(n, p) { return ruleOn(n, p); }
       document.addEventListener("pointerdown", function (e) {
         if (!pfTip.hidden && !e.target.closest("#pfPrimes")) pfHideTip();
       });
@@ -3563,7 +3581,12 @@
           e.preventDefault();
           longDone = false;
           pfHideTip();
-          timer = setTimeout(function () { longDone = true; pfShowTip(d, b); }, 450);
+          timer = setTimeout(function () {
+            longDone = true;
+            // La règle, appliquée au nombre en cours de l'exercice
+            var cur = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel].v : null;
+            pfShowTip(d, b, cur ? ruleOn(cur, d) : null);
+          }, 450);
         });
         function release() {
           if (timer) { clearTimeout(timer); timer = null; }
@@ -3572,7 +3595,10 @@
           release();
           if (longDone) return;
           if (prime) pfDivide(d, b);
-          else pfShowTip(d, b);
+          else {
+            var cur2 = pfState && pfState.sel >= 0 ? pfState.nodes[pfState.sel].v : null;
+            pfShowTip(d, b, cur2 ? ruleOn(cur2, d) : null);
+          }
         });
         b.addEventListener("pointerleave", release);
         b.addEventListener("pointercancel", release);
@@ -4562,6 +4588,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v43", text: "Premiers : l'appui long sur un diviseur applique la règle au nombre de l'exercice (98 et 7 : 9 − 2 × 8 = −7, dans la table de 7 ✓ → 98 = 7 × 14), répétée si le nombre est grand, avec la division écrite à la fin." },
         { v: "v42", text: "Premiers : deux écritures de plus de la division, sur une deuxième ligne — 163 · ▢⁻¹ et 163 · 1/▢. Un nombre premier tapé soi-même affiche directement « est premier »." },
         { v: "v41", text: "Premiers : au-dessus des diviseurs, centré, le nombre en cours écrit des trois façons — en fraction, avec / et avec ÷ — et une case qui respire à la place du diviseur. Le diviseur touché s'y inscrit (vert s'il divise, jaune sinon)." },
         { v: "v40", text: "Premiers : les boutons des diviseurs sont des cercles parfaits." },
