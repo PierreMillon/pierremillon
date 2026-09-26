@@ -125,6 +125,13 @@ Tri : priorité décroissante.
   bouton + fait « ajoute 16 » dans 4 × 4) : seule la technique du geste
   compte, plus l'opération dont il fait partie
 
+- [x] v19 — × et puissances en additions répétées (« 8 × 2 : ajoute 8
+  (1/2) »), ÷ en soustractions répétées (« retire 3 → quotient 1, 2… »,
+  par dizaines d'abord) : aucune table à connaître par cœur, et les
+  boutons d'addition / de soustraction peuvent tout faire. Le quotient
+  s'affiche dans la consigne ; la réussite de ÷ et √ explique que le
+  boulier montre le reste
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
