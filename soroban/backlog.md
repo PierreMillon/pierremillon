@@ -114,6 +114,10 @@ Tri : priorité décroissante.
   autant que l'écran permet avec des tiges ≥ 44 px au maximum : 8 en
   portrait sur un iPhone standard), nombre gardé, choix mémorisé
 
+- [x] v16 — Design épuré : plus de cadre ; perles pleines qui cachent la
+  tige qui passe dedans ; pointes gauche et droite arrondies. Barre du
+  milieu gardée (elle dit quelles perles comptent)
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
