@@ -1003,13 +1003,32 @@
             var AC = window.AudioContext || window.webkitAudioContext;
             if (!AC) return;
             actx = new AC();
+            // Chaîne douce : filtre passe-bas (rien d'agressif dans les
+            // aigus) + un petit écho qui s'éteint, comme une goutte dans
+            // une pièce calme
             master = actx.createGain();
             master.gain.value = 0.9;
             var lp = actx.createBiquadFilter();
             lp.type = "lowpass";
-            lp.frequency.value = 5200;
+            lp.frequency.value = 2400;
+            lp.Q.value = 0.3;
             master.connect(lp);
             lp.connect(actx.destination);
+            var delay = actx.createDelay(1);
+            delay.delayTime.value = 0.14;
+            var fb = actx.createGain();
+            fb.gain.value = 0.28;
+            var wet = actx.createGain();
+            wet.gain.value = 0.22;
+            var dlp = actx.createBiquadFilter();
+            dlp.type = "lowpass";
+            dlp.frequency.value = 1400;
+            lp.connect(delay);
+            delay.connect(dlp);
+            dlp.connect(fb);
+            fb.connect(delay);
+            dlp.connect(wet);
+            wet.connect(actx.destination);
           }
           if (actx.state !== "running") actx.resume();
           if (!unlocked) {
@@ -1028,14 +1047,17 @@
         document.addEventListener(ty, unlockAudio, { capture: true, passive: true });
       });
 
-      function tone(f0, f1, peak, decay, when, type) {
+      // attack : montée du volume — jamais instantanée, pour qu'il n'y ait
+      // aucun « choc » au début du son
+      function tone(f0, f1, peak, decay, when, type, attack, glide) {
         var o = actx.createOscillator();
         var g = actx.createGain();
+        var at = attack || 0.006;
         o.type = type || "sine";
         o.frequency.setValueAtTime(f0, when);
-        o.frequency.exponentialRampToValueAtTime(f1, when + decay * 0.6);
+        o.frequency.exponentialRampToValueAtTime(f1, when + (glide || decay * 0.6));
         g.gain.setValueAtTime(0.0001, when);
-        g.gain.exponentialRampToValueAtTime(peak, when + 0.006);
+        g.gain.exponentialRampToValueAtTime(peak, when + at);
         g.gain.exponentialRampToValueAtTime(0.0001, when + decay);
         o.connect(g);
         g.connect(master);
@@ -1048,12 +1070,14 @@
           unlockAudio();
           if (!actx) return;
           var w = actx.currentTime + 0.01;
-          // Grave, comme une perle de bois épaisse : le corps est bas, et
-          // c'est l'onde triangle (ses harmoniques) plus un petit claquement
-          // qui le rendent audible sur le haut-parleur d'un téléphone
-          var f = (heavy ? 105 : 140) * (0.97 + Math.random() * 0.06);
-          tone(f, f * 0.8, 0.6 * vol, 0.16, w, "triangle");      // corps de la perle
-          tone(f * 3.1, f * 2.8, 0.07 * vol, 0.03, w);           // petit claquement boisé
+          // Une goutte d'eau, très douce (demande de Pierre : « zen, comme
+          // un massage dans un spa ») : sinusoïde pure qui glisse vers le
+          // haut — c'est ce glissement qui fait « goutte » —, attaque
+          // arrondie (pas de choc), extinction lente, un peu d'écho.
+          // Plus grave pour la perle du haut.
+          var f = (heavy ? 230 : 300) * (0.96 + Math.random() * 0.08);
+          tone(f, f * 1.9, 0.34 * vol, 0.42, w, "sine", 0.025, 0.07);
+          tone(f * 2, f * 3.2, 0.035 * vol, 0.22, w + 0.01, "sine", 0.03, 0.06); // léger reflet
         } catch (e) {}
       }
 
@@ -1062,8 +1086,9 @@
           unlockAudio();
           if (!actx) return;
           var w = actx.currentTime + 0.02;
-          [392, 494, 587, 784].forEach(function (f, i) {
-            tone(f, f, 0.16, 1.1, w + i * 0.11);
+          // Carillon zen : gamme pentatonique, notes qui naissent lentement
+          [392, 440, 523, 659].forEach(function (f, i) {
+            tone(f, f, 0.12, 1.8, w + i * 0.16, "sine", 0.06);
           });
         } catch (e) {}
       }
@@ -1805,6 +1830,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v12", text: "Nouveau son : une goutte d'eau très douce, sans choc (sinusoïde qui glisse vers le haut, attaque arrondie, léger écho) — plus zen. Carillon de réussite plus lent et plus doux." },
         { v: "v11", text: "Les perles à bouger respirent : un feu doux qui monte et descend lentement, au lieu d'un clignotement sec. Les boutons du bas n'affichent plus que l'opération qu'ils font (+, +5, ×…), sans l'icône ✦ ; ils restent toujours allumés et apparaissent un par un, à mesure qu'on les débloque." },
         { v: "v10", text: "Un seul chemin : les niveaux se débloquent dans l'ordre. On ne voit que les niveaux gagnés et le prochain à gagner ; les suivants apparaissent un par un. Un badge ne fait que des techniques déjà gagnées. L'entraînement libre passe en tête des niveaux." },
         { v: "v9", text: "Entraînement libre (∞, à la fin des niveaux, dès le premier badge) : des questions sans fin tirées au hasard parmi les niveaux dont tu as le badge ; on les fait en appuyant sur les badges, et à la main quand aucun badge ne couvre un geste (les perles clignotent)." },
