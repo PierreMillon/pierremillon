@@ -2873,7 +2873,9 @@
       var SND = {
         meet: function () { bip(330, 0.09, "sine", 0, 0.08); bip(495, 0.12, "sine", 0.08, 0.06); },
         ok: function () { bip(660, 0.08); bip(990, 0.12, "square", 0.08); },
-        bad: function () { bip(150, 0.25, "sawtooth", 0, 0.04); },
+        // Même une erreur sonne doux : deux notes rondes (tierce majeure),
+        // jamais de buzz — on essaie, on n'est pas puni
+        bad: function () { bip(392, 0.16, "sine", 0, 0.06); bip(494, 0.22, "sine", 0.12, 0.05); },
         tick: function () { bip(1200, 0.03, "square", 0, 0.02); },
         badge: function () { [523, 659, 784, 1047].forEach(function (f, i) { bip(f, 0.14, "square", i * 0.1, 0.05); }); }
       };
@@ -3784,8 +3786,9 @@
 
       // Ligne du haut : le même nombre, écrit comme le produit des bulles
       // du bas de l'arbre au fur et à mesure (117 → 117 = 3 · 39 → …)
+      var pfEqMsg = false;
       function pfUpdateTop() {
-        if (!pfState || pfState.ready) return;
+        if (!pfState || pfState.ready || pfEqMsg) return;
         var leaves = [];
         (function walk(i) {
           var kids = [];
@@ -4073,10 +4076,19 @@
         var d = 2;
         while (nd.v % d) d++;
         pfIsPrimeBtn.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
-        var keep = pfEq.textContent;
+        // Le message reste affiché jusqu'au prochain toucher ailleurs
+        pfEqMsg = true;
         pfEq.textContent = nd.v + " = " + d + " × " + (nd.v / d) + (LANG === "en" ? " — not prime" : " — pas premier");
         pfEq.style.color = "var(--sign)";
-        setTimeout(function () { if (!pfState.ready) { pfEq.textContent = keep; pfEq.style.color = ""; } }, ms(1800));
+        setTimeout(function () {
+          document.addEventListener("pointerdown", function clear(ev) {
+            if (ev.target === pfIsPrimeBtn) return;
+            document.removeEventListener("pointerdown", clear, true);
+            pfEqMsg = false;
+            pfEq.style.color = "";
+            pfUpdateTop();
+          }, true);
+        }, 0);
       });
 
       function pfFinish() {
@@ -4847,6 +4859,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v54", text: "Sons : plus aucun son négatif. Une erreur joue deux notes douces, comme un encouragement." },
+        { v: "v53", text: "Premiers : quand « est premier » est faux, le message (91 = 7 × 13 — pas premier) reste affiché jusqu'au prochain toucher ailleurs." },
         { v: "v52", text: "Premiers : au départ, le nombre du haut descend dans la bulle de l'arbre (c'est le même nombre) ; ensuite la ligne du haut suit la décomposition, 117 → 117 = 3 · 39 → 117 = 3 · 3 · 13." },
         { v: "v51", text: "Premiers : en vert plein, seulement les diviseurs qui divisent vraiment le nombre en cours (pour 90 : 2, 3, 5 — pas 13). La fenêtre d'explication n'apparaît que pendant l'appui long et disparaît au relâcher." },
         { v: "v50", text: "Premiers : septième écriture sur le bandeau, la division posée (potence). Un nombre premier reconnu affiche « 97 est premier »." },
