@@ -130,6 +130,7 @@
     }
     .levels .chip.earned::after { content: " ✓"; color: var(--accent); }
     .levels .chip.mix { border-color: var(--ink-soft); color: var(--accent); }
+    .levels .chip.locked { visibility: hidden; }
     .levels .chip.mix[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
 
     /* Lecture : le nombre formé, puis une ligne d'explication — la
@@ -1377,6 +1378,7 @@
       }
 
       function newExercise() {
+        clampLevel();
         var lv = level;
         if (lv === "mix") {
           var pool = earnedLevels();
@@ -1578,10 +1580,14 @@
       var BADGE_STEP_MS = 260;
       var SHORT = { direct: "+", c5: "+5", c10: "+10", sdirect: "−", s5: "−5", s10: "−10", mul: "×", div: "÷", pow: "xⁿ", sqrt: "√" };
 
+      // Un badge ne fait que des techniques déjà gagnées (choix de Pierre) ;
+      // comme les niveaux se débloquent dans l'ordre, ça revient à dire
+      // qu'il inclut tous les badges d'avant
       function covers(lv, mv) {
         var i = LEVELS.indexOf(lv);
         if (TECH_ORDER.indexOf(mv.tech) > Math.min(i, TECH_ORDER.length - 1)) return false;
-        return !mv.op || LEVELS.indexOf(mv.op) <= i;
+        if (!badges[mv.tech]) return false;
+        return !mv.op || (LEVELS.indexOf(mv.op) <= i && !!badges[mv.op]);
       }
 
       function buildBadgeBar() {
@@ -1630,17 +1636,46 @@
 
       // ---------- Interface ----------
 
+      // Un seul chemin : les niveaux se débloquent dans l'ordre. On voit
+      // ceux déjà gagnés et le prochain à gagner ; les suivants gardent leur
+      // place mais restent invisibles (le boulier ne change pas de taille
+      // quand un niveau apparaît)
+      function frontier() {
+        for (var i = 0; i < LEVELS.length; i++) if (!badges[LEVELS[i]]) return i;
+        return LEVELS.length - 1;
+      }
+      function clampLevel() {
+        if (level === "mix") return;
+        if (LEVELS.indexOf(level) > frontier()) { level = LEVELS[frontier()]; save("level", level); }
+      }
+
       function buildLevels() {
+        clampLevel();
         var box = document.getElementById("levels");
         box.textContent = "";
         box.hidden = mode !== "ops";
-        LEVELS.forEach(function (lv) {
+        // Entraînement libre en tête : dès le premier badge
+        var m = document.createElement("button");
+        m.className = "chip mix" + (earnedLevels().length ? "" : " locked");
+        m.textContent = TXT[lang].levels.mix;
+        m.setAttribute("aria-pressed", level === "mix" ? "true" : "false");
+        m.addEventListener("click", function () {
+          if (busy || !earnedLevels().length) return;
+          level = "mix";
+          save("level", level);
+          buildLevels();
+          newExercise();
+        });
+        box.appendChild(m);
+        var fr = frontier();
+        LEVELS.forEach(function (lv, idx) {
           var b = document.createElement("button");
-          b.className = "chip" + (badges[lv] ? " earned" : "");
+          b.className = "chip" + (badges[lv] ? " earned" : "") + (idx > fr ? " locked" : "");
+          if (idx > fr) b.setAttribute("aria-hidden", "true");
           b.textContent = TXT[lang].levels[lv] + (lv === "c10" && pasapasTen() ? " ✦" : "");
           b.setAttribute("aria-pressed", lv === level ? "true" : "false");
           b.addEventListener("click", function () {
-            if (busy) return;
+            if (busy || LEVELS.indexOf(lv) > frontier()) return;
             level = lv;
             save("level", lv);
             buildLevels();
@@ -1648,21 +1683,6 @@
           });
           box.appendChild(b);
         });
-        // Entraînement libre : dès le premier badge
-        if (earnedLevels().length) {
-          var m = document.createElement("button");
-          m.className = "chip mix";
-          m.textContent = TXT[lang].levels.mix;
-          m.setAttribute("aria-pressed", level === "mix" ? "true" : "false");
-          m.addEventListener("click", function () {
-            if (busy) return;
-            level = "mix";
-            save("level", level);
-            buildLevels();
-            newExercise();
-          });
-          box.appendChild(m);
-        }
       }
 
       function setMode(m) {
@@ -1784,6 +1804,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v10", text: "Un seul chemin : les niveaux se débloquent dans l'ordre. On ne voit que les niveaux gagnés et le prochain à gagner ; les suivants apparaissent un par un. Un badge ne fait que des techniques déjà gagnées. L'entraînement libre passe en tête des niveaux." },
         { v: "v9", text: "Entraînement libre (∞, à la fin des niveaux, dès le premier badge) : des questions sans fin tirées au hasard parmi les niveaux dont tu as le badge ; on les fait en appuyant sur les badges, et à la main quand aucun badge ne couvre un geste (les perles clignotent)." },
         { v: "v8", text: "La perle tenue suit le doigt dans les deux sens tant qu'on ne la lâche pas (après le petit cran de départ). Elle pousse les perles qu'elle rencontre, et celles-ci reviennent avec elle si on repart dans l'autre sens pendant le même geste. Le chiffre change en direct quand une perle passe le milieu ; au lâcher, tout se range à la place la plus proche. Le son ne se coupe plus après un passage par le menu ou une autre appli. Menu : « Réinitialiser la progression » remet aussi le compteur de perles à zéro. Les perles à bouger clignotent vraiment (même avec « Réduire les animations »)." },
         { v: "v7", text: "Menu ☰ : bac à sable (manipuler librement), langue, historique, effacer les badges (deux appuis), et le compteur de perles déplacées depuis le début. Petits nombres d'abord : ils grandissent avec les réussites (3 → deux chiffres, 6 → trois). Son encore plus grave. Téléphone couché : deux colonnes et autant de tiges que possible sans perles trop petites." },
