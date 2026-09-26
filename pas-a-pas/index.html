@@ -808,21 +808,25 @@
       margin-top: 0.6rem;
     }
 
-    .home-map { width: 100%; max-width: 420px; flex: 1; min-height: 0; }
+    .home-map { width: 100%; max-width: 420px; flex: none; height: min(52vh, 100vw, 420px); }
     .home-map ellipse { fill: rgba(61, 224, 138, 0.04); stroke: var(--ink-soft); stroke-width: 1.2; cursor: pointer; }
     .home-map ellipse.sel { stroke: var(--accent); stroke-width: 2; fill: rgba(61, 224, 138, 0.1); }
     .home-map ellipse.lock { stroke-dasharray: 4 5; fill: transparent; }
     .home-map ellipse.done { stroke: var(--accent); }
-    .home-map text { fill: var(--ink); font-family: inherit; font-size: 20px; pointer-events: none; text-anchor: middle; }
-    .home-map text.lock { fill: var(--ink-soft); font-size: 16px; }
-    .home-info { margin: 0; font-size: 0.78rem; color: var(--ink-soft); text-align: center; min-height: 1.2em; }
+    .home-map text { fill: var(--ink); font-family: inherit; font-size: 13px; pointer-events: none; text-anchor: middle; }
+    .home-map text.lock { fill: var(--ink-soft); }
+    .home-map text.big { font-size: 22px; }
+    .home-info { margin: 0; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); text-align: center; height: 4.4em; flex: none; }
 
     .home-list {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 0.4rem;
-      min-height: 2.4rem;
+      flex: 1;
+      min-height: 0;
+      align-content: flex-start;
+      overflow: hidden;
     }
 
     .home-list button {
@@ -1145,7 +1149,7 @@
     </section>
 
     <section class="home" id="home" hidden>
-      <svg class="home-map" id="homeMap" viewBox="0 0 360 300" aria-label="Ensembles de nombres"></svg>
+      <svg class="home-map" id="homeMap" viewBox="0 0 360 360" aria-label="Ensembles de nombres"></svg>
       <p class="home-info" id="homeInfo"></p>
       <div class="home-list" id="homeList"></div>
     </section>
@@ -4206,6 +4210,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v31", text: "Accueil : la carte des ensembles ne bouge plus quand on change d'ensemble. Au-delà de ℂ, en teaser verrouillé : ℍ (quaternions, dim 4), 𝕆 (octonions, dim 8), 𝕊 (sédénions, dim 16), 𝕋 (trigintaduonions, dim 32) — chacun avec la propriété qu'il perd." },
         { v: "v30", text: "Nouveau chapitre Fusion (ℝ) : les termes sont des bulles qu'on déplace au doigt. Lâchées l'une sur l'autre, elles fusionnent si une règle le permet : a + a → 2·a, 2·a + 2·b → 2·(a + b), 3·x − 3·x → disparaît, fractions de même dénominateur. Pouvoir « 1 → c/c » (gagné avec le chapitre Fraction). 8 niveaux, ↺ pour recommencer." },
         { v: "v29", text: "Menu ☰ → Fiche des règles : toutes les règles de calcul jusqu'en terminale, et les gestes d'exercice (écrire 1 = c/c, ajouter et retrancher, découper 25 = 24 + 1, quantité conjuguée, facteur dominant…)." },
         { v: "v28", text: "Les termes qui changent de place décrivent un demi-cercle (vers la droite par-dessus, vers la gauche par-dessous) : on les voit se croiser au lieu de glisser en ligne droite." },
@@ -4423,30 +4428,46 @@
       var homeEl = document.getElementById("home");
       var homeMap = document.getElementById("homeMap");
       var homeSel = "N";
-      var ZONES = [
-        { k: "H", rx: 176, ry: 146, lab: "ℍ", ly: 22 },
-        { k: "C", rx: 150, ry: 124, lab: "ℂ", ly: 44 },
-        { k: "R", rx: 124, ry: 102, lab: "ℝ", ly: 66 },
-        { k: "Q", rx: 98, ry: 80, lab: "ℚ", ly: 88 },
-        { k: "Z", rx: 72, ry: 58, lab: "ℤ", ly: 110 },
-        { k: "N", rx: 46, ry: 36, lab: "ℕ", ly: 150 }
-      ];
+      // Anneaux du plus grand au plus petit. Au-delà de ℂ, la construction
+      // de Cayley–Dickson double la dimension à chaque fois (4, 8, 16, 32) et
+      // perd une propriété à chaque étape — en teaser, verrouillés.
+      var TEASE = {
+        H: ["ℍ, les quaternions (dimension 4) : i² = j² = k² = ijk = −1. On perd la commutativité : ij = −ji.",
+            "ℍ quaternions (dimension 4): i² = j² = k² = ijk = −1. Commutativity is lost: ij = −ji."],
+        O: ["𝕆, les octonions (dimension 8). On perd aussi l'associativité : (ab)c ≠ a(bc).",
+            "𝕆 octonions (dimension 8). Associativity is lost too: (ab)c ≠ a(bc)."],
+        S: ["𝕊, les sédénions (dimension 16). Apparaissent des diviseurs de zéro : ab = 0 avec a ≠ 0 et b ≠ 0.",
+            "𝕊 sedenions (dimension 16). Zero divisors appear: ab = 0 with a ≠ 0 and b ≠ 0."],
+        T: ["Les trigintaduonions (dimension 32), étape suivante de la même construction. Notation 𝕋 non standard.",
+            "Trigintaduonions (dimension 32), the next step of the same construction. The 𝕋 symbol is not standard."]
+      };
+      var RINGS = ["T", "S", "O", "H", "C", "R", "Q", "Z", "N"];
+      var LABS = { T: "𝕋", S: "𝕊", O: "𝕆", H: "ℍ", C: "ℂ", R: "ℝ", Q: "ℚ", Z: "ℤ", N: "ℕ" };
+      // Chaque lettre au milieu de sa bande (entre son anneau et le
+      // suivant), sur l'axe horizontal à droite — jamais sur un trait.
+      var ZONES = RINGS.map(function (k, i) {
+        var rx = 176 - i * 16.5, ry = rx * 0.86;
+        var inner = i < RINGS.length - 1 ? rx - 16.5 : 0;
+        return { k: k, rx: rx, ry: ry, lab: LABS[k], lx: 180 + (rx + inner) / 2, ly: 195 };
+      });
+      ZONES[ZONES.length - 1].lx = 180; // ℕ au centre
       function renderHome() {
         homeMap.innerHTML = "";
         ZONES.forEach(function (z) {
-          var e = svgEl("ellipse", { cx: 180, cy: 150 + (z.k === "N" ? 8 : 0), rx: z.rx, ry: z.ry }, homeMap);
-          var isLock = z.k === "H" || !unlocked(z.k);
+          var e = svgEl("ellipse", { cx: 180, cy: 190, rx: z.rx, ry: z.ry }, homeMap);
+          var tease = !!TEASE[z.k];
+          var isLock = tease || !unlocked(z.k);
           if (isLock) e.classList.add("lock");
-          if (z.k !== "H" && setDone(z.k)) e.classList.add("done");
+          if (!tease && setDone(z.k)) e.classList.add("done");
           if (z.k === homeSel) e.classList.add("sel");
           e.addEventListener("click", function () { homeSel = z.k; SND.tick(); renderHome(); });
-          var t = svgEl("text", { x: 180, y: z.ly + 8 + (z.k === "N" ? 0 : 0), class: isLock ? "lock" : "" }, homeMap);
+          var t = svgEl("text", { x: z.lx, y: z.k === "N" ? z.ly + 3 : z.ly, class: (isLock ? "lock" : "") + (z.k === "N" ? " big" : "") }, homeMap);
           t.textContent = z.lab;
         });
         var info = document.getElementById("homeInfo"), list = document.getElementById("homeList");
         list.innerHTML = "";
-        if (homeSel === "H") {
-          info.textContent = LANG === "en" ? "ℍ quaternions: i² = j² = k² = ijk = −1 — coming soon." : "ℍ, les quaternions : i² = j² = k² = ijk = −1 — bientôt.";
+        if (TEASE[homeSel]) {
+          info.textContent = TEASE[homeSel][LANG === "en" ? 1 : 0] + (LANG === "en" ? " — coming soon." : " — bientôt.");
           return;
         }
         var open = unlocked(homeSel);
