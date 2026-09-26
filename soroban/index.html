@@ -583,14 +583,17 @@
           techs: { direct: "l'ajout direct", c5: "le complément à 5", c10: "le complément à 10 (retenue)", sdirect: "le retrait direct", s5: "le complément à 5 en retirant", s10: "le complément à 10 (emprunt)" },
           blk: {
             pose: "pose {n}", add: "ajoute {n}", sub: "retire {n}",
-            mul: "{d} × {b} = {p} → ajoute {p}",
-            div: "{b} × {m} = {v} → retire {v}",
-            pow: "× {a} : ajoute {k} × {v}",
+            mul: "{a} × {b} : ajoute {a} ({i}/{b})",
+            div1: "retire {v} → quotient {q}",
+            divN: "retire {v} (= {b} × {m}) → quotient {q}",
+            pow: "{v} × {a} : ajoute {v} ({i}/{m})",
             sqrt1: "{t}² = {q} → retire {q}",
             sqrt2: "({d} + {u}) × {u} = {x} → retire {x}",
             sqrtPose: "pose {m} (= {n},00 : un chiffre après la virgule)"
           },
-          rest: "reste {r}", pasapas: "Même idée que le badge ✦ 10 de Pas à Pas (faire 10).",
+          rest: "reste {r}",
+          divNote: "Le résultat, c'est le nombre de fois qu'on a retiré {b} : {q}. Le boulier montre ce qui reste : {r}.",
+          sqrtNote: "La racine se lit dans les étapes ({root}). Le boulier montre ce qui reste : {r}.", pasapas: "Même idée que le badge ✦ 10 de Pas à Pas (faire 10).",
           cap: {
             zero: "on remet à zéro", pose: "",
             direct: "+{a} : direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "retenue : +1 à gauche",
@@ -618,14 +621,17 @@
           techs: { direct: "direct adding", c5: "the 5-complement", c10: "the 10-complement (carry)", sdirect: "direct taking away", s5: "the 5-complement when taking away", s10: "the 10-complement (borrow)" },
           blk: {
             pose: "set {n}", add: "add {n}", sub: "take away {n}",
-            mul: "{d} × {b} = {p} → add {p}",
-            div: "{b} × {m} = {v} → take away {v}",
-            pow: "× {a}: add {k} × {v}",
+            mul: "{a} × {b}: add {a} ({i}/{b})",
+            div1: "take away {v} → quotient {q}",
+            divN: "take away {v} (= {b} × {m}) → quotient {q}",
+            pow: "{v} × {a}: add {v} ({i}/{m})",
             sqrt1: "{t}² = {q} → take away {q}",
             sqrt2: "({d} + {u}) × {u} = {x} → take away {x}",
             sqrtPose: "set {m} (= {n}.00: one digit after the point)"
           },
-          rest: "remainder {r}", pasapas: "Same idea as the ✦ 10 badge in Pas à Pas (making ten).",
+          rest: "remainder {r}",
+          divNote: "The result is how many times {b} was taken away: {q}. The abacus shows what is left: {r}.",
+          sqrtNote: "The root is read from the steps ({root}). The abacus shows what is left: {r}.", pasapas: "Same idea as the ✦ 10 badge in Pas à Pas (making ten).",
           cap: {
             zero: "clearing the board", pose: "",
             direct: "+{a}: direct", c5: "+{a} = +5 − {b}", c10: "+{a} = +10 − {b}", carry: "carry: +1 on the left",
@@ -1250,36 +1256,42 @@
         if (e.op === "+") { p.block(fmt(B.add, { n: numStr(e.b) })); p.addN(e.b); }
         else if (e.op === "−") { p.block(fmt(B.sub, { n: numStr(e.b) })); p.subN(e.b); }
         else if (e.op === "×") {
-          // Un produit partiel par chiffre, ajouté au bon rang
-          var s = String(e.a);
-          for (var i = 0; i < s.length; i++) {
-            var place = s.length - 1 - i;
-            var d = (s.charCodeAt(i) - 48) * Math.pow(10, place);
-            if (!d) continue;
-            p.block(fmt(B.mul, { d: numStr(d), b: e.b, p: numStr(d * e.b) }), "mul");
-            p.addN((s.charCodeAt(i) - 48) * e.b, place);
+          // Addition répétée (choix de Pierre, cf. VISION.md « peu de faits
+          // à retenir ») : 8 × 2 = ajouter 8, deux fois, à partir de zéro.
+          // (La méthode japonaise traditionnelle pose directement les
+          // produits de la table, qu'il faut alors connaître par cœur.)
+          for (var i = 1; i <= e.b; i++) {
+            p.block(fmt(B.mul, { a: numStr(e.a), b: e.b, i: i }), "mul");
+            p.addN(e.a);
           }
         }
         else if (e.op === "÷") {
           // On retire le diviseur par paquets : un chiffre du quotient à la fois
-          var q = String(e.result);
+          // Le quotient n'est pas sur le boulier (qui garde le reste) : la
+          // consigne l'affiche au fur et à mesure
+          // Soustraction répétée (comme × en additions répétées) : pas de
+          // table à connaître. Par centaines, puis dizaines, puis unités :
+          // on retire le diviseur × 100, × 10 ou × 1 autant de fois que
+          // possible, et le quotient monte d'autant
+          var q = String(e.result), qSoFar = 0;
           for (var j = 0; j < q.length; j++) {
             var pl = q.length - 1 - j, qd = q.charCodeAt(j) - 48;
-            if (!qd) continue;
-            var m = qd * Math.pow(10, pl);
-            p.block(fmt(B.div, { b: e.b, m: numStr(m), v: numStr(m * e.b) }), "div");
-            p.subN(qd * e.b, pl);
+            var m = Math.pow(10, pl);
+            for (var rr = 0; rr < qd; rr++) {
+              qSoFar += m;
+              p.block(fmt(m === 1 ? B.div1 : B.divN, { b: e.b, m: numStr(m), v: numStr(m * e.b), q: numStr(qSoFar) }), "div");
+              p.subN(e.b, pl);
+            }
           }
         }
         else if (e.op === "^") {
-          // a × a × … : multiplier v par a, c'est ajouter (a − 1) fois v
+          // a × a × … : multiplier v par a, c'est ajouter encore (a − 1)
+          // fois v à ce qui est déjà posé, une addition à la fois
           var v = e.a;
           for (var k = 2; k <= e.b; k++) {
-            p.block(fmt(B.pow, { a: e.a, k: e.a - 1, v: numStr(v) }), "pow");
-            var sv = String(v);
-            for (var i2 = 0; i2 < sv.length; i2++) {
-              var part = (sv.charCodeAt(i2) - 48) * (e.a - 1);
-              if (part) p.addN(part, sv.length - 1 - i2);
+            for (var r2 = 1; r2 <= e.a - 1; r2++) {
+              p.block(fmt(B.pow, { a: e.a, v: numStr(v), i: r2, m: e.a - 1 }), "pow");
+              p.addN(v);
             }
             v *= e.a;
           }
@@ -1553,7 +1565,12 @@
           document.getElementById("winTitle").textContent = cheers[Math.floor(Math.random() * cheers.length)];
           document.getElementById("winAnswer").textContent = exprOf(ex) + " " + answerOf(ex);
           var names = Object.keys(ex.tech).map(function (k) { return TXT[lang].techs[k]; });
-          document.getElementById("winUsed").textContent = names.length ? t("used", { list: names.join(", ") }) : "";
+          var used = names.length ? t("used", { list: names.join(", ") }) : "";
+          // ÷ et √ : le résultat n'est pas le nombre affiché sur le boulier
+          var left = numStr(valueOf(ex.states[ex.states.length - 1]));
+          if (ex.op === "÷") used = t("divNote", { b: ex.b, q: numStr(ex.result), r: left }) + " " + used;
+          if (ex.op === "√") used = t("sqrtNote", { root: answerOf(ex).replace(/^[=≈] /, ""), r: left }) + " " + used;
+          document.getElementById("winUsed").textContent = used;
           var badgeLine = earned ? t("badge", { b: TXT[lang].levels[ex.lv] }) : "";
           if (ex.tech.c10 && pasapasTen()) badgeLine = (badgeLine ? badgeLine + " " : "") + t("pasapas");
           document.getElementById("winBadge").textContent = badgeLine;
@@ -1866,6 +1883,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v19", text: "Multiplications et puissances en additions répétées, avec une consigne claire : 8 × 2 → « ajoute 8 (1/2) », puis « ajoute 8 (2/2) ». Plus besoin de connaître la table par cœur, et les boutons d'addition peuvent faire ces additions tout seuls. Division en soustractions répétées (retire 3 → quotient 1, 2, 3…, par dizaines d'abord pour les grands nombres) : la consigne affiche le quotient qui grandit, et la réussite explique que le boulier montre le reste (le résultat, c'est le nombre de fois qu'on a retiré le diviseur). Pareil pour les racines." },
         { v: "v18", text: "Les boutons font leurs gestes dans toutes les opérations : dans 2 × 6, le bouton + fait « ajoute 12 », car c'est une addition directe." },
         { v: "v17", text: "En-tête sur une seule ligne : flèche de retour à gauche, titre Soroban au centre, menu à droite. Niveaux rangés en grille régulière, 3 par ligne." },
         { v: "v16", text: "Design épuré : plus de cadre autour du boulier ; les perles sont pleines et cachent la tige qui passe dedans, même pendant qu'elles glissent ; leurs pointes gauche et droite sont arrondies." },
