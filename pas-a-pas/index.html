@@ -472,6 +472,8 @@
       padding: 0.02em 0.1em;
     }
 
+    .cancel .ceq { margin-right: 0.3em; }
+
     .cancel .cbar {
       align-self: stretch;
       height: 2px;
@@ -747,8 +749,19 @@
       .arrow-btn { width: 2.6rem; height: 2.6rem; }
     }
 
-    .badge {
+    .badges {
       margin-left: auto;
+      display: flex;
+      gap: 0.3rem;
+      flex-shrink: 0;
+    }
+
+    .badge {
+      font: inherit;
+      background: none;
+      cursor: pointer;
+      touch-action: manipulation;
+      white-space: nowrap;
       font-size: 0.72rem;
       letter-spacing: 0.08em;
       color: var(--accent);
@@ -1385,7 +1398,10 @@
       <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false">☰</button>
       <button class="menu-btn" id="homeBtn" aria-label="Accueil">⌂</button>
       <h1 id="title">Pas à Pas</h1>
-      <span class="badge" id="badgeChip" title="Badge cadre de dix" hidden>✦ 10</span>
+      <span class="badges">
+        <button class="badge" id="badgeChip" title="Badge cadre de dix" hidden>✦ 10</button>
+        <button class="badge" id="badgeMM" title="Badge moins par moins" hidden>✦ (−1)·(−1)</button>
+      </span>
     </header>
 
     <div class="menu-panel" id="menuPanel" hidden>
@@ -1705,42 +1721,10 @@
         },
         {
           title: "−×−",
-          steps: [
-            {
-              line: 3,
-              expr: [T("a", "3")],
-              note: "3, c'est une flèche de 0 vers 3."
-            },
-            {
-              line: 3,
-              fresh: true, // on multiplie volontairement par −1 : nouvelle valeur de référence
-              expr: [T("m", "(−1)"), T("d", "·", "op dot"), T("a", "3")],
-              hl: ["m"],
-              note: "Multiplier par −1, c'est faire <b>demi-tour</b> : la flèche tourne de 180° autour de 0."
-            },
-            {
-              fx: { type: "rotate", from: 0, to: 180 },
-              line: -3,
-              trace: [[0, 180]],
-              expr: [T("r", "−3", "", ["m", "d", "a"])],
-              note: "(−1)·3 = −3 : la flèche pointe de l'autre côté."
-            },
-            {
-              line: -3,
-              trace: [[0, 180]],
-              fresh: true,
-              expr: [T("m2", "(−1)"), T("d2", "·", "op dot"), T("r", "(−3)")],
-              hl: ["m2"],
-              note: "Encore une fois (−1) : encore un demi-tour."
-            },
-            {
-              fx: { type: "rotate", from: 180, to: 360 },
-              line: 3,
-              trace: [[0, 180], [180, 360]],
-              expr: [T("a3", "3", "", ["m2", "d2", "r"])],
-              note: "Deux demi-tours = un tour complet : on revient à 3. Moins par moins donne plus — pas une règle magique, une rotation."
-            }
-          ]
+          // Un nombre différent à chaque passage, de plus en plus grand : le
+          // demi-tour ne dépend pas de la taille du nombre
+          gen: function () { return rotSteps(nextRot()); },
+          steps: []
         },
         {
           title: "Distribuer",
@@ -2007,6 +1991,32 @@
         "Historique": "History", "Fiche des règles": "Rules sheet", "est premier": "is prime", "Construire": "Build", "Voir la solution": "Show solution", "Règles": "Rules", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
       };
       function tr(t) { return LANG === "en" && EN[t] ? EN[t] : t; }
+
+      // ---------- −×− : générateur ----------
+      var ROT_VALUES = [3, 5, 8, 12, 25, 47, 100, 365, 1000];
+      var rotIdx = 0;
+      try { rotIdx = Number(localStorage.getItem("pasapas_rot")) || 0; } catch (e) {}
+      function nextRot() {
+        var v = ROT_VALUES[Math.min(rotIdx, ROT_VALUES.length - 1)];
+        rotIdx = (rotIdx + 1) % ROT_VALUES.length;
+        try { localStorage.setItem("pasapas_rot", String(rotIdx)); } catch (e) {}
+        return v;
+      }
+      function rotSteps(v) {
+        var V = String(v), mV = "−" + V;
+        return [
+          { line: v, expr: [T("a", V)], note: V + ", c'est une flèche de 0 vers " + V + "." },
+          { line: v, fresh: true, expr: [T("m", "(−1)"), T("d", "·", "op dot"), T("a", V)], hl: ["m"],
+            note: "Multiplier par −1, c'est faire <b>demi-tour</b> : la flèche tourne de 180° autour de 0." },
+          { fx: { type: "rotate", from: 0, to: 180 }, line: -v, trace: [[0, 180]], expr: [T("r", mV, "", ["m", "d", "a"])],
+            note: "(−1)·" + V + " = " + mV + " : la flèche pointe de l'autre côté." },
+          { line: -v, trace: [[0, 180]], fresh: true, expr: [T("m2", "(−1)"), T("d2", "·", "op dot"), T("r", "(" + mV + ")")], hl: ["m2"],
+            note: "Encore une fois (−1) : encore un demi-tour." },
+          { fx: { type: "rotate", from: 180, to: 360 }, line: v, trace: [[0, 180], [180, 360]], expr: [T("a3", V, "", ["m2", "d2", "r"])],
+            note: "Deux demi-tours = un tour complet : on revient à " + V + ". Moins par moins donne plus — pas une règle magique, une rotation." }
+        ];
+      }
+      DEMOS.forEach(function (d) { if (d.gen && !d.steps.length) d.steps = d.gen(); });
 
       // ---------- Variantes selon l'ensemble ----------
       // Un chapitre ne disparaît pas quand on choisit un ensemble plus petit :
@@ -2287,6 +2297,10 @@
             if (item.eq) {
               var resRow = document.createElement("span");
               resRow.className = "crow";
+              var eqSign = document.createElement("span");
+              eqSign.className = "ceq";
+              eqSign.textContent = "=";
+              resRow.appendChild(eqSign);
               item.eq.forEach(function (t) { resRow.appendChild(tokenEl(t, forStep)); });
               cv.appendChild(resRow);
             }
@@ -2340,7 +2354,9 @@
         var top = expr ? expr.getBoundingClientRect().bottom - stage.getBoundingClientRect().top + 10 : 20;
         var avail = H - top - 24;
         var u = Math.max(8, Math.min(W * 0.84 / 8, avail / 6.8));
-        var L = Math.abs(step.line) * u;
+        // Échelle : la valeur est toujours dessinée à 3 graduations du 0,
+        // quelle que soit sa taille (3, 25, 1000…)
+        var V = Math.abs(step.line), L = 3 * u;
         var g = { cx: W / 2, cy: top + 3 * u + 0.4 * u, u: u, r: L };
         var svg = svgEl("svg", { class: "numsvg" });
         stage.appendChild(svg);
@@ -2348,9 +2364,9 @@
         for (var k = -4; k <= 4; k++) {
           var x = g.cx + k * u;
           svgEl("line", { x1: x, y1: g.cy - 4, x2: x, y2: g.cy + 4, class: "nl-axis" }, svg);
-          if (k % 2 === 0 || Math.abs(k) === 3) {
+          if (k === 0 || Math.abs(k) === 3) {
             var t = svgEl("text", { x: x, y: g.cy + 16, class: "nl-lab" }, svg);
-            t.textContent = k < 0 ? "−" + (-k) : String(k);
+            t.textContent = k === 0 ? "0" : (k < 0 ? "−" : "") + V;
           }
         }
         (step.trace || []).forEach(function (tr) {
@@ -2785,7 +2801,18 @@
 
         var units = [];
         var pre = wait(350);
-        if (fx.blocks && hasBadge()) pre = pre.then(function () { return fxBlocks(fx.blocks, snap, cx, units); });
+        if (fx.blocks && hasBadge()) pre = pre.then(function () { return fxBlocks(fx.blocks, snap, cx, units); })
+          // Le cadre de dix reste affiché : on le regarde, et c'est la
+          // flèche qui lance la fusion vers le résultat
+          .then(function () {
+            return new Promise(function (r) {
+              holdResolve = r;
+              nextBtn.disabled = false;
+              nextBtn.textContent = "→";
+              nextBtn.classList.remove("text");
+              nextBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: ms(500) });
+            });
+          });
 
         return pre.then(function () {
           // Les carrés rejoignent le point de fusion en même temps que les
@@ -2983,7 +3010,9 @@
         });
       }
 
+      var holdResolve = null;
       function next() {
+        if (holdResolve) { var r = holdResolve; holdResolve = null; nextBtn.disabled = true; r(); return; }
         if (DEMOS[demoIndex].custom) {
           // Singapour : la flèche lance la manche suivante, une fois le
           // résultat affiché
@@ -3001,6 +3030,7 @@
         if (cur === last) {
           if (busy) return;
           gameRun = { demo: DEMOS[demoIndex].title, faults: 0, counted: false };
+          if (DEMOS[demoIndex].gen) { DEMOS[demoIndex].steps = DEMOS[demoIndex].gen(); buildDots(DEMOS[demoIndex]); }
           cur = 0;
           build(DEMOS[demoIndex].steps[0]);
           refreshUi();
@@ -3170,6 +3200,7 @@
         if (busy) return;
         gameRun = { demo: DEMOS[i].title, faults: 0, counted: false };
         hideHome();
+        if (DEMOS[i].gen && i !== demoIndex) DEMOS[i].steps = DEMOS[i].gen();
         document.getElementById("title").textContent = tr(DEMOS[i].label || DEMOS[i].title);
         demoIndex = i;
         cur = 0;
@@ -5066,6 +5097,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v65", text: "−×− : un nombre différent à chaque passage, de plus en plus grand (3, 5, 8, 12, 25, 47, 100, 365, 1000) ; la droite se met à l'échelle. Réussir le chapitre débloque le badge « moins par moins » : (−1)·(−1) = 1." },
+        { v: "v66", text: "Cadre de dix : il reste affiché, c'est la flèche qui lance le résultat. Soustraction posée : « = 0 » sous la barre. Badges en haut : un appui explique ce qu'ils veulent dire (✦ 10, ✦ (−1)·(−1))." },
         { v: "v64", text: "Les chapitres s'adaptent à l'ensemble choisi au lieu de disparaître : dans ℕ, −( … ) devient 3·(2x + 4 + x) (on distribue puis on regroupe, 9x + 12) et Opposés devient Regrouper (3x + 7 + 2x + 5 = 5x + 12)." },
         { v: "v63", text: "Mode jeu : après une réponse, la question suivante s'affiche d'elle-même, sans appuyer sur la flèche." },
         { v: "v62", text: "Cadre de dix pour les négatifs, plus clair et plus lent : chaque jeton jaune porte un « − » (il vaut −1), et une légende écrit le calcul sous le cadre, (−2) + (−1) = −(2 + 1) = −3." },
@@ -5319,15 +5352,38 @@
       var POWERS = {
         "Premiers": { btn: "n → 2·3·…", fr: ["Décomposer en facteurs premiers", "Touche une bulle nombre puis ce pouvoir : 12 = 2²·3. Dans Fusion, deux bulles au nombre différent peuvent alors se mettre en facteur : 12·x + 18 = 6·(2·x + 3)."],
                       en: ["Prime factorisation", "Tap a number bubble then this power: 12 = 2²·3. In Fusion, two bubbles with different numbers can then be factored: 12·x + 18 = 6·(2·x + 3)."] },
+        "−×−": { btn: "(−1)·(−1) = 1",fr: ["Moins par moins", "Deux demi-tours font un tour complet : (−1)·(−1) = 1. Tu peux maintenant l'écrire directement, sans refaire la rotation."],
+                 en: ["Minus times minus", "Two half-turns make a full turn: (−1)·(−1) = 1. You can now write it directly, without redoing the rotation."] },
         "Fraction": { btn: "1 → c/c", fr: ["Même dénominateur", "Une bulle nombre prend le dénominateur d'une fraction voisine : 1 = c/c."],
                       en: ["Same denominator", "A number bubble takes the denominator of a nearby fraction: 1 = c/c."] }
       };
       function hasPower(ch) { return prof || !!doneMap[ch]; }
+      // Badges : un appui dessus rappelle ce qu'ils veulent dire
+      var BADGE_INFO = {
+        dix: { btn: "✦ 10", fr: ["Cadre de dix", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12 : on complète d'abord la dizaine. Le cadre de dix s'affiche sous chaque addition ; la flèche lance la suite."],
+               en: ["Ten frame", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12: fill up the ten first. The ten frame shows under every addition; the arrow moves on."] }
+      };
+      function showBadgeInfo(P, title) {
+        var t = P[LANG === "en" ? "en" : "fr"];
+        document.getElementById("puTitle").textContent = title;
+        document.getElementById("puBtn").textContent = P.btn + "   " + t[0];
+        document.getElementById("puDesc").textContent = t[1];
+        var ov = document.getElementById("powerOverlay");
+        ov.hidden = false;
+        ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms(300) });
+      }
+      var badgeMM = document.getElementById("badgeMM");
+      function refreshBadges() { badgeMM.hidden = !doneMap["−×−"]; }
+      refreshBadges();
+      badgeChip.addEventListener("click", function () { showBadgeInfo(BADGE_INFO.dix, "✦ Badge"); });
+      badgeMM.addEventListener("click", function () { showBadgeInfo(POWERS["−×−"], "✦ Badge"); });
+
       function announcePower(ch) {
         var P = POWERS[ch];
         if (!P) return;
+        refreshBadges();
         var t = P[LANG === "en" ? "en" : "fr"];
-        document.getElementById("puTitle").textContent = LANG === "en" ? "✦ Power unlocked" : "✦ Pouvoir débloqué";
+        document.getElementById("puTitle").textContent = ch === "−×−" ? (LANG === "en" ? "✦ Badge unlocked" : "✦ Badge débloqué") : (LANG === "en" ? "✦ Power unlocked" : "✦ Pouvoir débloqué");
         document.getElementById("puBtn").textContent = P.btn + "   " + t[0];
         document.getElementById("puDesc").textContent = t[1];
         var ov = document.getElementById("powerOverlay");
