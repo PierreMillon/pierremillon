@@ -117,7 +117,8 @@ au clavier (Tab, Entrée, flèches), affichage testé en format carré
 
 Écarts restants :
 
-- [ ] Hors ligne fragile : la page d'accueil du portfolio désinscrit tous
-  les service workers du domaine quand on la visite ; celui du Soroban se
-  réinscrit à la visite suivante du Soroban (même situation que Pas à Pas)
+- [x] Hors ligne solide : la page d'accueil du portfolio ne désinscrit plus
+  que ses propres service workers (portée racine) et ne vide plus les
+  caches des projets ; le service worker du Soroban nettoie lui-même ses
+  anciennes versions
 - [ ] Installation (PWA) à vérifier sur téléphone
