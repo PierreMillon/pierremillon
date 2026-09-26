@@ -118,6 +118,9 @@ Tri : priorité décroissante.
   tige qui passe dedans ; pointes gauche et droite arrondies. Barre du
   milieu gardée (elle dit quelles perles comptent)
 
+- [x] v17 — En-tête sur une ligne (← | Soroban | ☰ Menu) ; niveaux en
+  grille régulière de 3 par ligne
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?

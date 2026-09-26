@@ -62,11 +62,13 @@
     .topbar { padding: 1rem 16px 0; }
 
     header {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 1rem;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 0.8rem;
     }
+    header .back { justify-self: start; font-size: 1.3rem; letter-spacing: 0; padding: 0.2rem 0.4rem 0.2rem 0; }
+    header .link-btn { justify-self: end; }
 
     .back, .link-btn {
       font-family: inherit;
@@ -89,22 +91,19 @@
       letter-spacing: 0.06em;
     }
 
-    .subline {
-      display: flex;
-      justify-content: flex-end;
-      gap: 1.2rem;
-      margin-top: 0.3rem;
-    }
 
+    /* Niveaux en grille régulière, 3 par ligne (demande de Pierre) : pas
+       de retour à la ligne irrégulier */
     .levels {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
       gap: 0.4rem;
       padding: 0 16px;
+      margin-top: 0.5rem;
     }
-    .levels { margin-top: 0.5rem; flex-wrap: wrap; justify-content: center; }
-    /* Même en mode Libre, les niveaux gardent leur place (invisibles) :
+    /* Même en bac à sable, les niveaux gardent leur place (invisibles) :
        le boulier a la même taille dans les deux modes */
-    .levels[hidden] { display: flex; visibility: hidden; }
+    .levels[hidden] { display: grid; visibility: hidden; }
 
     .chip {
       flex: 1;
@@ -122,8 +121,9 @@
     }
     .chip[aria-pressed="true"] { border-color: var(--accent); color: var(--ink); }
     .levels .chip {
-      flex: 0 0 auto;
-      padding: 0.35rem 0.6rem;
+      min-width: 0;
+      white-space: nowrap;
+      padding: 0.35rem 0.3rem;
       text-transform: none;
       letter-spacing: 0.04em;
       font-size: 0.7rem;
@@ -423,7 +423,7 @@
       .bottombar { grid-row: 6; padding-bottom: 0.5rem; }
       .stage { grid-column: 2; grid-row: 1 / -1; padding: 0.5rem 16px; }
       h1 { font-size: 1.4rem; }
-      .levels .chip { font-size: 0.6rem; padding: 0.2rem 0.45rem; }
+      .levels .chip { font-size: 0.6rem; padding: 0.2rem 0.2rem; }
       .value { font-size: 2rem; }
       .task { font-size: 0.9rem; }
       .split { font-size: 0.78rem; }
@@ -446,13 +446,12 @@
 </head>
 <body>
   <div class="topbar">
+    <!-- Une seule ligne : retour à gauche, titre au centre, menu à droite -->
     <header>
-      <a class="back" href="../" data-t="back">← Portfolio</a>
+      <a class="back" href="../" aria-label="Portfolio">←</a>
       <h1>Soroban</h1>
-    </header>
-    <div class="subline">
       <button class="link-btn" id="menuBtn" aria-label="Menu">☰ Menu</button>
-    </div>
+    </header>
   </div>
   <div class="levels" id="levels" hidden></div>
 
@@ -1865,6 +1864,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v17", text: "En-tête sur une seule ligne : flèche de retour à gauche, titre Soroban au centre, menu à droite. Niveaux rangés en grille régulière, 3 par ligne." },
         { v: "v16", text: "Design épuré : plus de cadre autour du boulier ; les perles sont pleines et cachent la tige qui passe dedans, même pendant qu'elles glissent ; leurs pointes gauche et droite sont arrondies." },
         { v: "v15", text: "Bac à sable : deux boutons « − tige » et « + tige » pour retirer ou ajouter une tige (à gauche), en gardant le nombre posé. Le choix est gardé d'une visite à l'autre." },
         { v: "v14", text: "Entraînement libre retiré : le bac à sable joue ce rôle. Le bac à sable n'affiche plus que le nombre en gros ; le décompte sous le nombre (« 7 = 5 + 2 ») est retiré." },
