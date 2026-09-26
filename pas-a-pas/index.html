@@ -675,6 +675,25 @@
       z-index: 2;
     }
 
+    .blocks-cap {
+      position: absolute;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 0.95rem;
+      color: var(--sign);
+      pointer-events: none;
+    }
+
+    .unit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .unit.neg { color: var(--sign); }
     .unit.neg {
       border-color: var(--sign);
       background: rgba(255, 209, 102, 0.12);
@@ -2605,7 +2624,7 @@
       // déborde, cadre suivant). La structure 5 + 5 se lit sans compter.
       // Ne gère que des nombres de même signe (pas d'annulation ici).
       function fxBlocks(blocks, snap, cx, units) {
-        var cell = 22, dot = 14, apart = 12;
+        var cell = 24, dot = 17, apart = 12;
         var rows = blocks.map(function (b) { return { b: b, p: snap[b.id] }; })
           .filter(function (r) { return r.p; });
         if (!rows.length) return Promise.resolve();
@@ -2617,7 +2636,7 @@
         var left0 = cx - (frames * fw + (frames - 1) * apart) / 2;
         var y0 = 0;
         rows.forEach(function (r) { y0 = Math.max(y0, r.p.y + r.p.h); });
-        var top = y0 + 18;
+        var top = y0 + 32; // bien détaché de l'expression
 
         function slot(k) {
           var f = Math.floor(k / 10), r = Math.floor((k % 10) / 5), c = k % 5;
@@ -2637,8 +2656,21 @@
           stage.appendChild(c);
           units.push({ el: c, x: s.x, y: s.y, at: "translate(0,0)" });
           appear.push(done(c.animate([{ opacity: 0 }, { opacity: 1 }],
-            { duration: ms(500), easing: "ease-out", fill: "backwards" })));
+            { duration: ms(700), easing: "ease-out", fill: "backwards" })));
         }
+
+        // Légende sous le cadre : le calcul écrit en toutes lettres. Pour
+        // des négatifs : (−2) + (−1) = −(2 + 1) = −3 — chaque jeton vaut −1.
+        var neg = rows.every(function (r) { return r.b.n < 0; });
+        var cap = document.createElement("div");
+        cap.className = "blocks-cap";
+        cap.style.left = cx + "px";
+        cap.style.top = (top + 2 * cell + 8) + "px";
+        var parts = rows.map(function (r) { return r.b.n < 0 ? "(−" + (-r.b.n) + ")" : String(r.b.n); });
+        var sum = rows.reduce(function (a, r) { return a + r.b.n; }, 0);
+        cap.textContent = parts.join(" + ");
+        stage.appendChild(cap);
+        units.push({ el: cap, x: cx, y: top + 2 * cell + 16, at: "translate(-50%,0)" });
 
         // 2. Chaque nombre part de son jeton et remplit les cases suivantes
         var next = 0;
@@ -2654,6 +2686,7 @@
               var s = slot(first + i);
               var el = document.createElement("span");
               el.className = "unit" + (r.b.n < 0 ? " neg" : "");
+              if (r.b.n < 0) el.textContent = "−"; // un jeton jaune = −1
               el.style.left = (s.x - dot / 2) + "px";
               el.style.top = (s.y - dot / 2) + "px";
               el.style.width = dot + "px";
@@ -2663,13 +2696,31 @@
               flights.push(done(el.animate([
                 { transform: "translate(" + (from.x - s.x) + "px," + (from.y - s.y) + "px) scale(0.3)", opacity: 0 },
                 { transform: "translate(0,0) scale(1)", opacity: 1 }
-              ], { duration: ms(700), delay: ms(320 * i), easing: "cubic-bezier(.3,1.2,.5,1)", fill: "backwards" })));
+              ], { duration: ms(1100), delay: ms(480 * i), easing: "cubic-bezier(.3,1.2,.5,1)", fill: "backwards" })));
             }
-            return Promise.all(flights).then(function () { return wait(600); });
+            return Promise.all(flights).then(function () { return wait(1000); });
           });
         });
 
-        return chain.then(function () { return wait(900); });
+        return chain.then(function () {
+          // La légende se complète, étape par étape
+          var steps = neg
+            ? ["−(" + rows.map(function (r) { return -r.b.n; }).join(" + ") + ")", String(sum).replace("-", "−")]
+            : [String(sum)];
+          var txt = cap.textContent, c2 = Promise.resolve();
+          steps.forEach(function (st) {
+            c2 = c2.then(function () {
+              txt += " = " + st;
+              cap.textContent = txt;
+              // La légende ne sort jamais de l'écran
+              var half = cap.offsetWidth / 2, W = stage.clientWidth;
+              cap.style.left = Math.max(half + 6, Math.min(W - half - 6, cx)) + "px";
+              cap.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: ms(400) });
+              return wait(1300);
+            });
+          });
+          return c2;
+        }).then(function () { return wait(800); });
       }
 
       function fxMeet(fx, vanished) {
@@ -4957,6 +5008,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v62", text: "Cadre de dix pour les négatifs, plus clair et plus lent : chaque jeton jaune porte un « − » (il vaut −1), et une légende écrit le calcul sous le cadre, (−2) + (−1) = −(2 + 1) = −3." },
         { v: "v61", text: "Correctif : avec « Réduire les animations » activé sur l'iPhone, tout défilait 100 fois trop vite (le calcul mental comme un film en accéléré). Maintenant le mouvement est supprimé mais le rythme de lecture reste normal." },
         { v: "v60", text: "Ensembles : l'étoile de ℕ* est en exposant, en haut à droite." },
         { v: "v59", text: "Singapour : liberté totale — on peut retirer n'importe quel jeton, même ceux du départ. On peint au doigt : parti d'un jeton, on efface tout ce qu'on survole ; parti d'une case vide, on remplit tout ce qu'on survole. La manche finit quand le compte est bon ; le badge ne compte que les manches bien rangées." },
