@@ -59,6 +59,12 @@ Un nouveau projet (jeu ou page d'essai) :
   l'avoir ajouté dès leur création. Toujours présent dès le premier commit
   d'un nouveau projet, jamais un ajout tardif.
 
+- s'il a un service worker (hors ligne) : cache nommé `<projet>-vN`, et
+  c'est lui qui supprime ses propres anciennes versions à l'activation.
+  La page d'accueil ne touche qu'aux service workers de sa propre portée
+  (racine) — ne jamais y remettre un nettoyage de tout le domaine, qui
+  casserait le hors ligne de tous les projets
+
 ## Fusion des PR
 
 Pierre teste en réel sur son téléphone via GitHub Pages, qui ne déploie

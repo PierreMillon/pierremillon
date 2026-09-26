@@ -146,13 +146,16 @@
     // page n'a aucun état à perdre (juste un menu de liens), donc dès
     // qu'une nouvelle version est détectée, on recharge directement : pas
     // besoin d'attendre un "point sûr" comme dans les jeux.
+    // Nettoyage limité à CETTE page : on ne désinscrit que les service
+    // workers dont la portée est la racine du portfolio (restes d'anciennes
+    // versions). Ceux des projets (pas-a-pas/, soroban/, bulles-sonores/…)
+    // restent : ils rendent ces pages utilisables hors ligne, et chacun
+    // nettoie lui-même ses anciens caches (« <projet>-vN »).
     if ('serviceWorker' in navigator) {
+      const hubScope = new URL('./', location.href).href;
       navigator.serviceWorker.getRegistrations()
-        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+        .then((regs) => Promise.all(regs.filter((r) => r.scope === hubScope).map((r) => r.unregister())))
         .catch(() => {});
-    }
-    if ('caches' in window) {
-      caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k)))).catch(() => {});
     }
     // Le paramètre anti-cache dans l'URL de vérification est nécessaire :
     // un simple `cache: 'no-store'` n'empêche que la mise en cache locale
