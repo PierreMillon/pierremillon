@@ -43,7 +43,11 @@ Tri : priorité décroissante.
   (compléter le carré), découper un nombre (25 = 24 + 1), quantité conjuguée,
   facteur commun sur des puissances (2ⁿ⁺¹ + 2ⁿ), séparer une fraction
   (télescopage) — chacun gagné en réussissant le chapitre qui le montre à la main
-- [ ] P2 — Fusion : développer (bulle k·(a + b) touchée → k·a + k·b), l'inverse de factoriser
+- [x] P2 — Fusion : développer (bulle k·(a + b) touchée → k·a + k·b), pouvoir gagné avec Distribuer (v68)
+- [x] P1 (partie) — Pouvoir « découper un nombre » (7 → 5 + 2), gagné avec Calcul (v68).
+  Restent : compléter le carré, quantité conjuguée, puissances, télescopage —
+  il leur faut des bulles puissances / racines / fractions de n, que le
+  modèle de Fusion (monômes à une lettre) ne gère pas encore
 - Rapports : courts + liens
 
 

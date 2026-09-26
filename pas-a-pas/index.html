@@ -4697,6 +4697,10 @@
         { chips: function () { return [M(1), Fr([M(1)], "c")]; }, goal: "(c + 1)/c", want: function () { return [Fr([M(1, "c"), M(1)], "c")]; }, power: true },
         { chips: function () { return [M(12, "x"), M(18)]; }, goal: "6·(2·x + 3)", power: "pf", want: function () { return [Fa(6, [M(2, "x"), M(3)])]; } },
         { chips: function () { return [M(15, "a"), M(10, "b")]; }, goal: "5·(3·a + 2·b)", power: "pf", want: function () { return [Fa(5, [M(3, "a"), M(2, "b")])]; } },
+        // Développer : l'inverse de factoriser (pouvoir gagné avec Distribuer)
+        { chips: function () { return [Fa(3, [M(1, "x"), M(2)]), M(1, "x")]; }, goal: "4·x + 6", power: "dev", want: function () { return [M(4, "x"), M(6)]; } },
+        // Découper un nombre pour faire apparaître un facteur (gagné avec Calcul)
+        { chips: function () { return [M(5, "x"), M(7)]; }, goal: "5·(x + 1) + 2", power: "cut", want: function () { return [Fa(5, [M(1, "x"), M(1)]), M(2)]; } },
         { chips: function () { return [M(2), Fr([M(3)], "c"), Fr([M(1)], "c")]; }, goal: "(2·c + 4)/c", want: function () { return [Fr([M(2, "c"), M(4)], "c")]; }, power: true }
       ];
       var fus = { level: 0, chips: [], sel: null, won: false };
@@ -4736,7 +4740,7 @@
           // Facteur commun : même nombre devant ; avec le pouvoir « premiers »,
           // le plus grand facteur commun (PGCD) des deux nombres
           var g = gcd(Math.abs(A.k), Math.abs(B.k));
-          if (A.k === B.k && Math.abs(A.k) !== 1 && A.s && B.s) return Fa(A.k, [M(1, B.s), M(1, A.s)]);
+          if (A.k === B.k && Math.abs(A.k) !== 1 && (A.s || B.s)) return Fa(A.k, [M(1, B.s), M(1, A.s)]);
           if (hasPower("Premiers") && g > 1 && (A.s || B.s) && A.k !== B.k) return Fa(g, [M(B.k / g, B.s), M(A.k / g, A.s)]);
           return null;
         }
@@ -4788,6 +4792,15 @@
           });
           fusPowers.appendChild(pp);
           if (!hasPower("Premiers")) document.getElementById("fusMsg").textContent = LANG === "en" ? "Power locked: pass the Primes chapter." : "Pouvoir verrouillé : réussis le chapitre Premiers.";
+        } else if (L.power === "dev" || L.power === "cut") {
+          var P = L.power === "dev" ? { ch: "Distribuer", btn: "k·(a + b) → k·a + k·b", fn: fusDevelop }
+                                    : { ch: "Calcul", btn: "n → a + b", fn: fusCut };
+          var pd = document.createElement("button");
+          pd.textContent = P.btn;
+          pd.disabled = !hasPower(P.ch);
+          pd.addEventListener("click", P.fn);
+          fusPowers.appendChild(pd);
+          if (!hasPower(P.ch)) document.getElementById("fusMsg").textContent = LANG === "en" ? "Power locked: pass the " + tr(P.ch) + " chapter." : "Pouvoir verrouillé : réussis le chapitre " + P.ch + ".";
         } else if (L.power) {
           var pb = document.createElement("button");
           pb.textContent = "1 → c/c";
@@ -4952,6 +4965,44 @@
         fusRender(null);
         var el = fusBoard.querySelector('.chip[data-id="' + nf.id + '"]');
         if (el) el.animate([{ transform: "rotateY(90deg)" }, { transform: "none" }], { duration: ms(500) });
+      }
+
+      function fusSelected(test, fr, en) {
+        var c = fus.chips.find(function (x) { return x.id === fus.sel && test(x); });
+        if (!c) { SND.bad(); document.getElementById("fusMsg").textContent = LANG === "en" ? en : fr; }
+        return c;
+      }
+      function fusReplace(c, list) {
+        fus.chips.splice.apply(fus.chips, [fus.chips.indexOf(c), 1].concat(list));
+        fus.sel = null;
+        SND.ok();
+        document.getElementById("fusMsg").textContent = "";
+        fusRender(null);
+        fusCheck();
+      }
+      // Développer : k·(a + b) → k·a + k·b
+      function fusDevelop() {
+        if (!hasPower("Distribuer")) return;
+        var c = fusSelected(function (x) { return x.t === "f"; }, "Touche d'abord une bulle k·( … ).", "Tap a k·( … ) bubble first.");
+        if (!c) return;
+        fusReplace(c, c.inner.map(function (m) { return M(c.k * m.k, m.s); }));
+      }
+      // Découper un nombre : 7 → 5 + 2, pour faire apparaître le nombre
+      // d'une bulle voisine (le plus grand qui rentre)
+      function fusCut() {
+        if (!hasPower("Calcul")) return;
+        var c = fusSelected(function (x) { return x.t === "m" && !x.s && x.k > 1; }, "Touche d'abord une bulle nombre.", "Tap a number bubble first.");
+        if (!c) return;
+        var k = 0;
+        fus.chips.forEach(function (x) {
+          var v = x.t === "m" ? Math.abs(x.k) : x.t === "f" ? x.k : 0;
+          if (x !== c && v > 1 && v < c.k && v > k) k = v;
+        });
+        if (!k) { SND.bad(); document.getElementById("fusMsg").textContent = LANG === "en" ? "No smaller number next to it to reveal." : "Aucun nombre plus petit à faire apparaître à côté."; return; }
+        var a = M(k), b = M(c.k - k);
+        a.id = c.id;
+        fusReplace(c, [a, b]);
+        document.getElementById("fusMsg").textContent = c.k + " = " + k + " + " + (c.k - k);
       }
 
       function fusCheck() {
@@ -5398,6 +5449,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v68", text: "Fusion : deux pouvoirs de plus. « Développer » k·(a + b) → k·a + k·b (gagné avec Distribuer) et « découper un nombre » 7 → 5 + 2 pour faire apparaître un facteur (gagné avec Calcul). Deux buts en plus ; 5·x + 5 fusionne en 5·(x + 1)." },
         { v: "v67", text: "Trois passages, trois exercices différents : chaque chapitre du jeu (−( … ), Opposés, Fraction, Piège, Distribuer, Factoriser, Double, identités, ℂ, Équation, et leurs versions ℕ) change de nombres à chaque passage ; le premier reste l'exemple d'origine." },
         { v: "v66", text: "Cadre de dix : il reste affiché, c'est la flèche qui lance le résultat. Soustraction posée : « = 0 » sous la barre. Badges en haut : un appui explique ce qu'ils veulent dire (✦ 10, ✦ (−1)·(−1))." },
         { v: "v65", text: "−×− : un nombre différent à chaque passage, de plus en plus grand (3, 5, 8, 12, 25, 47, 100, 365, 1000) ; la droite se met à l'échelle. Réussir le chapitre débloque le badge « moins par moins » : (−1)·(−1) = 1." },
@@ -5656,6 +5708,10 @@
                       en: ["Prime factorisation", "Tap a number bubble then this power: 12 = 2²·3. In Fusion, two bubbles with different numbers can then be factored: 12·x + 18 = 6·(2·x + 3)."] },
         "−×−": { btn: "(−1)·(−1) = 1",fr: ["Moins par moins", "Deux demi-tours font un tour complet : (−1)·(−1) = 1. Tu peux maintenant l'écrire directement, sans refaire la rotation."],
                  en: ["Minus times minus", "Two half-turns make a full turn: (−1)·(−1) = 1. You can now write it directly, without redoing the rotation."] },
+        "Distribuer": { btn: "k·(a + b) → k·a + k·b", fr: ["Développer", "Dans Fusion, touche une bulle k·( … ) puis ce pouvoir : elle se développe. C'est l'inverse de factoriser."],
+                        en: ["Expand", "In Fusion, tap a k·( … ) bubble then this power: it expands. It is the reverse of factoring."] },
+        "Calcul": { btn: "n → a + b", fr: ["Découper un nombre", "Comme en calcul mental (16 = 10 + 6) : dans Fusion, une bulle nombre se découpe pour faire apparaître le nombre d'une voisine. 7 = 5 + 2, puis 5·x + 5 = 5·(x + 1)."],
+                    en: ["Split a number", "As in mental maths (16 = 10 + 6): in Fusion, a number bubble splits to reveal a neighbour's number. 7 = 5 + 2, then 5·x + 5 = 5·(x + 1)."] },
         "Fraction": { btn: "1 → c/c", fr: ["Même dénominateur", "Une bulle nombre prend le dénominateur d'une fraction voisine : 1 = c/c."],
                       en: ["Same denominator", "A number bubble takes the denominator of a nearby fraction: 1 = c/c."] }
       };
