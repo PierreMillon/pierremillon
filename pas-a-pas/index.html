@@ -2008,6 +2008,46 @@
       };
       function tr(t) { return LANG === "en" && EN[t] ? EN[t] : t; }
 
+      // ---------- Variantes selon l'ensemble ----------
+      // Un chapitre ne disparaît pas quand on choisit un ensemble plus petit :
+      // il s'adapte. Dans ℕ, pas de négatifs, mais on distribue et on
+      // regroupe quand même.
+      (function () {
+        var PRE = [T("m", "3"), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", "2" + X), T("sb", "+", "op"), T("b", "4"), T("sc", "+", "op"), T("c", X), T("rp", ")", "par")];
+        var distN = [
+          { top: true, expr: PRE, hl: ["m"], magic: "« On multiplie chaque terme par 3. »" },
+          { fx: { type: "arc", src: "m", to: ["a"] }, arcs: [["a"]], signs: ["a"], expr: PRE },
+          { fx: { type: "arc", src: "m", to: ["b"] }, arcs: [["a"], ["b"]], signs: ["a", "b"], expr: PRE },
+          { fx: { type: "arc", src: "m", to: ["c"] }, arcs: [["a"], ["b"], ["c"]], signs: ["a", "b", "c"], expr: PRE },
+          {
+            stagger: { d1: 0, lpA: 0, rpA: 0, q1: 1600, m2: 1600, d2: 1600, lpB: 1600, rpB: 1600, q2: 3200, m3: 3200, d3: 3200, lpC: 3200, rpC: 3200 },
+            expr: [T("m", "3"), T("d1", "·", "op dot"), T("lpA", "(", "par"), T("a", "2" + X), T("rpA", ")", "par"),
+                   T("q1", "+", "op"), T("m2", "3"), T("d2", "·", "op dot"), T("lpB", "(", "par"), T("b", "4"), T("rpB", ")", "par"),
+                   T("q2", "+", "op"), T("m3", "3"), T("d3", "·", "op dot"), T("lpC", "(", "par"), T("c", X), T("rpC", ")", "par")]
+          },
+          { top: true, expr: [T("pa", "6" + X, "", ["m", "d1", "lpA", "a", "rpA"]), T("q1", "+", "op"), T("pb", "12", "", ["m2", "d2", "lpB", "b", "rpB"]), T("q2", "+", "op"), T("pc", "3" + X, "", ["m3", "d3", "lpC", "c", "rpC"])], magic: "« On regroupe les x. »" },
+          { expr: [T("pa", "6" + X), T("q2", "+", "op"), T("pc", "3" + X), T("q1", "+", "op"), T("pb", "12")], hl: ["pa", "pc"] },
+          { expr: [T("lp2", "(", "par"), T("n6", "6", "", ["pa"]), T("pl", "+", "op", ["q2"]), T("n3", "3", "", ["pc"]), T("rp2", ")", "par"), T("xf", X, "", ["pa", "pc"]), T("q1", "+", "op"), T("pb", "12")] },
+          { top: true, fx: { type: "meet", ids: ["n6", "pl", "n3"], blocks: [{ id: "n6", n: 6 }, { id: "n3", n: 3 }] },
+            expr: [T("n9", "9", "", ["n6", "pl", "n3"]), T("xf", X), T("q1", "+", "op"), T("pb", "12")] }
+        ];
+        var regN = [
+          { expr: [T("a", "3" + X), T("sb", "+", "op"), T("b", "7"), T("sc", "+", "op"), T("c", "2" + X), T("sd", "+", "op"), T("d", "5")] },
+          { expr: [T("a", "3" + X), T("sb", "+", "op"), T("b", "7"), T("sc", "+", "op"), T("c", "2" + X), T("sd", "+", "op"), T("d", "5")], hl: ["a", "c"] },
+          { expr: [T("a", "3" + X), T("sc", "+", "op"), T("c", "2" + X), T("sb", "+", "op"), T("b", "7"), T("sd", "+", "op"), T("d", "5")], hl: ["a", "c"] },
+          { expr: [T("lp", "(", "par"), T("n3", "3", "", ["a"]), T("pl", "+", "op", ["sc"]), T("n2", "2", "", ["c"]), T("rp", ")", "par"), T("xf", X, "", ["a", "c"]), T("sb", "+", "op"), T("b", "7"), T("sd", "+", "op"), T("d", "5")] },
+          { fx: { type: "meet", ids: ["n3", "pl", "n2"], blocks: [{ id: "n3", n: 3 }, { id: "n2", n: 2 }] },
+            expr: [T("n5", "5", "", ["n3", "pl", "n2"]), T("xf", X), T("sb", "+", "op"), T("b", "7"), T("sd", "+", "op"), T("d", "5")] },
+          { fx: { type: "meet", ids: ["b", "sd", "d"], blocks: [{ id: "b", n: 7 }, { id: "d", n: 5 }] },
+            expr: [T("n5", "5"), T("xf", X), T("sb", "+", "op"), T("n12", "12", "", ["b", "sd", "d"])] }
+        ];
+        DEMOS.forEach(function (d) {
+          if (d.title === "−( … )") d.variants = { N: { title: "3·( … )", steps: distN } };
+          if (d.title === "Opposés") d.variants = { N: { title: "Regrouper", steps: regN } };
+          if (!d.custom) d.baseSteps = d.steps;
+        });
+      })();
+
       // ---------- Écriture usuelle ----------
       // Pendant les calculs, tous les produits ont leur point (2·x). À la
       // fin, une étape de plus revient à l'écriture habituelle (2x) : même
@@ -2021,16 +2061,20 @@
           return i > 0 && isFactorEnd(list[i - 1]) && isFactorStart(it);
         });
       }
-      DEMOS.forEach(function (d) {
-        if (d.custom) return;
-        var k = d.steps.length - 1;
-        while (k >= 0 && (!d.steps[k].expr || d.steps[k].summary)) k--;
-        if (k < 0 || !needsDots(d.steps[k].expr)) return;
-        var last = d.steps[k];
-        d.steps.splice(k + 1, 0, {
+      function addUsual(steps) {
+        var k = steps.length - 1;
+        while (k >= 0 && (!steps[k].expr || steps[k].summary)) k--;
+        if (k < 0 || !needsDots(steps[k].expr)) return;
+        var last = steps[k];
+        steps.splice(k + 1, 0, {
           expr: last.expr, implicit: true, line: last.line, trace: last.trace,
           note: "Écriture usuelle : le point de multiplication ne s'écrit plus, c'est le même produit."
         });
+      }
+      DEMOS.forEach(function (d) {
+        if (d.custom) return;
+        addUsual(d.steps);
+        if (d.variants) Object.keys(d.variants).forEach(function (k) { addUsual(d.variants[k].steps); });
       });
 
       // ---------- Vérification des calculs ----------
@@ -2080,8 +2124,13 @@
       function verifyDemos() {
         var issues = [];
         var envs = [{ x: 1.7, O: 2.3, Q: -0.9, a: 1.3, b: -2.2 }, { x: -3.1, O: 0.6, Q: 4.2, a: -0.7, b: 3.4 }];
-        DEMOS.forEach(function (demo) {
-          if (demo.custom) return;
+        var lists = [];
+        DEMOS.forEach(function (d) {
+          if (d.custom) return;
+          lists.push({ title: d.title, steps: d.steps });
+          if (d.variants) Object.keys(d.variants).forEach(function (k) { lists.push({ title: d.variants[k].title, steps: d.variants[k].steps }); });
+        });
+        lists.forEach(function (demo) {
           var ref = null, root = null;
           demo.steps.forEach(function (st, i) {
             if (!st.expr || st.summary) return;
@@ -3121,7 +3170,7 @@
         if (busy) return;
         gameRun = { demo: DEMOS[i].title, faults: 0, counted: false };
         hideHome();
-        document.getElementById("title").textContent = tr(DEMOS[i].title);
+        document.getElementById("title").textContent = tr(DEMOS[i].label || DEMOS[i].title);
         demoIndex = i;
         cur = 0;
         lastTopStep = null;
@@ -5017,6 +5066,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v64", text: "Les chapitres s'adaptent à l'ensemble choisi au lieu de disparaître : dans ℕ, −( … ) devient 3·(2x + 4 + x) (on distribue puis on regroupe, 9x + 12) et Opposés devient Regrouper (3x + 7 + 2x + 5 = 5x + 12)." },
         { v: "v63", text: "Mode jeu : après une réponse, la question suivante s'affiche d'elle-même, sans appuyer sur la flèche." },
         { v: "v62", text: "Cadre de dix pour les négatifs, plus clair et plus lent : chaque jeton jaune porte un « − » (il vaut −1), et une légende écrit le calcul sous le cadre, (−2) + (−1) = −(2 + 1) = −3." },
         { v: "v61", text: "Correctif : avec « Réduire les animations » activé sur l'iPhone, tout défilait 100 fois trop vite (le calcul mental comme un film en accéléré). Maintenant le mouvement est supprimé mais le rythme de lecture reste normal." },
@@ -5198,13 +5248,30 @@
         });
       }
       renderUniv();
+      // Variante utilisée : celle du plus grand ensemble coché, si l'ensemble
+      // du chapitre ne l'est pas
+      function variantKey(d) {
+        if (!d.variants || sets[setOf(d)]) return null;
+        var key = null;
+        UNIV.forEach(function (k) { if (sets[k] && d.variants[k]) key = k; });
+        return key;
+      }
+      function available(d) { return sets[setOf(d)] || !!variantKey(d); }
       function applySets() {
-        tabsEl.querySelectorAll(".tab").forEach(function (t, k) { t.hidden = !sets[setOf(DEMOS[k])]; });
+        var cur0 = DEMOS[demoIndex], before = cur0.steps;
+        DEMOS.forEach(function (d) {
+          if (!d.variants) return;
+          var vk = variantKey(d);
+          d.steps = vk ? d.variants[vk].steps : d.baseSteps;
+          d.label = vk ? d.variants[vk].title : null;
+        });
+        tabsEl.querySelectorAll(".tab").forEach(function (t, k) { t.hidden = !available(DEMOS[k]); });
+        if (cur0.steps !== before && !busy && homeEl && homeEl.hidden) { selectDemo(demoIndex); return; }
         var cu = DEMOS[demoIndex].custom;
         if (cu === "sol") solRender(true);
         if (cu === "ens" && ensState && !ensState.ready) ensStart();
-        if (!sets[setOf(DEMOS[demoIndex])] && !busy) {
-          for (var k = 0; k < DEMOS.length; k++) if (sets[setOf(DEMOS[k])]) { selectDemo(k); break; }
+        if (!available(DEMOS[demoIndex]) && !busy) {
+          for (var k = 0; k < DEMOS.length; k++) if (available(DEMOS[k])) { selectDemo(k); break; }
         }
       }
 
