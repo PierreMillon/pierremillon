@@ -10,6 +10,9 @@ Tri : priorité décroissante.
 - [x] Démo 1 : − devant une parenthèse (le −1 touche chaque terme)
 - [x] Démo 2 : termes opposés qui s'annulent
 - [x] Démo 3 : simplification d'une fraction par un facteur commun
+- [x] Trois passages réussis = trois exercices différents (générateurs par chapitre, vérifiés au chargement ; −×− : nombres croissants)
+- [x] Cadre de dix : reste affiché, la flèche lance le résultat
+- [x] Badges cliquables (✦ 10, ✦ (−1)·(−1)) avec explication
 
 ## À faire
 

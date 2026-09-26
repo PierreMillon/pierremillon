@@ -2058,6 +2058,301 @@
         });
       })();
 
+      // ---------- Un exercice différent à chaque passage ----------
+      // Réussir un chapitre demande trois passages : chacun sur un autre
+      // énoncé. Le premier est l'exemple d'origine (notes soignées), les
+      // suivants sont fabriqués par les générateurs ci-dessous, avec les
+      // mêmes gestes et d'autres nombres. Le vérificateur les recalcule tous.
+      (function () {
+        var SH = {
+          o: "<svg class=\"shape\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>",
+          q: "<svg class=\"shape\" viewBox=\"0 0 10 10\"><rect x=\"1\" y=\"1\" width=\"8\" height=\"8\"/></svg>",
+          t: "<svg class=\"shape\" viewBox=\"0 0 10 10\"><path d=\"M5 1 L9 9 L1 9 Z\"/></svg>"
+        };
+        function s(n) { return String(n); }
+        function tens(p, q) {
+          var c = 10 - p, r = q - c;
+          return p + " + " + q + " : on complète la dizaine (" + p + " + " + c + "), il reste " + r + " — 10 + " + r + " = <b>" + (p + q) + "</b>.";
+        }
+
+        // −( a·x − b + c·x ), avec a, c ≥ 2
+        function minusParen(a, b, c) {
+          var E = [T("m", "(−1)"), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", a + X), T("sb", "−", "op"), T("b", s(b)), T("sc", "+", "op"), T("c", c + X), T("rp", ")", "par")];
+          return [
+            { top: true, expr: [T("m", "−", "op"), T("lp", "(", "par"), T("a", a + X), T("sb", "−", "op"), T("b", s(b)), T("sc", "+", "op"), T("c", c + X), T("rp", ")", "par")],
+              hl: ["m"], magic: "« On change les signes à l'intérieur de la parenthèse. »", note: "Un signe <b>−</b> devant une parenthèse." },
+            { expr: E, hl: ["m"], note: "<b>− ( … )</b> veut dire <b>+ (−1) · ( … )</b>." },
+            { fx: { type: "arc", src: "m", to: ["a"] }, arcs: [["a"]], signs: ["a"], expr: E, note: "Le (−1) touche le premier terme : " + a + "<i>x</i>." },
+            { fx: { type: "arc", src: "m", to: ["sb", "b"] }, arcs: [["a"], ["sb", "b"]], signs: ["a", "sb", "b"], expr: E, note: "Puis le deuxième : −" + b + ", avec son signe." },
+            { fx: { type: "arc", src: "m", to: ["c"] }, arcs: [["a"], ["sb", "b"], ["c"]], signs: ["a", "sb", "b", "c"], expr: E, note: "Puis le troisième : " + c + "<i>x</i>." },
+            { stagger: { d1: 0, lpA: 0, rpA: 0, q1: 1600, m2: 1600, d2: 1600, lpB: 1600, rpB: 1600, q2: 3200, m3: 3200, d3: 3200, lpC: 3200, rpC: 3200 },
+              expr: [T("m", "(−1)"), T("d1", "·", "op dot"), T("lpA", "(", "par"), T("a", a + X), T("rpA", ")", "par"),
+                     T("q1", "+", "op"), T("m2", "(−1)"), T("d2", "·", "op dot"), T("lpB", "(", "par"), T("sb", "−", "op"), T("b", s(b)), T("rpB", ")", "par"),
+                     T("q2", "+", "op"), T("m3", "(−1)"), T("d3", "·", "op dot"), T("lpC", "(", "par"), T("c", c + X), T("rpC", ")", "par")],
+              note: "Chaque produit en toutes lettres, un par un." },
+            { top: true, expr: [T("sa", "−", "op", ["m"]), T("a", a + X), T("sb", "+", "op"), T("b", s(b)), T("sc", "−", "op", ["m3"]), T("c", c + X)],
+              hl: ["sa", "sb", "sc"], note: "(−1)·" + a + "<i>x</i> = −" + a + "<i>x</i>, (−1)·(−" + b + ") = +" + b + ", (−1)·" + c + "<i>x</i> = −" + c + "<i>x</i>." },
+            { expr: [T("sa", "−", "op"), T("a", a + X), T("sc", "−", "op"), T("c", c + X), T("sb", "+", "op"), T("b", s(b))], hl: ["sa", "a", "sc", "c"],
+              note: "On regroupe les <i>x</i>, chacun <b>avec son signe</b>." },
+            { expr: [T("lp2", "(", "par"), T("sa2", "−", "op"), T("n2", s(a)), T("sc2", "−", "op"), T("n1", s(c)), T("rp2", ")", "par"), T("xf", X, "", ["a", "c"]), T("sb", "+", "op"), T("b", s(b))],
+              hl: ["sa2", "n2", "sc2", "n1"], note: "<i>x</i> en facteur commun : (−" + a + " − " + c + ")·<i>x</i>." },
+            { top: true, fx: { type: "meet", ids: ["sa2", "n2", "sc2", "n1"], blocks: [{ id: "n2", n: -a }, { id: "n1", n: -c }] },
+              expr: [T("m3", "−" + (a + c), "", ["sa2", "n2", "sc2", "n1"]), T("xf", X), T("sb", "+", "op"), T("b", s(b))],
+              magic: "« On regroupe et on calcule. »", note: "(−" + a + ") + (−" + c + ") = −" + (a + c) + ". Résultat : <b>−" + (a + c) + "<i>x</i> + " + b + "</b>." }
+          ];
+        }
+
+        // k·x + p − k·x + q
+        function opposites(k, p, q) {
+          var E0 = [T("a", k + X), T("sb", "+", "op"), T("b", s(p)), T("sc", "−", "op"), T("c", k + X), T("sd", "+", "op"), T("d", s(q))];
+          return [
+            { expr: E0, note: "Point de départ." },
+            { expr: E0, hl: ["a", "sc", "c"], note: "+" + k + "<i>x</i> et −" + k + "<i>x</i> sont <b>opposés</b>." },
+            { expr: [T("a", k + X), T("sc", "−", "op"), T("c", k + X), T("sb", "+", "op"), T("b", s(p)), T("sd", "+", "op"), T("d", s(q))], hl: ["a", "sc", "c"], note: "On les rapproche, chacun avec son signe." },
+            { expr: [V([T("a", k + X)], [T("sc", "−", "op"), T("c", k + X)], [T("z", "0")]), T("sb", "+", "op"), T("b", s(p)), T("sd", "+", "op"), T("d", s(q))], hl: ["z"],
+              note: "Posé comme une soustraction : ça fait 0." },
+            { expr: [T("z", "0", "", ["a", "sc", "c"]), T("sb", "+", "op"), T("b", s(p)), T("sd", "+", "op"), T("d", s(q))], hl: ["z"], note: k + "<i>x</i> − " + k + "<i>x</i> = 0." },
+            { expr: [T("b", s(p)), T("sd", "+", "op"), T("d", s(q))], note: "0 est neutre pour l'addition : on l'efface." },
+            { fx: { type: "meet", ids: ["b", "sd", "d"], blocks: [{ id: "b", n: p }, { id: "d", n: q }] },
+              expr: [T("n7", s(p + q), "", ["b", "sd", "d"])], note: tens(p, q) }
+          ];
+        }
+
+        // ℕ : k1·x + p + k2·x + q
+        function regroup(k1, k2, p, q) {
+          var E0 = [T("a", k1 + X), T("sb", "+", "op"), T("b", s(p)), T("sc", "+", "op"), T("c", k2 + X), T("sd", "+", "op"), T("d", s(q))];
+          return [
+            { expr: E0 },
+            { expr: E0, hl: ["a", "c"] },
+            { expr: [T("a", k1 + X), T("sc", "+", "op"), T("c", k2 + X), T("sb", "+", "op"), T("b", s(p)), T("sd", "+", "op"), T("d", s(q))], hl: ["a", "c"] },
+            { expr: [T("lp", "(", "par"), T("n3", s(k1), "", ["a"]), T("pl", "+", "op", ["sc"]), T("n2", s(k2), "", ["c"]), T("rp", ")", "par"), T("xf", X, "", ["a", "c"]), T("sb", "+", "op"), T("b", s(p)), T("sd", "+", "op"), T("d", s(q))] },
+            { fx: { type: "meet", ids: ["n3", "pl", "n2"], blocks: [{ id: "n3", n: k1 }, { id: "n2", n: k2 }] },
+              expr: [T("n5", s(k1 + k2), "", ["n3", "pl", "n2"]), T("xf", X), T("sb", "+", "op"), T("b", s(p)), T("sd", "+", "op"), T("d", s(q))] },
+            { fx: { type: "meet", ids: ["b", "sd", "d"], blocks: [{ id: "b", n: p }, { id: "d", n: q }] },
+              expr: [T("n5", s(k1 + k2)), T("xf", X), T("sb", "+", "op"), T("n12", s(p + q), "", ["b", "sd", "d"])], note: tens(p, q) }
+          ];
+        }
+
+        // ℕ : m·(a·x + b + c·x)
+        function timesParen(m, a, b, c) {
+          var PRE = [T("m", s(m)), T("dot", "·", "op dot"), T("lp", "(", "par"), T("a", a + X), T("sb", "+", "op"), T("b", s(b)), T("sc", "+", "op"), T("c", c + X), T("rp", ")", "par")];
+          return [
+            { top: true, expr: PRE, hl: ["m"], magic: "« On multiplie chaque terme par " + m + ". »" },
+            { fx: { type: "arc", src: "m", to: ["a"] }, arcs: [["a"]], signs: ["a"], expr: PRE },
+            { fx: { type: "arc", src: "m", to: ["b"] }, arcs: [["a"], ["b"]], signs: ["a", "b"], expr: PRE },
+            { fx: { type: "arc", src: "m", to: ["c"] }, arcs: [["a"], ["b"], ["c"]], signs: ["a", "b", "c"], expr: PRE },
+            { stagger: { d1: 0, lpA: 0, rpA: 0, q1: 1600, m2: 1600, d2: 1600, lpB: 1600, rpB: 1600, q2: 3200, m3: 3200, d3: 3200, lpC: 3200, rpC: 3200 },
+              expr: [T("m", s(m)), T("d1", "·", "op dot"), T("lpA", "(", "par"), T("a", a + X), T("rpA", ")", "par"),
+                     T("q1", "+", "op"), T("m2", s(m)), T("d2", "·", "op dot"), T("lpB", "(", "par"), T("b", s(b)), T("rpB", ")", "par"),
+                     T("q2", "+", "op"), T("m3", s(m)), T("d3", "·", "op dot"), T("lpC", "(", "par"), T("c", c + X), T("rpC", ")", "par")] },
+            { top: true, expr: [T("pa", (m * a) + X, "", ["m", "d1", "lpA", "a", "rpA"]), T("q1", "+", "op"), T("pb", s(m * b), "", ["m2", "d2", "lpB", "b", "rpB"]), T("q2", "+", "op"), T("pc", (m * c) + X, "", ["m3", "d3", "lpC", "c", "rpC"])], magic: "« On regroupe les x. »" },
+            { expr: [T("pa", (m * a) + X), T("q2", "+", "op"), T("pc", (m * c) + X), T("q1", "+", "op"), T("pb", s(m * b))], hl: ["pa", "pc"] },
+            { expr: [T("lp2", "(", "par"), T("n6", s(m * a), "", ["pa"]), T("pl", "+", "op", ["q2"]), T("n3", s(m * c), "", ["pc"]), T("rp2", ")", "par"), T("xf", X, "", ["pa", "pc"]), T("q1", "+", "op"), T("pb", s(m * b))] },
+            { top: true, fx: { type: "meet", ids: ["n6", "pl", "n3"], blocks: [{ id: "n6", n: m * a }, { id: "n3", n: m * c }] },
+              expr: [T("n9", s(m * (a + c)), "", ["n6", "pl", "n3"]), T("xf", X), T("q1", "+", "op"), T("pb", s(m * b))] }
+          ];
+        }
+
+        // (p·c)·x / (c·q)
+        function fraction(p, c, q) {
+          return [
+            { expr: [F([T("n6", s(p * c)), T("nx", X)], [T("d9", s(c * q))])], note: "Point de départ : " + (p * c) + "<i>x</i> sur " + (c * q) + "." },
+            { expr: [F([T("n2", s(p), "", ["n6"]), T("o1", "·", "op dot", ["n6"]), T("n3", s(c), "", ["n6"]), T("o2", "·", "op dot"), T("nx", X)],
+                       [T("d3", s(c), "", ["d9"]), T("o3", "·", "op dot", ["d9"]), T("d3b", s(q), "", ["d9"])])],
+              note: "Chaque nombre en <b>produit de facteurs</b> : " + (p * c) + " = " + p + " · " + c + " et " + (c * q) + " = " + c + " · " + q + "." },
+            { expr: [F([T("n2", s(p)), T("o1", "·", "op dot"), T("n3", s(c)), T("o2", "·", "op dot"), T("nx", X)], [T("d3", s(c)), T("o3", "·", "op dot"), T("d3b", s(q))])],
+              hl: ["n3", "d3"], note: "Le facteur " + c + " est présent <b>en haut et en bas</b>." },
+            { fx: { type: "meet", ids: ["n3", "d3"] }, expr: [F([T("n2", s(p)), T("o2", "·", "op dot"), T("nx", X)], [T("d3b", s(q))])],
+              note: c + " ÷ " + c + " = 1 : on divise le haut et le bas par le même facteur." },
+            { expr: [F([T("n2", s(p)), T("nx", X)], [T("d3b", s(q))])], note: "Résultat : <b>" + p + "<i>x</i> sur " + q + "</b>." }
+          ];
+        }
+
+        // (x + n) / n
+        function trap(n) {
+          return [
+            { expr: [F([T("nx", X), T("p", "+", "op"), T("n3", s(n))], [T("d3", s(n))])], note: "(<i>x</i> + " + n + ") sur " + n + ". Tentation : barrer les deux " + n + "." },
+            { expr: [F([T("nx", X), T("p", "+", "op"), T("n3", s(n))], [T("d3", s(n))])], hl: ["n3", "d3"], note: "Le " + n + " du haut est un <b>terme</b> d'une somme, pas un facteur." },
+            { expr: [F([T("nx", X)], [T("d3", s(n))]), T("p", "+", "op"), F([T("n3", s(n))], [T("d3b", s(n), "", ["d3"])])], note: "Diviser une somme, c'est diviser <b>chaque terme</b>." },
+            { fx: { type: "meet", ids: ["n3", "d3b"] }, expr: [F([T("nx", X)], [T("d3", s(n))]), T("p", "+", "op"), T("one", "1", "", ["n3", "d3b"])], note: n + "/" + n + " = 1." },
+            { expr: [F([T("nx", X)], [T("d3", s(n))]), T("p", "+", "op"), T("one", "1"), T("ne", "≠", "op"), T("wx", X)], hl: ["ne"],
+              note: "Résultat : <i>x</i>/" + n + " + 1, pas <i>x</i>. Avec <i>x</i> = " + n + " : (" + n + " + " + n + ")/" + n + " = 2, pas " + n + "." }
+          ];
+        }
+
+        // (x + p)(x + q), p ≥ 2
+        function double(p, q) {
+          return [
+            { expr: [T("l1", "(", "par"), T("x1", X), T("p1", "+", "op"), T("o1", s(p)), T("r1", ")", "par"), T("l2", "(", "par"), T("x2", X), T("p2", "+", "op"), T("t2", s(q)), T("r2", ")", "par")], note: "Deux parenthèses côte à côte : un produit." },
+            { expr: [T("l1", "(", "par"), T("x1", X), T("p1", "+", "op"), T("o1", s(p)), T("r1", ")", "par"), T("l2", "(", "par"), T("x2", X), T("p2", "+", "op"), T("t2", s(q)), T("r2", ")", "par")], hl: ["x1", "o1"],
+              note: "Chaque terme de la première parenthèse multiplie toute la seconde." },
+            { expr: [T("x1", X), T("la", "(", "par"), T("x2", X), T("p2", "+", "op"), T("t2", s(q)), T("ra", ")", "par"), T("p1", "+", "op"), T("o1", s(p)), T("lb", "(", "par"), T("x2b", X, "", ["x2"]), T("p2b", "+", "op", ["p2"]), T("t2b", s(q), "", ["t2"]), T("rb", ")", "par")],
+              stagger: { la: 0, ra: 0, lb: 1400, x2b: 1400, p2b: 1400, t2b: 1400, rb: 1400 }, note: "La seconde parenthèse est recopiée pour chacun." },
+            { expr: [T("x1", X), T("m1", "·", "op dot"), T("x2", X), T("p2", "+", "op"), T("x1b", X, "", ["x1"]), T("m2", "·", "op dot"), T("t2", s(q)), T("p1", "+", "op"), T("o1", s(p)), T("m3", "·", "op dot"), T("x2b", X), T("p2b", "+", "op"), T("o1b", s(p), "", ["o1"]), T("m4", "·", "op dot"), T("t2b", s(q))],
+              stagger: { m1: 0, x1b: 1200, m2: 1200, m3: 2400, o1b: 3600, m4: 3600 }, note: "Quatre produits en tout." },
+            { expr: [T("sq", X + "²", "", ["x1", "m1", "x2"]), T("p2", "+", "op"), T("dx", q + X, "", ["x1b", "m2", "t2"]), T("p1", "+", "op"), T("ox", p + X, "", ["o1", "m3", "x2b"]), T("p2b", "+", "op"), T("two", s(p * q), "", ["o1b", "m4", "t2b"])],
+              note: "<i>x</i>·<i>x</i> = <i>x</i>², <i>x</i>·" + q + " = " + q + "<i>x</i>, " + p + "·<i>x</i> = " + p + "<i>x</i>, " + p + "·" + q + " = " + (p * q) + "." },
+            { fx: { type: "meet", ids: ["dx", "p1", "ox"] }, expr: [T("sq", X + "²"), T("p2", "+", "op"), T("tx", (p + q) + X, "", ["dx", "p1", "ox"]), T("p2b", "+", "op"), T("two", s(p * q))],
+              note: q + "<i>x</i> + " + p + "<i>x</i> = " + (p + q) + "<i>x</i>. Résultat : <b><i>x</i>² + " + (p + q) + "<i>x</i> + " + (p * q) + "</b>." },
+            { summary: true }
+          ];
+        }
+
+        // a·x + b = c
+        function equation(a, b, c) {
+          var r = c - b, x = r / a;
+          var m1 = "« On passe le " + b + " de l'autre côté en changeant son signe. »", m2 = "« On passe le " + a + " de l'autre côté en divisant. »";
+          EN[m1] = "“Move the " + b + " to the other side and flip its sign.”";
+          EN[m2] = "“Move the " + a + " to the other side by dividing.”";
+          return [
+            { top: true, expr: [T("a", a + X), T("p", "+", "op"), T("b", s(b)), T("eq", "=", "op"), T("c", s(c))], magic: m1 },
+            { expr: [T("a", a + X), T("p", "+", "op"), T("b", s(b)), T("m1", "−", "op"), T("b1", s(b)), T("eq", "=", "op"), T("c", s(c)), T("m2", "−", "op"), T("b2", s(b))], hl: ["m1", "b1", "m2", "b2"],
+              note: "On retire " + b + " <b>des deux côtés</b>, l'égalité reste vraie." },
+            { expr: [T("a", a + X), T("p", "+", "op"), T("z", "0", "", ["b", "m1", "b1"]), T("eq", "=", "op"), T("c", s(c)), T("m2", "−", "op"), T("b2", s(b))], hl: ["z"] },
+            { top: true, fx: { type: "meet", ids: ["c", "m2", "b2"] }, expr: [T("a", a + X), T("eq", "=", "op"), T("r4", s(r), "", ["c", "m2", "b2"])], magic: m2 },
+            { expr: [F([T("a", a + X)], [T("q1", s(a))]), T("eq", "=", "op"), F([T("r4", s(r))], [T("q2", s(a))])], hl: ["q1", "q2"], note: "On divise <b>les deux côtés</b> par " + a + "." },
+            { top: true, fx: { type: "meet", ids: ["r4", "q2"] }, expr: [T("xx", X, "", ["a", "q1"]), T("eq", "=", "op"), T("r2", s(x), "", ["r4", "q2"])] }
+          ];
+        }
+
+        // k·(A + B) → k copies → kA + kB (formes)
+        // Les trois écritures : k·(A + B), k copies de (A + B), les A puis les B
+        function shapeRows(k, A, B, from) {
+          var copies = [], sorted = [], os = [], qs = [], rest = [];
+          for (var i = 0; i < k; i++) {
+            var f = i && from ? ["n2"] : null;
+            if (i) { copies.push(T("pm" + i, "+", "op", f)); rest.push("pm" + i); }
+            copies.push(T("lp" + i, "(", "par", f), T("o" + i, A, "", f), T("pq" + i, "+", "op", f), T("q" + i, B, "", f), T("rp" + i, ")", "par", f));
+            if (i) { sorted.push(T("pm" + i, "+", "op")); rest.push("lp" + i, "o" + i, "pq" + i, "q" + i, "rp" + i); }
+            sorted.push(T("o" + i, A)); os.push("o" + i); qs.push("q" + i);
+          }
+          qs.forEach(function (id, i) { sorted.push(T(i ? "sq" + i : "pq0", "+", "op")); sorted.push(T(id, B)); });
+          return { copies: copies, sorted: sorted, os: os, qs: qs, rest: rest,
+                   start: [T("n2", s(k)), T("lp0", "(", "par"), T("o0", A), T("pq0", "+", "op"), T("q0", B), T("rp0", ")", "par")] };
+        }
+        function distribute(k, A, B) {
+          var R = shapeRows(k, A, B, true);
+          return [
+            { expr: R.start },
+            { expr: R.copies },
+            { expr: R.sorted, hl: R.os },
+            { expr: [T("k1", s(k), "", R.os.slice(1)), T("o0", A), T("pq0", "+", "op"), T("k2", s(k), "", R.qs.slice(1)), T("q0", B)] },
+            { summary: true }
+          ];
+        }
+        function factor(k, A, B) {
+          var R = shapeRows(k, A, B, false);
+          var sorted = R.sorted.map(function (t) {
+            var n = Number(t.id.slice(1));
+            return n && /^[oq]\d/.test(t.id) ? T(t.id, t.t, t.k, [t.id[0] === "o" ? "k1" : "k2"]) : t;
+          });
+          return [
+            { expr: [T("k1", s(k)), T("o0", A), T("pq0", "+", "op"), T("k2", s(k)), T("q0", B)] },
+            { expr: sorted },
+            { expr: R.copies, hl: R.os.concat(R.qs) },
+            { fx: { type: "meet", ids: R.rest }, expr: [T("n2", s(k), "", R.rest)].concat(R.start.slice(1)) },
+            { summary: true }
+          ];
+        }
+
+        // (x ± n)² et (x + n)(x − n) : la formule, sur des nombres
+        function square(sign, n) {
+          var m = sign === "+" ? "+" : "−", nn = s(n), ab = nn + X;
+          return [
+            { top: true, expr: [T("l", "(", "par"), T("a1", X), T("p", m, "op"), T("b1", nn), T("r", ")", "par"), T("sq", "2", "sup")],
+              magic: sign === "+" ? "« (a + b)² = a² + 2ab + b² »" : "« (a − b)² = a² − 2ab + b² »" },
+            { expr: [T("l", "(", "par"), T("a1", X), T("p", m, "op"), T("b1", nn), T("r", ")", "par"), T("l2", "(", "par", ["sq"]), T("a2", X, "", ["sq"]), T("p2", m, "op", ["sq"]), T("b2", nn, "", ["sq"]), T("r2", ")", "par", ["sq"])],
+              note: "Au carré : multiplié par lui-même." },
+            { expr: [T("a1", X), T("m1", "·", "op dot"), T("a2", X), T("p", m, "op"), T("a1b", X, "", ["a1"]), T("m2", "·", "op dot"), T("b2", nn), T("p2", m, "op"), T("b1", nn), T("m3", "·", "op dot"), T("a2b", X, "", ["a2"]), T("p3", "+", "op"), T("b1b", nn, "", ["b1"]), T("m4", "·", "op dot"), T("b2b", nn, "", ["b2"])],
+              stagger: { m1: 0, a1b: 1200, m2: 1200, m3: 2400, a2b: 2400, p3: 3600, b1b: 3600, m4: 3600, b2b: 3600 }, hl: sign === "+" ? undefined : ["p3"],
+              note: sign === "+" ? "Quatre produits." : "(−" + n + ")·(−" + n + ") = +" + (n * n) + " : moins par moins donne plus." },
+            { expr: [T("aa", X, "", ["a1", "m1", "a2"]), T("aa2", "2", "sup"), T("p", m, "op"), T("ab", ab, "", ["a1b", "m2", "b2"]), T("p2", m, "op"), T("ba", ab, "", ["b1", "m3", "a2b"]), T("p3", "+", "op"), T("bb", s(n * n), "", ["b1b", "m4", "b2b"])],
+              hl: ["ab", "ba"], note: "<i>x</i>·" + n + " = " + n + "·<i>x</i> : les deux termes du milieu sont égaux." },
+            { top: true, fx: { type: "meet", ids: ["ab", "p2", "ba"] },
+              expr: [T("aa", X), T("aa2", "2", "sup"), T("p", m, "op"), T("tab", (2 * n) + X, "", ["ab", "p2", "ba"]), T("p3", "+", "op"), T("bb", s(n * n))],
+              note: m + n + "<i>x</i> " + m + " " + n + "<i>x</i> = " + (m === "+" ? "" : "−") + (2 * n) + "<i>x</i> : <b><i>x</i>² " + m + " " + (2 * n) + "<i>x</i> + " + (n * n) + "</b>." },
+            { summary: true }
+          ];
+        }
+        function conj(n) {
+          var nn = s(n), ab = nn + X;
+          return [
+            { top: true, expr: [T("l", "(", "par"), T("a1", X), T("p", "+", "op"), T("b1", nn), T("r", ")", "par"), T("l2", "(", "par"), T("a2", X), T("p2", "−", "op"), T("b2", nn), T("r2", ")", "par")], magic: "« (a + b)(a − b) = a² − b² »" },
+            { expr: [T("a1", X), T("m1", "·", "op dot"), T("a2", X), T("p2", "−", "op"), T("a1b", X, "", ["a1"]), T("m2", "·", "op dot"), T("b2", nn), T("p", "+", "op"), T("b1", nn), T("m3", "·", "op dot"), T("a2b", X, "", ["a2"]), T("p3", "−", "op"), T("b1b", nn, "", ["b1"]), T("m4", "·", "op dot"), T("b2b", nn, "", ["b2"])],
+              stagger: { m1: 0, a1b: 1200, m2: 1200, m3: 2400, a2b: 2400, p3: 3600, b1b: 3600, m4: 3600, b2b: 3600 } },
+            { expr: [T("aa", X, "", ["a1", "m1", "a2"]), T("aa2", "2", "sup"), T("p2", "−", "op"), T("ab", ab, "", ["a1b", "m2", "b2"]), T("p", "+", "op"), T("ba", ab, "", ["b1", "m3", "a2b"]), T("p3", "−", "op"), T("bb", s(n * n), "", ["b1b", "m4", "b2b"])],
+              hl: ["p2", "ab", "p", "ba"], note: "−" + n + "<i>x</i> et +" + n + "<i>x</i> sont opposés." },
+            { top: true, fx: { type: "meet", ids: ["p2", "ab", "p", "ba"] }, expr: [T("aa", X), T("aa2", "2", "sup"), T("p3", "−", "op"), T("bb", s(n * n))],
+              note: "Ils s'annulent : <b><i>x</i>² − " + (n * n) + "</b>." },
+            { summary: true }
+          ];
+        }
+        function cplx(n) {
+          var nn = s(n), ni = nn + I, nix = nn + I + X;
+          return [
+            { top: true, expr: [T("l", "(", "par"), T("a1", X), T("p", "+", "op"), T("i1", ni), T("r", ")", "par"), T("l2", "(", "par"), T("a2", X), T("p2", "−", "op"), T("i2", ni), T("r2", ")", "par")],
+              magic: "« Dans ℂ, a² + b² se factorise : (a + ib)(a − ib) »" },
+            { expr: [T("a1", X), T("m1", "·", "op dot"), T("a2", X), T("p2", "−", "op"), T("a1b", X, "", ["a1"]), T("m2", "·", "op dot"), T("i2", ni), T("p", "+", "op"), T("i1", ni), T("m3", "·", "op dot"), T("a2b", X, "", ["a2"]), T("p3", "−", "op"), T("i1b", ni, "", ["i1"]), T("m4", "·", "op dot"), T("i2b", ni, "", ["i2"])],
+              stagger: { m1: 0, a1b: 1200, m2: 1200, m3: 2400, a2b: 2400, p3: 3600, i1b: 3600, m4: 3600, i2b: 3600 } },
+            { expr: [T("aa", X, "", ["a1", "m1", "a2"]), T("aa2", "2", "sup"), T("p2", "−", "op"), T("ab", nix, "", ["a1b", "m2", "i2"]), T("p", "+", "op"), T("ba", nix, "", ["i1", "m3", "a2b"]), T("p3", "−", "op"), T("bb", s(n * n), "", ["i1b", "m4", "i2b"]), T("ii", I, "", ["i1b", "m4", "i2b"]), T("ii2", "2", "sup")],
+              hl: ["p2", "ab", "p", "ba"], note: "Les termes du milieu sont opposés ; (" + n + "<i>i</i>)·(" + n + "<i>i</i>) = " + (n * n) + "<i>i</i>²." },
+            { fx: { type: "meet", ids: ["p2", "ab", "p", "ba"] }, expr: [T("aa", X), T("aa2", "2", "sup"), T("p3", "−", "op"), T("bb", s(n * n)), T("ii", I), T("ii2", "2", "sup")] },
+            { expr: [T("aa", X), T("aa2", "2", "sup"), T("p3", "−", "op"), T("bb", s(n * n)), T("dd", "·", "op dot"), T("ii", "(−1)", "", ["ii", "ii2"])], hl: ["ii"], note: "<b><i>i</i>² = −1</b>." },
+            { top: true, expr: [T("aa", X), T("aa2", "2", "sup"), T("p3", "+", "op", ["p3", "ii"]), T("bb", s(n * n))],
+              note: "−" + (n * n) + "·(−1) = +" + (n * n) + " : <b><i>x</i>² + " + (n * n) + "</b>, factorisé dans ℂ." },
+            { summary: true }
+          ];
+        }
+
+        var GEN = {
+          "−( … )": [minusParen(4, 5, 3), minusParen(5, 2, 4)],
+          "Opposés": [opposites(4, 8, 6), opposites(5, 9, 4)],
+          "Fraction": [fraction(2, 7, 3), fraction(3, 5, 5)],
+          "Piège": [trap(5), trap(4)],
+          "Distribuer": [distribute(3, SH.o, SH.q), distribute(2, SH.t, SH.o)],
+          "Factoriser": [factor(3, SH.o, SH.q), factor(2, SH.t, SH.o)],
+          "Double": [double(2, 3), double(3, 4)],
+          "(a+b)²": [square("+", 3), square("+", 5)],
+          "(a−b)²": [square("−", 4), square("−", 2)],
+          "(a+b)(a−b)": [conj(3), conj(5)],
+          "a²+b² ℂ": [cplx(2), cplx(3)],
+          "Équation": [equation(3, 5, 17), equation(4, 1, 21)]
+        };
+        var GEN_V = {
+          "3·( … )": [timesParen(2, 3, 5, 4), timesParen(4, 2, 3, 2)],
+          "Regrouper": [regroup(4, 3, 8, 6), regroup(2, 5, 9, 4)]
+        };
+        DEMOS.forEach(function (d) {
+          if (GEN[d.title]) d.alts = [d.steps].concat(GEN[d.title]);
+          if (d.variants) Object.keys(d.variants).forEach(function (k) {
+            var v = d.variants[k];
+            if (GEN_V[v.title]) v.alts = [v.steps].concat(GEN_V[v.title]);
+          });
+        });
+      })();
+
+      // Passage courant de chaque chapitre (mémorisé) : on avance d'un cran
+      // à chaque nouveau départ
+      var altIdx = {};
+      try { altIdx = JSON.parse(localStorage.getItem("pasapas_alt") || "{}") || {}; } catch (e) {}
+      function altSource(d) { var vk = variantKey(d); return vk ? d.variants[vk] : d; }
+      function curSteps(d) {
+        var src = altSource(d);
+        if (!src.alts) return src === d ? d.baseSteps : src.steps;
+        return src.alts[(altIdx[src.title] || 0) % src.alts.length];
+      }
+      function renew(d) {
+        if (d.custom) return;
+        if (d.gen) { d.steps = d.gen(); return; }
+        var src = altSource(d);
+        if (src.alts) {
+          // La toute première fois : l'exemple d'origine
+          altIdx[src.title] = src.title in altIdx ? (altIdx[src.title] + 1) % src.alts.length : 0;
+          try { localStorage.setItem("pasapas_alt", JSON.stringify(altIdx)); } catch (e) {}
+        }
+        d.steps = curSteps(d);
+      }
+
       // ---------- Écriture usuelle ----------
       // Pendant les calculs, tous les produits ont leur point (2·x). À la
       // fin, une étape de plus revient à l'écriture habituelle (2x) : même
@@ -2083,8 +2378,8 @@
       }
       DEMOS.forEach(function (d) {
         if (d.custom) return;
-        addUsual(d.steps);
-        if (d.variants) Object.keys(d.variants).forEach(function (k) { addUsual(d.variants[k].steps); });
+        (d.alts || [d.steps]).forEach(addUsual);
+        if (d.variants) Object.keys(d.variants).forEach(function (k) { var v = d.variants[k]; (v.alts || [v.steps]).forEach(addUsual); });
       });
 
       // ---------- Vérification des calculs ----------
@@ -2098,6 +2393,8 @@
         return t.t
           .replace(/<svg[^>]*><circle[^>]*\/><\/svg>/g, "O")
           .replace(/<svg[^>]*><rect[^>]*\/><\/svg>/g, "Q")
+          // le triangle, troisième forme, se calcule comme une lettre de plus
+          .replace(/<svg[^>]*><path[^>]*\/><\/svg>/g, "a")
           .replace(/<[^>]+>/g, "")
           .replace(/i/g, "I")
           .replace(/−/g, "-").replace(/·/g, "*").replace(/²/g, "^2");
@@ -2137,8 +2434,11 @@
         var lists = [];
         DEMOS.forEach(function (d) {
           if (d.custom) return;
-          lists.push({ title: d.title, steps: d.steps });
-          if (d.variants) Object.keys(d.variants).forEach(function (k) { lists.push({ title: d.variants[k].title, steps: d.variants[k].steps }); });
+          (d.alts || [d.steps]).forEach(function (st, n) { lists.push({ title: d.title + (n ? " #" + (n + 1) : ""), steps: st }); });
+          if (d.variants) Object.keys(d.variants).forEach(function (k) {
+            var v = d.variants[k];
+            (v.alts || [v.steps]).forEach(function (st, n) { lists.push({ title: v.title + (n ? " #" + (n + 1) : ""), steps: st }); });
+          });
         });
         lists.forEach(function (demo) {
           var ref = null, root = null;
@@ -3004,7 +3304,7 @@
           if (gameAuto) {
             gameAuto = false;
             if (gameMode && cur < demo.steps.length - 1) setTimeout(function () {
-              if (!busy && !choiceEl && DEMOS[demoIndex] === demo) gameChoice(cur + 1);
+              if (!busy && !choiceEl && DEMOS[demoIndex] === demo && demo.steps === st && cur < st.length - 1) gameChoice(cur + 1);
             }, ms(500));
           }
         });
@@ -3030,7 +3330,7 @@
         if (cur === last) {
           if (busy) return;
           gameRun = { demo: DEMOS[demoIndex].title, faults: 0, counted: false };
-          if (DEMOS[demoIndex].gen) { DEMOS[demoIndex].steps = DEMOS[demoIndex].gen(); buildDots(DEMOS[demoIndex]); }
+          renew(DEMOS[demoIndex]); buildDots(DEMOS[demoIndex]);
           cur = 0;
           build(DEMOS[demoIndex].steps[0]);
           refreshUi();
@@ -3139,6 +3439,7 @@
 
       function gameChoice(to) {
         var st = DEMOS[demoIndex].steps[to], here = DEMOS[demoIndex].steps[cur];
+        if (!st || !here) return false;
         if (!st.expr || st.summary || !here.expr) return false;
         if (exprText(st.expr) === exprText(here.expr)) return false;
         var wrong = makeWrong(st);
@@ -3200,7 +3501,7 @@
         if (busy) return;
         gameRun = { demo: DEMOS[i].title, faults: 0, counted: false };
         hideHome();
-        if (DEMOS[i].gen && i !== demoIndex) DEMOS[i].steps = DEMOS[i].gen();
+        if (i !== demoIndex) renew(DEMOS[i]);
         document.getElementById("title").textContent = tr(DEMOS[i].label || DEMOS[i].title);
         demoIndex = i;
         cur = 0;
@@ -5097,8 +5398,9 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
-        { v: "v65", text: "−×− : un nombre différent à chaque passage, de plus en plus grand (3, 5, 8, 12, 25, 47, 100, 365, 1000) ; la droite se met à l'échelle. Réussir le chapitre débloque le badge « moins par moins » : (−1)·(−1) = 1." },
+        { v: "v67", text: "Trois passages, trois exercices différents : chaque chapitre du jeu (−( … ), Opposés, Fraction, Piège, Distribuer, Factoriser, Double, identités, ℂ, Équation, et leurs versions ℕ) change de nombres à chaque passage ; le premier reste l'exemple d'origine." },
         { v: "v66", text: "Cadre de dix : il reste affiché, c'est la flèche qui lance le résultat. Soustraction posée : « = 0 » sous la barre. Badges en haut : un appui explique ce qu'ils veulent dire (✦ 10, ✦ (−1)·(−1))." },
+        { v: "v65", text: "−×− : un nombre différent à chaque passage, de plus en plus grand (3, 5, 8, 12, 25, 47, 100, 365, 1000) ; la droite se met à l'échelle. Réussir le chapitre débloque le badge « moins par moins » : (−1)·(−1) = 1." },
         { v: "v64", text: "Les chapitres s'adaptent à l'ensemble choisi au lieu de disparaître : dans ℕ, −( … ) devient 3·(2x + 4 + x) (on distribue puis on regroupe, 9x + 12) et Opposés devient Regrouper (3x + 7 + 2x + 5 = 5x + 12)." },
         { v: "v63", text: "Mode jeu : après une réponse, la question suivante s'affiche d'elle-même, sans appuyer sur la flèche." },
         { v: "v62", text: "Cadre de dix pour les négatifs, plus clair et plus lent : chaque jeton jaune porte un « − » (il vaut −1), et une légende écrit le calcul sous le cadre, (−2) + (−1) = −(2 + 1) = −3." },
@@ -5293,9 +5595,9 @@
       function applySets() {
         var cur0 = DEMOS[demoIndex], before = cur0.steps;
         DEMOS.forEach(function (d) {
-          if (!d.variants) return;
+          if (!d.variants && !d.alts) return;
           var vk = variantKey(d);
-          d.steps = vk ? d.variants[vk].steps : d.baseSteps;
+          d.steps = curSteps(d);
           d.label = vk ? d.variants[vk].title : null;
         });
         tabsEl.querySelectorAll(".tab").forEach(function (t, k) { t.hidden = !available(DEMOS[k]); });
