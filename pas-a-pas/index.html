@@ -3473,23 +3473,64 @@
         return out;
       }
 
-      function makeWrong(step) {
+      // Fausse proposition du mode jeu. Les chiffres ne changent jamais
+      // (sinon la bonne réponse se devine) : on se trompe sur ce que
+      // l'étape fait vraiment — une opération ou un signe.
+      //   1. un résultat calculé avec l'opération inverse : (−2) + (−1)
+      //      donne −1 au lieu de −3, 7 + 5 donne 2 au lieu de 12
+      //   2. un signe qui vient de changer à cette étape, laissé tel quel
+      //      ou retourné (moins par moins…)
+      //   3. à défaut, n'importe quel signe + / −
+      function makeWrong(step, prev) {
         var copy = JSON.parse(JSON.stringify(step.expr));
         var toks = flatTokens(copy, []);
-        var cands = [];
+        var before = {}, prevToks = prev && prev.expr ? flatTokens(prev.expr, []) : [];
+        prevToks.forEach(function (t) { if (t.id) before[t.id] = t.t; });
+        var changed = function (t) { return !(t.id in before) || before[t.id] !== t.t || (step.hl || []).indexOf(t.id) >= 0; };
+        var tiers = [[], [], []];
+
+        // 1. Résultat d'un calcul, refait avec une opération retournée
         toks.forEach(function (t) {
-          if (t.t === "+" || t.t === "−") cands.push(function () { var o = t.t; t.t = o === "+" ? "−" : "+"; return function () { t.t = o; }; });
-          var m = /^(\(?−?)(\d+)/.exec(t.t);
-          if (m) cands.push(function () { var o = t.t; t.t = t.t.replace(/\d+/, String(Number(m[2]) + 1)); return function () { t.t = o; }; });
+          var m = /^(\(?)(−?)(\d+)(.*)$/.exec(t.t);
+          if (!m || !t.from || t.from.length < 2) return;
+          var src = prevToks.filter(function (p) { return t.from.indexOf(p.id) >= 0; });
+          var txt = src.map(function (p) { return /\bsup\b/.test(p.k) ? "^" + tokText(p) : tokText(p); }).join("");
+          if (/[a-zA-Z(]/.test(txt.replace(/^[-+]/, ""))) return;
+          for (var k = 1; k < txt.length; k++) {
+            if (txt[k] !== "+" && txt[k] !== "-") continue;
+            var alt = txt.slice(0, k) + (txt[k] === "+" ? "-" : "+") + txt.slice(k + 1), v;
+            try { v = evalExpr(alt, { x: 0, O: 0, Q: 0, a: 0, b: 0 }); } catch (e) { continue; }
+            if (!isFinite(v) || v !== Math.round(v)) continue;
+            (function (v) {
+              tiers[0].push(function () {
+                var o = t.t;
+                t.t = m[1] + (v < 0 ? "−" : "") + Math.abs(v) + m[4];
+                return function () { t.t = o; };
+              });
+            })(v);
+          }
         });
+        // 2 et 3. Signes : d'abord ceux que l'étape vient de toucher
+        toks.forEach(function (t) {
+          var tier = changed(t) ? 1 : 2;
+          if ((t.t === "+" || t.t === "−") && /\bop\b/.test(t.k)) {
+            tiers[tier].push(function () { var o = t.t; t.t = o === "+" ? "−" : "+"; return function () { t.t = o; }; });
+          } else if (tier === 1 && /^\(?−\d/.test(t.t)) {
+            tiers[1].push(function () { var o = t.t; t.t = t.t.replace(/^\(−(\d+)\)$/, "$1").replace("−", ""); return function () { t.t = o; }; });
+          }
+        });
+
         var good = exprText(step.expr);
-        for (var n = 0; n < 12 && cands.length; n++) {
-          var k = Math.floor(Math.random() * cands.length);
-          var undo = cands[k]();
-          var txt = exprText(copy);
-          if (txt !== good && !sameValue(txt, good)) return { expr: copy };
-          undo();
-          cands.splice(k, 1);
+        for (var n = 0; n < tiers.length; n++) {
+          var cands = tiers[n].slice();
+          while (cands.length) {
+            var k = Math.floor(Math.random() * cands.length);
+            var undo = cands[k]();
+            var txt = exprText(copy);
+            if (txt !== good && !sameValue(txt, good)) return { expr: copy };
+            undo();
+            cands.splice(k, 1);
+          }
         }
         return null;
       }
@@ -3499,7 +3540,7 @@
         if (!st || !here) return false;
         if (!st.expr || st.summary || !here.expr) return false;
         if (exprText(st.expr) === exprText(here.expr)) return false;
-        var wrong = makeWrong(st);
+        var wrong = makeWrong(st, here);
         if (!wrong) return false;
         choiceEl = document.createElement("div");
         choiceEl.className = "choices";
@@ -5592,6 +5633,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v75", text: "Mode jeu : la fausse proposition garde les mêmes chiffres. Elle se trompe sur ce que fait l'étape : l'opération inverse (7 + 5 → 2, (−2) + (−1) → −1) ou le signe qui vient de changer (moins par moins laissé en moins). Plus de réponse absurde qui se repère au premier coup d'œil." },
         { v: "v74", text: "Fiche des règles : racines redessinées (le signe √ et sa barre forment un seul bloc, qui s'étire sur une fraction et ne se coupe plus en fin de ligne). Une égalité a = b n'est plus coupée au milieu : on passe à la ligne entre deux égalités, et une égalité trop longue ne se coupe qu'à un signe =." },
         { v: "v73", text: "Une seule réussite sans faute suffit pour valider un chapitre et gagner son badge (au lieu de 3). Rejouer donne toujours un autre exercice." },
         { v: "v72", text: "Badges : plus de pastilles en haut ni de ✦. Chaque badge est une petite icône au trait (cadre de dix, deux demi-tours) rangée sous la barre des ensembles ; un appui explique le badge." },
