@@ -69,8 +69,10 @@
     header {
       position: relative;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 0.8rem;
+      row-gap: 0.35rem;
     }
 
     .menu-btn {
@@ -252,12 +254,10 @@
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--ink-soft);
-      /* Jamais sur plusieurs lignes, même à côté des badges */
+      /* Le titre entier, sur sa propre ligne sous les boutons */
+      order: 10;
+      flex: 1 0 100%;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      min-width: 3em;
-      flex: 0 1 auto;
     }
 
     .tabs {
@@ -2561,15 +2561,8 @@
         var avail = container.clientWidth - 16; // petite marge de sécurité
         var w = expr.scrollWidth;
         if (avail > 0 && w > avail) {
-          var scale = avail / w, MIN = 0.55;
-          if (scale < MIN) {
-            // Trop long pour une ligne lisible : on passe sur deux lignes
-            // plutôt que d'écrire minuscule (ou de déborder de l'écran)
-            scale = MIN;
-            expr.style.flexWrap = "wrap";
-            expr.style.rowGap = "0.25em";
-            expr.style.width = Math.floor(avail / MIN) + "px";
-          }
+          // Toujours une seule ligne : plus petit si besoin, jamais hors écran
+          var scale = Math.max(0.2, avail / w);
           expr.style.transform = "scale(" + scale.toFixed(3) + ")";
         }
       }
@@ -5586,7 +5579,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
-        { v: "v70", text: "Décompositions écrites : sous le cadre de dix (8 = 5 + 3, 5 = 2 + 3, et 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13) et à la fin des manches de Singapour. Expressions trop longues : sur deux lignes au lieu de déborder de l'écran. Titre du chapitre sur une ligne à côté des badges." },
+        { v: "v71", text: "Titre du chapitre en entier, sur sa propre ligne sous les boutons. Expression trop longue : une seule ligne, écrite plus petit, jamais hors de l'écran." },
+        { v: "v70", text: "Décompositions écrites : sous le cadre de dix (8 = 5 + 3, 5 = 2 + 3, et 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13) et à la fin des manches de Singapour." },
         { v: "v69", text: "Fusion : les 4 derniers pouvoirs de la fiche. Compléter le carré « + c − c » (gagné avec (a+b)²), puissances 2ⁿ⁺¹ = 2·2ⁿ (Pascal), quantité conjuguée 1/(√2 − 1) = √2 + 1 ((a+b)(a−b)), télescopage 1/(k(k+1)) = 1/k − 1/(k+1) (Piège). 16 buts en tout." },
         { v: "v68", text: "Fusion : deux pouvoirs de plus. « Développer » k·(a + b) → k·a + k·b (gagné avec Distribuer) et « découper un nombre » 7 → 5 + 2 pour faire apparaître un facteur (gagné avec Calcul). Deux buts en plus ; 5·x + 5 fusionne en 5·(x + 1)." },
         { v: "v67", text: "Trois passages, trois exercices différents : chaque chapitre du jeu (−( … ), Opposés, Fraction, Piège, Distribuer, Factoriser, Double, identités, ℂ, Équation, et leurs versions ℕ) change de nombres à chaque passage ; le premier reste l'exemple d'origine." },
