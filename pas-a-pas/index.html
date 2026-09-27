@@ -252,6 +252,12 @@
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--ink-soft);
+      /* Jamais sur plusieurs lignes, même à côté des badges */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 3em;
+      flex: 0 1 auto;
     }
 
     .tabs {
@@ -686,6 +692,8 @@
       pointer-events: none;
     }
 
+    .blocks-dec { font-size: 0.8rem; color: var(--ink-soft); }
+
     .unit {
       display: flex;
       align-items: center;
@@ -754,6 +762,11 @@
       display: flex;
       gap: 0.3rem;
       flex-shrink: 0;
+    }
+
+    @media (max-width: 420px) {
+      header { gap: 0.5rem; }
+      .badge { padding: 0.2rem 0.45rem; font-size: 0.66rem; letter-spacing: 0; }
     }
 
     .badge {
@@ -2543,10 +2556,20 @@
       // disponible.
       function fitOneLine(expr, container) {
         expr.style.transform = "scale(1)";
+        expr.style.flexWrap = "";
+        expr.style.width = "";
         var avail = container.clientWidth - 16; // petite marge de sécurité
         var w = expr.scrollWidth;
         if (avail > 0 && w > avail) {
-          var scale = Math.max(0.42, avail / w);
+          var scale = avail / w, MIN = 0.55;
+          if (scale < MIN) {
+            // Trop long pour une ligne lisible : on passe sur deux lignes
+            // plutôt que d'écrire minuscule (ou de déborder de l'écran)
+            scale = MIN;
+            expr.style.flexWrap = "wrap";
+            expr.style.rowGap = "0.25em";
+            expr.style.width = Math.floor(avail / MIN) + "px";
+          }
           expr.style.transform = "scale(" + scale.toFixed(3) + ")";
         }
       }
@@ -3037,6 +3060,22 @@
         stage.appendChild(cap);
         units.push({ el: cap, x: cx, y: top + 2 * cell + 16, at: "translate(-50%,0)" });
 
+        // Décompositions sous la légende : 8 = 5 + 3 (une rangée de 5 et 3)
+        var dec = document.createElement("div");
+        dec.className = "blocks-cap blocks-dec";
+        dec.style.left = cx + "px";
+        dec.style.top = (top + 2 * cell + 34) + "px";
+        stage.appendChild(dec);
+        units.push({ el: dec, x: cx, y: top + 2 * cell + 42, at: "translate(-50%,0)" });
+        var decs = [];
+        function addDec(t) {
+          decs.push(t);
+          dec.textContent = decs.join("   ·   ");
+          var half = dec.offsetWidth / 2, W = stage.clientWidth;
+          dec.style.left = Math.max(half + 6, Math.min(W - half - 6, cx)) + "px";
+          dec.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms(400) });
+        }
+
         // 2. Chaque nombre part de son jeton et remplit les cases suivantes
         var next = 0;
         var chain = Promise.all(appear).then(function () { return wait(300); });
@@ -3063,7 +3102,14 @@
                 { transform: "translate(0,0) scale(1)", opacity: 1 }
               ], { duration: ms(1100), delay: ms(480 * i), easing: "cubic-bezier(.3,1.2,.5,1)", fill: "backwards" })));
             }
-            return Promise.all(flights).then(function () { return wait(1000); });
+            return Promise.all(flights).then(function () {
+              var a = Math.abs(r.b.n), sg = r.b.n < 0 ? "−" : "";
+              if (a > 5 && a < 10) addDec(sg + a + " = " + sg + "5 " + (sg ? "− " : "+ ") + (a - 5));
+              // Le 2e nombre se coupe là où la dizaine est pleine : 5 = 2 + 3
+              var before = first % 10, room = 10 - before;
+              if (before > 0 && a > room && a < 10 && !sg) addDec(a + " = " + room + " + " + (a - room));
+              return wait(1000);
+            });
           });
         });
 
@@ -3072,6 +3118,11 @@
           var steps = neg
             ? ["−(" + rows.map(function (r) { return -r.b.n; }).join(" + ") + ")", String(sum).replace("-", "−")]
             : [String(sum)];
+          // Faire 10 : 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13
+          if (!neg && rows.length === 2 && sum > 10 && rows[0].b.n < 10) {
+            var p0 = rows[0].b.n, fill = 10 - p0, rest = sum - 10;
+            steps = [p0 + " + " + fill + " + " + rest, "10 + " + rest, String(sum)];
+          }
           var txt = cap.textContent, c2 = Promise.resolve();
           steps.forEach(function (st) {
             c2 = c2.then(function () {
@@ -3823,7 +3874,9 @@
       function sgWinSub() {
         sgState.done = true;
         var a = sgState.a, b = sgState.b, u = sgState.u;
-        sgFinish(["10 − " + b + " + " + u, (10 - b) + " + " + u, a + " − " + b + " = " + (a - b)]);
+        var r = a - b;
+        sgFinish(["10 − " + b + " + " + u, (10 - b) + " + " + u, a + " − " + b + " = " + r],
+          [a + " = 10 + " + u].concat(r > 5 ? [r + " = 5 + " + (r - 5)] : []));
       }
 
       // Boutons « Voir la solution » et « Règles », calés à gauche
@@ -3860,11 +3913,22 @@
           "10 + " + rest,
           a + " + " + b + " = " + (a + b)
         ];
-        sgFinish(seq);
+        // Les décompositions restent écrites sous le cadre : 8 = 5 + 3
+        // (une rangée pleine de 5 et 3), 5 = 2 + 3 (ce qui complète la
+        // dizaine et ce qui reste), 13 = 10 + 3
+        var dec = [];
+        if (a > 5) dec.push(a + " = 5 + " + (a - 5));
+        if (rest > 0) dec.push(b + " = " + fill + " + " + rest);
+        if (rest > 0) dec.push((a + b) + " = 10 + " + rest);
+        sgFinish(seq, dec);
       }
 
-      function sgFinish(seq) {
+      function sgFinish(seq, dec) {
         var chain = wait(500);
+        if (dec && dec.length) chain = chain.then(function () {
+          sgMsg.textContent = dec.join("   ·   ");
+          sgMsg.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms(500) });
+        });
         seq.forEach(function (txt) {
           chain = chain.then(function () {
             sgEq.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: ms(400) });
@@ -3909,7 +3973,7 @@
           if (sgStreakN >= 3 && !hasBadge()) {
             SND.badge();
             setBadge(true);
-            sgMsg.textContent = "✦ 10";
+            sgMsg.textContent = (sgMsg.textContent ? sgMsg.textContent + "   ·   " : "") + "✦ 10";
             badgeChip.animate([{ transform: "scale(1.6)" }, { transform: "scale(1)" }], { duration: ms(700), easing: "ease-out" });
           }
           sgState.ready = true;
@@ -5522,6 +5586,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v70", text: "Décompositions écrites : sous le cadre de dix (8 = 5 + 3, 5 = 2 + 3, et 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13) et à la fin des manches de Singapour. Expressions trop longues : sur deux lignes au lieu de déborder de l'écran. Titre du chapitre sur une ligne à côté des badges." },
         { v: "v69", text: "Fusion : les 4 derniers pouvoirs de la fiche. Compléter le carré « + c − c » (gagné avec (a+b)²), puissances 2ⁿ⁺¹ = 2·2ⁿ (Pascal), quantité conjuguée 1/(√2 − 1) = √2 + 1 ((a+b)(a−b)), télescopage 1/(k(k+1)) = 1/k − 1/(k+1) (Piège). 16 buts en tout." },
         { v: "v68", text: "Fusion : deux pouvoirs de plus. « Développer » k·(a + b) → k·a + k·b (gagné avec Distribuer) et « découper un nombre » 7 → 5 + 2 pour faire apparaître un facteur (gagné avec Calcul). Deux buts en plus ; 5·x + 5 fusionne en 5·(x + 1)." },
         { v: "v67", text: "Trois passages, trois exercices différents : chaque chapitre du jeu (−( … ), Opposés, Fraction, Piège, Distribuer, Factoriser, Double, identités, ℂ, Équation, et leurs versions ℕ) change de nombres à chaque passage ; le premier reste l'exemple d'origine." },
