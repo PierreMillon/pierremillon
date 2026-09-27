@@ -757,30 +757,33 @@
       .arrow-btn { width: 2.6rem; height: 2.6rem; }
     }
 
-    .badges {
-      margin-left: auto;
+    .badge-shelf {
       display: flex;
-      gap: 0.3rem;
-      flex-shrink: 0;
+      justify-content: center;
+      gap: 0.5rem;
+      flex: none;
     }
-
-    @media (max-width: 420px) {
-      header { gap: 0.5rem; }
-      .badge { padding: 0.2rem 0.45rem; font-size: 0.66rem; letter-spacing: 0; }
-    }
+    .badge-shelf:not(:has(.badge:not([hidden]))) { display: none; }
 
     .badge {
-      font: inherit;
+      width: 1.9rem;
+      height: 1.9rem;
+      padding: 0;
+      display: grid;
+      place-items: center;
       background: none;
       cursor: pointer;
       touch-action: manipulation;
-      white-space: nowrap;
-      font-size: 0.72rem;
-      letter-spacing: 0.08em;
-      color: var(--accent);
-      border: 1px solid var(--accent);
-      border-radius: 999px;
-      padding: 0.25rem 0.6rem;
+      border: 1px solid var(--ink-soft);
+      border-radius: 50%;
+    }
+    .badge svg {
+      width: 1.25rem;
+      height: 1.25rem;
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 1.2;
+      stroke-linecap: round;
     }
 
     /* Chapitre Singapour : défi « faire 10 » avec de vrais jetons à glisser */
@@ -1411,10 +1414,6 @@
       <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false">☰</button>
       <button class="menu-btn" id="homeBtn" aria-label="Accueil">⌂</button>
       <h1 id="title">Pas à Pas</h1>
-      <span class="badges">
-        <button class="badge" id="badgeChip" title="Badge cadre de dix" hidden>✦ 10</button>
-        <button class="badge" id="badgeMM" title="Badge moins par moins" hidden>✦ (−1)·(−1)</button>
-      </span>
     </header>
 
     <div class="menu-panel" id="menuPanel" hidden>
@@ -1439,7 +1438,7 @@
     <section class="sg" id="sg" hidden>
       <div class="sg-eq" id="sgEq"></div>
       <div class="sg-board" id="sgBoard"></div>
-      <div class="sg-streak" id="sgStreak"><span></span><span></span><span></span></div>
+      <div class="sg-streak" id="sgStreak"><span></span></div>
       <div class="sg-actions">
         <button class="sg-act" id="sgSolve" data-tr="Voir la solution">Voir la solution</button>
         <button class="sg-act" id="sgRules" data-tr="Règles">Règles</button>
@@ -1525,6 +1524,17 @@
 
     <div class="univ" id="univ" aria-label="Ensemble de travail"></div>
 
+    <!-- Badges gagnés : des icônes au trait sous les ensembles. Un appui
+         explique le badge (à terme : il fera l'opération d'un coup). -->
+    <div class="badge-shelf" id="badgeShelf">
+      <button class="badge" id="badgeChip" aria-label="Badge cadre de dix" hidden>
+        <svg viewBox="0 0 20 20"><rect x="1.5" y="5.5" width="17" height="9" rx="1"/><circle cx="3.9" cy="8" r="1.1"/><circle cx="7" cy="8" r="1.1"/><circle cx="10" cy="8" r="1.1"/><circle cx="13" cy="8" r="1.1"/><circle cx="16.1" cy="8" r="1.1"/><circle cx="3.9" cy="12" r="1.1"/><circle cx="7" cy="12" r="1.1"/><circle cx="10" cy="12" r="1.1"/><circle cx="13" cy="12" r="1.1"/><circle cx="16.1" cy="12" r="1.1"/></svg>
+      </button>
+      <button class="badge" id="badgeMM" aria-label="Badge (−1)·(−1) = 1" hidden>
+        <svg viewBox="0 0 20 20"><line x1="2" y1="10" x2="18" y2="10" stroke-opacity="0.45"/><path d="M16 10 A6 6 0 0 0 4 10"/><path d="M4 10 A6 6 0 0 0 16 10" stroke-dasharray="1.6 1.6"/><path d="M14.2 12.6 L16 10 L17.4 12.8"/></svg>
+      </button>
+    </div>
+
     <div class="controls" id="controls">
       <button class="arrow-btn" id="prevBtn" aria-label="Retour">←</button>
       <button class="arrow-btn" id="nextBtn" aria-label="Suivant">→</button>
@@ -1533,6 +1543,9 @@
 
   <script>
     (function () {
+      // Réussites sans faute pour valider un chapitre (et gagner son badge)
+      var WIN = 1;
+
       // ---------- Données ----------
       // Un jeton : { id, t: contenu HTML, k: classe, from: ids d'origine }
       // Une fraction : { frac: true, num: [jetons], den: [jetons] }
@@ -3638,7 +3651,7 @@
       // cadres de dix. Le premier nombre est déjà posé ; on glisse soi-même
       // les jetons du second. Règle : on remplit la dizaine avant d'en
       // commencer une autre — un jeton lâché dans le 2e cadre trop tôt
-      // revient. 3 réussites de suite sans erreur = badge.
+      // revient. Une réussite sans erreur (WIN) = badge.
 
       var sgEl = document.getElementById("sg");
       var sgEq = document.getElementById("sgEq");
@@ -3881,11 +3894,11 @@
       var SG_RULES = {
         fr: ["<b>Addition</b> — pose les jetons du 2e nombre dans les cases (appui bref ou glisser). Remplis d'abord la 1re dizaine, puis la 2e : c'est « faire 10 ».",
              "<b>Soustraction</b> — retire les jetons de la dizaine pleine, pas les jetons isolés : 13 − 5 = (10 − 5) + 3.",
-             "Un jeton posé se retire d'un appui. 3 réussites de suite sans erreur : badge ✦ 10.",
+             "Un jeton posé se retire d'un appui. Une réussite sans erreur : badge 10.",
              "<b>Voir la solution</b> : la manche est jouée pour toi et ne compte pas."],
         en: ["<b>Addition</b> — place the counters of the 2nd number in the boxes (tap or drag). Fill the first ten, then the second: “make 10”.",
              "<b>Subtraction</b> — take counters from the full ten, not the loose ones: 13 − 5 = (10 − 5) + 3.",
-             "Tap a placed counter to remove it. 3 wins in a row without a mistake: ✦ 10 badge.",
+             "Tap a placed counter to remove it. One win without a mistake: 10 badge.",
              "<b>Show solution</b>: the round is played for you and does not count."]
       };
       document.getElementById("sgRules").addEventListener("click", function (e) {
@@ -3960,13 +3973,13 @@
         // en bas à droite passe à la manche suivante.
         chain.then(function () {
           if (sgState.auto) { /* manche montrée : ni gagnée ni perdue */ }
-          else if (!sgState.mistake) sgStreakN = Math.min(3, sgStreakN + 1);
+          else if (!sgState.mistake) sgStreakN = Math.min(WIN, sgStreakN + 1);
           sgRenderStreak();
-          if (sgStreakN >= 3) markDone("Singapour");
-          if (sgStreakN >= 3 && !hasBadge()) {
+          if (sgStreakN >= WIN) markDone("Singapour");
+          if (sgStreakN >= WIN && !hasBadge()) {
             SND.badge();
             setBadge(true);
-            sgMsg.textContent = (sgMsg.textContent ? sgMsg.textContent + "   ·   " : "") + "✦ 10";
+            sgMsg.textContent = (sgMsg.textContent ? sgMsg.textContent + "   ·   " : "") + "Badge 10";
             badgeChip.animate([{ transform: "scale(1.6)" }, { transform: "scale(1)" }], { duration: ms(700), easing: "ease-out" });
           }
           sgState.ready = true;
@@ -4559,7 +4572,7 @@
         SND.ok();
         // Un nombre tapé soi-même ne compte pas pour réussir le chapitre
         if (!pfState.custom) pfStreak = pfState.mistake ? 0 : pfStreak + 1;
-        if (pfStreak >= 3) markDone("Premiers");
+        if (pfStreak >= WIN) markDone("Premiers");
         pfState.ready = true;
         var ps = [];
         pfState.nodes.forEach(function (c, k) {
@@ -5314,7 +5327,7 @@
           // Et on enchaîne tout seul sur un autre calcul
           if (alive()) {
             calcSeen++;
-            if (calcSeen >= 3) markDone("Calcul");
+            if (calcSeen >= WIN) markDone("Calcul");
             calcStart();
           }
         });
@@ -5502,7 +5515,7 @@
         var z = ensState.z, ok = b._e.has(z);
         ensScore.n++;
         if (ok) { ensScore.ok++; ensStreak++; SND.ok(); } else { ensStreak = 0; SND.bad(); }
-        if (ensStreak >= 3) markDone("Ensembles");
+        if (ensStreak >= WIN) markDone("Ensembles");
         // Toutes les cases qui contiennent le nombre s'allument, une à une
         ensBoxes.forEach(function (bb, k) {
           if (bb.hidden || !bb._e.has(z)) return;
@@ -5579,6 +5592,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v73", text: "Une seule réussite sans faute suffit pour valider un chapitre et gagner son badge (au lieu de 3). Rejouer donne toujours un autre exercice." },
+        { v: "v72", text: "Badges : plus de pastilles en haut ni de ✦. Chaque badge est une petite icône au trait (cadre de dix, deux demi-tours) rangée sous la barre des ensembles ; un appui explique le badge." },
         { v: "v71", text: "Titre du chapitre en entier, sur sa propre ligne sous les boutons. Expression trop longue : une seule ligne, écrite plus petit, jamais hors de l'écran." },
         { v: "v70", text: "Décompositions écrites : sous le cadre de dix (8 = 5 + 3, 5 = 2 + 3, et 8 + 5 = 8 + 2 + 3 = 10 + 3 = 13) et à la fin des manches de Singapour." },
         { v: "v69", text: "Fusion : les 4 derniers pouvoirs de la fiche. Compléter le carré « + c − c » (gagné avec (a+b)²), puissances 2ⁿ⁺¹ = 2·2ⁿ (Pascal), quantité conjuguée 1/(√2 − 1) = √2 + 1 ((a+b)(a−b)), télescopage 1/(k(k+1)) = 1/k − 1/(k+1) (Piège). 16 buts en tout." },
@@ -5799,7 +5814,7 @@
       // Un ensemble s'ouvre quand tous les chapitres du précédent sont
       // réussis. Réussir : Singapour (badge), Premiers / Ensembles (3 de
       // suite), Calcul (3 regardés), Solutions (6 vus), une démo animée
-      // (3 fois sans faute en mode jeu). Le mode prof ouvre tout.
+      // (WIN fois sans faute en mode jeu). Le mode prof ouvre tout.
       var doneMap = {}, runs = {}, prof = false;
       try {
         doneMap = JSON.parse(localStorage.getItem("pasapas_done") || "{}");
@@ -5859,7 +5874,7 @@
       function hasPower(ch) { return prof || !!doneMap[ch]; }
       // Badges : un appui dessus rappelle ce qu'ils veulent dire
       var BADGE_INFO = {
-        dix: { btn: "✦ 10", fr: ["Cadre de dix", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12 : on complète d'abord la dizaine. Le cadre de dix s'affiche sous chaque addition ; la flèche lance la suite."],
+        dix: { btn: "10", fr: ["Cadre de dix", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12 : on complète d'abord la dizaine. Le cadre de dix s'affiche sous chaque addition ; la flèche lance la suite."],
                en: ["Ten frame", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12: fill up the ten first. The ten frame shows under every addition; the arrow moves on."] }
       };
       function showBadgeInfo(P, title) {
@@ -5874,15 +5889,15 @@
       var badgeMM = document.getElementById("badgeMM");
       function refreshBadges() { badgeMM.hidden = !doneMap["−×−"]; }
       refreshBadges();
-      badgeChip.addEventListener("click", function () { showBadgeInfo(BADGE_INFO.dix, "✦ Badge"); });
-      badgeMM.addEventListener("click", function () { showBadgeInfo(POWERS["−×−"], "✦ Badge"); });
+      badgeChip.addEventListener("click", function () { showBadgeInfo(BADGE_INFO.dix, "Badge"); });
+      badgeMM.addEventListener("click", function () { showBadgeInfo(POWERS["−×−"], "Badge"); });
 
       function announcePower(ch) {
         var P = POWERS[ch];
         if (!P) return;
         refreshBadges();
         var t = P[LANG === "en" ? "en" : "fr"];
-        document.getElementById("puTitle").textContent = ch === "−×−" ? (LANG === "en" ? "✦ Badge unlocked" : "✦ Badge débloqué") : (LANG === "en" ? "✦ Power unlocked" : "✦ Pouvoir débloqué");
+        document.getElementById("puTitle").textContent = ch === "−×−" ? (LANG === "en" ? "Badge unlocked" : "Badge débloqué") : (LANG === "en" ? "✦ Power unlocked" : "✦ Pouvoir débloqué");
         document.getElementById("puBtn").textContent = P.btn + "   " + t[0];
         document.getElementById("puDesc").textContent = t[1];
         var ov = document.getElementById("powerOverlay");
@@ -5895,8 +5910,8 @@
       function progressDemo(title) {
         runs[title] = (runs[title] || 0) + 1;
         try { localStorage.setItem("pasapas_runs", JSON.stringify(runs)); } catch (e) {}
-        if (runs[title] >= 3) markDone(title);
-        else toast("✓ " + runs[title] + " / 3");
+        if (runs[title] >= WIN) markDone(title);
+        else toast("✓ " + runs[title] + " / " + WIN);
       }
       var SYM_OF = { N: "ℕ", Z: "ℤ", Q: "ℚ", R: "ℝ", C: "ℂ" };
 

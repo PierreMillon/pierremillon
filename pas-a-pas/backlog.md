@@ -21,7 +21,7 @@ Tri : priorité décroissante.
 - Accueil : écran sommaire avec les **ensembles emboîtés** (ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ
   en patates), on touche une zone pour entrer dans ses chapitres
 - Progression : **déblocage obligatoire** — tous les chapitres d'un ensemble
-  réussis ouvrent le suivant. Démo animée réussie = **3 fois sans faute en
+  réussis ouvrent le suivant. Démo animée réussie = **1 fois sans faute (3 avant v73) en
   mode jeu** ; mode jeu : **série de 3 = badge**
 - **Mode prof** dans le menu : tout ouvert
 - ℍ (quaternions) : **teaser verrouillé** « bientôt », rien de plus
@@ -41,6 +41,7 @@ Tri : priorité décroissante.
 - [x] Chapitre Fusion : bulles à glisser qui fusionnent selon les règles, pouvoir « 1 → c/c » gagné avec Fraction (v30)
 - [x] P1 — Nouveaux pouvoirs Fusion, un par geste de la fiche, chacun gagné avec le chapitre qui le montre à la main (v68–v69) : découper un nombre (Calcul), compléter le carré ((a+b)²), puissances 2ⁿ⁺¹ = 2·2ⁿ (Pascal), quantité conjuguée ((a+b)(a−b)), télescopage (Piège)
 - [x] P2 — Fusion : développer (bulle k·(a + b) touchée → k·a + k·b), pouvoir gagné avec Distribuer (v68)
+- [ ] P2 — Badge qui agit : un appui sur l'icône d'un badge fait l'opération d'un coup (ex. (−1)·(−1) → 1 dans l'expression affichée), au lieu d'expliquer seulement (v72 : icônes sous les ensembles)
 - Rapports : courts + liens
 
 
