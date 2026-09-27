@@ -148,6 +148,12 @@ Tri : priorité décroissante.
   que le badge n'est pas gagné) : pourquoi on commence là, et bouton
   direct vers le bac à sable pour manipuler sans exercice
 
+- [x] v24 — Tables : compteur d'erreurs par table (coin de la case +
+  « à retravailler » : les 3 plus ratées), tables ratées tirées plus
+  souvent ; retour aux tables possible une fois débloquées (grille remise
+  à zéro, « Suivant » y reste). Règle confirmée par Pierre : chaque grille
+  réussie une fois sans erreur suffit pour débloquer le boulier
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
