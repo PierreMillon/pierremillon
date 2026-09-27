@@ -516,6 +516,19 @@
       background: rgba(200, 255, 225, calc(0.04 + 0.22 * var(--breath, 1)));
     }
     .tcell.bad { border-color: #ff9d8a; color: #ff9d8a; }
+    /* Nombre d'erreurs cumulées sur cette table, dans le coin */
+    .tcell { position: relative; }
+    .tcell .terr {
+      position: absolute;
+      top: 1px;
+      right: 3px;
+      font-size: calc(var(--cell) * 0.34);
+      line-height: 1;
+      color: #ff9d8a;
+      text-shadow: none;
+      font-weight: 500;
+    }
+    .task .tworst { color: #ff9d8a; }
     .keypad {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
@@ -714,6 +727,7 @@
           tFindTask: "Touche une case qui fait", tWriteTask: "{a} × {b} =",
           tYes: "Oui : {a} × {b} = {p}", tNo: "Non : {a} × {b} = {p}",
           tProgress: "{d}/36 · erreurs : {e}",
+          tWorst: "À retravailler : {list}",
           tFull: "Grille remplie : {d}/36.", tClean: "Sans aucune erreur !", tDirty: "{e} erreur(s) : recommence pour une grille sans erreur.",
           tOther: "Il reste l'autre exercice à réussir sans erreur.",
           tBadge: "Badge gagné : tables ×. Le boulier s'ouvre : niveau « + direct ».",
@@ -765,6 +779,7 @@
           tFindTask: "Tap a cell that makes", tWriteTask: "{a} × {b} =",
           tYes: "Yes: {a} × {b} = {p}", tNo: "No: {a} × {b} = {p}",
           tProgress: "{d}/36 · mistakes: {e}",
+          tWorst: "To practise: {list}",
           tFull: "Grid complete: {d}/36.", tClean: "No mistakes at all!", tDirty: "{e} mistake(s): start again for a mistake-free grid.",
           tOther: "The other exercise still has to be done without mistakes.",
           tBadge: "Badge earned: × tables. The abacus opens: level “+ direct”.",
@@ -1922,12 +1937,14 @@
       // Chaque bonne réponse remplit la case. Badge : les deux grilles
       // remplies sans aucune erreur.
 
+      var tablesJustEarned = false; // badge tout juste gagné : « Suivant » ouvre le boulier
       var TKEYS = [];
       for (var ta = 2; ta <= 9; ta++) for (var tb = ta; tb <= 9; tb++) TKEYS.push("" + ta + tb);
 
       function freshTables() {
         return { mode: "find", done: { find: {}, write: {} }, errors: { find: 0, write: 0 },
-                 clean: { find: false, write: false }, target: null, input: "" };
+                 clean: { find: false, write: false }, target: null, targetKey: null, input: "",
+                 cellErr: {} };
       }
       // Sauvegarde relue avec une validation stricte (REGLES-JEUX.md,
       // Sécurité) : seulement des clés de cases connues et des entiers
@@ -1944,6 +1961,13 @@
             if (o.errors && Number.isInteger(o.errors[m]) && o.errors[m] >= 0 && o.errors[m] < 1e6) tb0.errors[m] = o.errors[m];
             if (o.clean && o.clean[m] === true) tb0.clean[m] = true;
           });
+          // Erreurs cumulées par table (7 × 8…), depuis toujours
+          if (o.cellErr && typeof o.cellErr === "object") {
+            TKEYS.forEach(function (k) {
+              var v = o.cellErr[k];
+              if (Number.isInteger(v) && v > 0 && v < 1e6) tb0.cellErr[k] = v;
+            });
+          }
         } catch (e) {}
         return tb0;
       })();
@@ -1951,7 +1975,7 @@
         save("tables", JSON.stringify({
           mode: TB.mode,
           done: { find: Object.keys(TB.done.find), write: Object.keys(TB.done.write) },
-          errors: TB.errors, clean: TB.clean
+          errors: TB.errors, clean: TB.clean, cellErr: TB.cellErr
         }));
       }
 
@@ -1995,6 +2019,14 @@
         stageEl.classList.add("tables-on");
         document.body.classList.add("tables-mode");
         tablesEl.hidden = false;
+        // Revenir aux tables plus tard (même débloquées) : une grille déjà
+        // pleine repart de zéro
+        if (!remainingKeys(TB.mode).length) {
+          TB.done[TB.mode] = {};
+          TB.errors[TB.mode] = 0;
+          if (!badges.tables) TB.clean[TB.mode] = false;
+          saveTables();
+        }
         buildKeypad();
         pickTarget();
         renderTables();
@@ -2016,8 +2048,12 @@
 
       function pickTarget() {
         var rem = remainingKeys(TB.mode);
-        if (!rem.length) { TB.target = null; return; }
-        var k = rem[Math.floor(Math.random() * rem.length)];
+        if (!rem.length) { TB.target = null; TB.targetKey = null; return; }
+        // Les tables souvent ratées reviennent plus tôt dans la grille
+        var total = 0, weights = rem.map(function (key) { var w = 1 + 3 * (TB.cellErr[key] || 0); total += w; return w; });
+        var x = Math.random() * total, k = rem[rem.length - 1];
+        for (var wi = 0; wi < rem.length; wi++) { x -= weights[wi]; if (x < 0) { k = rem[wi]; break; } }
+        TB.targetKey = k;
         TB.target = TB.mode === "find" ? kA(k) * kB(k) : k;
         TB.input = "";
       }
@@ -2025,7 +2061,7 @@
       function restartTablesMode() {
         TB.done[TB.mode] = {};
         TB.errors[TB.mode] = 0;
-        TB.clean[TB.mode] = false;
+        if (!badges.tables) TB.clean[TB.mode] = false;
         saveTables();
         caption = null;
         pickTarget();
@@ -2066,6 +2102,12 @@
             else {
               var k = "" + r + c;
               if (TB.done[m][k]) { cell.className += " done"; cell.textContent = r * c; }
+              if (TB.cellErr[k]) {
+                var eb = document.createElement("span");
+                eb.className = "terr";
+                eb.textContent = TB.cellErr[k];
+                cell.appendChild(eb);
+              }
               if (m === "write" && TB.target === k) cell.className += " target";
               if (tFlash === k) cell.className += " bad";
               (function (key) { cell.addEventListener("click", function () { tapCell(key); }); })(k);
@@ -2092,6 +2134,14 @@
         sp.className = "tprog";
         sp.textContent = t("tProgress", { d: doneCount(m), e: TB.errors[m] });
         task.appendChild(sp);
+        // Les 3 tables les plus ratées, à retravailler
+        var worst = Object.keys(TB.cellErr).sort(function (x1, x2) { return TB.cellErr[x2] - TB.cellErr[x1]; }).slice(0, 3);
+        if (worst.length) {
+          var sw = document.createElement("span");
+          sw.className = "tprog tworst";
+          sw.textContent = t("tWorst", { list: worst.map(function (key) { return kA(key) + " × " + kB(key) + " (" + TB.cellErr[key] + ")"; }).join(", ") });
+          task.appendChild(sw);
+        }
         renderSplit();
         buildBadgeBar();
         updateButtons();
@@ -2111,6 +2161,8 @@
       }
       function tablesWrong(k) {
         TB.errors[TB.mode]++;
+        // L'erreur compte pour la table demandée (celle qu'on n'a pas su)
+        if (TB.targetKey) TB.cellErr[TB.targetKey] = (TB.cellErr[TB.targetKey] || 0) + 1;
         caption = { text: t("tNo", { a: kA(k), b: kB(k), p: kA(k) * kB(k) }) };
         try { unlockAudio(); if (actx) tone(120, 95, 0.3, 0.35, actx.currentTime + 0.01, "sine", 0.03); } catch (e) {}
         buzz(25);
@@ -2148,6 +2200,7 @@
         saveTables();
         var earned = false;
         if (TB.clean.find && TB.clean.write && !badges.tables) {
+          tablesJustEarned = true;
           badges.tables = 1;
           saveBadges();
           buildLevels();
@@ -2172,7 +2225,8 @@
       // on recommence la grille ratée, ou on passe à l'autre exercice
       function tablesAfterGrid() {
         var m = TB.mode;
-        if (!TB.clean[m]) { restartTablesMode(); return; }
+        // Grille ratée, ou révision après le badge : on recommence la même
+        if (!TB.clean[m] || badges.tables) { restartTablesMode(); return; }
         var other = m === "find" ? "write" : "find";
         TB.mode = other;
         if (!remainingKeys(other).length) { TB.done[other] = {}; TB.errors[other] = 0; TB.clean[other] = false; }
@@ -2298,7 +2352,8 @@
       document.getElementById("slowBtn").addEventListener("click", demo);
       document.getElementById("nextBtn").addEventListener("click", function () {
         document.getElementById("winOverlay").hidden = true;
-        if (level === "tables" && !badges.tables) { tablesAfterGrid(); return; }
+        if (level === "tables" && !tablesJustEarned) { tablesAfterGrid(); return; }
+        tablesJustEarned = false;
         // Badge tout juste gagné : on passe au niveau suivant pas encore acquis
         if (badges[level]) {
           for (var i = LEVELS.indexOf(level) + 1; i < LEVELS.length; i++) {
@@ -2349,6 +2404,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v24", text: "Tables : compteur d'erreurs par table (dans le coin de chaque case, et « à retravailler » avec les 3 plus ratées) ; les tables souvent ratées reviennent plus souvent. On peut revenir aux tables même une fois le boulier débloqué : la grille repart de zéro et « Suivant » y reste." },
         { v: "v23", text: "Message d'accueil sur les tables : c'est normal d'arriver là, il faut d'abord les maîtriser (les deux grilles sans erreur) pour ouvrir le boulier ; pour juste manipuler, bouton direct vers le bac à sable." },
         { v: "v22", text: "Tables : cases libres bien plus visibles (contour franc, léger fond) ; cases remplies en vert vif, contour et chiffre lumineux." },
         { v: "v21", text: "Racines précises : plus que des racines qui ne tombent pas juste (√5, √13…), à 1 puis 2 chiffres après la virgule, par la méthode des impairs (on retire 1, 3, 5… : le nombre de retraits est la racine) — aucune table à connaître. Écriture sans ambiguïté (√5776, plus « √5 776 »). Puissances de nombres à virgule au dernier palier (1,3³ : on calcule 13³ = 2197, puis on remet la virgule → 2,197 ; × 13 = × 10 + × 3)." },
