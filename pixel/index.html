@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Pixel</title>
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+  <style>
+    /* Page d'essai : un seul pixel physique allumé sur l'écran, et les
+       dimensions réellement disponibles (points CSS, pixels physiques,
+       zones de sécurité, hauteurs dvh/svh/lvh). */
+    :root { --ink: #5ef0a0; --soft: #2f8f5c; --hair: #143324; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+    body {
+      position: fixed; inset: 0; margin: 0;
+      background: #000; color: var(--ink);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+      touch-action: none;
+      -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    }
+    canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+    /* Sondes invisibles : on lit leur taille pour connaître les unités CSS */
+    .probe { position: absolute; left: -9999px; top: 0; width: 1px; visibility: hidden; }
+
+    .panel {
+      position: absolute;
+      left: max(12px, env(safe-area-inset-left));
+      right: max(12px, env(safe-area-inset-right));
+      top: max(12px, env(safe-area-inset-top));
+      font-size: 12px; line-height: 1.55;
+      display: grid; gap: 8px;
+      pointer-events: none;
+    }
+    .panel.hide .rows { display: none; }
+    .rows { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; }
+    .rows dt { color: var(--soft); }
+    .rows dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .bar { display: flex; gap: 8px; pointer-events: auto; }
+    .bar button {
+      font: inherit; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--ink); background: #000; border: 1px solid var(--soft);
+      border-radius: 999px; padding: 6px 12px; touch-action: manipulation;
+    }
+    .hint { color: var(--soft); font-size: 11px; }
+
+    .overlay {
+      position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,0.95);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px;
+    }
+    .overlay[hidden] { display: none; }
+    .overlay ul { list-style: none; margin: 0; padding: 0; max-width: 22rem; font-size: 13px; line-height: 1.5; }
+    .overlay li { border-top: 1px solid var(--hair); padding: 8px 0; }
+    .overlay b { display: block; }
+    .overlay button { font: inherit; color: var(--ink); background: none; border: 1px solid var(--ink); border-radius: 999px; padding: 8px 20px; }
+  </style>
+</head>
+<body>
+  <canvas id="cv"></canvas>
+  <div class="probe" id="pDvh" style="height:100dvh"></div>
+  <div class="probe" id="pSvh" style="height:100svh"></div>
+  <div class="probe" id="pLvh" style="height:100lvh"></div>
+  <div class="probe" id="pVh" style="height:100vh"></div>
+  <div class="probe" id="pSafe" style="padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)"></div>
+
+  <div class="panel" id="panel">
+    <div class="bar">
+      <button id="infoBtn">Infos</button>
+      <button id="frameBtn">Cadre</button>
+      <button id="histBtn">Historique</button>
+    </div>
+    <dl class="rows" id="rows"></dl>
+    <div class="hint" id="hint">Touche l'écran : le pixel se place sous ton doigt. Le cercle aide à le retrouver.</div>
+  </div>
+
+  <div class="overlay" id="histOverlay" hidden>
+    <ul id="histList"></ul>
+    <button id="histClose">Fermer</button>
+  </div>
+
+  <script>
+    (function () {
+      var VERSIONS = [
+        { v: "v1", text: "Un seul pixel physique allumé (placé au doigt, un cercle pour le retrouver), cadre d'un pixel sur le bord de la zone visible, et les dimensions : points CSS, pixels physiques, rapport de pixels, fenêtre, zones de sécurité, hauteurs dvh / svh / lvh." }
+      ];
+
+      var cv = document.getElementById("cv"), ctx = cv.getContext("2d");
+      var rows = document.getElementById("rows"), panel = document.getElementById("panel");
+      var pt = null, frame = true, ring = true;
+
+      function size(id) { return document.getElementById(id).getBoundingClientRect(); }
+      function safe() {
+        var cs = getComputedStyle(document.getElementById("pSafe"));
+        return { t: parseFloat(cs.paddingTop), r: parseFloat(cs.paddingRight), b: parseFloat(cs.paddingBottom), l: parseFloat(cs.paddingLeft) };
+      }
+      function r2(n) { return Math.round(n * 100) / 100; }
+
+      function draw() {
+        var dpr = window.devicePixelRatio || 1;
+        var w = cv.clientWidth, h = cv.clientHeight;
+        var W = Math.round(w * dpr), H = Math.round(h * dpr);
+        if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, W, H);
+        ctx.imageSmoothingEnabled = false;
+        if (!pt) pt = { x: Math.floor(W / 2), y: Math.floor(H / 2) };
+        pt.x = Math.min(W - 1, Math.max(0, pt.x)); pt.y = Math.min(H - 1, Math.max(0, pt.y));
+
+        // Cadre : 1 pixel physique sur chaque bord de la zone dessinable
+        if (frame) {
+          ctx.fillStyle = "#2f8f5c";
+          ctx.fillRect(0, 0, W, 1); ctx.fillRect(0, H - 1, W, 1);
+          ctx.fillRect(0, 0, 1, H); ctx.fillRect(W - 1, 0, 1, H);
+        }
+        // Cercle repère, loin du pixel pour ne pas le masquer
+        if (ring) {
+          ctx.strokeStyle = "rgba(94,240,160,0.35)";
+          ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(pt.x + 0.5, pt.y + 0.5, 22 * dpr, 0, Math.PI * 2); ctx.stroke();
+        }
+        // Le pixel : un seul pixel physique, blanc pur
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(pt.x, pt.y, 1, 1);
+
+        var s = safe(), vv = window.visualViewport;
+        var data = [
+          ["Écran (points)", screen.width + " × " + screen.height],
+          ["Écran (pixels)", Math.round(screen.width * dpr) + " × " + Math.round(screen.height * dpr)],
+          ["Pixels par point", r2(dpr)],
+          ["Fenêtre (points)", innerWidth + " × " + innerHeight],
+          ["Zone dessinée", W + " × " + H + " px"],
+          ["Visible (visualViewport)", vv ? r2(vv.width) + " × " + r2(vv.height) : "—"],
+          ["100dvh / svh / lvh", r2(size("pDvh").height) + " / " + r2(size("pSvh").height) + " / " + r2(size("pLvh").height)],
+          ["100vh", r2(size("pVh").height)],
+          ["Sécurité h / d / b / g", r2(s.t) + " / " + r2(s.r) + " / " + r2(s.b) + " / " + r2(s.l)],
+          ["Utile sans les bords", r2(innerWidth - s.l - s.r) + " × " + r2(innerHeight - s.t - s.b)],
+          ["Pixel allumé", "x " + pt.x + ", y " + pt.y + " (px)  ·  " + r2(pt.x / dpr) + ", " + r2(pt.y / dpr) + " pt"],
+          ["Mode", (navigator.standalone || matchMedia("(display-mode: standalone)").matches ? "écran d'accueil" : "Safari") + " · " + (innerWidth > innerHeight ? "paysage" : "portrait")]
+        ];
+        rows.innerHTML = data.map(function (d) { return "<dt>" + d[0] + "</dt><dd>" + d[1] + "</dd>"; }).join("");
+      }
+
+      cv.addEventListener("pointerdown", function (e) {
+        var dpr = window.devicePixelRatio || 1;
+        pt = { x: Math.floor(e.clientX * dpr), y: Math.floor(e.clientY * dpr) };
+        draw();
+      });
+      document.getElementById("infoBtn").addEventListener("click", function () { panel.classList.toggle("hide"); });
+      document.getElementById("frameBtn").addEventListener("click", function () { frame = !frame; ring = frame; draw(); });
+
+      var ov = document.getElementById("histOverlay");
+      document.getElementById("histList").innerHTML = VERSIONS.map(function (v) { return "<li><b>" + v.v + "</b>" + v.text + "</li>"; }).join("");
+      document.getElementById("histBtn").addEventListener("click", function () { ov.hidden = false; });
+      document.getElementById("histClose").addEventListener("click", function () { ov.hidden = true; });
+
+      window.addEventListener("resize", draw);
+      if (window.visualViewport) visualViewport.addEventListener("resize", draw);
+      window.addEventListener("orientationchange", function () { setTimeout(draw, 300); });
+      // Écran figé : pas de défilement, pas de zoom (iOS ignore user-scalable)
+      document.addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
+      ["gesturestart", "gesturechange", "gestureend"].forEach(function (t) { document.addEventListener(t, function (e) { e.preventDefault(); }); });
+      draw();
+    })();
+
+    // Mise à jour automatique (copiée de la page d'accueil, clés propres à
+    // ce projet) : comparaison d'ETag, rechargement silencieux
+    (function () {
+      var lastCheck = 0;
+      async function checkForUpdate() {
+        var now0 = Date.now();
+        if (now0 - lastCheck < 1500) return;
+        lastCheck = now0;
+        try {
+          var res = await fetch((location.pathname || "index.html") + "?_cb=" + now0, { cache: "no-store" });
+          if (!res.ok) return;
+          var tag = res.headers.get("etag") || res.headers.get("last-modified");
+          if (!tag) return;
+          var stored = localStorage.getItem("pixel_pageVersion");
+          if (stored === null) { localStorage.setItem("pixel_pageVersion", tag); return; }
+          if (tag !== stored) {
+            var now = Date.now(), lastReload = 0;
+            try { lastReload = Number(sessionStorage.getItem("pixel_lastUpdateReload")) || 0; } catch (e) {}
+            if (now - lastReload < 10000) return;
+            try { localStorage.setItem("pixel_pageVersion", tag); sessionStorage.setItem("pixel_lastUpdateReload", String(now)); } catch (e) {}
+            location.replace(location.pathname + "?_r=" + now);
+          }
+        } catch (e) {}
+      }
+      checkForUpdate();
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) checkForUpdate(); });
+      document.addEventListener("pointerdown", checkForUpdate, { passive: true });
+    })();
+  </script>
+</body>
+</html>
