@@ -121,6 +121,10 @@
     .rule .f { font-size: 1.02rem; line-height: 1.7; color: var(--ink); }
     .rule .ex { font-size: 0.78rem; line-height: 1.6; color: var(--ink-soft); }
     .rule .ex b { color: var(--ink); font-weight: 400; }
+    /* Une égalité reste sur une ligne ; trop longue, elle ne se coupe
+       qu'à un signe = (voir eqWrapHTML) */
+    .eq { display: inline-block; max-width: 100%; }
+    .eqs { white-space: nowrap; }
     .warn { color: var(--sign); }
     i { font-style: italic; }
 
@@ -138,7 +142,19 @@
     .fr > span:last-child { border-top: 1.5px solid currentColor; padding-top: 0.05em; width: 100%; text-align: center; }
     .fr > span:first-child { padding: 0 0.15em 0.05em; }
 
-    .rt { border-top: 1.5px solid currentColor; padding: 0 0.1em; margin-left: -0.05em; }
+    /* Racine : le signe et la barre forment un seul bloc, qui ne se
+       coupe jamais en fin de ligne ; le signe s'étire à la hauteur de ce
+       qu'il y a dessous (fraction, carré…) */
+    .sq { display: inline-flex; align-items: stretch; white-space: nowrap; vertical-align: middle; margin: 0 0.05em; }
+    .sq::before {
+      content: "";
+      flex: none;
+      width: 0.55em;
+      background: currentColor;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 100' preserveAspectRatio='none'%3E%3Cpath d='M2 58 L14 52 L30 96 L58 1' fill='none' stroke='black' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 100' preserveAspectRatio='none'%3E%3Cpath d='M2 58 L14 52 L30 96 L58 1' fill='none' stroke='black' stroke-width='5' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+    }
+    .rt { border-top: 1.5px solid currentColor; padding: 0.1em 0.12em 0; line-height: 1.15; }
     sup { font-size: 0.7em; }
 
     .tag {
@@ -218,12 +234,12 @@
       <div class="ex">(2 + 3)<sup>2</sup> = 25, 2<sup>2</sup> + 3<sup>2</sup> = 13. Voir les identités remarquables.</div></div>
 
     <h2 id="racines">Racines <small>ℝ</small></h2>
-    <div class="rule"><div class="f">√<span class="rt"><i>a b</i></span> = √<span class="rt"><i>a</i></span> · √<span class="rt"><i>b</i></span> &nbsp;&nbsp; √<span class="rt"><span class="fr"><span><i>a</i></span><span><i>b</i></span></span></span> = <span class="fr"><span>√<span class="rt"><i>a</i></span></span><span>√<span class="rt"><i>b</i></span></span></span></div>
-      <div class="ex">Pour <i>a</i>, <i>b</i> ≥ 0 (<i>b</i> &gt; 0 en bas). √<span class="rt">50</span> = √<span class="rt">25 · 2</span> = 5√<span class="rt">2</span>.</div></div>
-    <div class="rule"><div class="f">(√<span class="rt"><i>a</i></span>)<sup>2</sup> = <i>a</i> &nbsp;&nbsp; √<span class="rt"><i>a</i><sup>2</sup></span> = |<i>a</i>|</div>
-      <div class="ex">√<span class="rt">(−3)<sup>2</sup></span> = 3, pas −3.</div></div>
-    <div class="rule"><div class="f warn">√<span class="rt"><i>a</i> + <i>b</i></span> ≠ √<span class="rt"><i>a</i></span> + √<span class="rt"><i>b</i></span></div>
-      <div class="ex">√<span class="rt">9 + 16</span> = 5, √<span class="rt">9</span> + √<span class="rt">16</span> = 7.</div></div>
+    <div class="rule"><div class="f"><span class="sq"><span class="rt"><i>ab</i></span></span> = <span class="sq"><span class="rt"><i>a</i></span></span> · <span class="sq"><span class="rt"><i>b</i></span></span> &nbsp;&nbsp; <span class="sq"><span class="rt"><span class="fr"><span><i>a</i></span><span><i>b</i></span></span></span></span> = <span class="fr"><span><span class="sq"><span class="rt"><i>a</i></span></span></span><span><span class="sq"><span class="rt"><i>b</i></span></span></span></span></div>
+      <div class="ex">Pour <i>a</i>, <i>b</i> ≥ 0 (<i>b</i> &gt; 0 en bas). <span class="sq"><span class="rt">50</span></span> = <span class="sq"><span class="rt">25 · 2</span></span> = 5<span class="sq"><span class="rt">2</span></span>.</div></div>
+    <div class="rule"><div class="f">(<span class="sq"><span class="rt"><i>a</i></span></span>)<sup>2</sup> = <i>a</i> &nbsp;&nbsp; <span class="sq"><span class="rt"><i>a</i><sup>2</sup></span></span> = |<i>a</i>|</div>
+      <div class="ex"><span class="sq"><span class="rt">(−3)<sup>2</sup></span></span> = 3, pas −3.</div></div>
+    <div class="rule"><div class="f warn"><span class="sq"><span class="rt"><i>a</i> + <i>b</i></span></span> ≠ <span class="sq"><span class="rt"><i>a</i></span></span> + <span class="sq"><span class="rt"><i>b</i></span></span></div>
+      <div class="ex"><span class="sq"><span class="rt">9 + 16</span></span> = 5, <span class="sq"><span class="rt">9</span></span> + <span class="sq"><span class="rt">16</span></span> = 7.</div></div>
 
     <h2 id="developper">Développer, factoriser <small>ℝ</small></h2>
     <div class="rule"><div class="f"><i>k</i> · (<i>a</i> + <i>b</i>) = <i>k a</i> + <i>k b</i></div>
@@ -231,7 +247,7 @@
     <div class="rule"><div class="f">(<i>a</i> + <i>b</i>)(<i>c</i> + <i>d</i>) = <i>a c</i> + <i>a d</i> + <i>b c</i> + <i>b d</i></div>
       <div class="ex">Chaque terme du premier multiplie chaque terme du second : 4 produits.</div></div>
     <div class="rule"><div class="f"><i>a x</i><sup>2</sup> + <i>b x</i> + <i>c</i> = <i>a</i>(<i>x</i> − <i>x</i><sub>1</sub>)(<i>x</i> − <i>x</i><sub>2</sub>)</div>
-      <div class="ex">Si Δ = <i>b</i><sup>2</sup> − 4<i>ac</i> ≥ 0, avec <i>x</i><sub>1,2</sub> = <span class="fr"><span>−<i>b</i> ± √<span class="rt">Δ</span></span><span>2<i>a</i></span></span>. Si Δ &lt; 0 : pas de factorisation dans ℝ (mais oui dans ℂ).</div></div>
+      <div class="ex">Si Δ = <i>b</i><sup>2</sup> − 4<i>ac</i> ≥ 0, avec <i>x</i><sub>1,2</sub> = <span class="fr"><span>−<i>b</i> ± <span class="sq"><span class="rt">Δ</span></span></span><span>2<i>a</i></span></span>. Si Δ &lt; 0 : pas de factorisation dans ℝ (mais oui dans ℂ).</div></div>
 
     <h2 id="identites">Identités remarquables</h2>
     <div class="rule"><div class="f">(<i>a</i> + <i>b</i>)<sup>2</sup> = <i>a</i><sup>2</sup> + 2<i>ab</i> + <i>b</i><sup>2</sup></div><div class="ex">Le double produit 2<i>ab</i> vient des deux termes du milieu, égaux.</div></div>
@@ -306,7 +322,7 @@
       <p>Aussi e<sup>2<i>x</i></sup> − e<sup><i>x</i></sup> = e<sup><i>x</i></sup>(e<sup><i>x</i></sup> − 1), et <i>x</i><sup>3</sup> − <i>x</i> = <i>x</i>(<i>x</i> − 1)(<i>x</i> + 1).</p></div>
 
     <div class="trick"><h3>Multiplier par la quantité conjuguée</h3>
-      <p class="calc"><span class="fr"><span>1</span><span>√<span class="rt">2</span> − 1</span></span> = <span class="fr"><span>√<span class="rt">2</span> + 1</span><span>(√<span class="rt">2</span> − 1)(√<span class="rt">2</span> + 1)</span></span> = √<span class="rt">2</span> + 1</p>
+      <p class="calc"><span class="fr"><span>1</span><span><span class="sq"><span class="rt">2</span></span> − 1</span></span> = <span class="fr"><span><span class="sq"><span class="rt">2</span></span> + 1</span><span>(<span class="sq"><span class="rt">2</span></span> − 1)(<span class="sq"><span class="rt">2</span></span> + 1)</span></span> = <span class="sq"><span class="rt">2</span></span> + 1</p>
       <p>(<i>a</i> − <i>b</i>)(<i>a</i> + <i>b</i>) = <i>a</i><sup>2</sup> − <i>b</i><sup>2</sup> fait disparaître les racines. Même idée dans ℂ : multiplier par <i>z̄</i>.</p></div>
 
     <div class="trick"><h3>Mettre en facteur le terme dominant</h3>
@@ -343,6 +359,37 @@
     document.addEventListener("gesturechange", function (e) { e.preventDefault(); }, { passive: false });
   </script>
 
+  <script>
+    (function () {
+      // Égalités insécables : « a = b » ne se coupe jamais au milieu d'un
+      // membre. On passe à la ligne entre deux égalités ; une égalité trop
+      // longue pour une ligne ne se coupe qu'au niveau d'un signe « = ».
+      function eqBalanced(h) {
+        var o = (h.match(/<(?!\/)(?!br)[a-z]+[^>]*>/gi) || []).length, c = (h.match(/<\/[a-z]+>/gi) || []).length;
+        return o === c;
+      }
+      function eqWrapHTML(html) {
+        // Les entités (&nbsp; &lt; …) finissent par « ; » : on les met de
+        // côté pour ne pas couper dessus
+        html = html.replace(/&nbsp;/g, "\u00a0").replace(/&lt;/g, "\ue000").replace(/&gt;/g, "\ue001").replace(/&amp;/g, "\ue002");
+        var SEP = /(\u00a0{2,}|[.,;:](?:\s|\u00a0)+)/;
+        var REL = /(\s(?:=|≠|⇔|≤|≥|\ue000|\ue001|≈)\s)/;
+        return html.split(SEP).map(function (part, i) {
+          if (i % 2) return part;
+          var txt = part.replace(/<[^>]*>/g, "");
+          // Une égalité, pas une phrase (pas de mot de 4 lettres ou plus)
+          if (!/[=≠⇔≤≥≈]/.test(txt) || /[a-zàâçéèêëîïôûùüœ]{4,}/i.test(txt) || !eqBalanced(part)) return part;
+          var lead = /^\s*/.exec(part)[0];
+          part = part.slice(lead.length);
+          var sides = part.split(REL);
+          var ok = sides.every(function (sd, k) { return k % 2 || eqBalanced(sd); });
+          var inner = ok ? sides.map(function (sd, k) { return k % 2 ? sd : '<span class="eqs">' + sd + "</span>"; }).join("") : part;
+          return lead + '<span class="eq">' + inner + "</span>";
+        }).join("").replace(/\ue000/g, "&lt;").replace(/\ue001/g, "&gt;").replace(/\ue002/g, "&amp;");
+      }
+      document.querySelectorAll(".rule .f, .rule .ex, p.calc").forEach(function (el) { el.innerHTML = eqWrapHTML(el.innerHTML); });
+    })();
+  </script>
   <script>
     // Mise à jour automatique (copié de la page d'accueil du portfolio)
     (function () {
