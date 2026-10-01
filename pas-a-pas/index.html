@@ -932,15 +932,21 @@
       overflow: hidden;
     }
 
+    /* Chapitres : deux lignes au plus, les boutons se resserrent */
     .home-list button {
+      flex: 1 1 28%;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
       font-family: inherit;
-      font-size: 0.72rem;
-      letter-spacing: 0.08em;
+      font-size: 0.7rem;
+      letter-spacing: 0.04em;
       color: var(--ink);
       background: transparent;
       border: 1px solid var(--ink-soft);
       border-radius: 999px;
-      padding: 0.5rem 0.8rem;
+      padding: 0.45rem 0.4rem;
       cursor: pointer;
     }
 
@@ -2419,8 +2425,8 @@
           return st;
         }
         DEMOS.forEach(function (d) {
-          if (d.title === "Regrouper") d.baseSteps = d.steps = regroupZ([tm("−", "2" + X, 1), tm("+", "3"), tm("−", X, 1)]);
-          if (d.title === "x en facteur") d.baseSteps = d.steps = factorX([-2, -1]);
+          if (d.title === "Regrouper") d.baseSteps = d.steps = regroupZ([tm("+", "3" + X, 1), tm("+", "5"), tm("+", "2" + X, 1), tm("+", "7")]);
+          if (d.title === "x en facteur") d.baseSteps = d.steps = factorX([2, 1]);
         });
 
         var GEN = {
@@ -2436,9 +2442,11 @@
           "(a+b)(a−b)": [conj(3), conj(5)],
           "a²+b² ℂ": [cplx(2), cplx(3)],
           "Équation": [equation(3, 5, 17), equation(4, 1, 21)],
-          "Regrouper": [regroupZ([tm("+", "3" + X, 1), tm("−", "5"), tm("+", "2" + X, 1), tm("+", "7")]),
-                        regroupZ([tm("+", "4"), tm("−", "3" + X, 1), tm("+", "6"), tm("−", X, 1)])],
-          "x en facteur": [factorX([3, 5]), factorX([4, -7])]
+          // Dans ℕ : que des +, le geste reste le même (et le badge, lui,
+          // sert aussi dans ℤ, signes compris)
+          "Regrouper": [regroupZ([tm("+", "2" + X, 1), tm("+", "4"), tm("+", X, 1), tm("+", "6")]),
+                        regroupZ([tm("+", "4"), tm("+", "3" + X, 1), tm("+", "6"), tm("+", X, 1)])],
+          "x en facteur": [factorX([3, 5]), factorX([4, 1])]
         };
         var GEN_V = {
           "3·( … )": [timesParen(2, 3, 5, 4), timesParen(4, 2, 3, 2)],
@@ -3439,7 +3447,7 @@
       function go(to) {
         var demo = DEMOS[demoIndex];
         if (busy || to < 0 || to >= demo.steps.length || to === cur) return;
-        var forward = to === cur + 1;
+        var forward = to === cur + 1, back = to < cur;
         busy = true;
         cur = to;
         refreshUi();
@@ -3455,15 +3463,21 @@
             gameRun.counted = true;
             if (gameRun.faults === 0) progressDemo(demo.title);
           }
-          // Mode jeu : on enchaîne directement sur la question suivante,
-          // sans passer par la flèche (s'il y en a une juste après)
-          if (gameAuto) {
-            gameAuto = false;
-            if (gameMode && cur < demo.steps.length - 1) setTimeout(function () {
-              if (!busy && !choiceEl && DEMOS[demoIndex] === demo && demo.steps === st && cur < st.length - 1) gameChoice(cur + 1);
-            }, ms(500));
-          }
+          // Mode jeu : la question suivante vient seule, sans passer par la
+          // flèche — après une réponse comme après une étape sans question
+          // (pas en revenant en arrière : on relit)
+          if (!back || gameAuto) autoChoice(500);
+          gameAuto = false;
         });
+      }
+
+      // Propose les deux réponses de l'étape suivante dès qu'on est posé
+      function autoChoice(delay) {
+        var d = DEMOS[demoIndex], st = d.steps;
+        if (!gameMode || d.custom) return;
+        setTimeout(function () {
+          if (!busy && !choiceEl && !holdResolve && DEMOS[demoIndex] === d && d.steps === st && cur < st.length - 1 && homeEl.hidden) gameChoice(cur + 1);
+        }, ms(delay));
       }
 
       var holdResolve = null, skipBlocks = false;
@@ -3491,6 +3505,7 @@
           build(DEMOS[demoIndex].steps[0]);
           refreshUi();
           syncTop(true);
+          autoChoice(600);
         } else {
           go(cur + 1);
         }
@@ -3732,6 +3747,7 @@
         build(DEMOS[i].steps[0]);
         refreshUi();
         syncTop(false);
+        autoChoice(600);
       }
 
       DEMOS.forEach(function (d, i) {
@@ -5732,6 +5748,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v81", text: "Regrouper et x en facteur passent dans ℕ (exemples sans signe moins ; leurs badges servent aussi dans ℤ). Accueil : ℕ en petite boule en bas, les lettres dans les bandes du haut ; plus de lettre qui flotte sous les anneaux. Chapitres de l'accueil sur deux lignes, boutons resserrés." },
+        { v: "v80", text: "Mode jeu : les deux propositions apparaissent d'elles-mêmes à chaque étape, dès le début du chapitre et après une étape sans question — plus besoin de toucher la flèche. En revenant en arrière, rien ne s'affiche : on relit." },
         { v: "v79", text: "Deux chapitres dans ℤ, chacun avec son badge : Regrouper (−2x + 3 − x → −2x − x + 3, chaque terme voyage avec son signe) et x en facteur (−2x − x → (−2 − 1)·x → −3x). Les badges agissent partout : quand leur icône luit, un appui regroupe ou factorise d'un coup. Le badge 10 aussi : il luit avant une addition au cadre de dix et donne le résultat directement (même face aux deux propositions du mode jeu). L'ancienne version ℕ d'Opposés s'appelle Rassembler. Le nom du badge flotte au-dessus de lui quand il agit." },
         { v: "v78", text: "Fiche des règles, « Faire apparaître » : nouveau geste « Comparer des racines : comparer les carrés » — α − β = (α² − β²)/(α + β), avec l'exemple de la récurrence sur la somme des racines (α² − β² = 1)." },
         { v: "v77", text: "Le badge (−1)·(−1) agit : à une étape où des (−1) multiplient encore (ex. (−1)·(2x) + (−1)·(−3) + (−1)·(x)), il luit ; un appui fait tourner les (−1) et calcule tous les signes d'un coup : −2x + 3 − x. Ailleurs, un appui l'explique." },
@@ -5880,6 +5898,7 @@
         try { localStorage.setItem("pasapas_game", gameMode ? "1" : "0"); } catch (e) {}
         renderGameBtn();
         closeChoice();
+        autoChoice(400);
       });
       renderGameBtn();
       document.getElementById("langBtn").addEventListener("click", renderGameBtn);
@@ -5889,7 +5908,7 @@
       // décoche les ensembles dans le menu : les chapitres suivent. ℂ est
       // décoché au départ (chapitre des complexes en option).
       var SET_OF = {
-        "Singapour": "N", "Premiers": "N", "Ensembles": "N", "Regrouper": "Z", "x en facteur": "Z", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
+        "Singapour": "N", "Premiers": "N", "Ensembles": "N", "Regrouper": "N", "x en facteur": "N", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
         "Fraction": "Q", "Piège": "Q", "Équation": "Q",
         "Distribuer": "R", "Factoriser": "R", "Double": "R", "Fusion": "R", "Pascal": "R"
       };
@@ -6204,16 +6223,16 @@
       // Ellipses verticales, dans le sens de l'écran ; chaque lettre au
       // milieu de sa bande, sur l'axe vertical en haut.
       // Presque des cercles (un peu plus hauts que larges). Chaque anneau
-      // intérieur remonte un peu : peu d'écart en haut, plus en bas, où
-      // s'écrit la lettre de chaque bande. ℕ finit en petite boule en haut.
-      var MAP_CX = 150, MAP_CY = 172, R0 = 166, STEP = 18, TOP_GAP = 7, RATIO = 0.89;
+      // intérieur descend un peu : peu d'écart en bas, plus en haut, où
+      // s'écrit la lettre de chaque bande. ℕ finit en petite boule en bas.
+      var MAP_CX = 150, MAP_CY = 172, R0 = 166, STEP = 18, EDGE_GAP = 7, RATIO = 0.89;
       var ZONES = RINGS.map(function (k, i) {
-        var ry = R0 - i * STEP, cy = MAP_CY - i * (STEP - TOP_GAP);
+        var ry = R0 - i * STEP, cy = MAP_CY + i * (STEP - EDGE_GAP);
         return { k: k, rx: ry * RATIO, ry: ry, cy: cy, lab: LABS[k], lx: MAP_CX };
       });
       ZONES.forEach(function (z, i) {
         var n = ZONES[i + 1];
-        z.ly = n ? (z.cy + z.ry + n.cy + n.ry) / 2 + 5 : z.cy + 8; // ℕ au centre de sa boule
+        z.ly = n ? (z.cy - z.ry + n.cy - n.ry) / 2 + 5 : z.cy + 8; // ℕ au centre de sa boule
       });
       function renderHome() {
         homeMap.innerHTML = "";
@@ -6235,12 +6254,12 @@
         }
         var open = unlocked(homeSel);
         var prevK = UNIV[UNIV.indexOf(homeSel) - 1];
-        info.textContent = open ? SYM_OF[homeSel] : (LANG === "en" ? "Locked — pass every chapter of " : "Verrouillé — réussis tous les chapitres de ") + SYM_OF[prevK];
+        info.textContent = open ? "" : (LANG === "en" ? "Locked — pass every chapter of " : "Verrouillé — réussis tous les chapitres de ") + SYM_OF[prevK];
         chaptersOf(homeSel).forEach(function (d) {
           var b = document.createElement("button");
           b.textContent = tr(d.title);
           if (/[()²]/.test(d.title)) b.style.textTransform = "none";
-          if (doneMap[d.title]) { b.classList.add("done"); b.textContent = "✓ " + b.textContent; }
+          if (doneMap[d.title]) b.classList.add("done"); // réussi : bordure vive, sans ✓ (place)
           else if (!d.custom && runs[d.title]) {
             var sm = document.createElement("small");
             sm.textContent = runs[d.title] + "/" + WIN;
@@ -6258,6 +6277,9 @@
           });
           list.appendChild(b);
         });
+        // Deux lignes au plus : la largeur suit le nombre de chapitres
+        var perRow = Math.max(1, Math.ceil(list.children.length / 2));
+        [].forEach.call(list.children, function (b) { b.style.flexBasis = "calc(" + (100 / perRow) + "% - 0.4rem)"; });
       }
       // Toucher ou glisser sur la carte : l'ensemble sous le doigt est
       // sélectionné en continu (l'ellipse la plus intérieure qui contient
