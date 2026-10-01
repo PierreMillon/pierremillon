@@ -2237,8 +2237,11 @@
       }
       function tablesWrong(k) {
         TB.errors[TB.mode]++;
-        // L'erreur compte pour la table demandée (celle qu'on n'a pas su)
+        // L'erreur compte pour la table demandée (celle qu'on n'a pas su)…
         if (TB.targetKey) TB.cellErr[TB.targetKey] = (TB.cellErr[TB.targetKey] || 0) + 1;
+        // …et, en « Trouver la case », aussi pour la case touchée à tort :
+        // son résultat n'était pas connu non plus (demande de Pierre)
+        if (TB.mode === "find" && k !== TB.targetKey) TB.cellErr[k] = (TB.cellErr[k] || 0) + 1;
         caption = { text: t("tNo", { a: kA(k), b: kB(k), p: kA(k) * kB(k) }) };
         try { unlockAudio(); if (actx) tone(120, 95, 0.3, 0.35, actx.currentTime + 0.01, "sine", 0.03); } catch (e) {}
         buzz(25);
@@ -2480,6 +2483,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v29", text: "Tables : en « Trouver la case », une mauvaise case compte deux erreurs — sur la case touchée (son résultat n'était pas connu) et sur celle qu'il fallait toucher." },
         { v: "v28", text: "Bac à sable : on peut ajouter beaucoup plus de tiges (jusqu'à 13, même en portrait) ; les perles rétrécissent pour tenir dans l'écran, et le grand nombre aussi pour ne jamais déborder." },
         { v: "v27", text: "Tables : les trois boutons sur une seule ligne en bas (Trouver la case, Écrire le résultat, et ↻ pour recommencer la grille). Au-dessus de la grille, seulement le nombre à trouver (ou le calcul à écrire) : plus de phrase, de progression ni de liste d'erreurs, les chiffres rouges dans les cases suffisent." },
         { v: "v26", text: "Tables : traits des doublons continus et fins." },
