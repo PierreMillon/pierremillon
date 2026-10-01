@@ -160,6 +160,9 @@ Tri : priorité décroissante.
 
 - [x] v26 — Traits des doublons continus et fins (1 px)
 
+- [x] v27 — Tables : Trouver / Écrire / ↻ (recommencer) sur une seule ligne
+  en bas ; barre du bas masquée dans ce chapitre
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
