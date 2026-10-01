@@ -935,7 +935,7 @@
       // Bac à sable : nombre de tiges choisi avec « − tige / + tige »
       // (0 = automatique : 5 en portrait, plus en paysage), jamais plus que
       // ce que l'écran permet sans perles trop petites
-      var SANDBOX_MIN_ROD_PX = 44;
+      var SANDBOX_MIN_ROD_PX = 26; // jusqu'à 13 tiges même en portrait (demande de Pierre)
       var sandboxRods = (function () {
         var raw = load("sandboxRods");
         return raw && /^[0-9]{1,2}$/.test(raw) ? Math.min(MAX_RODS, Number(raw)) : 0;
@@ -1009,9 +1009,22 @@
           rods[r].label.textContent = d;
           rods[r].label.setAttribute("class", d ? "digit on" : "digit");
         }
-        document.getElementById("value").textContent = numStr(value());
+        var valEl = document.getElementById("value");
+        valEl.textContent = numStr(value());
+        fitValue(valEl);
         renderSplit();
         kick();
+      }
+
+      // Le grand nombre tient toujours dans la largeur : avec beaucoup de
+      // tiges (bac à sable), la police rétrécit au lieu de déborder
+      function fitValue(valEl) {
+        valEl.style.fontSize = "";
+        var len = valEl.textContent.length;
+        var avail = valEl.parentNode.clientWidth - 8;
+        var natural = parseFloat(getComputedStyle(valEl).fontSize);
+        var need = len * natural * 0.7; // chasse fixe ≈ 0,6 em + espacement 0,08 em
+        if (avail > 0 && need > avail) valEl.style.fontSize = Math.floor(natural * avail / need) + "px";
       }
 
       function setTarget(b, y, on, instant) {
@@ -2467,6 +2480,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v28", text: "Bac à sable : on peut ajouter beaucoup plus de tiges (jusqu'à 13, même en portrait) ; les perles rétrécissent pour tenir dans l'écran, et le grand nombre aussi pour ne jamais déborder." },
         { v: "v27", text: "Tables : les trois boutons sur une seule ligne en bas (Trouver la case, Écrire le résultat, et ↻ pour recommencer la grille). Au-dessus de la grille, seulement le nombre à trouver (ou le calcul à écrire) : plus de phrase, de progression ni de liste d'erreurs, les chiffres rouges dans les cases suffisent." },
         { v: "v26", text: "Tables : traits des doublons continus et fins." },
         { v: "v25", text: "Tables : numéros de ligne à droite de la grille ; les doublons (12, 16, 18, 24, 36, qu'on obtient de deux façons) sont reliés par un trait dès que les deux cases sont remplies ; carrés et table de 2, plus faciles, en opacité légère." },
