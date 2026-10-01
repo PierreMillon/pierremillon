@@ -521,7 +521,8 @@
     /* Carrés et table de 2 : plus faciles, en opacité légère */
     .tcell.easy { opacity: 0.5; }
     .tcell.easy.target { opacity: 1; }
-    /* Traits entre doublons (12, 16, 18, 24, 36), derrière les cases */
+    /* Traits entre doublons (12, 16, 18, 24, 36), derrière les cases :
+       continus et fins (demande de Pierre) */
     .tgrid svg.tdup {
       position: absolute;
       inset: 0;
@@ -533,9 +534,9 @@
     }
     .tgrid svg.tdup line {
       stroke: var(--accent);
-      stroke-width: 2;
-      stroke-dasharray: 4 4;
-      opacity: 0.75;
+      stroke-width: 1;
+      stroke-linecap: round;
+      opacity: 0.8;
     }
     /* Nombre d'erreurs cumulées sur cette table, dans le coin */
     .tcell { position: relative; }
@@ -2462,6 +2463,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v26", text: "Tables : traits des doublons continus et fins." },
         { v: "v25", text: "Tables : numéros de ligne à droite de la grille ; les doublons (12, 16, 18, 24, 36, qu'on obtient de deux façons) sont reliés par un trait dès que les deux cases sont remplies ; carrés et table de 2, plus faciles, en opacité légère." },
         { v: "v24", text: "Tables : compteur d'erreurs par table (dans le coin de chaque case, et « à retravailler » avec les 3 plus ratées) ; les tables souvent ratées reviennent plus souvent. On peut revenir aux tables même une fois le boulier débloqué : la grille repart de zéro et « Suivant » y reste." },
         { v: "v23", text: "Message d'accueil sur les tables : c'est normal d'arriver là, il faut d'abord les maîtriser (les deux grilles sans erreur) pour ouvrir le boulier ; pour juste manipuler, bouton direct vers le bac à sable." },
