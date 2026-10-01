@@ -478,6 +478,7 @@
     .tables[hidden] { display: none; }
     .tgrid {
       --cell: 34px;
+      position: relative;
       display: grid;
       grid-template-columns: repeat(9, var(--cell));
       grid-auto-rows: var(--cell);
@@ -516,6 +517,26 @@
       background: rgba(200, 255, 225, calc(0.04 + 0.22 * var(--breath, 1)));
     }
     .tcell.bad { border-color: #ff9d8a; color: #ff9d8a; }
+    .tcell { z-index: 1; }
+    /* Carrés et table de 2 : plus faciles, en opacité légère */
+    .tcell.easy { opacity: 0.5; }
+    .tcell.easy.target { opacity: 1; }
+    /* Traits entre doublons (12, 16, 18, 24, 36), derrière les cases */
+    .tgrid svg.tdup {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .tgrid svg.tdup line {
+      stroke: var(--accent);
+      stroke-width: 2;
+      stroke-dasharray: 4 4;
+      opacity: 0.75;
+    }
     /* Nombre d'erreurs cumulées sur cette table, dans le coin */
     .tcell { position: relative; }
     .tcell .terr {
@@ -2076,6 +2097,36 @@
         tgrid.style.setProperty("--cell", Math.floor((side - 16) / 9) + "px");
       }
 
+      // Doublons : un même produit obtenu de deux façons (12 = 2 × 6 = 3 × 4,
+      // 16, 18, 24, 36). Dès que les deux cases sont remplies, un trait les
+      // relie, derrière les cases
+      var DUPS = (function () {
+        var by = {};
+        TKEYS.forEach(function (k) { var pr = kA(k) * kB(k); (by[pr] = by[pr] || []).push(k); });
+        return Object.keys(by).filter(function (pr) { return by[pr].length > 1; }).map(function (pr) { return by[pr]; });
+      })();
+      function drawDupLines() {
+        if (tablesEl.hidden) return;
+        var old = tgrid.querySelector("svg.tdup");
+        if (old) old.remove();
+        var line = document.createElementNS(SVGNS, "svg");
+        line.setAttribute("class", "tdup");
+        var m = TB.mode;
+        DUPS.forEach(function (group) {
+          var filled = group.filter(function (k) { return TB.done[m][k]; });
+          for (var i = 0; i + 1 < filled.length; i++) {
+            var a = tgrid.querySelector('[data-key="' + filled[i] + '"]');
+            var b2 = tgrid.querySelector('[data-key="' + filled[i + 1] + '"]');
+            if (!a || !b2) continue;
+            el("line", {
+              x1: a.offsetLeft + a.offsetWidth / 2, y1: a.offsetTop + a.offsetHeight / 2,
+              x2: b2.offsetLeft + b2.offsetWidth / 2, y2: b2.offsetTop + b2.offsetHeight / 2
+            }, line);
+          }
+        });
+        tgrid.insertBefore(line, tgrid.firstChild);
+      }
+
       function buildKeypad() {
         keypad.textContent = "";
         ["1", "2", "3", "4", "5", "⌫", "6", "7", "8", "9", "0", "OK"].forEach(function (k) {
@@ -2091,8 +2142,11 @@
         if (!tablesActive()) return;
         var m = TB.mode;
         tgrid.textContent = "";
+        // Colonnes 2…9 puis, tout à droite, les numéros de ligne (demande
+        // de Pierre : le triangle se lit contre eux)
         for (var r = 1; r <= 9; r++) {
-          for (var c = 1; c <= 9; c++) {
+          for (var vc = 0; vc < 9; vc++) {
+            var c = vc < 8 ? vc + 2 : 1;
             var cell = document.createElement("button");
             cell.className = "tcell";
             if (r === 1 && c === 1) { cell.className += " head"; cell.textContent = "×"; }
@@ -2101,6 +2155,9 @@
             else if (r > c) { cell.className += " off"; }
             else {
               var k = "" + r + c;
+              cell.dataset.key = k;
+              // Carrés et table de 2 : les plus faciles, un peu effacés
+              if (r === c || r === 2) cell.className += " easy";
               if (TB.done[m][k]) { cell.className += " done"; cell.textContent = r * c; }
               if (TB.cellErr[k]) {
                 var eb = document.createElement("span");
@@ -2147,6 +2204,7 @@
         updateButtons();
         blink(m === "write" && TB.target !== null);
         sizeTables();
+        drawDupLines();
       }
 
       function tablesRight(k) {
@@ -2404,6 +2462,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v25", text: "Tables : numéros de ligne à droite de la grille ; les doublons (12, 16, 18, 24, 36, qu'on obtient de deux façons) sont reliés par un trait dès que les deux cases sont remplies ; carrés et table de 2, plus faciles, en opacité légère." },
         { v: "v24", text: "Tables : compteur d'erreurs par table (dans le coin de chaque case, et « à retravailler » avec les 3 plus ratées) ; les tables souvent ratées reviennent plus souvent. On peut revenir aux tables même une fois le boulier débloqué : la grille repart de zéro et « Suivant » y reste." },
         { v: "v23", text: "Message d'accueil sur les tables : c'est normal d'arriver là, il faut d'abord les maîtriser (les deux grilles sans erreur) pour ouvrir le boulier ; pour juste manipuler, bouton direct vers le bac à sable." },
         { v: "v22", text: "Tables : cases libres bien plus visibles (contour franc, léger fond) ; cases remplies en vert vif, contour et chiffre lumineux." },
@@ -2453,7 +2512,7 @@
       var resizeT = 0;
       window.addEventListener("resize", function () {
         clearTimeout(resizeT);
-        setTimeout(sizeTables, 160);
+        setTimeout(function () { sizeTables(); drawDupLines(); }, 160);
         resizeT = setTimeout(function () {
           // En exercice, le boulier garde les tiges de l'exercice ; en bac à
           // sable, autant que l'écran le permet
