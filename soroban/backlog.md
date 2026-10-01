@@ -165,6 +165,8 @@ Tri : priorité décroissante.
   le nombre (ou le calcul) ; erreurs visibles seulement en rouge dans les
   cases
 
+- [x] v28 — Bac à sable : jusqu'à 13 tiges (tige ≥ 26 px), même en portrait
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
