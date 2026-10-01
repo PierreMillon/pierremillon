@@ -161,7 +161,9 @@ Tri : priorité décroissante.
 - [x] v26 — Traits des doublons continus et fins (1 px)
 
 - [x] v27 — Tables : Trouver / Écrire / ↻ (recommencer) sur une seule ligne
-  en bas ; barre du bas masquée dans ce chapitre
+  en bas ; barre du bas masquée dans ce chapitre. Consigne épurée : juste
+  le nombre (ou le calcul) ; erreurs visibles seulement en rouge dans les
+  cases
 
 ## À faire
 
