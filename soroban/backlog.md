@@ -154,6 +154,10 @@ Tri : priorité décroissante.
   à zéro, « Suivant » y reste). Règle confirmée par Pierre : chaque grille
   réussie une fois sans erreur suffit pour débloquer le boulier
 
+- [x] v25 — Tables : numéros de ligne à droite ; doublons (12, 16, 18, 24,
+  36) reliés par un trait pointillé dès que les deux cases sont remplies ;
+  carrés et table de 2 (plus faciles) en opacité légère
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
