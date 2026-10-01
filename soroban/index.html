@@ -452,6 +452,10 @@
        la place (niveaux verrouillés, gros nombre) pour agrandir la grille */
     body.tables-mode .levels .chip.locked { display: none; }
     body.tables-mode .value { display: none; }
+    /* Les trois boutons des tables tiennent sur une ligne : pas de barre du bas */
+    body.tables-mode .bottombar { display: none; }
+    body.tables-mode .badgebar { height: auto; flex-wrap: nowrap; padding-bottom: 1rem; }
+    .bchip.restart { font-size: 1.15rem; min-width: 2.6rem; padding: 0 0.5rem; }
     body.tables-mode .task {
       height: auto;
       display: block;
@@ -1908,6 +1912,15 @@
             b.addEventListener("click", function () { setTablesMode(it[0]); });
             bar.appendChild(b);
           });
+          // Recommencer la grille : une simple flèche qui tourne, sur la
+          // même ligne que les deux exercices
+          var rb = document.createElement("button");
+          rb.className = "bchip mode restart";
+          rb.textContent = "↻";
+          rb.setAttribute("aria-label", t("tRestart"));
+          rb.title = t("tRestart");
+          rb.addEventListener("click", function () { if (!busy) restartTablesMode(); });
+          bar.appendChild(rb);
           return;
         }
         LEVELS.forEach(function (lv) {
@@ -2180,25 +2193,16 @@
         task.textContent = "";
         // Une seule consigne, avec le nombre en gros : le nombre à trouver,
         // ou ce qu'on tape au clavier
+        // Épuré (demande de Pierre) : seulement le nombre à trouver, ou le
+        // calcul à écrire. Ni phrase, ni progression, ni liste d'erreurs :
+        // les chiffres rouges dans les cases ratées suffisent
         if (TB.target === null) task.appendChild(document.createTextNode(t("tFull", { d: doneCount(m) })));
         else {
-          task.appendChild(document.createTextNode((m === "find" ? t("tFindTask") : t("tWriteTask", { a: kA(TB.target), b: kB(TB.target) })) + " "));
+          if (m === "write") task.appendChild(document.createTextNode(t("tWriteTask", { a: kA(TB.target), b: kB(TB.target) }) + " "));
           var num = document.createElement("span");
           num.className = "tnum";
           num.textContent = m === "find" ? String(TB.target) : (TB.input || "?");
           task.appendChild(num);
-        }
-        var sp = document.createElement("span");
-        sp.className = "tprog";
-        sp.textContent = t("tProgress", { d: doneCount(m), e: TB.errors[m] });
-        task.appendChild(sp);
-        // Les 3 tables les plus ratées, à retravailler
-        var worst = Object.keys(TB.cellErr).sort(function (x1, x2) { return TB.cellErr[x2] - TB.cellErr[x1]; }).slice(0, 3);
-        if (worst.length) {
-          var sw = document.createElement("span");
-          sw.className = "tprog tworst";
-          sw.textContent = t("tWorst", { list: worst.map(function (key) { return kA(key) + " × " + kB(key) + " (" + TB.cellErr[key] + ")"; }).join(", ") });
-          task.appendChild(sw);
         }
         renderSplit();
         buildBadgeBar();
@@ -2463,6 +2467,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v27", text: "Tables : les trois boutons sur une seule ligne en bas (Trouver la case, Écrire le résultat, et ↻ pour recommencer la grille). Au-dessus de la grille, seulement le nombre à trouver (ou le calcul à écrire) : plus de phrase, de progression ni de liste d'erreurs, les chiffres rouges dans les cases suffisent." },
         { v: "v26", text: "Tables : traits des doublons continus et fins." },
         { v: "v25", text: "Tables : numéros de ligne à droite de la grille ; les doublons (12, 16, 18, 24, 36, qu'on obtient de deux façons) sont reliés par un trait dès que les deux cases sont remplies ; carrés et table de 2, plus faciles, en opacité légère." },
         { v: "v24", text: "Tables : compteur d'erreurs par table (dans le coin de chaque case, et « à retravailler » avec les 3 plus ratées) ; les tables souvent ratées reviennent plus souvent. On peut revenir aux tables même une fois le boulier débloqué : la grille repart de zéro et « Suivant » y reste." },
