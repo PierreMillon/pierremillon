@@ -46,6 +46,16 @@ Tri : priorité décroissante.
 - [x] v8 — Écran figé (page sans défilement ni rebond, seuls les panneaux
   de réglages défilent)
 
+- [x] v9 — Jeu refondu : cours affiché, repère « ? » à un écart aléatoire
+  (1 à N pas, vraie échelle de temps), toucher = réponse, proximité en %
+  (100 − écart en %), vrai chemin révélé, dates cachées avant la réponse,
+  fin de partie comparée au naïf ; méthodes sorties du jeu, gardées pour
+  le test sur toute la série
+
+Choix de Pierre (questionnaire du 01/10) : toucher = validé, écart en
+valeur, révéler le vrai chemin seulement, dates cachées, axe des prix
+gradué, méthodes retirées du jeu, fin de partie comparée au naïf.
+
 Choix de Pierre (questionnaire du 25/09) : priorité aux méthodes, pas de
 temps au choix, une seule valeur (Bitcoin) + S&P gardé, horizon 1 ou
 plusieurs pas, données en direct, dollars, toutes les méthodes d'un coup,

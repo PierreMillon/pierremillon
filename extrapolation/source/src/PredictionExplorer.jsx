@@ -298,6 +298,12 @@ export const T = {
 
 export const HISTORY = [
   {
+    v: "v9",
+    date: "01/10/2026",
+    fr: "Bourse refondue en jeu simple : le cours s'arrête, un repère « ? » apparaît plus loin (à la vraie distance dans le temps), tu touches la hauteur estimée et ta proximité en % s'affiche avec le vrai chemin. Dates cachées pendant qu'on devine. Fin de partie : ta moyenne face à « rien ne bouge ». Les méthodes restent dans le test sur toute la série.",
+    en: "Markets rebuilt as a simple game: the price stops, a « ? » marker appears further on (at the real distance in time), you tap the estimated height and your closeness in % appears with the real path. Dates hidden while guessing. End of game: your average against « nothing moves ». The methods stay in the whole-series test.",
+  },
+  {
     v: "v8",
     date: "25/09/2026",
     fr: "Bourse recentrée sur Bitcoin (jour / semaine / mois, mis à jour en direct) et le S&P 500. 4 nouvelles méthodes : lissage exponentiel, momentum, moyennes croisées, autorégression AR(2). Horizon de 1 à 12 pas avec points à glisser. Prédictions des méthodes cachées jusqu'à « Valider ». Parties de 10, 25 ou 50 manches. Fonds fictif de 10 000 $ (achat ou vente à découvert, 0,1 % de frais) comparé à « acheter et garder ». Écran figé, sans rebond.",
