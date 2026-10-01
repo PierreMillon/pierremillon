@@ -158,6 +158,8 @@ Tri : priorité décroissante.
   36) reliés par un trait pointillé dès que les deux cases sont remplies ;
   carrés et table de 2 (plus faciles) en opacité légère
 
+- [x] v26 — Traits des doublons continus et fins (1 px)
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
