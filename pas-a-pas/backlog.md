@@ -41,7 +41,7 @@ Tri : priorité décroissante.
 - [x] Chapitre Fusion : bulles à glisser qui fusionnent selon les règles, pouvoir « 1 → c/c » gagné avec Fraction (v30)
 - [x] P1 — Nouveaux pouvoirs Fusion, un par geste de la fiche, chacun gagné avec le chapitre qui le montre à la main (v68–v69) : découper un nombre (Calcul), compléter le carré ((a+b)²), puissances 2ⁿ⁺¹ = 2·2ⁿ (Pascal), quantité conjuguée ((a+b)(a−b)), télescopage (Piège)
 - [x] P2 — Fusion : développer (bulle k·(a + b) touchée → k·a + k·b), pouvoir gagné avec Distribuer (v68)
-- [ ] P2 — Badge qui agit : un appui sur l'icône d'un badge fait l'opération d'un coup (ex. (−1)·(−1) → 1 dans l'expression affichée), au lieu d'expliquer seulement (v72 : icônes sous les ensembles)
+- [x] P2 — Badge qui agit : (−1)·(−1) calcule tous les signes d'un coup (v77). Reste : le badge 10 (cadre de dix) à rendre actif aussi : un appui sur l'icône d'un badge fait l'opération d'un coup (ex. (−1)·(−1) → 1 dans l'expression affichée), au lieu d'expliquer seulement (v72 : icônes sous les ensembles)
 - Rapports : courts + liens
 
 

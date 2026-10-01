@@ -779,6 +779,9 @@
       border: 1px solid var(--ink-soft);
       border-radius: 50%;
     }
+    /* Badge utilisable à cette étape : il luit doucement */
+    .badge.ready { border-color: var(--accent); box-shadow: 0 0 10px rgba(61, 224, 138, 0.45); }
+
     .badge svg {
       width: 1.25rem;
       height: 1.25rem;
@@ -3326,6 +3329,7 @@
 
       function refreshUi() {
         var demo = DEMOS[demoIndex];
+        if (typeof refreshMM === "function" && badgeMM) refreshMM();
         var last = demo.steps.length - 1;
         // Jamais désactivées : ← au tout début boucle vers la fin, → à la
         // fin boucle vers le début — de quoi comparer départ/résultat en
@@ -5635,6 +5639,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v77", text: "Le badge (−1)·(−1) agit : à une étape où des (−1) multiplient encore (ex. (−1)·(2x) + (−1)·(−3) + (−1)·(x)), il luit ; un appui fait tourner les (−1) et calcule tous les signes d'un coup : −2x + 3 − x. Ailleurs, un appui l'explique." },
         { v: "v76", text: "Titre du chapitre de retour sur la ligne des boutons ☰ ⌂. Badges rangés entre les flèches ← → : plus de rangée en plus, tous les boutons du bas tiennent à l'écran. Accueil : anneaux presque ronds, chacun remonte un peu vers le haut — ℕ en petite boule en haut, les lettres ℤ ℚ ℝ ℂ… dans les bandes plus larges du bas." },
         { v: "v75", text: "Mode jeu : la fausse proposition garde les mêmes chiffres. Elle se trompe sur ce que fait l'étape : l'opération inverse (7 + 5 → 2, (−2) + (−1) → −1) ou le signe qui vient de changer (moins par moins laissé en moins). Plus de réponse absurde qui se repère au premier coup d'œil." },
         { v: "v74", text: "Fiche des règles : racines redessinées (le signe √ et sa barre forment un seul bloc, qui s'étire sur une fraction et ne se coupe plus en fin de ligne). Une égalité a = b n'est plus coupée au milieu : on passe à la ligne entre deux égalités, et une égalité trop longue ne se coupe qu'à un signe =." },
@@ -5936,7 +5941,31 @@
       function refreshBadges() { badgeMM.hidden = !doneMap["−×−"]; }
       refreshBadges();
       badgeChip.addEventListener("click", function () { showBadgeInfo(BADGE_INFO.dix, "Badge"); });
-      badgeMM.addEventListener("click", function () { showBadgeInfo(POWERS["−×−"], "Badge"); });
+      // Le badge agit : à une étape où des (−1) multiplient encore, un
+      // appui calcule tous les signes d'un coup (moins par moins = plus)
+      // et saute à la première étape où il n'en reste plus.
+      function mmTarget() {
+        var d = DEMOS[demoIndex];
+        if (!d || d.custom || !doneMap["−×−"] || (homeEl && !homeEl.hidden)) return -1;
+        var has = function (st) { return st && st.expr && !st.summary && flatTokens(st.expr, []).some(function (t) { return /^\(−1\)$/.test(t.t); }); };
+        if (!has(d.steps[cur])) return -1;
+        for (var k = cur + 1; k < d.steps.length; k++) {
+          if (d.steps[k].summary) return -1;
+          if (!has(d.steps[k])) return k;
+        }
+        return -1;
+      }
+      function refreshMM() { badgeMM.classList.toggle("ready", mmTarget() >= 0); }
+      badgeMM.addEventListener("click", function () {
+        var k = mmTarget();
+        if (k < 0 || busy) { showBadgeInfo(POWERS["−×−"], "Badge"); return; }
+        closeChoice();
+        SND.badge();
+        stage.querySelectorAll(".tok").forEach(function (e) {
+          if (/^\(−1\)$/.test(e.textContent.trim())) e.animate([{ transform: "rotate(0)" }, { transform: "rotate(180deg)" }, { transform: "rotate(360deg)" }], { duration: ms(600) });
+        });
+        setTimeout(function () { go(k); }, ms(600));
+      });
 
       function announcePower(ch) {
         var P = POWERS[ch];
