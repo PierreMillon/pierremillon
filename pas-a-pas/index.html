@@ -254,9 +254,9 @@
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--ink-soft);
-      /* Le titre entier, sur sa propre ligne sous les boutons */
-      order: 10;
-      flex: 1 0 100%;
+      /* Sur la ligne des boutons ☰ ⌂, en entier */
+      flex: 1 1 auto;
+      min-width: 0;
       white-space: nowrap;
     }
 
@@ -761,9 +761,11 @@
       display: flex;
       justify-content: center;
       gap: 0.5rem;
-      flex: none;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
     }
-    .badge-shelf:not(:has(.badge:not([hidden]))) { display: none; }
+    .badge-shelf:not(:has(.badge:not([hidden]))) { visibility: hidden; }
 
     .badge {
       width: 1.9rem;
@@ -887,7 +889,7 @@
       margin-top: 0.6rem;
     }
 
-    .home-map { width: 100%; max-width: 420px; flex: none; height: min(56vh, 130vw, 520px); touch-action: none; }
+    .home-map { width: 100%; max-width: 420px; flex: none; height: min(50vh, 106vw, 440px); touch-action: none; }
     .home-map ellipse { fill: rgba(61, 224, 138, 0.04); stroke: var(--ink-soft); stroke-width: 1.2; cursor: pointer; }
     .home-map ellipse.sel { stroke: var(--accent); stroke-width: 2; fill: rgba(61, 224, 138, 0.1); }
     .home-map ellipse.lock { stroke-dasharray: 4 5; fill: transparent; }
@@ -1457,7 +1459,7 @@
     </section>
 
     <section class="home" id="home" hidden>
-      <svg class="home-map" id="homeMap" viewBox="0 0 300 424" aria-label="Ensembles de nombres"></svg>
+      <svg class="home-map" id="homeMap" viewBox="0 0 300 344" aria-label="Ensembles de nombres"></svg>
       <p class="home-info" id="homeInfo"></p>
       <div class="home-list" id="homeList"></div>
     </section>
@@ -1524,19 +1526,19 @@
 
     <div class="univ" id="univ" aria-label="Ensemble de travail"></div>
 
-    <!-- Badges gagnés : des icônes au trait sous les ensembles. Un appui
-         explique le badge (à terme : il fera l'opération d'un coup). -->
-    <div class="badge-shelf" id="badgeShelf">
-      <button class="badge" id="badgeChip" aria-label="Badge cadre de dix" hidden>
-        <svg viewBox="0 0 20 20"><rect x="1.5" y="5.5" width="17" height="9" rx="1"/><circle cx="3.9" cy="8" r="1.1"/><circle cx="7" cy="8" r="1.1"/><circle cx="10" cy="8" r="1.1"/><circle cx="13" cy="8" r="1.1"/><circle cx="16.1" cy="8" r="1.1"/><circle cx="3.9" cy="12" r="1.1"/><circle cx="7" cy="12" r="1.1"/><circle cx="10" cy="12" r="1.1"/><circle cx="13" cy="12" r="1.1"/><circle cx="16.1" cy="12" r="1.1"/></svg>
-      </button>
-      <button class="badge" id="badgeMM" aria-label="Badge (−1)·(−1) = 1" hidden>
-        <svg viewBox="0 0 20 20"><line x1="2" y1="10" x2="18" y2="10" stroke-opacity="0.45"/><path d="M16 10 A6 6 0 0 0 4 10"/><path d="M4 10 A6 6 0 0 0 16 10" stroke-dasharray="1.6 1.6"/><path d="M14.2 12.6 L16 10 L17.4 12.8"/></svg>
-      </button>
-    </div>
 
     <div class="controls" id="controls">
       <button class="arrow-btn" id="prevBtn" aria-label="Retour">←</button>
+      <!-- Badges gagnés : icônes au trait entre les deux flèches. Un appui
+           explique le badge (à terme : il fera l'opération d'un coup). -->
+      <div class="badge-shelf" id="badgeShelf">
+        <button class="badge" id="badgeChip" aria-label="Badge cadre de dix" hidden>
+          <svg viewBox="0 0 20 20"><rect x="1.5" y="5.5" width="17" height="9" rx="1"/><circle cx="3.9" cy="8" r="1.1"/><circle cx="7" cy="8" r="1.1"/><circle cx="10" cy="8" r="1.1"/><circle cx="13" cy="8" r="1.1"/><circle cx="16.1" cy="8" r="1.1"/><circle cx="3.9" cy="12" r="1.1"/><circle cx="7" cy="12" r="1.1"/><circle cx="10" cy="12" r="1.1"/><circle cx="13" cy="12" r="1.1"/><circle cx="16.1" cy="12" r="1.1"/></svg>
+        </button>
+        <button class="badge" id="badgeMM" aria-label="Badge (−1)·(−1) = 1" hidden>
+          <svg viewBox="0 0 20 20"><line x1="2" y1="10" x2="18" y2="10" stroke-opacity="0.45"/><path d="M16 10 A6 6 0 0 0 4 10"/><path d="M4 10 A6 6 0 0 0 16 10" stroke-dasharray="1.6 1.6"/><path d="M14.2 12.6 L16 10 L17.4 12.8"/></svg>
+        </button>
+      </div>
       <button class="arrow-btn" id="nextBtn" aria-label="Suivant">→</button>
     </div>
   </main>
@@ -5633,6 +5635,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v76", text: "Titre du chapitre de retour sur la ligne des boutons ☰ ⌂. Badges rangés entre les flèches ← → : plus de rangée en plus, tous les boutons du bas tiennent à l'écran. Accueil : anneaux presque ronds, chacun remonte un peu vers le haut — ℕ en petite boule en haut, les lettres ℤ ℚ ℝ ℂ… dans les bandes plus larges du bas." },
         { v: "v75", text: "Mode jeu : la fausse proposition garde les mêmes chiffres. Elle se trompe sur ce que fait l'étape : l'opération inverse (7 + 5 → 2, (−2) + (−1) → −1) ou le signe qui vient de changer (moins par moins laissé en moins). Plus de réponse absurde qui se repère au premier coup d'œil." },
         { v: "v74", text: "Fiche des règles : racines redessinées (le signe √ et sa barre forment un seul bloc, qui s'étire sur une fraction et ne se coupe plus en fin de ligne). Une égalité a = b n'est plus coupée au milieu : on passe à la ligne entre deux égalités, et une égalité trop longue ne se coupe qu'à un signe =." },
         { v: "v73", text: "Une seule réussite sans faute suffit pour valider un chapitre et gagner son badge (au lieu de 3). Rejouer donne toujours un autre exercice." },
@@ -5989,17 +5992,22 @@
       // suivant), sur l'axe horizontal à droite — jamais sur un trait.
       // Ellipses verticales, dans le sens de l'écran ; chaque lettre au
       // milieu de sa bande, sur l'axe vertical en haut.
-      var MAP_CX = 150, MAP_CY = 212, STEP = 21;
+      // Presque des cercles (un peu plus hauts que larges). Chaque anneau
+      // intérieur remonte un peu : peu d'écart en haut, plus en bas, où
+      // s'écrit la lettre de chaque bande. ℕ finit en petite boule en haut.
+      var MAP_CX = 150, MAP_CY = 172, R0 = 166, STEP = 18, TOP_GAP = 7, RATIO = 0.89;
       var ZONES = RINGS.map(function (k, i) {
-        var ry = 206 - i * STEP, rx = ry * 0.66;
-        var inner = i < RINGS.length - 1 ? ry - STEP : 0;
-        return { k: k, rx: rx, ry: ry, lab: LABS[k], lx: MAP_CX, ly: MAP_CY - (ry + inner) / 2 + 5 };
+        var ry = R0 - i * STEP, cy = MAP_CY - i * (STEP - TOP_GAP);
+        return { k: k, rx: ry * RATIO, ry: ry, cy: cy, lab: LABS[k], lx: MAP_CX };
       });
-      ZONES[ZONES.length - 1].ly = MAP_CY + 8; // ℕ au centre
+      ZONES.forEach(function (z, i) {
+        var n = ZONES[i + 1];
+        z.ly = n ? (z.cy + z.ry + n.cy + n.ry) / 2 + 5 : z.cy + 8; // ℕ au centre de sa boule
+      });
       function renderHome() {
         homeMap.innerHTML = "";
         ZONES.forEach(function (z) {
-          var e = svgEl("ellipse", { cx: MAP_CX, cy: MAP_CY, rx: z.rx, ry: z.ry }, homeMap);
+          var e = svgEl("ellipse", { cx: MAP_CX, cy: z.cy, rx: z.rx, ry: z.ry }, homeMap);
           var tease = !!TEASE[z.k];
           var isLock = tease || !unlocked(z.k);
           if (isLock) e.classList.add("lock");
@@ -6024,7 +6032,7 @@
           if (doneMap[d.title]) { b.classList.add("done"); b.textContent = "✓ " + b.textContent; }
           else if (!d.custom && runs[d.title]) {
             var sm = document.createElement("small");
-            sm.textContent = runs[d.title] + "/3";
+            sm.textContent = runs[d.title] + "/" + WIN;
             b.appendChild(sm);
           }
           b.disabled = !open;
@@ -6051,7 +6059,7 @@
         var p = pt.matrixTransform(m.inverse());
         var hit = null;
         ZONES.forEach(function (z) {
-          var dx = (p.x - MAP_CX) / z.rx, dy = (p.y - MAP_CY) / z.ry;
+          var dx = (p.x - MAP_CX) / z.rx, dy = (p.y - z.cy) / z.ry;
           if (dx * dx + dy * dy <= 1) hit = z.k; // les suivantes sont plus intérieures
         });
         return hit;
