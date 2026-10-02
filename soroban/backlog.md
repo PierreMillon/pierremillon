@@ -170,6 +170,12 @@ Tri : priorité décroissante.
 - [x] v29 — « Trouver la case » : une mauvaise case compte une erreur sur la
   case touchée et une sur celle qu'il fallait toucher
 
+- [x] v30 — Après le badge des tables, trois parties au choix au-dessus de
+  Trouver / Écrire : « Toute la table » (erreurs gardées), « Mes erreurs »
+  (seulement les cases déjà ratées, les autres éteintes) et « Carrés
+  11–20 » (11² à 20², en trouvant la case ou en écrivant le résultat).
+  Le badge ne dépend que de la table entière
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
