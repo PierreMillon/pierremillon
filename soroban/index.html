@@ -531,10 +531,18 @@
     }
     .tcell.bad { border-color: #ff9d8a; color: #ff9d8a; }
     .tcell { z-index: 1; }
-    /* Carrés et table de 2 : plus faciles, en opacité légère */
+    /* Carrés, tables de 2 et de 5 : plus faciles, en opacité légère */
     .tcell.easy { opacity: 0.5; }
     .tcell.easy.target { opacity: 1; }
     .tcell.easy.rest { opacity: 0.18; }
+    /* Case sue (répétition espacée) : grisée, réponse déjà écrite */
+    .tcell.known, .tcell.easy.known {
+      opacity: 0.55;
+      color: #9aa59f;
+      border-color: #4a524e;
+      background: transparent;
+      cursor: default;
+    }
     /* Traits entre doublons (12, 16, 18, 24, 36), derrière les cases :
        continus et fins (demande de Pierre) */
     .tgrid svg.tdup {
@@ -2031,7 +2039,12 @@
                  clean: { find: false, write: false },
                  // Parties « mes erreurs » et « carrés » : progression à part
                  extra: { errors: freshScope(), squares: freshScope() }, errKeys: [],
-                 target: null, targetKey: null, input: "", cellErr: {} };
+                 target: null, targetKey: null, input: "", cellErr: {},
+                 // Répétition espacée : par case, réussites rapides de suite
+                 // (s), écart en parties (g : 2, 4, 8…) et partie où elle
+                 // revient (due) ; parties finies par grille ; temps moyen
+                 sr: {}, games: { all: 0, squares: 0 },
+                 avg: { find: { n: 0, mean: 0 }, write: { n: 0, mean: 0 } } };
       }
       // Sauvegarde relue avec une validation stricte (REGLES-JEUX.md,
       // Sécurité) : seulement des clés de cases connues et des entiers
@@ -2067,6 +2080,17 @@
               if (Number.isInteger(v) && v > 0 && v < 1e6) tb0.cellErr[k] = v;
             });
           }
+          if (o.sr && typeof o.sr === "object") {
+            ALLKEYS.forEach(function (k) {
+              var r = o.sr[k];
+              if (r && okInt(r.s) && okInt(r.g) && okInt(r.due)) tb0.sr[k] = { s: r.s, g: r.g, due: r.due };
+            });
+          }
+          ["all", "squares"].forEach(function (g) { if (o.games && okInt(o.games[g])) tb0.games[g] = o.games[g]; });
+          ["find", "write"].forEach(function (m) {
+            var a = o.avg && o.avg[m];
+            if (a && okInt(a.n) && typeof a.mean === "number" && a.mean >= 0 && a.mean <= 60000) tb0.avg[m] = { n: a.n, mean: a.mean };
+          });
         } catch (e) {}
         if (tb0.scope === "errors" && !tb0.errKeys.length) tb0.scope = "all";
         return tb0;
@@ -2080,7 +2104,8 @@
             errors: { done: keysOf(TB.extra.errors.done), errors: TB.extra.errors.errors },
             squares: { done: keysOf(TB.extra.squares.done), errors: TB.extra.squares.errors }
           },
-          errKeys: TB.errKeys, cellErr: TB.cellErr
+          errKeys: TB.errKeys, cellErr: TB.cellErr,
+          sr: TB.sr, games: TB.games, avg: TB.avg
         }));
       }
 
@@ -2094,8 +2119,46 @@
         return TKEYS;
       }
       function doneCount(m) { var d = curDone(m); return scopeKeys().filter(function (k) { return d[k]; }).length; }
-      function remainingKeys(m) { var d = curDone(m); return scopeKeys().filter(function (k) { return !d[k]; }); }
+      function remainingKeys(m) { var d = curDone(m); return scopeKeys().filter(function (k) { return !d[k] && !known(k); }); }
       function isSq(k) { return k.charAt(0) === "s"; }
+
+      // ---------- Répétition espacée (demande de Pierre) ----------
+      // Deux réponses justes et plus rapides que sa moyenne : la case est
+      // grisée, réponse écrite, et ne revient qu'au bout de 2 parties ;
+      // juste et rapide à son retour : 4 parties, puis 8… Une erreur ou
+      // une réponse lente la remet en jeu normalement. Pas dans « Mes
+      // erreurs », qui reprend toutes les cases ratées
+      function srGroup(k) { return isSq(k) ? "squares" : "all"; }
+      function known(k) {
+        var r = TB.sr[k];
+        return TB.scope !== "errors" && !!r && r.g > 0 && TB.games[srGroup(k)] < r.due;
+      }
+      var tStart = 0;
+      function srRight(k) {
+        var a = TB.avg[TB.mode], dt = tStart ? Math.min(Date.now() - tStart, 20000) : 0;
+        tStart = 0;
+        if (!dt) return;
+        var fast = a.n >= 5 && dt < a.mean;
+        a.n = Math.min(a.n + 1, 50);
+        a.mean += (dt - a.mean) / a.n;
+        var r = TB.sr[k] || { s: 0, g: 0, due: 0 }, cur = TB.games[srGroup(k)];
+        if (fast) {
+          r.s++;
+          if (r.g > 0) r.g *= 2;          // revue réussie : écart doublé
+          else if (r.s >= 2) r.g = 2;     // deuxième fois : 2 parties
+          if (r.g > 0) r.due = cur + 1 + r.g;
+        } else { r.s = 0; r.g = 0; r.due = 0; }
+        TB.sr[k] = r;
+      }
+      function srWrong(k) { if (k) delete TB.sr[k]; }
+      // Nouvelle grille où tout est déjà su : on avance jusqu'au premier
+      // retour prévu
+      function srWake() {
+        if (TB.scope === "errors" || remainingKeys(TB.mode).length) return;
+        var g = TB.scope === "squares" ? "squares" : "all", min = Infinity;
+        scopeKeys().forEach(function (k) { if (known(k)) min = Math.min(min, TB.sr[k].due); });
+        if (min < Infinity) TB.games[g] = min;
+      }
       function kA(k) { return isSq(k) ? +k.slice(1) : +k.charAt(0); }
       function kB(k) { return isSq(k) ? +k.slice(1) : +k.charAt(1); }
       function valK(k) { return kA(k) * kB(k); }
@@ -2196,6 +2259,7 @@
         TB.targetKey = k;
         TB.target = TB.mode === "find" ? valK(k) : k;
         TB.input = "";
+        tStart = Date.now();
       }
 
       function resetCurrent() {
@@ -2212,6 +2276,7 @@
             if (errs.length) TB.errKeys = errs;
           }
         }
+        srWake();
         saveTables();
       }
       function restartTablesMode() {
@@ -2279,6 +2344,12 @@
       function playCell(cell, k, m) {
         var d = curDone(m);
         cell.dataset.key = k;
+        if (!d[k] && known(k)) {
+          cell.className += " known";
+          cell.textContent = valK(k);
+          cell.disabled = true;
+          return;
+        }
         if (d[k]) { cell.className += " done"; cell.textContent = valK(k); }
         if (TB.cellErr[k]) {
           var eb = document.createElement("span");
@@ -2323,8 +2394,8 @@
               else if (r > c) { cell2.className += " off"; }
               else {
                 var k2 = "" + r + c;
-                // Carrés et table de 2 : les plus faciles, un peu effacés
-                if (r === c || r === 2) cell2.className += " easy";
+                // Carrés, tables de 2 et de 5 : les plus faciles, un peu effacés
+                if (r === c || r === 2 || r === 5) cell2.className += " easy";
                 // « Mes erreurs » : les autres cases sont hors jeu
                 if (!inScope[k2]) { cell2.className += " rest"; cell2.disabled = true; }
                 else playCell(cell2, k2, m);
@@ -2358,6 +2429,7 @@
 
       function tablesRight(k) {
         curDone(TB.mode)[k] = 1;
+        srRight(k);
         caption = { text: t("tYes", { e: exprK(k), p: valK(k) }), good: true };
         toc(false, 0.8);
         buzz(8);
@@ -2373,6 +2445,8 @@
         // …et, en « Trouver la case », aussi pour la case touchée à tort :
         // son résultat n'était pas connu non plus (demande de Pierre)
         if (TB.mode === "find" && k !== TB.targetKey) TB.cellErr[k] = (TB.cellErr[k] || 0) + 1;
+        srWrong(TB.targetKey);
+        srWrong(k);
         caption = { text: t("tNo", { e: exprK(k), p: valK(k) }) };
         try { unlockAudio(); if (actx) tone(120, 95, 0.3, 0.35, actx.currentTime + 0.01, "sine", 0.03); } catch (e) {}
         buzz(25);
@@ -2407,6 +2481,8 @@
       // badge si les deux grilles ont été remplies sans erreur
       function tablesGridDone() {
         var m = TB.mode, nErr = curErrors()[m], clean = nErr === 0, earned = false;
+        // Une grille finie = une partie de plus pour la répétition espacée
+        if (TB.scope !== "errors") { TB.games[TB.scope]++; saveTables(); }
         if (TB.scope === "all") {
           TB.clean[m] = clean;
           saveTables();
@@ -2619,6 +2695,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v31", text: "Tables : répétition espacée — une case réussie deux fois plus vite que ta moyenne est grisée avec sa réponse, et revient au bout de 2 parties, puis 4, 8… (une erreur ou une réponse lente la remet en jeu). Table de 5 un peu effacée, comme celle de 2." },
         { v: "v30", text: "Une fois les tables réussies, trois parties au choix : toute la table (les erreurs restent comptées), mes erreurs (seulement les tables déjà ratées), et carrés de 11 à 20 (11² … 20², trouver la case ou écrire le résultat)." },
         { v: "v29", text: "Tables : en « Trouver la case », une mauvaise case compte deux erreurs — sur la case touchée (son résultat n'était pas connu) et sur celle qu'il fallait toucher." },
         { v: "v28", text: "Bac à sable : on peut ajouter beaucoup plus de tiges (jusqu'à 13, même en portrait) ; les perles rétrécissent pour tenir dans l'écran, et le grand nombre aussi pour ne jamais déborder." },
