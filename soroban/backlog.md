@@ -176,6 +176,13 @@ Tri : priorité décroissante.
   11–20 » (11² à 20², en trouvant la case ou en écrivant le résultat).
   Le badge ne dépend que de la table entière
 
+- [x] v31 — Répétition espacée (règle de Pierre) : une case réussie deux
+  fois de suite plus vite que sa moyenne (moyenne glissante, par exercice)
+  est grisée avec sa réponse et revient au bout de 2 parties, puis 4, 8…
+  Une erreur ou une réponse lente la remet en jeu. Une partie = une grille
+  finie ; pas de répétition espacée dans « Mes erreurs ». Table de 5 en
+  opacité légère, comme celle de 2
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?
