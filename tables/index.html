@@ -453,7 +453,7 @@
         fr: {
           parts: { t9: "× 2–9", t20: "× 11–20", sq: "carrés", cu: "cubes" },
           find: "Trouver", write: "Écrire", errs: "Erreurs {n}", restart: "Recommencer la grille",
-          full: "Grille pleine", yes: "{e} = {p}", no: "Non : {e} = {p}",
+          full: "Grille pleine",
           noErr: "Aucune erreur dans cette partie", clean: "Sans aucune erreur.",
           dirty: "{e} erreur(s) : elles sont comptées dans les cases.",
           other: "Essaie maintenant l'autre exercice.", again: "Encore",
@@ -466,7 +466,7 @@
         en: {
           parts: { t9: "× 2–9", t20: "× 11–20", sq: "squares", cu: "cubes" },
           find: "Find", write: "Write", errs: "Mistakes {n}", restart: "Restart the grid",
-          full: "Grid complete", yes: "{e} = {p}", no: "No: {e} = {p}",
+          full: "Grid complete",
           noErr: "No mistakes in this part", clean: "Without a single mistake.",
           dirty: "{e} mistake(s): they are counted in the cells.",
           other: "Now try the other exercise.", again: "Again",
@@ -820,7 +820,9 @@
       function right(k) {
         cur().done[S.mode][k] = 1;
         srRight(k);
-        caption = { text: t("yes", { e: exprK(k), p: valK(k) }), cls: "good" };
+        // Pas de rappel « 13² = 169 » sous le nombre (demande de Pierre) :
+        // la case remplie suffit
+        caption = null;
         drop();
         buzz(8);
         saveState();
@@ -837,7 +839,9 @@
         if (S.mode === "find" && k !== targetKey) S.cellErr[k] = (S.cellErr[k] || 0) + 1;
         srWrong(targetKey);
         srWrong(k);
-        caption = { text: t("no", { e: exprK(k), p: valK(k) }), cls: "bad" };
+        // Pas de résultat écrit non plus après une erreur : la case touchée
+        // passe en rouge, le compteur d'erreurs augmente
+        caption = null;
         thud();
         buzz(25);
         saveState();
@@ -1174,6 +1178,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v2", text: "Plus de rappel du résultat sous le nombre après une réponse (« 17² = 289 ») : seule la case remplie, ou rouge en cas d'erreur, répond." },
         { v: "v1", text: "Première version, tirée du chapitre des tables du Soroban : trouver la case ou écrire le résultat, compteur d'erreurs dans chaque case (les cases ratées reviennent plus souvent), « Erreurs » pour ne refaire que les cases ratées, répétition espacée (une case sue est grisée et revient plus tard). Tables jusqu'à 20 : grille 2–9 (coupée par la diagonale) et grille 11–20 (× 2 à × 9). Chapitre à part : carrés de 2 à 20, cubes de 2 à 10. Une partie gagne ✓ quand ses deux grilles sont faites sans erreur." }
       ];
       var histList = document.getElementById("histList");
