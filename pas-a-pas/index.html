@@ -1163,6 +1163,20 @@
     .venn-opts button.good { background: var(--accent-soft); }
     .venn-opts button.bad { color: var(--sign); border-color: var(--sign); }
 
+    /* Chapitre Structures : un cercle (E, loi), ses propriétés dedans */
+    #str { gap: 0.5rem; }
+    .str-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; width: 100%; min-height: 6.4rem; align-content: flex-start; }
+    .str-chips button {
+      font: inherit; font-size: 0.8rem; color: var(--ink); background: transparent;
+      border: 1px solid var(--ink-soft); border-radius: 999px; padding: 0.45rem 0.7rem; cursor: pointer; touch-action: manipulation;
+    }
+    .str-chips button.on { border-color: var(--accent); background: var(--accent-soft); }
+    .str-chips button.go { border-color: var(--sign); color: var(--sign); flex-basis: 100%; }
+    .str-chips button.good { border-color: var(--accent); background: var(--accent-soft); }
+    .str-chips button.bad { color: var(--sign); border-color: var(--sign); }
+    .venn-svg .prop { font-size: 12.5px; }
+    .venn-svg .prop.no { fill: var(--sign); }
+
     .sol-ask { font-size: 0.95rem; color: var(--ink); text-align: center; }
     .sol-btns { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem; min-height: 2.8rem; }
     .sol-btns button {
@@ -1586,6 +1600,13 @@
       <div class="sol-btns" id="solBtns"></div>
     </section>
 
+    <section class="sg" id="str" hidden>
+      <p class="venn-q" id="strQ"></p>
+      <svg class="venn-svg" id="strSvg" viewBox="0 0 300 230" aria-label="Structure"></svg>
+      <p class="sg-msg venn-msg" id="strMsg"></p>
+      <div class="str-chips" id="strChips"></div>
+    </section>
+
     <section class="sg" id="venn" hidden>
       <p class="venn-q" id="vennQ"></p>
       <svg class="venn-svg" id="vennSvg" viewBox="0 0 300 210" aria-label="Diagramme"></svg>
@@ -1667,6 +1688,7 @@
         { title: "Premiers", custom: "pf", steps: [{ expr: [] }] },
         { title: "Ensembles", custom: "ens", steps: [{ expr: [] }] },
         { title: "Venn", custom: "venn", steps: [{ expr: [] }] },
+        { title: "Structures", custom: "str", steps: [{ expr: [] }] },
         { title: "Solutions", custom: "sol", steps: [{ expr: [] }] },
         { title: "Calcul", custom: "calc", steps: [{ expr: [] }] },
         { title: "Fusion", custom: "fus", set: "R", steps: [{ expr: [] }] },
@@ -2114,7 +2136,7 @@
       var LANG = "fr";
       try { if (localStorage.getItem("pasapas_lang") === "en") LANG = "en"; } catch (e) {}
       var EN = {
-        "Singapour": "Singapore", "Premiers": "Primes", "Venn": "Venn", "Regrouper": "Group", "x en facteur": "Factor out x", "Rassembler": "Gather", "Opposés": "Opposites", "Piège": "Trap",
+        "Singapour": "Singapore", "Premiers": "Primes", "Venn": "Venn", "Structures": "Structures", "Regrouper": "Group", "x en facteur": "Factor out x", "Rassembler": "Gather", "Opposés": "Opposites", "Piège": "Trap",
         "Distribuer": "Distribute", "Factoriser": "Factor", "Identité": "Identity", "Équation": "Equation",
         "« On change les signes à l'intérieur de la parenthèse. »": "“Change the signs inside the brackets.”",
         "« On regroupe et on calcule. »": "“Group and compute.”",
@@ -3563,6 +3585,7 @@
           }
           if (DEMOS[demoIndex].custom === "pas") { pasStart(); return; }
           if (DEMOS[demoIndex].custom === "venn") { if (!nextBtn.disabled) vennStart(); return; }
+          if (DEMOS[demoIndex].custom === "str") { if (!nextBtn.disabled) strStart(); return; }
           if (DEMOS[demoIndex].custom === "fus") { if (fus.won) { fus.level = (fus.level + 1) % FUS_LEVELS.length; fusStart(); } return; }
           if (DEMOS[demoIndex].custom === "sol") { if (nextBtn.disabled) return; solIndex = (solIndex + 1 + Math.floor(Math.random() * (SOL.length - 1))) % SOL.length; solRender(false); return; }
           if (sgState && sgState.ready) sgStart();
@@ -3645,7 +3668,7 @@
       var examBtn = document.getElementById("examBtn");
       // Chapitres qui ont un examen : ceux où l'on répond (démos, Premiers,
       // Ensembles, Singapour). Calcul, Pascal, Solutions, Fusion s'explorent.
-      function examable(d) { return !!d && (!d.custom || /^(pf|ens|sg|sol|venn)$/.test(d.custom)); }
+      function examable(d) { return !!d && (!d.custom || /^(pf|ens|sg|sol|venn|str)$/.test(d.custom)); }
       function examNeed() { return EXAM_NEED[DEMOS[demoIndex].title] || 3; }
       function renderExam() {
         var t = DEMOS[demoIndex].title, en = LANG === "en";
@@ -3847,6 +3870,7 @@
         sgEl.hidden = custom !== "sg";
         pfEl.hidden = custom !== "pf";
         vennEl.hidden = custom !== "venn";
+        strEl.hidden = custom !== "str";
         ensEl.hidden = custom !== "ens";
         solEl.hidden = custom !== "sol";
         calcEl.hidden = custom !== "calc";
@@ -3866,6 +3890,7 @@
         if (custom === "sg") { sgStart(); return; }
         if (custom === "pf") { pfStart(); return; }
         if (custom === "venn") { vennStart(); return; }
+        if (custom === "str") { strStart(); return; }
         if (custom === "ens") { ensStart(); return; }
         if (custom === "sol") { solStart(); return; }
         if (custom === "calc") { calcStart(); return; }
@@ -5646,6 +5671,140 @@
         });
       }
 
+      // ---------- Chapitre Structures ----------
+      // Un ensemble muni d'une loi, dans un cercle. Deux exercices :
+      //   construire : on coche les propriétés qui font un groupe (etc.),
+      //     elles s'inscrivent dans le cercle
+      //   reconnaître : (ℤ, ×) et ses propriétés → magma, monoïde, groupe…
+      //     (en examen, les propriétés ne sont pas affichées)
+      var strEl = document.getElementById("str"), strSvg = document.getElementById("strSvg");
+      var PROPS = {
+        int: ["loi interne", "internal law"], asso: ["associative", "associative"], neut: ["élément neutre", "identity element"],
+        sym: ["symétriques", "inverses"], comm: ["commutative", "commutative"]
+      };
+      var PORDER = ["int", "asso", "neut", "sym", "comm"];
+      var BUILD = [
+        { name: "Magma", need: ["int"] },
+        { name: "Monoïde", need: ["int", "asso", "neut"] },
+        { name: "Groupe", need: ["int", "asso", "neut", "sym"] },
+        { name: "Groupe abélien", need: ["int", "asso", "neut", "sym", "comm"] }
+      ];
+      // p : propriétés vraies ; why : pourquoi une propriété manque
+      var KNOWN = [
+        { set: "N", E: "ℕ", op: "+", p: ["int", "asso", "neut", "comm"], neutral: "0", why: { sym: "−3 ∉ ℕ" }, ans: "Monoïde" },
+        { set: "N", E: "ℕ", op: "×", p: ["int", "asso", "neut", "comm"], neutral: "1", why: { sym: "1/2 ∉ ℕ" }, ans: "Monoïde" },
+        { set: "N", E: "ℕ", op: "−", p: [], why: { int: "3 − 5 ∉ ℕ" }, ans: "Pas une loi interne" },
+        { set: "Z", E: "ℤ", op: "+", p: ["int", "asso", "neut", "sym", "comm"], neutral: "0", ans: "Groupe abélien" },
+        { set: "Z", E: "ℤ", op: "−", p: ["int"], why: { asso: "(1 − 2) − 3 ≠ 1 − (2 − 3)" }, ans: "Magma" },
+        { set: "Z", E: "{−1, 1}", op: "×", p: ["int", "asso", "neut", "sym", "comm"], neutral: "1", ans: "Groupe abélien" },
+        { set: "Z", E: "ℤ", op: "×", p: ["int", "asso", "neut", "comm"], neutral: "1", why: { sym: "2 n'a pas d'inverse dans ℤ" }, ans: "Monoïde" },
+        { set: "Q", E: "ℚ*", op: "×", p: ["int", "asso", "neut", "sym", "comm"], neutral: "1", ans: "Groupe abélien" },
+        { set: "R", E: "ℝ", op: "×", p: ["int", "asso", "neut", "comm"], neutral: "1", why: { sym: "0 n'a pas d'inverse" }, ans: "Monoïde" },
+        { set: "Z", E: "ℤ", op: "+, ×", two: true, lines: ["(ℤ, +) groupe abélien", "× associative, neutre 1", "× distributive sur +", "2 n'a pas d'inverse"], ans: "Anneau" },
+        { set: "Q", E: "ℚ", op: "+, ×", two: true, lines: ["(ℚ, +) groupe abélien", "× associative, neutre 1", "× distributive sur +", "tout non nul a un inverse"], ans: "Corps" },
+        { set: "R", E: "ℝ", op: "+, ×", two: true, lines: ["(ℝ, +) groupe abélien", "× associative, neutre 1", "× distributive sur +", "tout non nul a un inverse"], ans: "Corps" }
+      ];
+      var strState = null, strTurn = 0, strLast = -1;
+      function strDraw(title, lines) {
+        strSvg.innerHTML = "";
+        vsvg("circle", { cx: 150, cy: 115, r: 108, class: "ring" }, strSvg);
+        var t = vsvg("text", { x: 150, y: 50, "text-anchor": "middle", style: "font-size: 22px" }, strSvg); t.textContent = title;
+        (lines || []).forEach(function (l, i) {
+          var e = vsvg("text", { x: 150, y: 82 + i * 19, "text-anchor": "middle", class: "prop" + (l.no ? " no" : "") }, strSvg);
+          e.textContent = l.t;
+        });
+      }
+      function strLines(k) {
+        if (k.two) return k.lines.map(function (l) { return { t: l, no: /pas d'inverse/.test(l) }; });
+        var en = LANG === "en";
+        return PORDER.map(function (id) {
+          var yes = k.p.indexOf(id) >= 0;
+          var t = (yes ? "✓ " : "✗ ") + PROPS[id][en ? 1 : 0] + (id === "neut" && yes ? " : " + k.neutral : "") + (!yes && k.why && k.why[id] ? " (" + k.why[id] + ")" : "");
+          return { t: t, no: !yes };
+        }).filter(function (l, i) { return !(k.p.length === 0 && i > 0); });
+      }
+      function strStart() {
+        var en = LANG === "en";
+        var q = document.getElementById("strQ"), msg = document.getElementById("strMsg"), chips = document.getElementById("strChips");
+        msg.textContent = "";
+        chips.innerHTML = "";
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        var pool = KNOWN.map(function (k, i) { return i; }).filter(function (i) { return sets[KNOWN[i].set] && i !== strLast; });
+        if (strTurn++ % 2 === 0) {
+          // Construire
+          var b = BUILD[Math.floor(Math.random() * BUILD.length)];
+          strState = { k: "build", b: b, sel: [], done: false };
+          q.textContent = (en ? "Build a " : "Construis : ") + b.name.toLowerCase();
+          var draw = function () {
+            strDraw("(E, ∗)", strState.sel.slice().sort(function (x, y) { return PORDER.indexOf(x) - PORDER.indexOf(y); }).map(function (id) { return { t: "✓ " + PROPS[id][en ? 1 : 0] }; }));
+          };
+          draw();
+          PORDER.forEach(function (id) {
+            var c = document.createElement("button");
+            c.textContent = PROPS[id][en ? 1 : 0];
+            c.addEventListener("click", function () {
+              if (strState.done) return;
+              var i = strState.sel.indexOf(id);
+              if (i >= 0) strState.sel.splice(i, 1); else strState.sel.push(id);
+              c.classList.toggle("on", i < 0);
+              SND.tick();
+              draw();
+            });
+            chips.appendChild(c);
+          });
+          var go = document.createElement("button");
+          go.className = "go";
+          go.textContent = en ? "Check" : "Valider";
+          go.addEventListener("click", function () {
+            if (strState.done) return;
+            strState.done = true;
+            var need = b.need, sel = strState.sel;
+            var ok = need.length === sel.length && need.every(function (x) { return sel.indexOf(x) >= 0; });
+            examHit(ok, "Structures");
+            if (ok) SND.ok(); else SND.bad();
+            chips.querySelectorAll("button").forEach(function (c, i) {
+              var id = PORDER[i];
+              if (!id) return;
+              var want = need.indexOf(id) >= 0, has = sel.indexOf(id) >= 0;
+              if (want) c.classList.add("good");
+              if (has && !want) c.classList.add("bad");
+            });
+            msg.textContent = (ok ? "✓ " : "✗ ") + b.name + " : " + need.map(function (id) { return PROPS[id][en ? 1 : 0]; }).join(", ") + ".";
+            nextBtn.disabled = false;
+          });
+          chips.appendChild(go);
+          return;
+        }
+        // Reconnaître
+        var idx = pool[Math.floor(Math.random() * pool.length)];
+        strLast = idx;
+        var k = KNOWN[idx];
+        strState = { k: "name", item: k, done: false };
+        q.textContent = en ? "What is it?" : "Qu'est-ce que c'est ?";
+        // En examen, pas de propriétés écrites : il faut les connaître
+        strDraw("(" + k.E + ", " + k.op + ")", exam ? [] : strLines(k));
+        var names = k.two ? ["Anneau", "Corps", "Groupe abélien"] : ["Pas une loi interne", "Magma", "Monoïde", "Groupe", "Groupe abélien"];
+        names.forEach(function (nm) {
+          var c = document.createElement("button");
+          c.textContent = nm;
+          c.addEventListener("click", function () {
+            if (strState.done) return;
+            strState.done = true;
+            var ok = nm === k.ans;
+            examHit(ok, "Structures");
+            if (ok) SND.ok(); else SND.bad();
+            chips.querySelectorAll("button").forEach(function (x) { if (x.textContent === k.ans) x.classList.add("good"); });
+            if (!ok) c.classList.add("bad");
+            if (exam) strDraw("(" + k.E + ", " + k.op + ")", strLines(k));
+            msg.textContent = (ok ? "✓ " : "✗ ") + "(" + k.E + ", " + k.op + ") : " + k.ans.toLowerCase() + ".";
+            nextBtn.disabled = false;
+          });
+          chips.appendChild(c);
+        });
+      }
+
       // ---------- Chapitre Venn ----------
       // Deux cercles, l'un dans l'autre ou qui se croisent, dans un cadre
       // (l'ensemble où l'on travaille). Deux exercices qui alternent :
@@ -6087,6 +6246,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v92", text: "Nouveau chapitre Structures : un cercle (E, loi). Construire — coche les propriétés d'un magma, d'un monoïde, d'un groupe, d'un groupe abélien, elles s'inscrivent dans le cercle. Reconnaître — (ℕ, +), (ℤ, −), (ℚ*, ×), (ℤ, +, ×)… avec leurs propriétés : magma, monoïde, groupe, anneau, corps ? En examen, les propriétés ne sont pas écrites." },
         { v: "v91", text: "Accueil : dans un ensemble encore verrouillé, aucun chapitre n'apparaît comme réussi (plus de ✓ ni de « 1/1 »)." },
         { v: "v90", text: "Nouveau chapitre Venn (dans ℕ) : deux cercles, l'un dans l'autre ou qui se croisent. À tour de rôle : lire une zone hachurée et choisir son écriture (ℕ ∖ {0} = ℕ*, 2ℕ ∩ 3ℕ = 6ℕ, ℂ ∖ ℕ, 𝔻 = { a/10ⁿ }…) ou placer un nombre dans la bonne zone. Les questions suivent les ensembles ouverts. Il a son examen." },
         { v: "v89", text: "Accueil : la zone du bas (texte et chapitres) a une hauteur fixe ; changer d'ensemble ne fait plus bouger les anneaux." },
@@ -6257,7 +6417,7 @@
       // décoche les ensembles dans le menu : les chapitres suivent. ℂ est
       // décoché au départ (chapitre des complexes en option).
       var SET_OF = {
-        "Singapour": "N", "Premiers": "N", "Ensembles": "N", "Venn": "N", "Regrouper": "N", "x en facteur": "N", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
+        "Singapour": "N", "Premiers": "N", "Ensembles": "N", "Venn": "N", "Structures": "N", "Regrouper": "N", "x en facteur": "N", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
         "Fraction": "Q", "Piège": "Q", "Équation": "Q",
         "Distribuer": "R", "Factoriser": "R", "Double": "R", "Fusion": "R", "Pascal": "R"
       };
@@ -6663,7 +6823,7 @@
         calcRun++;
         examBtn.hidden = true;
         closeChoice();
-        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, pasEl, vennEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
+        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, pasEl, vennEl, strEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
         univEl.hidden = true;
         homeEl.hidden = false;
         document.getElementById("title").textContent = "Pas à Pas";
