@@ -37,6 +37,9 @@ Tri : priorité décroissante.
   chaque question tire au hasard l'un des deux sens (toucher la case du
   résultat donné, ou choisir parmi 4 le résultat de la case allumée), jamais
   trois fois de suite le même
+- [x] v6 — Case allumée : on tape le résultat au pavé (plus de 4 choix),
+  sans touche « OK » — validé dès qu'on a tapé autant de chiffres que la
+  réponse ; numéro de version affiché dans le menu
 
 ## À faire
 
