@@ -6510,6 +6510,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v103", text: "Le badge Regrouper agit aussi sur les étapes de mise en facteur des chapitres à étapes : sur 2x + x, il passe directement à (2 + 1)·x." },
         { v: "v102", text: "En-tête : « Validé ✓ » tout court, le titre du chapitre garde sa place." },
         { v: "v101", text: "Nouvelles icônes : Regrouper = des parenthèses ( + ), x en facteur = x devant une parenthèse x( ). Dans le chapitre Regrouper, le badge Regrouper luit quand on peut regrouper et range tout d'un coup (x à gauche dans une parenthèse, nombres à droite) ; ensuite le badge 10 luit pour calculer." },
         { v: "v100", text: "Badges : un appui court agit ; si l'action n'est pas possible, une étiquette jaune dit pourquoi (« Regroupe d'abord : pas encore de parenthèse à calculer », « Pas de (−1) à calculer ici »…). Un appui long montre l'explication complète du badge." },
@@ -6954,7 +6955,9 @@
         return k > cur ? k : -1;
       }
       var ACTS = [
-        { el: badgeReg, ch: "Regrouper", test: isRegroup, why: function () { return LANG === "en" ? "Nothing to group here" : "Rien à regrouper ici"; } },
+        // Regrouper = rapprocher ET mettre entre parenthèses (comme dans son
+        // chapitre) : il couvre aussi les étapes de mise en facteur
+        { el: badgeReg, ch: "Regrouper", test: function (a, b) { return isRegroup(a, b) || isFactor(a, b); }, why: function () { return LANG === "en" ? "Nothing to group here" : "Rien à regrouper ici"; } },
         { el: badgeFac, ch: "x en facteur", test: isFactor, why: function () { return LANG === "en" ? "No x to factor out here" : "Pas de x à mettre en facteur ici"; } }
       ];
       ACTS.forEach(function (A) {
