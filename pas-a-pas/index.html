@@ -1153,8 +1153,10 @@
     .venn-svg .ring { fill: none; stroke: var(--ink); stroke-width: 1.4; }
     .venn-svg .univ-box { fill: none; stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3 4; }
     .venn-svg text { fill: var(--ink); font-family: inherit; font-size: 15px; }
-    .venn-svg text.u { fill: var(--ink-soft); font-size: 13px; }
+    .venn-svg text.u { fill: var(--ink-soft); font-size: 12px; }
+    .venn-svg text.lab { font-size: 17px; paint-order: stroke; stroke: var(--bg); stroke-width: 5px; stroke-linejoin: round; }
     .venn-msg { min-height: 2.8em; margin: 0; }
+    .venn-leg { margin: 0; min-height: 2.6em; font-size: 0.74rem; line-height: 1.35; color: var(--ink-soft); text-align: center; }
     .venn-opts { display: flex; flex-direction: column; gap: 0.45rem; width: 100%; min-height: 9rem; }
     .venn-opts button {
       font: inherit; font-size: 0.9rem; color: var(--ink); background: transparent; text-align: center;
@@ -1609,6 +1611,7 @@
 
     <section class="sg" id="venn" hidden>
       <p class="venn-q" id="vennQ"></p>
+      <p class="venn-leg" id="vennLeg"></p>
       <svg class="venn-svg" id="vennSvg" viewBox="0 0 300 210" aria-label="Diagramme"></svg>
       <p class="sg-msg venn-msg" id="vennMsg"></p>
       <div class="venn-opts" id="vennOpts"></div>
@@ -5833,10 +5836,22 @@
         { k: "place", need: "C", rel: "cross", U: "ℂ", A: "ℝ", B: "iℝ", nums: [["2", "A"], ["3i", "B"], ["0", "AB"], ["1 + i", "out"]] }
       ];
       var VENN_GEO = {
-        nest: { A: [138, 112, 86], B: [168, 128, 40], la: [80, 50], lb: [168, 104] },
-        cross: { A: [114, 110, 72], B: [186, 110, 72], la: [62, 52], lb: [226, 52] }
+        // Lettres à l'intérieur de leur zone, jamais sur un trait
+        nest: { A: [138, 108, 92], B: [172, 122, 44], la: [88, 104], lb: [172, 128] },
+        cross: { A: [110, 108, 76], B: [190, 108, 76], la: [76, 114], lb: [224, 114] }
       };
       var vennState = null, vennLast = -1, vennTurn = 0;
+      // Ensembles moins connus : une ligne pour dire ce qu'ils contiennent
+      // (en entraînement seulement ; en examen, il faut le savoir)
+      var VENN_DEF = {
+        "2ℕ": ["2ℕ = {0, 2, 4, 6…} : les multiples de 2", "2ℕ = {0, 2, 4, 6…}: multiples of 2"],
+        "3ℕ": ["3ℕ = {0, 3, 6, 9…} : les multiples de 3", "3ℕ = {0, 3, 6, 9…}: multiples of 3"],
+        "{0}": ["{0} : l'ensemble qui ne contient que 0", "{0}: the set containing only 0"],
+        "𝔻": ["𝔻 : les décimaux (0,25 ; 7 ; −1,5…)", "𝔻: decimals (0.25; 7; −1.5…)"],
+        "ℝ₊": ["ℝ₊ : les réels positifs ou nuls", "ℝ₊: non-negative reals"],
+        "ℝ₋": ["ℝ₋ : les réels négatifs ou nuls", "ℝ₋: non-positive reals"],
+        "iℝ": ["iℝ : les imaginaires purs (3i, −i, 0…)", "iℝ: pure imaginary numbers (3i, −i, 0…)"]
+      };
       function vsvg(tag, attrs, parent) {
         var e = document.createElementNS("http://www.w3.org/2000/svg", tag);
         Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
@@ -5853,14 +5868,14 @@
         else if (zone === "A" || zone === "A-B") circle(A, { mask: "url(#vNoB)" });
         else if (zone === "B-A") circle(B, { mask: "url(#vNoA)" });
         else if (zone === "B") circle(B);
-        else if (zone === "out") vsvg("rect", { x: 8, y: 8, width: 284, height: 194, fill: hatch, mask: "url(#vNoAB)" });
+        else if (zone === "out") vsvg("rect", { x: 0, y: 0, width: 300, height: 210, rx: 14, fill: hatch, mask: "url(#vNoAB)" });
       }
       function vennDraw(it) {
         vennSvg.innerHTML = "";
         var g = VENN_GEO[it.rel], A = g.A, B = g.B;
         var defs = vsvg("defs", {});
-        var pat = vsvg("pattern", { id: "vHatch", width: 6, height: 6, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
-        vsvg("line", { x1: 0, y1: 0, x2: 0, y2: 6, style: "stroke: var(--accent); stroke-width: 1.6" }, pat);
+        var pat = vsvg("pattern", { id: "vHatch", width: 5, height: 5, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+        vsvg("line", { x1: 0, y1: 0, x2: 0, y2: 5, style: "stroke: var(--accent); stroke-width: 0.7; opacity: 0.8" }, pat);
         var cb = vsvg("clipPath", { id: "vClipB" }, defs); vsvg("circle", { cx: B[0], cy: B[1], r: B[2] }, cb);
         [["vNoB", [B]], ["vNoA", [A]], ["vNoAB", [A, B]]].forEach(function (m) {
           var mk = vsvg("mask", { id: m[0] }, defs);
@@ -5868,17 +5883,17 @@
           m[1].forEach(function (c) { vsvg("circle", { cx: c[0], cy: c[1], r: c[2], fill: "black" }, mk); });
         });
         if (it.k === "read") vennShade(it, it.shade);
-        vsvg("rect", { x: 8, y: 8, width: 284, height: 194, rx: 10, class: "univ-box" });
-        if (it.U) { var u = vsvg("text", { x: 18, y: 28, class: "u" }); u.textContent = it.U; }
+        // Pas de cadre : l'ensemble où l'on travaille est seulement nommé
+        if (it.U) { var u = vsvg("text", { x: 10, y: 22, class: "u" }); u.textContent = (LANG === "en" ? "in " : "dans ") + it.U; }
         vsvg("circle", { cx: A[0], cy: A[1], r: A[2], class: "ring" });
         vsvg("circle", { cx: B[0], cy: B[1], r: B[2], class: "ring" });
-        var ta = vsvg("text", { x: g.la[0], y: g.la[1], "text-anchor": "middle" }); ta.textContent = it.A;
-        var tb = vsvg("text", { x: g.lb[0], y: g.lb[1], "text-anchor": "middle" }); tb.textContent = it.B;
+        var ta = vsvg("text", { x: g.la[0], y: g.la[1], "text-anchor": "middle", class: "lab" }); ta.textContent = it.A;
+        var tb = vsvg("text", { x: g.lb[0], y: g.lb[1], "text-anchor": "middle", class: "lab" }); tb.textContent = it.B;
       }
       function vennZoneAt(it, x, y) {
         var g = VENN_GEO[it.rel];
         var inA = Math.hypot(x - g.A[0], y - g.A[1]) <= g.A[2], inB = Math.hypot(x - g.B[0], y - g.B[1]) <= g.B[2];
-        if (x < 8 || x > 292 || y < 8 || y > 202) return null;
+        if (x < 0 || x > 300 || y < 0 || y > 210) return null;
         return inA && inB ? "AB" : inA ? "A" : inB ? "B" : "out";
       }
       function vennZoneName(it, z) {
@@ -5896,6 +5911,8 @@
         var it = VENN[idx], en = LANG === "en";
         vennState = { it: it, done: false };
         vennDraw(it);
+        document.getElementById("vennLeg").innerHTML = exam ? "" : [it.A, it.B].filter(function (k) { return VENN_DEF[k]; })
+          .map(function (k) { return VENN_DEF[k][en ? 1 : 0]; }).join("<br>");
         var q = document.getElementById("vennQ"), msg = document.getElementById("vennMsg"), opts = document.getElementById("vennOpts");
         msg.textContent = "";
         opts.innerHTML = "";
@@ -5941,7 +5958,8 @@
         if (ok) SND.ok(); else SND.bad();
         vennShade(it, good); // la bonne zone se hachure
         vsvg("circle", { cx: p.x, cy: p.y, r: 5, style: "fill: " + (ok ? "var(--accent)" : "var(--sign)") });
-        document.getElementById("vennMsg").textContent = (ok ? "✓ " : "✗ ") + vennState.n[0] + " ∈ " + vennZoneName(it, good);
+        document.getElementById("vennMsg").textContent = (ok ? "✓ " : "✗ ") + vennState.n[0] +
+          (good === "out" ? " ∉ " + it.A + " ∪ " + it.B : " ∈ " + vennZoneName(it, good));
         nextBtn.disabled = false;
       });
 
@@ -6246,6 +6264,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v93", text: "Venn : plus de cadre autour, hachures plus fines, chaque lettre d'ensemble écrite à l'intérieur de sa zone (plus sur le trait). Une légende dit ce que sont 2ℕ, 3ℕ, 𝔻, ℝ₊, iℝ… (pas en examen). Un nombre hors des deux cercles s'écrit −√2 ∉ ℤ ∪ ℝ₊." },
         { v: "v92", text: "Nouveau chapitre Structures : un cercle (E, loi). Construire — coche les propriétés d'un magma, d'un monoïde, d'un groupe, d'un groupe abélien, elles s'inscrivent dans le cercle. Reconnaître — (ℕ, +), (ℤ, −), (ℚ*, ×), (ℤ, +, ×)… avec leurs propriétés : magma, monoïde, groupe, anneau, corps ? En examen, les propriétés ne sont pas écrites." },
         { v: "v91", text: "Accueil : dans un ensemble encore verrouillé, aucun chapitre n'apparaît comme réussi (plus de ✓ ni de « 1/1 »)." },
         { v: "v90", text: "Nouveau chapitre Venn (dans ℕ) : deux cercles, l'un dans l'autre ou qui se croisent. À tour de rôle : lire une zone hachurée et choisir son écriture (ℕ ∖ {0} = ℕ*, 2ℕ ∩ 3ℕ = 6ℕ, ℂ ∖ ℕ, 𝔻 = { a/10ⁿ }…) ou placer un nombre dans la bonne zone. Les questions suivent les ensembles ouverts. Il a son examen." },
