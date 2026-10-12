@@ -33,6 +33,10 @@ Tri : priorité décroissante.
   et 20 retirées, demande de Pierre) ; boutons du haut sans « × » ni trait,
   glisser à gauche / à droite pour changer de partie ; carrés et cubes
   notés x² et x³
+- [x] v5 — Un seul exercice (boutons Trouver / Écrire / Les deux retirés) :
+  chaque question tire au hasard l'un des deux sens (toucher la case du
+  résultat donné, ou choisir parmi 4 le résultat de la case allumée), jamais
+  trois fois de suite le même
 
 ## À faire
 
