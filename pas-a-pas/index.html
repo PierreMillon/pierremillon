@@ -3715,7 +3715,7 @@
         examBtn.classList.toggle("on", exam);
         examBtn.classList.toggle("passed", !!doneMap[t]);
         // Chapitre déjà validé : on le dit, plus de compteur
-        if (doneMap[t]) examBtn.textContent = (en ? "Passed ✓" : "Validé ✓") + (exam ? (en ? " · no help" : " · sans aide") : "");
+        if (doneMap[t]) examBtn.textContent = en ? "Passed ✓" : "Validé ✓";
         else examBtn.textContent = (en ? "Exam" : "Examen") + (exam ? " " + (examScores[t] || 0) + "/" + examNeed() : "");
       }
       // Une réponse en examen : juste, on avance ; fausse, on repart de 0
@@ -6510,6 +6510,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v102", text: "En-tête : « Validé ✓ » tout court, le titre du chapitre garde sa place." },
         { v: "v101", text: "Nouvelles icônes : Regrouper = des parenthèses ( + ), x en facteur = x devant une parenthèse x( ). Dans le chapitre Regrouper, le badge Regrouper luit quand on peut regrouper et range tout d'un coup (x à gauche dans une parenthèse, nombres à droite) ; ensuite le badge 10 luit pour calculer." },
         { v: "v100", text: "Badges : un appui court agit ; si l'action n'est pas possible, une étiquette jaune dit pourquoi (« Regroupe d'abord : pas encore de parenthèse à calculer », « Pas de (−1) à calculer ici »…). Un appui long montre l'explication complète du badge." },
         { v: "v99", text: "Regrouper, avec le badge 10 : un toucher sur une parenthèse la calcule directement, et le badge calcule toutes les parenthèses d'un coup. Sans le badge : deux touchers sur la parenthèse." },
