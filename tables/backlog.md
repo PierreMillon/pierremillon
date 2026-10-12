@@ -11,7 +11,7 @@ Tri : priorité décroissante.
 ## Fait
 
 - [x] v1 — Chapitre 1, tables : grille 2–9 coupée par la diagonale
-  (36 cases) et grille 11–20 de × 2 à × 9 (80 cases, choix de Pierre)
+  (36 cases) et grille 11–20 de × 2 à × 9 (80 cases, choix de Pierre ; 12–19 depuis v4)
 - [x] v1 — Chapitre 2, à part : carrés de 2² à 20², cubes de 2³ à 10³
 - [x] v1 — Trouver la case / Écrire le résultat (pavé de chiffres, ou
   clavier sur ordinateur), ↻ pour recommencer la grille
@@ -28,11 +28,16 @@ Tri : priorité décroissante.
   (« 17² = 289 », ni après une erreur) : la case remplie ou rouge suffit
 - [x] v3 — Puissances de 2 (2¹ à 2¹⁰ = 1024), dans le chapitre des carrés
   et cubes (bouton 2ⁿ)
+- [x] v4 — « Les deux » : alterne trouver la case (résultat donné) et
+  choisir le résultat parmi quatre (case allumée) ; grille 12–19 (lignes 11
+  et 20 retirées, demande de Pierre) ; boutons du haut sans « × » ni trait,
+  glisser à gauche / à droite pour changer de partie ; carrés et cubes
+  notés x² et x³
 
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : taille des cases de la grille
-  11–20 en portrait, lisibilité des carrés et cubes (seul Pierre peut le
+  12–19 en portrait, lisibilité des carrés et cubes (seul Pierre peut le
   faire)
 
 ## Conformité à la charte (../REGLES-JEUX.md)
