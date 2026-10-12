@@ -26,6 +26,8 @@ Tri : priorité décroissante.
 - [x] v1 — Ajouté au menu du portfolio (groupe maths, après Soroban)
 - [x] v2 — Plus de rappel du résultat sous le nombre après une réponse
   (« 17² = 289 », ni après une erreur) : la case remplie ou rouge suffit
+- [x] v3 — Puissances de 2 (2¹ à 2¹⁰ = 1024), dans le chapitre des carrés
+  et cubes (bouton 2ⁿ)
 
 ## À faire
 
