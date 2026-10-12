@@ -234,6 +234,12 @@
       text-shadow: none;
       font-weight: 500;
     }
+    /* Grand triangle 20 × 20 : cases de ~15 px sur téléphone */
+    .tgrid.tiny { gap: 1px; }
+    .tgrid.tiny .tcell { font-size: calc(var(--cell) * 0.36); border-width: 1px; border-radius: 3px; letter-spacing: -0.04em; }
+    .tgrid.tiny .tcell.head { font-size: calc(var(--cell) * 0.5); }
+    .tgrid.tiny .tcell.target { border-width: 1.5px; }
+    .tgrid.tiny .terr { font-size: 0; top: 1px; right: 1px; width: 4px; height: 4px; border-radius: 50%; background: var(--bad); }
     /* Traits entre doublons (12 = 2 × 6 = 3 × 4…), derrière les cases */
     .tgrid svg.tdup {
       position: absolute;
@@ -508,10 +514,12 @@
       for (a = 2; a <= 20; a++) PART_KEYS.sq.push("s" + a);
       for (a = 2; a <= 10; a++) PART_KEYS.cu.push("c" + a);
       for (a = 1; a <= 10; a++) PART_KEYS.p2.push("p" + a);
-      // « tout » : le triangle 2–9 et les lignes 12–19 réunis en une seule
-      // grande grille (demande de Pierre) — mêmes cases, donc mêmes
-      // compteurs d'erreurs que dans les deux parties séparées
-      PART_KEYS.all = PART_KEYS.t9.concat(PART_KEYS.t20);
+      // « tout » : un grand triangle de 2 × 2 à 20 × 20 (forme A choisie
+      // par Pierre : angle droit en haut à droite, comme 2–9), 190 cases.
+      // Les cases déjà présentes dans 2–9 et 12–19 gardent la même clé, donc
+      // les mêmes compteurs d'erreurs (13 × 7 reste « 13.7 »)
+      function allKey(r, c) { return (r <= 9 && c >= 12 && c <= 19) ? c + "." + r : r + "." + c; }
+      for (a = 2; a <= 20; a++) for (b = a; b <= 20; b++) PART_KEYS.all.push(allKey(a, b));
       // Une case peut appartenir à plusieurs parties : KEY_PART garde la
       // première (partie d'origine), IN_PART dit si elle est dans une partie
       var KEY_PART = {}, IN_PART = {};
@@ -522,7 +530,8 @@
       var GRID = {
         t9: { rows: [2, 3, 4, 5, 6, 7, 8, 9], cols: [2, 3, 4, 5, 6, 7, 8, 9] },
         t20: { rows: [12, 13, 14, 15, 16, 17, 18, 19], cols: [2, 3, 4, 5, 6, 7, 8, 9] },
-        all: { rows: [2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19], cols: [2, 3, 4, 5, 6, 7, 8, 9] }
+        all: { rows: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+               cols: [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20] }
       };
       var POW_COLS = { sq: 5, cu: 3, p2: 5 };
 
@@ -549,7 +558,7 @@
         if (k.charAt(0) === "p") return kN(k) === 1 || kN(k) === 10;
         if (isPow(k)) return kN(k) === 10 || kN(k) === 20;
         var f = k.split(".");
-        return f[0] === f[1] || f[1] === "2" || f[1] === "5" || f[0] === "2" || f[0] === "5";
+        return f[0] === f[1] || f.indexOf("2") >= 0 || f.indexOf("5") >= 0 || f.indexOf("10") >= 0 || f.indexOf("20") >= 0;
       }
 
       // ---------- État ----------
@@ -993,7 +1002,7 @@
       }
 
       function gridShape() {
-        if (GRID[S.part]) return { cols: GRID[S.part].cols.length + 1, rows: GRID[S.part].rows.length + 1, max: 52, flat: S.part === "all" };
+        if (GRID[S.part]) return { cols: GRID[S.part].cols.length + 1, rows: GRID[S.part].rows.length + 1, max: 52 };
         var c = POW_COLS[S.part];
         return { cols: c, rows: Math.ceil(PART_KEYS[S.part].length / c), max: 66 };
       }
@@ -1022,9 +1031,9 @@
                 cell.textContent = ri < 0 ? (ci === g.cols.length ? "×" : g.cols[ci]) : g.rows[ri];
               } else {
                 var r = g.rows[ri], c = g.cols[ci];
-                // Le triangle : sous la diagonale de 2–9, cases vides
-                if (r <= 9 && r > c) cell.className += " off";
-                else add(cell, r + "." + c);
+                // Le triangle : sous la diagonale, cases vides (2–9, tout)
+                if (r <= 9 && r > c || S.part === "all" && r > c) cell.className += " off";
+                else add(cell, S.part === "all" ? allKey(r, c) : r + "." + c);
               }
               tgrid.appendChild(cell);
             }
@@ -1049,10 +1058,10 @@
         var kp = keypad.offsetHeight + 10;
         var cw = Math.floor(Math.min((w - 2 * sh.cols) / sh.cols, sh.max));
         var ch = Math.floor(Math.min((h - kp - 2 * sh.rows) / sh.rows, sh.max));
-        var colw = Math.max(14, Math.min(cw, ch)), rowh = colw;
-        // Grande grille « tout » (17 lignes) : cases plus larges que hautes,
-        // pour garder des chiffres lisibles malgré la hauteur limitée
-        if (sh.flat) { rowh = Math.max(14, ch); colw = Math.max(14, Math.min(cw, Math.floor(rowh * 1.7))); }
+        var colw = Math.max(12, Math.min(cw, ch)), rowh = colw;
+        // Petites cases (grand triangle 20 × 20 sur téléphone) : chiffres
+        // réduits, compteur d'erreurs en simple point rouge
+        tgrid.classList.toggle("tiny", colw < 26);
         tgrid.style.setProperty("--cell", colw + "px");
         tgrid.style.gridTemplateColumns = "repeat(" + sh.cols + ", " + colw + "px)";
         tgrid.style.gridAutoRows = rowh + "px";
@@ -1237,6 +1246,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v8", text: "La partie « tout » devient un grand triangle de 2 × 2 à 20 × 20 (190 cases), angle droit en haut à droite comme la grille 2–9 (forme A choisie sur la page de test). Petites cases : chiffres réduits, erreurs en point rouge. Tables de 10, 20 un peu effacées, comme 2 et 5." },
         { v: "v7", text: "Nouvelle partie « tout » : le triangle 2–9 et les lignes 12–19 réunis dans une seule grande grille (100 cases). Mêmes compteurs d'erreurs que dans les parties séparées." },
         { v: "v6", text: "Quand une case s'allume, on tape son résultat au pavé de chiffres (plus de 4 choix). Pas de touche « OK » : la réponse part toute seule dès qu'on a tapé autant de chiffres qu'elle en a." },
         { v: "v5", text: "Un seul exercice : les boutons Trouver, Écrire et Les deux sont retirés. Chaque question tire au hasard l'un des deux sens — toucher la case du résultat donné, ou choisir parmi quatre le résultat de la case allumée (jamais trois fois de suite le même sens). Une partie gagne ✓ quand sa grille est faite sans erreur." },

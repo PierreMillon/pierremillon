@@ -42,6 +42,8 @@ Tri : priorité décroissante.
   réponse ; numéro de version affiché dans le menu
 - [x] v7 — Partie « tout » : triangle 2–9 + lignes 12–19 réunis dans une
   seule grande grille (100 cases), compteurs d'erreurs partagés
+- [x] v8 — « tout » : grand triangle 2 × 2 à 20 × 20 (190 cases), forme A
+  (angle droit en haut à droite) validée par Pierre sur une page de test
 
 ## À faire
 
