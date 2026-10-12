@@ -24,6 +24,8 @@ Tri : priorité décroissante.
   diagonale) en opacité légère ; ✓ sur une partie quand ses deux grilles
   sont réussies sans erreur
 - [x] v1 — Ajouté au menu du portfolio (groupe maths, après Soroban)
+- [x] v2 — Plus de rappel du résultat sous le nombre après une réponse
+  (« 17² = 289 », ni après une erreur) : la case remplie ou rouge suffit
 
 ## À faire
 
