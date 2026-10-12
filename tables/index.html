@@ -91,17 +91,16 @@
       letter-spacing: 0.06em;
     }
 
-    /* Deux chapitres : les tables (2–9, 11–20), puis carrés et cubes,
-       séparés par un trait */
+    /* Les parties côte à côte : tables (2–9, 12–19), carrés, cubes, 2ⁿ.
+       Sans « × » ni trait de séparation (demande de Pierre) */
     .parts {
       display: grid;
-      grid-template-columns: 1fr 1fr auto 1fr 1fr 1fr;
+      grid-template-columns: repeat(5, 1fr);
       align-items: center;
       gap: 0.35rem;
       padding: 0 16px;
       margin-top: 0.7rem;
     }
-    .parts .sep { width: 1px; height: 1.4rem; background: var(--accent); margin: 0 0.25rem; opacity: 0.7; }
     .chip {
       min-width: 0;
       white-space: nowrap;
@@ -266,6 +265,30 @@
     }
     .key:active { background: var(--accent-soft); }
     .key.ok { border-color: var(--accent); color: var(--accent); }
+    /* Choisir le résultat parmi quatre (2e sens du mode « Les deux ») */
+    .choices {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem;
+      width: min(100%, 360px);
+    }
+    .choices[hidden] { display: none; }
+    /* Question « trouver la case » du mode alterné : la place reste
+       réservée, la grille ne change pas de taille d'une question à l'autre */
+    .choices.ghost { visibility: hidden; }
+    .choice {
+      font-family: inherit;
+      font-size: 1.25rem;
+      height: 2.7rem;
+      color: var(--ink);
+      background: transparent;
+      border: 1px solid var(--ink-soft);
+      border-radius: 10px;
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+    }
+    .choice:active { background: var(--accent-soft); }
+    .choice.bad { border-color: var(--bad); color: var(--bad); opacity: 0.6; cursor: default; }
 
     .bottombar {
       display: flex;
@@ -275,14 +298,14 @@
     }
     .bchip {
       flex: 0 0 auto;
-      min-width: 2.6rem;
+      min-width: 2.4rem;
       height: 2.2rem;
-      padding: 0 0.7rem;
+      padding: 0 0.5rem;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       font-family: inherit;
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       white-space: nowrap;
       color: var(--ink-soft);
       background: transparent;
@@ -407,6 +430,7 @@
   <div class="stage col" id="stage">
     <div class="tgrid" id="tgrid"></div>
     <div class="keypad" id="keypad"></div>
+    <div class="choices" id="choices"></div>
   </div>
 
   <div class="bottombar col" id="bottomBar"></div>
@@ -451,8 +475,8 @@
 
       var TXT = {
         fr: {
-          parts: { t9: "× 2–9", t20: "× 11–20", sq: "carrés", cu: "cubes", p2: "2ⁿ" },
-          find: "Trouver", write: "Écrire", errs: "Erreurs {n}", restart: "Recommencer la grille",
+          parts: { t9: "2–9", t20: "12–19", sq: "x²", cu: "x³", p2: "2ⁿ" },
+          find: "Trouver", write: "Écrire", mix: "Les deux", errs: "Erreurs {n}", restart: "Recommencer la grille",
           full: "Grille pleine",
           noErr: "Aucune erreur dans cette partie", clean: "Sans aucune erreur.",
           dirty: "{e} erreur(s) : elles sont comptées dans les cases.",
@@ -464,8 +488,8 @@
           install: "Astuce : « Partager → Sur l'écran d'accueil » pour l'avoir comme une appli, utilisable hors ligne."
         },
         en: {
-          parts: { t9: "× 2–9", t20: "× 11–20", sq: "squares", cu: "cubes", p2: "2ⁿ" },
-          find: "Find", write: "Write", errs: "Mistakes {n}", restart: "Restart the grid",
+          parts: { t9: "2–9", t20: "12–19", sq: "x²", cu: "x³", p2: "2ⁿ" },
+          find: "Find", write: "Write", mix: "Both", errs: "Mistakes {n}", restart: "Restart the grid",
           full: "Grid complete",
           noErr: "No mistakes in this part", clean: "Without a single mistake.",
           dirty: "{e} mistake(s): they are counted in the cells.",
@@ -488,8 +512,9 @@
       // Chapitre 1, tables :
       // - « × 2–9 » : grille 2…9 coupée par la diagonale (la multiplication
       //   est symétrique) : 36 cases, clés « a.b » avec a ≤ b ;
-      // - « × 11–20 » : tables de 11 à 20, de × 2 à × 9 (choix de Pierre) :
-      //   80 cases, clés « a.b » avec a = 11…20 (ligne), b = 2…9 (colonne).
+      // - « × 12–19 » : tables de 12 à 19, de × 2 à × 9 (choix de Pierre ;
+      //   lignes 11 et 20, trop faciles, retirées) : 64 cases, clés « a.b »
+      //   avec a = 12…19 (ligne), b = 2…9 (colonne).
       // Chapitre 2, à part :
       // - carrés de 2 à 20 (clés « s13 »), cubes de 2 à 10 (clés « c7 »),
       //   puissances de 2 de 2¹ = 2 à 2¹⁰ = 1024 (clés « p5 »).
@@ -498,7 +523,7 @@
       var PART_KEYS = { t9: [], t20: [], sq: [], cu: [], p2: [] };
       var a, b;
       for (a = 2; a <= 9; a++) for (b = a; b <= 9; b++) PART_KEYS.t9.push(a + "." + b);
-      for (a = 11; a <= 20; a++) for (b = 2; b <= 9; b++) PART_KEYS.t20.push(a + "." + b);
+      for (a = 12; a <= 19; a++) for (b = 2; b <= 9; b++) PART_KEYS.t20.push(a + "." + b);
       for (a = 2; a <= 20; a++) PART_KEYS.sq.push("s" + a);
       for (a = 2; a <= 10; a++) PART_KEYS.cu.push("c" + a);
       for (a = 1; a <= 10; a++) PART_KEYS.p2.push("p" + a);
@@ -506,7 +531,7 @@
       PARTS.forEach(function (p) { PART_KEYS[p].forEach(function (k) { KEY_PART[k] = p; }); });
       var GRID = {
         t9: { rows: [2, 3, 4, 5, 6, 7, 8, 9], cols: [2, 3, 4, 5, 6, 7, 8, 9] },
-        t20: { rows: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20], cols: [2, 3, 4, 5, 6, 7, 8, 9] }
+        t20: { rows: [12, 13, 14, 15, 16, 17, 18, 19], cols: [2, 3, 4, 5, 6, 7, 8, 9] }
       };
       var POW_COLS = { sq: 5, cu: 3, p2: 5 };
 
@@ -540,15 +565,20 @@
       // Une progression par partie et par portée : toute la partie (« all »)
       // ou seulement ses cases ratées (« err », liste figée au départ)
 
-      function freshProg() { return { done: { find: {}, write: {} }, errors: { find: 0, write: 0 } }; }
+      // Trois exercices : trouver la case, écrire le résultat, et « les
+      // deux » qui alterne les deux sens de la mémoire (demande de Pierre) :
+      // une question sur deux on touche la case du résultat donné, l'autre
+      // la case s'allume et on choisit son résultat parmi quatre
+      var MODES = ["find", "write", "mix"];
+      function freshProg() { return { done: { find: {}, write: {}, mix: {} }, errors: { find: 0, write: 0, mix: 0 } }; }
       function freshState() {
         var s = { mode: "find", part: "t9", err: false, prog: {}, errKeys: {}, clean: {}, games: {},
-                  cellErr: {}, sr: {}, avg: { find: { n: 0, mean: 0 }, write: { n: 0, mean: 0 } } };
+                  cellErr: {}, sr: {}, avg: { find: { n: 0, mean: 0 }, write: { n: 0, mean: 0 }, mix: { n: 0, mean: 0 } } };
         PARTS.forEach(function (p) {
           s.prog[p] = freshProg();
           s.prog[p + "e"] = freshProg();
           s.errKeys[p] = [];
-          s.clean[p] = { find: false, write: false };
+          s.clean[p] = { find: false, write: false, mix: false };
           s.games[p] = 0;
         });
         return s;
@@ -561,14 +591,14 @@
         try {
           var o = JSON.parse(load("state") || "null");
           if (!o || typeof o !== "object") return s;
-          if (o.mode === "find" || o.mode === "write") s.mode = o.mode;
+          if (MODES.indexOf(o.mode) >= 0) s.mode = o.mode;
           if (PARTS.indexOf(o.part) >= 0) s.part = o.part;
           s.err = o.err === true;
           PARTS.forEach(function (p) {
             [p, p + "e"].forEach(function (id) {
               var x = o.prog && o.prog[id];
               if (!x) return;
-              ["find", "write"].forEach(function (m) {
+              MODES.forEach(function (m) {
                 if (x.done && Array.isArray(x.done[m])) {
                   x.done[m].forEach(function (k) { if (KEY_PART[k] === p) s.prog[id].done[m][k] = 1; });
                 }
@@ -578,7 +608,7 @@
             if (o.errKeys && Array.isArray(o.errKeys[p])) {
               s.errKeys[p] = o.errKeys[p].filter(function (k) { return KEY_PART[k] === p; });
             }
-            ["find", "write"].forEach(function (m) {
+            MODES.forEach(function (m) {
               if (o.clean && o.clean[p] && o.clean[p][m] === true) s.clean[p][m] = true;
             });
             if (o.games && okInt(o.games[p])) s.games[p] = o.games[p];
@@ -589,7 +619,7 @@
             var r = o.sr && o.sr[k];
             if (r && okInt(r.s) && okInt(r.g) && okInt(r.due)) s.sr[k] = { s: r.s, g: r.g, due: r.due };
           });
-          ["find", "write"].forEach(function (m) {
+          MODES.forEach(function (m) {
             var av = o.avg && o.avg[m];
             if (av && okInt(av.n) && typeof av.mean === "number" && av.mean >= 0 && av.mean <= 60000) s.avg[m] = { n: av.n, mean: av.mean };
           });
@@ -601,7 +631,9 @@
         var prog = {};
         Object.keys(S.prog).forEach(function (id) {
           var x = S.prog[id];
-          prog[id] = { done: { find: Object.keys(x.done.find), write: Object.keys(x.done.write) }, errors: x.errors };
+          var dn = {};
+          MODES.forEach(function (m) { dn[m] = Object.keys(x.done[m]); });
+          prog[id] = { done: dn, errors: x.errors };
         });
         save("state", JSON.stringify({
           mode: S.mode, part: S.part, err: S.err, prog: prog, errKeys: S.errKeys,
@@ -610,6 +642,9 @@
       }
 
       var target = null, targetKey = null, input = "", flash = null;
+      // Sens de la question en cours : « find », « write » ou « choose »
+      // (en mode « Les deux », find et choose alternent)
+      var dir = "find", mixN = 0, choices = [], badChoice = {};
 
       function cur() { return S.prog[S.part + (S.err ? "e" : "")]; }
       function scopeKeys() { return S.err ? S.errKeys[S.part] : PART_KEYS[S.part]; }
@@ -755,6 +790,8 @@
       var tgrid = document.getElementById("tgrid");
       var keypad = document.getElementById("keypad");
       var winEl = document.getElementById("winOverlay");
+      var menuOverlay = document.getElementById("menuOverlay");
+      var histOverlay = document.getElementById("histOverlay");
       var caption = null;
 
       function pickTarget() {
@@ -765,9 +802,34 @@
         var x = Math.random() * total, k = rem[rem.length - 1];
         for (var i = 0; i < rem.length; i++) { x -= weights[i]; if (x < 0) { k = rem[i]; break; } }
         targetKey = k;
-        target = S.mode === "find" ? valK(k) : k;
+        dir = S.mode === "mix" ? (mixN++ % 2 ? "choose" : "find") : S.mode;
+        target = dir === "find" ? valK(k) : k;
+        badChoice = {};
+        choices = dir === "choose" ? makeChoices(k) : [];
         input = "";
         tStart = Date.now();
+      }
+
+      // Quatre réponses : la bonne et trois voisines plausibles — les
+      // résultats les plus proches de la même partie, et pour une table
+      // les cases d'à côté (7 × 8 → 7 × 7, 7 × 9, 6 × 8, 8 × 8)
+      function makeChoices(k) {
+        var v = valK(k), seen = {}, cand = [];
+        function addC(c) { if (c > 0 && c !== v && !seen[c]) { seen[c] = 1; cand.push(c); } }
+        PART_KEYS[KEY_PART[k]].forEach(function (o) { addC(valK(o)); });
+        if (!isPow(k)) {
+          var f = k.split(".").map(Number);
+          addC(f[0] * (f[1] + 1)); addC(f[0] * (f[1] - 1));
+          addC((f[0] + 1) * f[1]); addC((f[0] - 1) * f[1]);
+          addC(v + 10); addC(v - 10);
+        } else if (k.charAt(0) === "p") {
+          addC(v * 4); addC(v + 2); addC(v - 2);
+        } else { addC(v + 10); addC(v - 10); }
+        cand.sort(function (x, y) { return Math.abs(x - v) - Math.abs(y - v); });
+        var near = cand.slice(0, 6), out = [v];
+        while (out.length < 4 && near.length) out.push(near.splice(Math.floor(Math.random() * near.length), 1)[0]);
+        for (var i = out.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), tmp = out[i]; out[i] = out[j]; out[j] = tmp; }
+        return out;
       }
 
       function resetCurrent() {
@@ -843,7 +905,7 @@
         if (targetKey) S.cellErr[targetKey] = (S.cellErr[targetKey] || 0) + 1;
         // …et, en « Trouver », aussi pour la case touchée à tort : son
         // résultat n'était pas connu non plus (règle du Soroban, v29)
-        if (S.mode === "find" && k !== targetKey) S.cellErr[k] = (S.cellErr[k] || 0) + 1;
+        if (dir === "find" && k !== targetKey) S.cellErr[k] = (S.cellErr[k] || 0) + 1;
         srWrong(targetKey);
         srWrong(k);
         // Pas de résultat écrit non plus après une erreur : la case touchée
@@ -858,7 +920,7 @@
       }
 
       function tapCell(k) {
-        if (S.mode !== "find" || target === null || cur().done.find[k] || !winEl.hidden) return;
+        if (dir !== "find" || target === null || cur().done[S.mode][k] || !winEl.hidden) return;
         if (scopeKeys().indexOf(k) < 0) return;
         // Un même produit peut avoir plusieurs cases (12 = 2 × 6 = 3 × 4) :
         // n'importe laquelle est juste
@@ -866,7 +928,7 @@
         else wrong(k);
       }
       function typeKey(key) {
-        if (S.mode !== "write" || target === null || !winEl.hidden) return;
+        if (dir !== "write" || target === null || !winEl.hidden) return;
         if (key === "⌫") input = input.slice(0, -1);
         else if (key === "OK") {
           if (!input) return;
@@ -879,6 +941,12 @@
         render();
       }
 
+      function pickChoice(c) {
+        if (dir !== "choose" || target === null || badChoice[c] || !winEl.hidden) return;
+        if (c === valK(target)) right(target);
+        else { badChoice[c] = 1; wrong(target); }
+      }
+
       // Grille pleine : bilan dans le bandeau
       function gridDone() {
         var m = S.mode, nErr = cur().errors[m], clean = nErr === 0;
@@ -887,7 +955,7 @@
           S.clean[S.part][m] = clean;
         }
         saveState();
-        var other = !S.err && clean && !S.clean[S.part][m === "find" ? "write" : "find"];
+        var other = !S.err && clean && m !== "mix" && !S.clean[S.part][m === "find" ? "write" : "find"];
         setTimeout(function () {
           var ch = TXT[lang].cheers;
           document.getElementById("winTitle").textContent = clean ? ch[Math.floor(Math.random() * ch.length)] : t("full");
@@ -909,9 +977,8 @@
         var box = document.getElementById("parts");
         box.textContent = "";
         PARTS.forEach(function (p, i) {
-          if (i === 2) { var s = document.createElement("span"); s.className = "sep"; box.appendChild(s); }
           var bt = document.createElement("button");
-          bt.className = "chip" + (S.clean[p].find && S.clean[p].write ? " clean" : "");
+          bt.className = "chip" + (S.clean[p].find && (S.clean[p].write || S.clean[p].mix) ? " clean" : "");
           bt.textContent = TXT[lang].parts[p];
           bt.setAttribute("aria-pressed", p === S.part ? "true" : "false");
           bt.addEventListener("click", function () { setPart(p); });
@@ -933,6 +1000,7 @@
         }
         chip(t("find"), "", S.mode === "find", function () { setMode("find"); });
         chip(t("write"), "", S.mode === "write", function () { setMode("write"); });
+        chip(t("mix"), "", S.mode === "mix", function () { setMode("mix"); });
         chip(t("errs", { n: partErrKeys(S.part).length }), "errs", S.err, toggleErrors);
         chip("↻", "restart", null, restart, t("restart"));
       }
@@ -960,7 +1028,7 @@
           eb.textContent = S.cellErr[k];
           cell.appendChild(eb);
         }
-        if (S.mode === "write" && target === k) cell.className += " target";
+        if (dir !== "find" && target === k) cell.className += " target";
         if (flash === k) cell.className += " bad";
         cell.addEventListener("click", function () { tapCell(k); });
       }
@@ -1018,7 +1086,7 @@
       function sizeGrid() {
         var sh = gridShape();
         var w = stageEl.clientWidth - 32, h = stageEl.clientHeight - 12;
-        var kp = S.mode === "write" ? keypad.offsetHeight + 10 : 0;
+        var kp = S.mode === "write" ? keypad.offsetHeight + 10 : S.mode === "mix" ? choicesEl.offsetHeight + 10 : 0;
         var cell = Math.floor(Math.min((w - 2 * sh.cols) / sh.cols, (h - kp - 2 * sh.rows) / sh.rows, sh.max));
         tgrid.style.setProperty("--cell", Math.max(14, cell) + "px");
         tgrid.style.gridTemplateColumns = "repeat(" + sh.cols + ", var(--cell))";
@@ -1026,7 +1094,7 @@
 
       // Doublons de la grille 2–9 (12, 16, 18, 24, 36) : dès que les deux
       // cases sont remplies, un trait fin les relie, derrière les cases.
-      // Pas dans 11–20 : trop de doublons, la grille deviendrait illisible
+      // Pas dans 12–19 : trop de doublons, la grille deviendrait illisible
       var DUPS = (function () {
         var by = {};
         PART_KEYS.t9.forEach(function (k) { var pr = valK(k); (by[pr] = by[pr] || []).push(k); });
@@ -1067,11 +1135,28 @@
         });
       }
 
+      var choicesEl = document.getElementById("choices");
+      function renderChoices() {
+        choicesEl.hidden = S.mode !== "mix";
+        choicesEl.classList.toggle("ghost", dir !== "choose" || target === null);
+        choicesEl.textContent = "";
+        // Toujours quatre boutons : même hauteur à chaque question
+        for (var i = 0; i < 4; i++) {
+          var c = choices[i];
+          var bt = document.createElement("button");
+          bt.className = "choice" + (c !== undefined && badChoice[c] ? " bad" : "");
+          bt.textContent = c !== undefined ? c : "0";
+          if (c !== undefined) bt.addEventListener("click", pickChoice.bind(null, c));
+          choicesEl.appendChild(bt);
+        }
+      }
+
       function render() {
         renderParts();
         renderBottom();
         renderGrid();
         keypad.hidden = S.mode !== "write";
+        renderChoices();
         // Épuré : seulement le nombre à trouver, ou le calcul à écrire
         var task = document.getElementById("task");
         task.textContent = "";
@@ -1079,30 +1164,46 @@
           var n = scopeKeys().length;
           task.appendChild(document.createTextNode(t("full") + " " + n + "/" + n));
         } else {
-          if (S.mode === "write") task.appendChild(document.createTextNode(exprK(target) + " = "));
+          if (dir !== "find") task.appendChild(document.createTextNode(exprK(target) + " = "));
           var num = document.createElement("span");
           num.className = "tnum";
-          num.textContent = S.mode === "find" ? String(target) : (input || "?");
+          num.textContent = dir === "find" ? String(target) : (dir === "write" && input) || "?";
           task.appendChild(num);
         }
         renderSplit();
-        blink(S.mode === "write" && target !== null);
+        blink(dir !== "find" && target !== null);
         sizeGrid();
         drawDupLines();
       }
 
       // Clavier physique (ordinateur) : chiffres, Entrée, Retour arrière
       document.addEventListener("keydown", function (e) {
-        if (S.mode !== "write") return;
+        if (dir !== "write") return;
         if (/^[0-9]$/.test(e.key)) typeKey(e.key);
         else if (e.key === "Enter") typeKey("OK");
         else if (e.key === "Backspace") typeKey("⌫");
       });
 
+      // Glisser l'écran de droite à gauche : partie suivante ; de gauche à
+      // droite : partie précédente. Le défilement de la page reste bloqué
+      // (touchmove), on ne regarde que le départ et l'arrivée du doigt
+      var swX = null, swY = 0;
+      document.addEventListener("touchstart", function (e) {
+        if (e.touches.length !== 1 || !winEl.hidden || !menuOverlay.hidden || !histOverlay.hidden) { swX = null; return; }
+        swX = e.touches[0].clientX;
+        swY = e.touches[0].clientY;
+      }, { passive: true });
+      document.addEventListener("touchend", function (e) {
+        if (swX === null) return;
+        var dx = e.changedTouches[0].clientX - swX, dy = e.changedTouches[0].clientY - swY;
+        swX = null;
+        if (Math.abs(dx) < 60 || Math.abs(dx) < 1.5 * Math.abs(dy)) return;
+        var i = PARTS.indexOf(S.part) + (dx < 0 ? 1 : -1);
+        if (i >= 0 && i < PARTS.length) setPart(PARTS[i]);
+      }, { passive: true });
+
       // ---------- Menu ☰ ----------
 
-      var menuOverlay = document.getElementById("menuOverlay");
-      var histOverlay = document.getElementById("histOverlay");
       var eraseArmed = 0;
       function totalErrors() {
         var n = 0;
@@ -1185,6 +1286,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v4", text: "Nouvel exercice « Les deux » : il alterne les deux sens de la mémoire — une question sur deux, on touche la case du résultat donné ; l'autre, la case s'allume et on choisit son résultat parmi quatre. Grille des grandes tables réduite à 12–19 (lignes 11 et 20, trop faciles, retirées). Boutons du haut sans « × » ni trait de séparation ; glisser l'écran à gauche ou à droite passe à la partie voisine. Carrés et cubes notés x² et x³." },
         { v: "v3", text: "Nouvelle partie dans le chapitre des carrés et cubes : puissances de 2, de 2¹ = 2 à 2¹⁰ = 1024 (bouton 2ⁿ)." },
         { v: "v2", text: "Plus de rappel du résultat sous le nombre après une réponse (« 17² = 289 ») : seule la case remplie, ou rouge en cas d'erreur, répond." },
         { v: "v1", text: "Première version, tirée du chapitre des tables du Soroban : trouver la case ou écrire le résultat, compteur d'erreurs dans chaque case (les cases ratées reviennent plus souvent), « Erreurs » pour ne refaire que les cases ratées, répétition espacée (une case sue est grisée et revient plus tard). Tables jusqu'à 20 : grille 2–9 (coupée par la diagonale) et grille 11–20 (× 2 à × 9). Chapitre à part : carrés de 2 à 20, cubes de 2 à 10. Une partie gagne ✓ quand ses deux grilles sont faites sans erreur." }
