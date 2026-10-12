@@ -95,7 +95,7 @@
        séparés par un trait */
     .parts {
       display: grid;
-      grid-template-columns: 1fr 1fr auto 1fr 1fr;
+      grid-template-columns: 1fr 1fr auto 1fr 1fr 1fr;
       align-items: center;
       gap: 0.35rem;
       padding: 0 16px;
@@ -451,7 +451,7 @@
 
       var TXT = {
         fr: {
-          parts: { t9: "× 2–9", t20: "× 11–20", sq: "carrés", cu: "cubes" },
+          parts: { t9: "× 2–9", t20: "× 11–20", sq: "carrés", cu: "cubes", p2: "2ⁿ" },
           find: "Trouver", write: "Écrire", errs: "Erreurs {n}", restart: "Recommencer la grille",
           full: "Grille pleine",
           noErr: "Aucune erreur dans cette partie", clean: "Sans aucune erreur.",
@@ -464,7 +464,7 @@
           install: "Astuce : « Partager → Sur l'écran d'accueil » pour l'avoir comme une appli, utilisable hors ligne."
         },
         en: {
-          parts: { t9: "× 2–9", t20: "× 11–20", sq: "squares", cu: "cubes" },
+          parts: { t9: "× 2–9", t20: "× 11–20", sq: "squares", cu: "cubes", p2: "2ⁿ" },
           find: "Find", write: "Write", errs: "Mistakes {n}", restart: "Restart the grid",
           full: "Grid complete",
           noErr: "No mistakes in this part", clean: "Without a single mistake.",
@@ -491,39 +491,46 @@
       // - « × 11–20 » : tables de 11 à 20, de × 2 à × 9 (choix de Pierre) :
       //   80 cases, clés « a.b » avec a = 11…20 (ligne), b = 2…9 (colonne).
       // Chapitre 2, à part :
-      // - carrés de 2 à 20 (clés « s13 »), cubes de 2 à 10 (clés « c7 »).
+      // - carrés de 2 à 20 (clés « s13 »), cubes de 2 à 10 (clés « c7 »),
+      //   puissances de 2 de 2¹ = 2 à 2¹⁰ = 1024 (clés « p5 »).
 
-      var PARTS = ["t9", "t20", "sq", "cu"];
-      var PART_KEYS = { t9: [], t20: [], sq: [], cu: [] };
+      var PARTS = ["t9", "t20", "sq", "cu", "p2"];
+      var PART_KEYS = { t9: [], t20: [], sq: [], cu: [], p2: [] };
       var a, b;
       for (a = 2; a <= 9; a++) for (b = a; b <= 9; b++) PART_KEYS.t9.push(a + "." + b);
       for (a = 11; a <= 20; a++) for (b = 2; b <= 9; b++) PART_KEYS.t20.push(a + "." + b);
       for (a = 2; a <= 20; a++) PART_KEYS.sq.push("s" + a);
       for (a = 2; a <= 10; a++) PART_KEYS.cu.push("c" + a);
+      for (a = 1; a <= 10; a++) PART_KEYS.p2.push("p" + a);
       var KEY_PART = {};
       PARTS.forEach(function (p) { PART_KEYS[p].forEach(function (k) { KEY_PART[k] = p; }); });
       var GRID = {
         t9: { rows: [2, 3, 4, 5, 6, 7, 8, 9], cols: [2, 3, 4, 5, 6, 7, 8, 9] },
         t20: { rows: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20], cols: [2, 3, 4, 5, 6, 7, 8, 9] }
       };
-      var POW_COLS = { sq: 5, cu: 3 };
+      var POW_COLS = { sq: 5, cu: 3, p2: 5 };
 
-      function isPow(k) { return k.charAt(0) === "s" || k.charAt(0) === "c"; }
+      function isPow(k) { return /^[scp]/.test(k); }
+      var SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+      function sup(n) { return String(n).split("").map(function (d) { return SUP.charAt(+d); }).join(""); }
       function kN(k) { return +k.slice(1); }
       function valK(k) {
         if (k.charAt(0) === "s") return kN(k) * kN(k);
         if (k.charAt(0) === "c") return kN(k) * kN(k) * kN(k);
+        if (k.charAt(0) === "p") return Math.pow(2, kN(k));
         var f = k.split(".");
         return f[0] * f[1];
       }
       function exprK(k) {
         if (k.charAt(0) === "s") return kN(k) + "²";
         if (k.charAt(0) === "c") return kN(k) + "³";
+        if (k.charAt(0) === "p") return "2" + sup(kN(k));
         return k.replace(".", " × ");
       }
       // Les plus faciles, un peu effacés : diagonale, tables de 2 et de 5 ;
-      // 10² et 20², 10³
+      // 10² et 20², 10³ ; 2¹ et 2¹⁰ (1024, le « kilo » de l'informatique)
       function easyK(k) {
+        if (k.charAt(0) === "p") return kN(k) === 1 || kN(k) === 10;
         if (isPow(k)) return kN(k) === 10 || kN(k) === 20;
         var f = k.split(".");
         return f[0] === f[1] || f[1] === "2" || f[1] === "5" || f[0] === "2" || f[0] === "5";
@@ -1178,6 +1185,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v3", text: "Nouvelle partie dans le chapitre des carrés et cubes : puissances de 2, de 2¹ = 2 à 2¹⁰ = 1024 (bouton 2ⁿ)." },
         { v: "v2", text: "Plus de rappel du résultat sous le nombre après une réponse (« 17² = 289 ») : seule la case remplie, ou rouge en cas d'erreur, répond." },
         { v: "v1", text: "Première version, tirée du chapitre des tables du Soroban : trouver la case ou écrire le résultat, compteur d'erreurs dans chaque case (les cases ratées reviennent plus souvent), « Erreurs » pour ne refaire que les cases ratées, répétition espacée (une case sue est grisée et revient plus tard). Tables jusqu'à 20 : grille 2–9 (coupée par la diagonale) et grille 11–20 (× 2 à × 9). Chapitre à part : carrés de 2 à 20, cubes de 2 à 10. Une partie gagne ✓ quand ses deux grilles sont faites sans erreur." }
       ];
