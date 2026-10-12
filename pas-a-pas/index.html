@@ -1421,6 +1421,30 @@
 
     .pf-primes button:disabled { opacity: 0.3; }
 
+    /* Mode examen : plus aucune aide visible */
+    .exam-btn {
+      flex: none;
+      font: inherit;
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      color: var(--ink-soft);
+      background: none;
+      border: 1px solid var(--hairline);
+      border-radius: 999px;
+      padding: 0.35rem 0.7rem;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+    .exam-btn.on { color: var(--sign); border-color: var(--sign); }
+    body.exam .pf-primes button.can,
+    body.exam .pf-primes button.dim {
+      color: var(--ink); background: transparent; border-color: var(--accent);
+      box-shadow: none; opacity: 1; font-weight: 400;
+    }
+    body.exam .badge-shelf { visibility: hidden !important; }
+
     .sg-streak span {
       width: 10px;
       height: 10px;
@@ -1444,6 +1468,7 @@
       <button class="menu-btn" id="menuBtn" aria-label="Menu" aria-expanded="false">☰</button>
       <button class="menu-btn" id="homeBtn" aria-label="Accueil">⌂</button>
       <h1 id="title">Pas à Pas</h1>
+      <button class="exam-btn" id="examBtn" hidden>Examen</button>
     </header>
 
     <div class="menu-panel" id="menuPanel" hidden>
@@ -2654,7 +2679,7 @@
         el.className = "tok " + tok.k;
         el.dataset.id = tok.id;
         if (tok.from) el.dataset.from = tok.from.join(",");
-        if (step.hl && step.hl.indexOf(tok.id) >= 0) el.classList.add("hl");
+        if (step.hl && step.hl.indexOf(tok.id) >= 0 && !exam) el.classList.add("hl");
         if (step.signs && step.signs.indexOf(tok.id) >= 0) el.classList.add("sign-hl");
         var inner = document.createElement("span");
         inner.className = "in";
@@ -3262,7 +3287,7 @@
 
         var units = [];
         var pre = wait(350);
-        var showBlocks = fx.blocks && hasBadge() && !skipBlocks;
+        var showBlocks = fx.blocks && hasBadge() && !skipBlocks && !exam;
         skipBlocks = false;
         if (showBlocks) pre = pre.then(function () { return fxBlocks(fx.blocks, snap, cx, units); })
           // Le cadre de dix reste affiché : on le regarde, et c'est la
@@ -3459,7 +3484,7 @@
           var st = demo.steps;
           var lastExpr = st.length - 1;
           while (lastExpr > 0 && st[lastExpr].summary) lastExpr--;
-          if (gameMode && to >= lastExpr && gameRun.demo === demo.title && !gameRun.counted) {
+          if (playing() && to >= lastExpr && gameRun.demo === demo.title && !gameRun.counted) {
             gameRun.counted = true;
             if (gameRun.faults === 0) progressDemo(demo.title);
           }
@@ -3474,7 +3499,7 @@
       // Propose les deux réponses de l'étape suivante dès qu'on est posé
       function autoChoice(delay) {
         var d = DEMOS[demoIndex], st = d.steps;
-        if (!gameMode || d.custom) return;
+        if (!playing() || d.custom) return;
         setTimeout(function () {
           if (!busy && !choiceEl && !holdResolve && DEMOS[demoIndex] === d && d.steps === st && cur < st.length - 1 && homeEl.hidden) gameChoice(cur + 1);
         }, ms(delay));
@@ -3496,7 +3521,7 @@
           return;
         }
         var last = DEMOS[demoIndex].steps.length - 1;
-        if (gameMode && cur < last && !busy && !choiceEl && gameChoice(cur + 1)) return;
+        if (playing() && cur < last && !busy && !choiceEl && gameChoice(cur + 1)) return;
         if (cur === last) {
           if (busy) return;
           gameRun = { demo: DEMOS[demoIndex].title, faults: 0, counted: false };
@@ -3557,6 +3582,46 @@
       var gameRun = { demo: "", faults: 0, counted: true };
       var gameAuto = false; // après une réponse, la question suivante vient seule
       try { gameMode = localStorage.getItem("pasapas_game") === "1"; } catch (e) {}
+      // Mode examen : plus d'aide (ni surlignage, ni cadre de dix, ni
+      // badges, ni diviseurs allumés, ni définitions), les propositions
+      // toujours là. C'est lui qui valide un chapitre : 9 réponses justes
+      // d'affilée (3 manches sans erreur pour Singapour).
+      var exam = false, examScore = 0;
+      try { exam = localStorage.getItem("pasapas_exam") === "1"; } catch (e) {}
+      document.body.classList.toggle("exam", exam);
+      var EXAM_NEED = { "Singapour": 3 };
+      function playing() { return gameMode || exam; }
+      var examBtn = document.getElementById("examBtn");
+      // Chapitres qui ont un examen : ceux où l'on répond (démos, Premiers,
+      // Ensembles, Singapour). Calcul, Pascal, Solutions, Fusion s'explorent.
+      function examable(d) { return !!d && (!d.custom || /^(pf|ens|sg)$/.test(d.custom)); }
+      function examNeed() { return EXAM_NEED[DEMOS[demoIndex].title] || 9; }
+      function renderExam() {
+        examBtn.classList.toggle("on", exam);
+        examBtn.textContent = (LANG === "en" ? "Exam" : "Examen") + (exam ? " " + examScore + "/" + examNeed() : "");
+      }
+      // Une réponse en examen : juste, on avance ; fausse, on repart de 0
+      function examHit(ok, ch) {
+        if (!exam) return;
+        examScore = ok ? examScore + 1 : 0;
+        if (examScore >= examNeed()) {
+          examScore = 0;
+          markDone(ch);
+          if (ch === "Singapour" && !hasBadge()) setBadge(true);
+          toast(LANG === "en" ? "Exam passed" : "Examen réussi");
+        }
+        renderExam();
+        examBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: 300 });
+      }
+      examBtn.addEventListener("click", function () {
+        if (busy) return;
+        exam = !exam;
+        examScore = 0;
+        try { localStorage.setItem("pasapas_exam", exam ? "1" : "0"); } catch (e) {}
+        document.body.classList.toggle("exam", exam);
+        SND.tick();
+        selectDemo(demoIndex); // on repart d'un énoncé neuf, sans aide
+      });
       var choiceEl = null;
 
       function sameValue(txtA, txtB) {
@@ -3668,6 +3733,7 @@
           b.appendChild(e);
           b.addEventListener("click", function () {
             if (!choiceEl) return;
+            examHit(o.ok, DEMOS[demoIndex].title);
             if (o.ok) {
               SND.ok();
               b.classList.add("good");
@@ -3711,6 +3777,7 @@
 
       function selectDemo(i) {
         if (busy) return;
+        if (i !== demoIndex) examScore = 0;
         gameRun = { demo: DEMOS[i].title, faults: 0, counted: false };
         hideHome();
         if (i !== demoIndex) renew(DEMOS[i]);
@@ -3736,6 +3803,8 @@
         document.getElementById("controls").hidden = false;
         prevBtn.style.visibility = custom ? "hidden" : "";
         prevBtn.textContent = "←";
+        examBtn.hidden = !examable(DEMOS[i]);
+        renderExam();
         // Premiers : ni ensembles ni badges, ils n'y servent à rien
         var bare = custom === "pf";
         document.getElementById("univ").hidden = bare || !homeEl.hidden;
@@ -4135,8 +4204,8 @@
           if (sgState.auto) { /* manche montrée : ni gagnée ni perdue */ }
           else if (!sgState.mistake) sgStreakN = Math.min(WIN, sgStreakN + 1);
           sgRenderStreak();
-          if (sgStreakN >= WIN) markDone("Singapour");
-          if (sgStreakN >= WIN && !hasBadge()) {
+          if (!sgState.auto) examHit(!sgState.mistake, "Singapour");
+          if (exam && doneMap["Singapour"] && !hasBadge()) {
             SND.badge();
             setBadge(true);
             sgMsg.textContent = (sgMsg.textContent ? sgMsg.textContent + "   ·   " : "") + "Badge 10";
@@ -4208,6 +4277,7 @@
       };
       var pfTip = document.getElementById("pfTip");
       function pfShowTip(d, btn, html) {
+        if (exam) return;
         if (html) pfTip.innerHTML = html;
         else pfTip.textContent = (LANG === "en" ? DIV_INFO_EN : DIV_INFO)[d];
         pfTip.hidden = false;
@@ -4437,6 +4507,7 @@
       pfEq.addEventListener("click", function () {
         if (!pfState || pfEq.querySelector("input")) return;
         if (pfState.nodes.length > 1 && !pfState.ready) return; // arbre commencé
+        if (exam) return; // en examen, le nombre est imposé
         var inp = document.createElement("input");
         inp.type = "text";
         inp.inputMode = "numeric";
@@ -4623,6 +4694,7 @@
       function pfDivide(p, btn) {
         if (!pfState || pfState.ready || pfState.sel < 0) return;
         var i = pfState.sel, nd = pfState.nodes[i];
+        examHit(nd.v % p === 0, "Premiers");
         if (nd.v % p !== 0) {
           pfHeadLast = { v: nd.v, p: p, ok: false };
           pfUpdateHead();
@@ -4706,6 +4778,7 @@
       pfIsPrimeBtn.addEventListener("click", function () {
         if (!pfState || pfState.ready || pfState.sel < 0) return;
         var nd = pfState.nodes[pfState.sel];
+        examHit(isPrime(nd.v), "Premiers");
         if (isPrime(nd.v)) { pfSnap(); pfConfirm(pfState.sel); return; }
         // Pas premier : on montre brièvement un diviseur, en haut
         pfState.mistake = true;
@@ -4715,7 +4788,8 @@
         pfIsPrimeBtn.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
         // Le message reste affiché jusqu'au prochain toucher ailleurs
         pfEqMsg = true;
-        pfEq.textContent = nd.v + " = " + d + " × " + (nd.v / d) + (LANG === "en" ? " — not prime" : " — pas premier");
+        pfEq.textContent = exam ? nd.v + (LANG === "en" ? " — not prime" : " — pas premier")
+          : nd.v + " = " + d + " × " + (nd.v / d) + (LANG === "en" ? " — not prime" : " — pas premier");
         pfEq.style.color = "var(--sign)";
         setTimeout(function () {
           document.addEventListener("pointerdown", function clear(ev) {
@@ -4732,7 +4806,7 @@
         SND.ok();
         // Un nombre tapé soi-même ne compte pas pour réussir le chapitre
         if (!pfState.custom) pfStreak = pfState.mistake ? 0 : pfStreak + 1;
-        if (pfStreak >= WIN) markDone("Premiers");
+
         pfState.ready = true;
         var ps = [];
         pfState.nodes.forEach(function (c, k) {
@@ -5635,6 +5709,7 @@
       });
 
       function ensShowTip(e, b) {
+        if (exam) return;
         ensTip.innerHTML = LANG === "en" ? e.defEn : e.def;
         ensTip.hidden = false;
         var rs = ensEl.getBoundingClientRect(), rb = b.getBoundingClientRect();
@@ -5675,7 +5750,7 @@
         var z = ensState.z, ok = b._e.has(z);
         ensScore.n++;
         if (ok) { ensScore.ok++; ensStreak++; SND.ok(); } else { ensStreak = 0; SND.bad(); }
-        if (ensStreak >= WIN) markDone("Ensembles");
+        examHit(ok, "Ensembles");
         // Toutes les cases qui contiennent le nombre s'allument, une à une
         ensBoxes.forEach(function (bb, k) {
           if (bb.hidden || !bb._e.has(z)) return;
@@ -5752,6 +5827,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v84", text: "Mode examen : un bouton « Examen » en haut. Plus aucune aide : pas de surlignage ni de cadre de dix, badges masqués, propositions toujours là ; dans Premiers, tous les diviseurs ont la même couleur et pas d'explication ; dans Ensembles, pas de définitions. C'est l'examen qui valide un chapitre : 9 réponses justes d'affilée (3 manches sans erreur pour Singapour), une erreur remet à 0. L'entraînement, lui, garde toutes les aides." },
         { v: "v83", text: "Premiers : la barre des ensembles et les badges du bas sont masqués, ils n'y servent pas." },
         { v: "v82", text: "Fiche des règles, « Faire apparaître » : nouveau geste « Un coefficient sans tout développer » — le coefficient de xᵏ d'un produit = somme des produits de coefficients dont les exposants font k ; le reste part dans xⁿP(x)." },
         { v: "v81", text: "Regrouper et x en facteur passent dans ℕ (exemples sans signe moins ; leurs badges servent aussi dans ℤ). Accueil : ℕ en petite boule en bas, les lettres dans les bandes du haut ; plus de lettre qui flotte sous les anneaux. Chapitres de l'accueil sur deux lignes, boutons resserrés." },
@@ -6192,8 +6268,8 @@
       function progressDemo(title) {
         runs[title] = (runs[title] || 0) + 1;
         try { localStorage.setItem("pasapas_runs", JSON.stringify(runs)); } catch (e) {}
-        if (runs[title] >= WIN) markDone(title);
-        else toast("✓ " + runs[title] + " / " + WIN);
+        // Valider le chapitre, c'est le mode examen ; ici on s'entraîne
+        if (!exam) toast("✓");
       }
       var SYM_OF = { N: "ℕ", Z: "ℤ", Q: "ℚ", R: "ℝ", C: "ℂ" };
 
@@ -6321,6 +6397,7 @@
 
       function showHome() {
         calcRun++;
+        examBtn.hidden = true;
         closeChoice();
         [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, pasEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
         univEl.hidden = true;
