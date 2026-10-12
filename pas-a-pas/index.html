@@ -1174,16 +1174,19 @@
       gap: 0.15em; font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 500;
       font-size: clamp(1.7rem, 8vw, 2.5rem);
     }
-    .rg-term {
+    /* Le signe voyage avec son terme mais reste hors du cadre : le cadre
+       n'entoure que le terme ou la parenthèse */
+    .rg-term { display: inline-flex; align-items: center; cursor: pointer; touch-action: none; }
+    .rg-term .rg-sign { margin: 0 0.12em; }
+    .rg-box {
       display: inline-flex; align-items: center; gap: 0.06em; padding: 0.08em 0.14em;
-      border: 1px solid transparent; border-radius: 0.3em; cursor: pointer; touch-action: none;
+      border: 1px solid transparent; border-radius: 0.3em;
     }
-    .rg-term.sel { border-color: var(--accent); background: var(--accent-soft); }
+    .rg-term.sel .rg-box { border-color: var(--accent); background: var(--accent-soft); }
     .rg-term .rg-coef { padding: 0 0.04em; border-radius: 0.2em; }
     .rg-term .rg-coef.sel { background: var(--accent); color: var(--bg); }
-    .rg-term .rg-sign { margin-right: 0.12em; }
-    .rg-term.group { border-color: var(--ink-soft); }
-    .rg-term.group.sel { border-color: var(--accent); }
+    .rg-term.group .rg-box { border-color: var(--ink-soft); }
+    .rg-term.group.sel .rg-box { border-color: var(--accent); }
 
     /* Chapitre Structures : un cercle (E, loi), ses propriétés dedans */
     #str { gap: 0.5rem; }
@@ -5760,15 +5763,15 @@
           if (t.parts) {
             // Le groupe garde un + devant lui (sauf en tête)
             if (i > 0) html += '<span class="rg-sign">+</span>';
-            html += "(" + t.parts.map(function (k, j) {
+            html += '<span class="rg-box">(' + t.parts.map(function (k, j) {
               return (j === 0 ? (k < 0 ? "−" : "") : (k < 0 ? " − " : " + ")) + Math.abs(k);
-            }).join("") + ")" + (t.s ? "·<i>" + t.s + "</i>" : "");
+            }).join("") + ")" + (t.s ? "·<i>" + t.s + "</i>" : "") + "</span>";
           } else {
             var neg = t.k < 0;
             if (i > 0 || neg) html += '<span class="rg-sign">' + (neg ? "−" : "+") + "</span>";
             var a = Math.abs(t.k), csel = reg.sel && reg.sel.id === t.id && reg.sel.coef ? " sel" : "";
-            if (t.s) html += '<span class="rg-coef' + csel + '">' + (a === 1 ? "" : a) + "</span><i>" + t.s + "</i>";
-            else html += '<span class="rg-coef' + csel + '">' + a + "</span>";
+            if (t.s) html += '<span class="rg-box"><span class="rg-coef' + csel + '">' + (a === 1 ? "" : a) + "</span><i>" + t.s + "</i></span>";
+            else html += '<span class="rg-box"><span class="rg-coef' + csel + '">' + a + "</span></span>";
           }
           e.innerHTML = html;
           regRow.appendChild(e);
@@ -6479,6 +6482,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v97", text: "Regrouper : le cadre de sélection entoure seulement le terme ou la parenthèse, le signe + / − reste devant, à l'extérieur." },
         { v: "v96", text: "Les badges restent disponibles en examen : ce sont des capacités gagnées (le badge 10 calcule une parenthèse dans Regrouper, etc.). Le bouton Examen reste sur la ligne du titre." },
         { v: "v95", text: "Regrouper se fait à la main : chaque terme (avec son signe) se touche. Toucher un terme puis un terme semblable, ou glisser l'un sur l'autre : ils se rapprochent et la ligne se réarrange en douceur. Côte à côte, 3x et 2x deviennent (3 + 2)·x, 5 et 7 deviennent (5 + 7). Toucher la parenthèse puis le badge 10 (ou la retoucher) fait le calcul. Fini quand il reste un terme en x puis un nombre." },
         { v: "v94", text: "Bonne réponse : la question suivante arrive seule après un court instant (Venn, Structures, Ensembles, Solutions). Après une erreur, on reste sur la correction ; la flèche fait passer." },
