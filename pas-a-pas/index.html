@@ -797,6 +797,7 @@
       transition: transform 1.2s ease-out, opacity 0.45s ease;
     }
     .badge-float.up { transform: translate(-50%, -26px); }
+    .badge-float.no { color: var(--sign); border-color: var(--sign); white-space: normal; width: max-content; max-width: min(22rem, 86vw); text-align: center; border-radius: 1rem; }
     .badge-float.out { opacity: 0; }
 
     /* Badge utilisable à cette étape : il luit doucement */
@@ -6485,6 +6486,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v100", text: "Badges : un appui court agit ; si l'action n'est pas possible, une étiquette jaune dit pourquoi (« Regroupe d'abord : pas encore de parenthèse à calculer », « Pas de (−1) à calculer ici »…). Un appui long montre l'explication complète du badge." },
         { v: "v99", text: "Regrouper, avec le badge 10 : un toucher sur une parenthèse la calcule directement, et le badge calcule toutes les parenthèses d'un coup. Sans le badge : deux touchers sur la parenthèse." },
         { v: "v98", text: "Regrouper : deux termes en x associés partent directement tout à gauche, deux nombres tout à droite (et leur parenthèse aussi)." },
         { v: "v97", text: "Regrouper : le cadre de sélection entoure seulement le terme ou la parenthèse, le signe + / − reste devant, à l'extérieur." },
@@ -6801,6 +6803,32 @@
         dix: { btn: "10", fr: ["Cadre de dix", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12 : on complète d'abord la dizaine. Le cadre de dix s'affiche sous chaque addition ; la flèche lance la suite."],
                en: ["Ten frame", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12: fill up the ten first. The ten frame shows under every addition; the arrow moves on."] }
       };
+      // Appui court sur un badge : il agit, ou une étiquette dit pourquoi
+      // il ne peut pas. Appui long : l'explication complète du badge.
+      function badgeNo(el, why) {
+        SND.tick();
+        badgeFloat(el, why, true);
+        el.animate([{ transform: "translateX(-3px)" }, { transform: "translateX(3px)" }, { transform: "none" }], { duration: ms(240) });
+      }
+      var badgeLong = false;
+      function badgeLongPress(el, info) {
+        var timer = null;
+        el.addEventListener("pointerdown", function () {
+          badgeLong = false;
+          timer = setTimeout(function () { badgeLong = true; showBadgeInfo(info(), "Badge"); }, 500);
+        });
+        ["pointerup", "pointerleave", "pointercancel"].forEach(function (t) {
+          el.addEventListener(t, function () { clearTimeout(timer); });
+        });
+        el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+      }
+      function regWhyNot() {
+        var en = LANG === "en";
+        if (!reg) return en ? "Nothing to compute" : "Rien à calculer";
+        var xs = reg.terms.filter(function (t) { return t.s; }).length, ns = reg.terms.length - xs;
+        return xs > 1 || ns > 1 ? (en ? "Group first: no bracket to compute yet" : "Regroupe d'abord : pas encore de parenthèse à calculer")
+                                : (en ? "Nothing left to compute" : "Plus rien à calculer");
+      }
       function showBadgeInfo(P, title) {
         var t = P[LANG === "en" ? "en" : "fr"];
         document.getElementById("puTitle").textContent = title;
@@ -6812,14 +6840,20 @@
       }
       var badgeMM = document.getElementById("badgeMM");
       var badgeReg = document.getElementById("badgeReg"), badgeFac = document.getElementById("badgeFac");
+      badgeLongPress(badgeChip, function () { return BADGE_INFO.dix; });
+      badgeLongPress(badgeMM, function () { return POWERS["−×−"]; });
+      badgeLongPress(badgeReg, function () { return POWERS["Regrouper"]; });
+      badgeLongPress(badgeFac, function () { return POWERS["x en facteur"]; });
       // Le nom du badge flotte au-dessus de lui : on voit quelle règle agit
-      function badgeFloat(el, text) {
+      function badgeFloat(el, text, no) {
         var r = el.getBoundingClientRect(), f = document.createElement("div");
-        f.className = "badge-float";
+        f.className = "badge-float" + (no ? " no" : "");
         f.textContent = text;
-        f.style.left = (r.left + r.width / 2) + "px";
-        f.style.top = (r.top - 34) + "px";
         document.body.appendChild(f);
+        // Au-dessus du badge, sans jamais sortir de l'écran
+        var w = f.offsetWidth, h = f.offsetHeight, W = window.innerWidth;
+        f.style.left = Math.max(w / 2 + 8, Math.min(W - w / 2 - 8, r.left + r.width / 2)) + "px";
+        f.style.top = (r.top - h - 8) + "px";
         // Transitions CSS plutôt qu'animate() : l'étiquette reste lisible
         // même quand les animations sont réduites
         requestAnimationFrame(function () { f.classList.add("up"); });
@@ -6842,9 +6876,10 @@
         return nx && nx.fx && nx.fx.type === "meet" && nx.fx.blocks ? cur + 1 : -1;
       }
       badgeChip.addEventListener("click", function () {
-        if (DEMOS[demoIndex].custom === "reg") { if (!regCompute(true)) showBadgeInfo(BADGE_INFO.dix, "Badge"); return; }
+        if (badgeLong) return;
+        if (DEMOS[demoIndex].custom === "reg") { if (!regCompute(true)) badgeNo(badgeChip, regWhyNot()); return; }
         var k = dixTarget();
-        if (k < 0 || busy) { showBadgeInfo(BADGE_INFO.dix, "Badge"); return; }
+        if (k < 0 || busy) { badgeNo(badgeChip, LANG === "en" ? "No addition to do here" : "Pas d'addition à calculer ici"); return; }
         closeChoice();
         SND.badge();
         badgeFloat(badgeChip, LANG === "en" ? "Ten frame" : "Cadre de dix");
@@ -6893,13 +6928,14 @@
         return k > cur ? k : -1;
       }
       var ACTS = [
-        { el: badgeReg, ch: "Regrouper", test: isRegroup },
-        { el: badgeFac, ch: "x en facteur", test: isFactor }
+        { el: badgeReg, ch: "Regrouper", test: isRegroup, why: function () { return LANG === "en" ? "Nothing to group here" : "Rien à regrouper ici"; } },
+        { el: badgeFac, ch: "x en facteur", test: isFactor, why: function () { return LANG === "en" ? "No x to factor out here" : "Pas de x à mettre en facteur ici"; } }
       ];
       ACTS.forEach(function (A) {
         A.el.addEventListener("click", function () {
           var k = actTarget(A.test, A.ch);
-          if (k < 0 || busy) { showBadgeInfo(POWERS[A.ch], "Badge"); return; }
+          if (badgeLong) return;
+          if (k < 0 || busy) { badgeNo(A.el, A.why()); return; }
           closeChoice();
           SND.badge();
           badgeFloat(A.el, tr(A.ch));
@@ -6914,7 +6950,8 @@
       }
       badgeMM.addEventListener("click", function () {
         var k = mmTarget();
-        if (k < 0 || busy) { showBadgeInfo(POWERS["−×−"], "Badge"); return; }
+        if (badgeLong) return;
+        if (k < 0 || busy) { badgeNo(badgeMM, LANG === "en" ? "No (−1) to work out here" : "Pas de (−1) à calculer ici"); return; }
         closeChoice();
         SND.badge();
         badgeFloat(badgeMM, "(−1)·(−1) = 1");
