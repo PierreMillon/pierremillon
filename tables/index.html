@@ -91,11 +91,11 @@
       letter-spacing: 0.06em;
     }
 
-    /* Les parties côte à côte : tables (2–9, 12–19), carrés, cubes, 2ⁿ.
+    /* Les parties côte à côte : tables (2–9, 12–19, tout), carrés, cubes, 2ⁿ.
        Sans « × » ni trait de séparation (demande de Pierre) */
     .parts {
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       align-items: center;
       gap: 0.35rem;
       padding: 0 16px;
@@ -456,7 +456,7 @@
 
       var TXT = {
         fr: {
-          parts: { t9: "2–9", t20: "12–19", sq: "x²", cu: "x³", p2: "2ⁿ" },
+          parts: { t9: "2–9", t20: "12–19", all: "tout", sq: "x²", cu: "x³", p2: "2ⁿ" },
           errs: "Erreurs {n}", restart: "Recommencer la grille",
           full: "Grille pleine",
           noErr: "Aucune erreur dans cette partie", clean: "Sans aucune erreur.",
@@ -469,7 +469,7 @@
           install: "Astuce : « Partager → Sur l'écran d'accueil » pour l'avoir comme une appli, utilisable hors ligne."
         },
         en: {
-          parts: { t9: "2–9", t20: "12–19", sq: "x²", cu: "x³", p2: "2ⁿ" },
+          parts: { t9: "2–9", t20: "12–19", all: "all", sq: "x²", cu: "x³", p2: "2ⁿ" },
           errs: "Mistakes {n}", restart: "Restart the grid",
           full: "Grid complete",
           noErr: "No mistakes in this part", clean: "Without a single mistake.",
@@ -500,19 +500,29 @@
       // - carrés de 2 à 20 (clés « s13 »), cubes de 2 à 10 (clés « c7 »),
       //   puissances de 2 de 2¹ = 2 à 2¹⁰ = 1024 (clés « p5 »).
 
-      var PARTS = ["t9", "t20", "sq", "cu", "p2"];
-      var PART_KEYS = { t9: [], t20: [], sq: [], cu: [], p2: [] };
+      var PARTS = ["t9", "t20", "all", "sq", "cu", "p2"];
+      var PART_KEYS = { t9: [], t20: [], all: [], sq: [], cu: [], p2: [] };
       var a, b;
       for (a = 2; a <= 9; a++) for (b = a; b <= 9; b++) PART_KEYS.t9.push(a + "." + b);
       for (a = 12; a <= 19; a++) for (b = 2; b <= 9; b++) PART_KEYS.t20.push(a + "." + b);
       for (a = 2; a <= 20; a++) PART_KEYS.sq.push("s" + a);
       for (a = 2; a <= 10; a++) PART_KEYS.cu.push("c" + a);
       for (a = 1; a <= 10; a++) PART_KEYS.p2.push("p" + a);
-      var KEY_PART = {};
-      PARTS.forEach(function (p) { PART_KEYS[p].forEach(function (k) { KEY_PART[k] = p; }); });
+      // « tout » : le triangle 2–9 et les lignes 12–19 réunis en une seule
+      // grande grille (demande de Pierre) — mêmes cases, donc mêmes
+      // compteurs d'erreurs que dans les deux parties séparées
+      PART_KEYS.all = PART_KEYS.t9.concat(PART_KEYS.t20);
+      // Une case peut appartenir à plusieurs parties : KEY_PART garde la
+      // première (partie d'origine), IN_PART dit si elle est dans une partie
+      var KEY_PART = {}, IN_PART = {};
+      PARTS.forEach(function (p) {
+        IN_PART[p] = {};
+        PART_KEYS[p].forEach(function (k) { IN_PART[p][k] = 1; if (!KEY_PART[k]) KEY_PART[k] = p; });
+      });
       var GRID = {
         t9: { rows: [2, 3, 4, 5, 6, 7, 8, 9], cols: [2, 3, 4, 5, 6, 7, 8, 9] },
-        t20: { rows: [12, 13, 14, 15, 16, 17, 18, 19], cols: [2, 3, 4, 5, 6, 7, 8, 9] }
+        t20: { rows: [12, 13, 14, 15, 16, 17, 18, 19], cols: [2, 3, 4, 5, 6, 7, 8, 9] },
+        all: { rows: [2, 3, 4, 5, 6, 7, 8, 9, 12, 13, 14, 15, 16, 17, 18, 19], cols: [2, 3, 4, 5, 6, 7, 8, 9] }
       };
       var POW_COLS = { sq: 5, cu: 3, p2: 5 };
 
@@ -581,13 +591,13 @@
               if (!x) return;
               MODES.forEach(function (m) {
                 if (x.done && Array.isArray(x.done[m])) {
-                  x.done[m].forEach(function (k) { if (KEY_PART[k] === p) s.prog[id].done[m][k] = 1; });
+                  x.done[m].forEach(function (k) { if (IN_PART[p][k]) s.prog[id].done[m][k] = 1; });
                 }
                 if (x.errors && okInt(x.errors[m])) s.prog[id].errors[m] = x.errors[m];
               });
             });
             if (o.errKeys && Array.isArray(o.errKeys[p])) {
-              s.errKeys[p] = o.errKeys[p].filter(function (k) { return KEY_PART[k] === p; });
+              s.errKeys[p] = o.errKeys[p].filter(function (k) { return IN_PART[p][k]; });
             }
             MODES.forEach(function (m) {
               if (o.clean && o.clean[p] && o.clean[p][m] === true) s.clean[p][m] = true;
@@ -597,8 +607,15 @@
           Object.keys(KEY_PART).forEach(function (k) {
             var v = o.cellErr && o.cellErr[k];
             if (Number.isInteger(v) && v > 0 && v < 1e6) s.cellErr[k] = v;
-            var r = o.sr && o.sr[k];
-            if (r && okInt(r.s) && okInt(r.g) && okInt(r.due)) s.sr[k] = { s: r.s, g: r.g, due: r.due };
+          });
+          // Répétition espacée : par partie (« t9|7.8 »), chaque partie
+          // compte ses propres grilles finies. Anciennes clés sans partie
+          // (avant v7) reprises pour leur partie d'origine
+          PARTS.forEach(function (p) {
+            PART_KEYS[p].forEach(function (k) {
+              var r = o.sr && (o.sr[p + "|" + k] || (KEY_PART[k] === p && o.sr[k]));
+              if (r && okInt(r.s) && okInt(r.g) && okInt(r.due)) s.sr[p + "|" + k] = { s: r.s, g: r.g, due: r.due };
+            });
           });
           MODES.forEach(function (m) {
             var av = o.avg && o.avg[m];
@@ -640,9 +657,10 @@
       // grisée, réponse écrite, et ne revient qu'au bout de 2 parties ;
       // juste et rapide à son retour : 4 parties, puis 8… Une erreur ou une
       // réponse lente la remet en jeu. Pas dans « Mes erreurs ».
+      function srKey(k) { return S.part + "|" + k; }
       function known(k) {
-        var r = S.sr[k];
-        return !S.err && !!r && r.g > 0 && S.games[KEY_PART[k]] < r.due;
+        var r = S.sr[srKey(k)];
+        return !S.err && !!r && r.g > 0 && S.games[S.part] < r.due;
       }
       var tStart = 0;
       function srRight(k) {
@@ -652,21 +670,22 @@
         var fast = av.n >= 5 && dt < av.mean;
         av.n = Math.min(av.n + 1, 50);
         av.mean += (dt - av.mean) / av.n;
-        var r = S.sr[k] || { s: 0, g: 0, due: 0 }, g = S.games[KEY_PART[k]];
+        var r = S.sr[srKey(k)] || { s: 0, g: 0, due: 0 }, g = S.games[S.part];
         if (fast) {
           r.s++;
           if (r.g > 0) r.g *= 2;
           else if (r.s >= 2) r.g = 2;
           if (r.g > 0) r.due = g + 1 + r.g;
         } else { r.s = 0; r.g = 0; r.due = 0; }
-        S.sr[k] = r;
+        S.sr[srKey(k)] = r;
       }
-      function srWrong(k) { if (k) delete S.sr[k]; }
+      // Une erreur sur une case la remet en jeu dans toutes les parties
+      function srWrong(k) { if (k) PARTS.forEach(function (p) { delete S.sr[p + "|" + k]; }); }
       // Nouvelle grille où tout est déjà su : on avance jusqu'au premier retour
       function srWake() {
         if (S.err || remainingKeys().length) return;
         var min = Infinity;
-        scopeKeys().forEach(function (k) { if (known(k)) min = Math.min(min, S.sr[k].due); });
+        scopeKeys().forEach(function (k) { if (known(k)) min = Math.min(min, S.sr[srKey(k)].due); });
         if (min < Infinity) S.games[S.part] = min;
       }
 
@@ -974,7 +993,7 @@
       }
 
       function gridShape() {
-        if (GRID[S.part]) return { cols: GRID[S.part].cols.length + 1, rows: GRID[S.part].rows.length + 1, max: 52 };
+        if (GRID[S.part]) return { cols: GRID[S.part].cols.length + 1, rows: GRID[S.part].rows.length + 1, max: 52, flat: S.part === "all" };
         var c = POW_COLS[S.part];
         return { cols: c, rows: Math.ceil(PART_KEYS[S.part].length / c), max: 66 };
       }
@@ -1003,7 +1022,8 @@
                 cell.textContent = ri < 0 ? (ci === g.cols.length ? "×" : g.cols[ci]) : g.rows[ri];
               } else {
                 var r = g.rows[ri], c = g.cols[ci];
-                if (S.part === "t9" && r > c) cell.className += " off";
+                // Le triangle : sous la diagonale de 2–9, cases vides
+                if (r <= 9 && r > c) cell.className += " off";
                 else add(cell, r + "." + c);
               }
               tgrid.appendChild(cell);
@@ -1027,9 +1047,15 @@
         var sh = gridShape();
         var w = stageEl.clientWidth - 32, h = stageEl.clientHeight - 12;
         var kp = keypad.offsetHeight + 10;
-        var cell = Math.floor(Math.min((w - 2 * sh.cols) / sh.cols, (h - kp - 2 * sh.rows) / sh.rows, sh.max));
-        tgrid.style.setProperty("--cell", Math.max(14, cell) + "px");
-        tgrid.style.gridTemplateColumns = "repeat(" + sh.cols + ", var(--cell))";
+        var cw = Math.floor(Math.min((w - 2 * sh.cols) / sh.cols, sh.max));
+        var ch = Math.floor(Math.min((h - kp - 2 * sh.rows) / sh.rows, sh.max));
+        var colw = Math.max(14, Math.min(cw, ch)), rowh = colw;
+        // Grande grille « tout » (17 lignes) : cases plus larges que hautes,
+        // pour garder des chiffres lisibles malgré la hauteur limitée
+        if (sh.flat) { rowh = Math.max(14, ch); colw = Math.max(14, Math.min(cw, Math.floor(rowh * 1.7))); }
+        tgrid.style.setProperty("--cell", colw + "px");
+        tgrid.style.gridTemplateColumns = "repeat(" + sh.cols + ", " + colw + "px)";
+        tgrid.style.gridAutoRows = rowh + "px";
       }
 
       // Doublons de la grille 2–9 (12, 16, 18, 24, 36) : dès que les deux
@@ -1211,6 +1237,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v7", text: "Nouvelle partie « tout » : le triangle 2–9 et les lignes 12–19 réunis dans une seule grande grille (100 cases). Mêmes compteurs d'erreurs que dans les parties séparées." },
         { v: "v6", text: "Quand une case s'allume, on tape son résultat au pavé de chiffres (plus de 4 choix). Pas de touche « OK » : la réponse part toute seule dès qu'on a tapé autant de chiffres qu'elle en a." },
         { v: "v5", text: "Un seul exercice : les boutons Trouver, Écrire et Les deux sont retirés. Chaque question tire au hasard l'un des deux sens — toucher la case du résultat donné, ou choisir parmi quatre le résultat de la case allumée (jamais trois fois de suite le même sens). Une partie gagne ✓ quand sa grille est faite sans erreur." },
         { v: "v4", text: "Nouvel exercice « Les deux » : il alterne les deux sens de la mémoire — une question sur deux, on touche la case du résultat donné ; l'autre, la case s'allume et on choisit son résultat parmi quatre. Grille des grandes tables réduite à 12–19 (lignes 11 et 20, trop faciles, retirées). Boutons du haut sans « × » ni trait de séparation ; glisser l'écran à gauche ou à droite passe à la partie voisine. Carrés et cubes notés x² et x³." },
