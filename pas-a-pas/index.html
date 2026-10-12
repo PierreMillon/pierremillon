@@ -911,7 +911,9 @@
       margin-top: 0.6rem;
     }
 
-    .home-map { width: 100%; max-width: 420px; flex: none; height: min(50vh, 106vw, 440px); touch-action: none; }
+    /* Les anneaux prennent toute la place libre et s'y centrent (autant de
+       noir au-dessus qu'en dessous) ; les chapitres restent tout en bas */
+    .home-map { width: 100%; max-width: 420px; flex: 1 1 0; min-height: 0; touch-action: none; }
     .home-map ellipse { fill: rgba(61, 224, 138, 0.04); stroke: var(--ink-soft); stroke-width: 1.2; cursor: pointer; }
     .home-map ellipse.sel { stroke: var(--accent); stroke-width: 2; fill: rgba(61, 224, 138, 0.1); }
     .home-map ellipse.lock { stroke-dasharray: 4 5; fill: transparent; }
@@ -919,17 +921,17 @@
     .home-map text { fill: var(--ink); font-family: inherit; font-size: 13px; pointer-events: none; text-anchor: middle; }
     .home-map text.lock { fill: var(--ink-soft); }
     .home-map text.big { font-size: 22px; }
-    .home-info { margin: 0; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); text-align: center; height: 4.4em; flex: none; }
+    .home-info { margin: 0; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); text-align: center; flex: none; }
+    .home-info:empty { display: none; }
 
     .home-list {
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
       gap: 0.4rem;
-      flex: 1;
-      min-height: 0;
-      align-content: flex-start;
-      overflow: hidden;
+      flex: none;
+      width: 100%;
+      padding-bottom: 0.4rem;
     }
 
     /* Chapitres : deux lignes au plus, les boutons se resserrent */
@@ -940,13 +942,13 @@
       overflow: hidden;
       text-overflow: ellipsis;
       font-family: inherit;
-      font-size: 0.7rem;
-      letter-spacing: 0.04em;
+      font-size: 0.66rem;
+      letter-spacing: 0;
       color: var(--ink);
       background: transparent;
       border: 1px solid var(--ink-soft);
       border-radius: 999px;
-      padding: 0.45rem 0.4rem;
+      padding: 0.5rem 0.15rem;
       cursor: pointer;
     }
 
@@ -1447,6 +1449,7 @@
       touch-action: manipulation;
     }
     .exam-btn.on { color: var(--sign); border-color: var(--sign); }
+    .exam-btn.passed { color: var(--accent); border-color: var(--accent); }
     body.exam .pf-primes button.can,
     body.exam .pf-primes button.dim {
       color: var(--ink); background: transparent; border-color: var(--accent);
@@ -3600,7 +3603,10 @@
       // badges, ni diviseurs allumés, ni définitions), les propositions
       // toujours là. C'est lui qui valide un chapitre : 3 réponses justes
       // d'affilée (3 manches sans erreur pour Singapour).
-      var exam = false, examScore = 0;
+      // Compteur d'examen gardé chapitre par chapitre (on peut aller voir
+      // ailleurs et revenir sans le perdre) ; seule une erreur le remet à 0
+      var exam = false, examScores = {};
+      try { examScores = JSON.parse(localStorage.getItem("pasapas_examscore") || "{}") || {}; } catch (e) {}
       try { exam = localStorage.getItem("pasapas_exam") === "1"; } catch (e) {}
       document.body.classList.toggle("exam", exam);
       var EXAM_NEED = { "Singapour": 3 };
@@ -3611,15 +3617,19 @@
       function examable(d) { return !!d && (!d.custom || /^(pf|ens|sg|sol)$/.test(d.custom)); }
       function examNeed() { return EXAM_NEED[DEMOS[demoIndex].title] || 3; }
       function renderExam() {
+        var t = DEMOS[demoIndex].title, en = LANG === "en";
         examBtn.classList.toggle("on", exam);
-        examBtn.textContent = (LANG === "en" ? "Exam" : "Examen") + (exam ? " " + examScore + "/" + examNeed() : "");
+        examBtn.classList.toggle("passed", !!doneMap[t]);
+        // Chapitre déjà validé : on le dit, plus de compteur
+        if (doneMap[t]) examBtn.textContent = (en ? "Passed ✓" : "Validé ✓") + (exam ? (en ? " · no help" : " · sans aide") : "");
+        else examBtn.textContent = (en ? "Exam" : "Examen") + (exam ? " " + (examScores[t] || 0) + "/" + examNeed() : "");
       }
       // Une réponse en examen : juste, on avance ; fausse, on repart de 0
       function examHit(ok, ch) {
-        if (!exam) return;
-        examScore = ok ? examScore + 1 : 0;
-        if (examScore >= examNeed()) {
-          examScore = 0;
+        if (!exam || doneMap[ch]) return;
+        examScores[ch] = ok ? (examScores[ch] || 0) + 1 : 0;
+        try { localStorage.setItem("pasapas_examscore", JSON.stringify(examScores)); } catch (e) {}
+        if (examScores[ch] >= examNeed()) {
           markDone(ch);
           if (ch === "Singapour" && !hasBadge()) setBadge(true);
           toast(LANG === "en" ? "Exam passed" : "Examen réussi");
@@ -3630,7 +3640,6 @@
       examBtn.addEventListener("click", function () {
         if (busy) return;
         exam = !exam;
-        examScore = 0;
         try { localStorage.setItem("pasapas_exam", exam ? "1" : "0"); } catch (e) {}
         document.body.classList.toggle("exam", exam);
         SND.tick();
@@ -3791,7 +3800,6 @@
 
       function selectDemo(i) {
         if (busy) return;
-        if (i !== demoIndex) examScore = 0;
         gameRun = { demo: DEMOS[i].title, faults: 0, counted: false };
         hideHome();
         if (i !== demoIndex) renew(DEMOS[i]);
@@ -5906,6 +5914,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v88", text: "Accueil : les anneaux sont centrés dans la place libre (autant de noir au-dessus qu'en dessous), les chapitres sont tout en bas, en entier ; un chapitre validé porte un ✓. Examen : un chapitre validé affiche « Validé ✓ » au lieu du compteur ; le compteur est gardé chapitre par chapitre (aller voir ailleurs ne le remet plus à 0, seule une erreur)." },
         { v: "v87", text: "Examen : 3 réponses justes d'affilée suffisent pour valider un chapitre (au lieu de 9)." },
         { v: "v86", text: "Calcul : plus rien n'avance tout seul. Chaque étape s'arrête avec une phrase qui dit ce qui se passe (dizaines et unités, 6 = 5 + 1, il manque 3 pour faire 10…) ; la flèche passe à l'étape suivante, puis à un autre calcul." },
         { v: "v85", text: "Ensembles : des nombres écrits avec une fonction (ln 1, cos π, √16, sin(π/6), ln 2, e, √(−9)…) et deux questions qui alternent — un ensemble qui le contient, ou le plus petit ensemble qui le contient. Solutions devient un quiz sans changer d'ensemble : « une solution dans ℕ ? » oui / non, puis « le plus petit ensemble avec une solution ? ». Les deux chapitres ont leur examen." },
@@ -6423,7 +6432,7 @@
           var b = document.createElement("button");
           b.textContent = tr(d.title);
           if (/[()²]/.test(d.title)) b.style.textTransform = "none";
-          if (doneMap[d.title]) b.classList.add("done"); // réussi : bordure vive, sans ✓ (place)
+          if (doneMap[d.title]) { b.classList.add("done"); b.textContent = "✓ " + b.textContent; } // validé : ✓ et bordure vive
           else if (!d.custom && runs[d.title]) {
             var sm = document.createElement("small");
             sm.textContent = runs[d.title] + "/" + WIN;
