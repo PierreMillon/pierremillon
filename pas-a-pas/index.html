@@ -5747,7 +5747,8 @@
         if (exam) { m.textContent = ""; return; }
         var hasGroup = reg.terms.some(function (t) { return t.parts; });
         m.textContent = hasGroup
-          ? (en ? "Tap the bracket, then the 10 badge (or tap it again): it computes." : "Touche la parenthèse, puis le badge 10 (ou retouche-la) : le calcul se fait.")
+          ? (hasBadge() ? (en ? "Tap a bracket — or the 10 badge for all of them: it computes." : "Touche une parenthèse — ou le badge 10 pour toutes : le calcul se fait.")
+                        : (en ? "Tap the bracket twice: it computes." : "Touche deux fois la parenthèse : le calcul se fait."))
           : (en ? "Tap a term, then a similar one — or slide one onto the other." : "Touche un terme, puis un terme semblable — ou glisse l'un sur l'autre.");
       }
       function regSum(t) { return t.parts ? t.parts.reduce(function (a, p) { return a + p; }, 0) : t.k; }
@@ -5800,11 +5801,14 @@
         var A = reg.terms[ia], B = reg.terms[ib];
         reg.sel = null;
         if (A.s !== B.s) { regWrong(regRow.children[ib]); regRender(); return; }
+        // Les termes en x partent tout à gauche, les nombres tout à droite
+        function place(items) {
+          items.forEach(function (it) { reg.terms.splice(regFind(it.id), 1); });
+          if (A.s) reg.terms.unshift.apply(reg.terms, items); else reg.terms.push.apply(reg.terms, items);
+        }
         if (Math.abs(ia - ib) > 1) {
-          // Pas côte à côte : B vient se placer juste après A
-          reg.terms.splice(ib, 1);
-          ia = regFind(A.id);
-          reg.terms.splice(ia + 1, 0, B);
+          // Pas côte à côte : les deux se rejoignent, à leur place
+          place([A, B]);
           SND.tick();
           regRender();
           return;
@@ -5814,24 +5818,24 @@
         var parts = (L.parts || [L.k]).concat(Rt.parts || [Rt.k]);
         var g = { id: ++regUid, parts: parts, s: L.s };
         reg.terms.splice(first, 2, g);
+        place([g]);
         SND.meet();
         regRender();
         regHint();
       }
       // Calcul d'une parenthèse (badge 10 ou second toucher)
-      function regCompute(fromBadge) {
+      // Badge 10 : toutes les parenthèses d'un coup ; sinon celle touchée
+      function regCompute(fromBadge, onlyId) {
         if (!reg || reg.done) return false;
-        var i = reg.sel ? regFind(reg.sel.id) : -1;
-        if (i < 0 || !reg.terms[i].parts) {
-          var gi = reg.terms.findIndex(function (t) { return t.parts; });
-          if (gi < 0) return false;
-          i = gi;
-        }
-        var g = reg.terms[i], k = regSum(g);
+        var ids = reg.terms.filter(function (t) { return t.parts && (fromBadge || t.id === onlyId); }).map(function (t) { return t.id; });
+        if (!ids.length) return false;
         reg.sel = null;
         SND.badge();
         if (fromBadge) badgeFloat(badgeChip, LANG === "en" ? "Ten frame" : "Cadre de dix");
-        if (k === 0) reg.terms.splice(i, 1); else reg.terms.splice(i, 1, { id: g.id, k: k, s: g.s });
+        ids.forEach(function (id) {
+          var i = regFind(id), g = reg.terms[i], k = regSum(g);
+          if (k === 0) reg.terms.splice(i, 1); else reg.terms.splice(i, 1, { id: g.id, k: k, s: g.s });
+        });
         regRender();
         regHint();
         regCheck();
@@ -5872,11 +5876,10 @@
             return;
           }
           var t = reg.terms[ia];
-          if (reg.sel && reg.sel.id === d.id) {
-            // Second toucher sur une parenthèse : le calcul
-            if (t.parts) { regCompute(false); return; }
-            reg.sel = null; regRender(); return;
-          }
+          // Une parenthèse : avec le badge 10, un toucher suffit pour la
+          // calculer ; sans, on la touche deux fois
+          if (t.parts && (hasBadge() || (reg.sel && reg.sel.id === d.id))) { regCompute(false, d.id); return; }
+          if (reg.sel && reg.sel.id === d.id) { reg.sel = null; regRender(); return; }
           if (reg.sel) { regPair(regFind(reg.sel.id), ia); return; }
           reg.sel = { id: d.id, coef: d.coef && !t.parts };
           SND.tick();
@@ -6482,6 +6485,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v99", text: "Regrouper, avec le badge 10 : un toucher sur une parenthèse la calcule directement, et le badge calcule toutes les parenthèses d'un coup. Sans le badge : deux touchers sur la parenthèse." },
+        { v: "v98", text: "Regrouper : deux termes en x associés partent directement tout à gauche, deux nombres tout à droite (et leur parenthèse aussi)." },
         { v: "v97", text: "Regrouper : le cadre de sélection entoure seulement le terme ou la parenthèse, le signe + / − reste devant, à l'extérieur." },
         { v: "v96", text: "Les badges restent disponibles en examen : ce sont des capacités gagnées (le badge 10 calcule une parenthèse dans Regrouper, etc.). Le bouton Examen reste sur la ligne du titre." },
         { v: "v95", text: "Regrouper se fait à la main : chaque terme (avec son signe) se touche. Toucher un terme puis un terme semblable, ou glisser l'un sur l'autre : ils se rapprochent et la ligne se réarrange en douceur. Côte à côte, 3x et 2x deviennent (3 + 2)·x, 5 et 7 deviennent (5 + 7). Toucher la parenthèse puis le badge 10 (ou la retoucher) fait le calcul. Fini quand il reste un terme en x puis un nombre." },
