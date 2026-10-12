@@ -69,10 +69,9 @@
     header {
       position: relative;
       display: flex;
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
       align-items: center;
       gap: 0.8rem;
-      row-gap: 0.35rem;
     }
 
     .menu-btn {
@@ -254,10 +253,12 @@
       letter-spacing: 0.14em;
       text-transform: uppercase;
       color: var(--ink-soft);
-      /* Sur la ligne des boutons ☰ ⌂, en entier */
+      /* Sur la ligne des boutons ☰ ⌂ (… seulement si vraiment trop long) */
       flex: 1 1 auto;
       min-width: 0;
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .tabs {
@@ -1501,7 +1502,8 @@
       background: none;
       border: 1px solid var(--hairline);
       border-radius: 999px;
-      padding: 0.35rem 0.7rem;
+      padding: 0.35rem 0.6rem;
+      letter-spacing: 0.06em;
       cursor: pointer;
       touch-action: manipulation;
     }
@@ -1512,7 +1514,8 @@
       color: var(--ink); background: transparent; border-color: var(--accent);
       box-shadow: none; opacity: 1; font-weight: 400;
     }
-    body.exam .badge-shelf { visibility: hidden !important; }
+    /* Les badges restent en examen : ce sont des capacités gagnées, pas
+       des indices */
 
     .sg-streak span {
       width: 10px;
@@ -6476,6 +6479,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v96", text: "Les badges restent disponibles en examen : ce sont des capacités gagnées (le badge 10 calcule une parenthèse dans Regrouper, etc.). Le bouton Examen reste sur la ligne du titre." },
         { v: "v95", text: "Regrouper se fait à la main : chaque terme (avec son signe) se touche. Toucher un terme puis un terme semblable, ou glisser l'un sur l'autre : ils se rapprochent et la ligne se réarrange en douceur. Côte à côte, 3x et 2x deviennent (3 + 2)·x, 5 et 7 deviennent (5 + 7). Toucher la parenthèse puis le badge 10 (ou la retoucher) fait le calcul. Fini quand il reste un terme en x puis un nombre." },
         { v: "v94", text: "Bonne réponse : la question suivante arrive seule après un court instant (Venn, Structures, Ensembles, Solutions). Après une erreur, on reste sur la correction ; la flèche fait passer." },
         { v: "v93", text: "Venn : plus de cadre autour, hachures plus fines, chaque lettre d'ensemble écrite à l'intérieur de sa zone (plus sur le trait). Une légende dit ce que sont 2ℕ, 3ℕ, 𝔻, ℝ₊, iℝ… (pas en examen). Un nombre hors des deux cercles s'écrit −√2 ∉ ℤ ∪ ℝ₊." },
