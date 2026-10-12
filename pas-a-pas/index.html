@@ -69,9 +69,10 @@
     header {
       position: relative;
       display: flex;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       align-items: center;
       gap: 0.8rem;
+      row-gap: 0.3rem;
     }
 
     .menu-btn {
@@ -1495,8 +1496,11 @@
     .pf-primes button:disabled { opacity: 0.3; }
 
     /* Mode examen : plus aucune aide visible */
+    /* Sous le titre, à gauche : le titre garde toute la première ligne */
     .exam-btn {
       flex: none;
+      order: 10;
+      margin-left: calc(2 * 2.1rem + 1.6rem);
       font: inherit;
       font-size: 0.68rem;
       letter-spacing: 0.12em;
@@ -3605,6 +3609,7 @@
 
       var holdResolve = null, skipBlocks = false;
       function next() {
+        quickSeq++;
         if (holdResolve) { var r = holdResolve; holdResolve = null; nextBtn.disabled = true; r(); return; }
         if (DEMOS[demoIndex].custom) {
           // Singapour : la flèche lance la manche suivante, une fois le
@@ -3700,9 +3705,12 @@
       function playing() { return gameMode || exam; }
       // Bonne réponse : la question suivante arrive seule, après un court
       // instant pour voir le ✓. Erreur : on reste, pour lire la correction.
+      // (annulé si on a déjà avancé soi-même avec la flèche entre-temps)
+      var quickSeq = 0;
       function quickNext(custom, fn, delay) {
+        var seq = quickSeq;
         setTimeout(function () {
-          if (DEMOS[demoIndex].custom === custom && !busy && homeEl.hidden) fn();
+          if (seq === quickSeq && DEMOS[demoIndex].custom === custom && !busy && homeEl.hidden) fn();
         }, ms(delay || 700));
       }
       var examBtn = document.getElementById("examBtn");
@@ -3894,6 +3902,7 @@
 
       function selectDemo(i) {
         if (busy) return;
+        quickSeq++;
         gameRun = { demo: DEMOS[i].title, faults: 0, counted: false };
         hideHome();
         if (i !== demoIndex) renew(DEMOS[i]);
@@ -5947,26 +5956,23 @@
         sym: ["symétriques", "inverses"], comm: ["commutative", "commutative"]
       };
       var PORDER = ["int", "asso", "neut", "sym", "comm"];
-      var BUILD = [
-        { name: "Magma", need: ["int"] },
-        { name: "Monoïde", need: ["int", "asso", "neut"] },
-        { name: "Groupe", need: ["int", "asso", "neut", "sym"] },
-        { name: "Groupe abélien", need: ["int", "asso", "neut", "sym", "comm"] }
-      ];
+      var GROUP_P = ["int", "asso", "neut", "sym"];
+      // Définition du cours : un groupe = loi interne, associative, avec
+      // un élément neutre, et un symétrique pour chaque élément. La
+      // commutativité n'en fait pas partie (piège proposé).
+      var BUILD = [{ name: "Groupe", need: ["int", "asso", "neut", "sym"] }];
       // p : propriétés vraies ; why : pourquoi une propriété manque
       var KNOWN = [
-        { set: "N", E: "ℕ", op: "+", p: ["int", "asso", "neut", "comm"], neutral: "0", why: { sym: "−3 ∉ ℕ" }, ans: "Monoïde" },
-        { set: "N", E: "ℕ", op: "×", p: ["int", "asso", "neut", "comm"], neutral: "1", why: { sym: "1/2 ∉ ℕ" }, ans: "Monoïde" },
-        { set: "N", E: "ℕ", op: "−", p: [], why: { int: "3 − 5 ∉ ℕ" }, ans: "Pas une loi interne" },
-        { set: "Z", E: "ℤ", op: "+", p: ["int", "asso", "neut", "sym", "comm"], neutral: "0", ans: "Groupe abélien" },
-        { set: "Z", E: "ℤ", op: "−", p: ["int"], why: { asso: "(1 − 2) − 3 ≠ 1 − (2 − 3)" }, ans: "Magma" },
-        { set: "Z", E: "{−1, 1}", op: "×", p: ["int", "asso", "neut", "sym", "comm"], neutral: "1", ans: "Groupe abélien" },
-        { set: "Z", E: "ℤ", op: "×", p: ["int", "asso", "neut", "comm"], neutral: "1", why: { sym: "2 n'a pas d'inverse dans ℤ" }, ans: "Monoïde" },
-        { set: "Q", E: "ℚ*", op: "×", p: ["int", "asso", "neut", "sym", "comm"], neutral: "1", ans: "Groupe abélien" },
-        { set: "R", E: "ℝ", op: "×", p: ["int", "asso", "neut", "comm"], neutral: "1", why: { sym: "0 n'a pas d'inverse" }, ans: "Monoïde" },
-        { set: "Z", E: "ℤ", op: "+, ×", two: true, lines: ["(ℤ, +) groupe abélien", "× associative, neutre 1", "× distributive sur +", "2 n'a pas d'inverse"], ans: "Anneau" },
-        { set: "Q", E: "ℚ", op: "+, ×", two: true, lines: ["(ℚ, +) groupe abélien", "× associative, neutre 1", "× distributive sur +", "tout non nul a un inverse"], ans: "Corps" },
-        { set: "R", E: "ℝ", op: "+, ×", two: true, lines: ["(ℝ, +) groupe abélien", "× associative, neutre 1", "× distributive sur +", "tout non nul a un inverse"], ans: "Corps" }
+        { set: "N", E: "ℕ", op: "+", p: ["int", "asso", "neut"], neutral: "0", why: { sym: "symétrique de 3 : −3 ∉ ℕ|on sort de ℕ" }, ans: false },
+        { set: "N", E: "ℕ", op: "×", p: ["int", "asso", "neut"], neutral: "1", why: { sym: "inverse de 2 : 1/2 ∉ ℕ|on sort de ℕ" }, ans: false },
+        { set: "N", E: "ℕ", op: "−", p: [], why: { int: "3 − 5 = −2 ∉ ℕ|on sort de ℕ" }, ans: false },
+        { set: "Z", E: "ℤ", op: "+", p: ["int", "asso", "neut", "sym"], neutral: "0", ans: true },
+        { set: "Z", E: "ℤ", op: "−", p: ["int"], why: { asso: "(1 − 2) − 3 = −4|1 − (2 − 3) = 2" }, ans: false },
+        { set: "Z", E: "{−1, 1}", op: "×", p: ["int", "asso", "neut", "sym"], neutral: "1", ans: true },
+        { set: "Z", E: "ℤ", op: "×", p: ["int", "asso", "neut"], neutral: "1", why: { sym: "inverse de 2 : 1/2 ∉ ℤ|on sort de ℤ" }, ans: false },
+        { set: "Q", E: "ℚ*", op: "×", p: ["int", "asso", "neut", "sym"], neutral: "1", ans: true },
+        { set: "R", E: "ℝ", op: "×", p: ["int", "asso", "neut"], neutral: "1", why: { sym: "0 n'a pas d'inverse|0 · y = 0, jamais 1" }, ans: false },
+        { set: "R", E: "ℝ*", op: "×", p: ["int", "asso", "neut", "sym"], neutral: "1", ans: true }
       ];
       var strState = null, strTurn = 0, strLast = -1;
       function strDraw(title, lines) {
@@ -5979,13 +5985,21 @@
         });
       }
       function strLines(k) {
-        if (k.two) return k.lines.map(function (l) { return { t: l, no: /pas d'inverse/.test(l) }; });
         var en = LANG === "en";
-        return PORDER.map(function (id) {
+        var out = [];
+        GROUP_P.some(function (id) {
           var yes = k.p.indexOf(id) >= 0;
-          var t = (yes ? "✓ " : "✗ ") + PROPS[id][en ? 1 : 0] + (id === "neut" && yes ? " : " + k.neutral : "") + (!yes && k.why && k.why[id] ? " (" + k.why[id] + ")" : "");
-          return { t: t, no: !yes };
-        }).filter(function (l, i) { return !(k.p.length === 0 && i > 0); });
+          out.push({ t: (yes ? "✓ " : "✗ ") + PROPS[id][en ? 1 : 0] + (id === "neut" && yes ? " : " + k.neutral : ""), no: !yes });
+          // La première propriété qui manque : on montre comment on sort
+          // de la structure, puis on s'arrête
+          if (!yes && k.why && k.why[id]) {
+            // Sur deux lignes pour tenir dans le cercle
+            k.why[id].split("|").forEach(function (part, j) { out.push({ t: (j ? "→ " : "") + part, no: true }); });
+            return true;
+          }
+          return !yes;
+        });
+        return out;
       }
       function strStart() {
         var en = LANG === "en";
@@ -6000,7 +6014,7 @@
           // Construire
           var b = BUILD[Math.floor(Math.random() * BUILD.length)];
           strState = { k: "build", b: b, sel: [], done: false };
-          q.textContent = (en ? "Build a " : "Construis : ") + b.name.toLowerCase();
+          q.textContent = en ? "What makes a group?" : "Qu'est-ce qu'il faut pour un groupe ?";
           var draw = function () {
             strDraw("(E, ∗)", strState.sel.slice().sort(function (x, y) { return PORDER.indexOf(x) - PORDER.indexOf(y); }).map(function (id) { return { t: "✓ " + PROPS[id][en ? 1 : 0] }; }));
           };
@@ -6035,7 +6049,7 @@
               if (want) c.classList.add("good");
               if (has && !want) c.classList.add("bad");
             });
-            msg.textContent = (ok ? "✓ " : "✗ ") + b.name + " : " + need.map(function (id) { return PROPS[id][en ? 1 : 0]; }).join(", ") + ".";
+            msg.textContent = (ok ? "✓ " : "✗ ") + (en ? "Group: " : "Groupe : ") + need.map(function (id) { return PROPS[id][en ? 1 : 0]; }).join(", ") + (en ? " (not necessarily commutative)." : " (pas forcément commutative).");
             nextBtn.disabled = false;
             if (ok) quickNext("str", strStart, 900);
           });
@@ -6047,23 +6061,25 @@
         strLast = idx;
         var k = KNOWN[idx];
         strState = { k: "name", item: k, done: false };
-        q.textContent = en ? "What is it?" : "Qu'est-ce que c'est ?";
-        // En examen, pas de propriétés écrites : il faut les connaître
-        strDraw("(" + k.E + ", " + k.op + ")", exam ? [] : strLines(k));
-        var names = k.two ? ["Anneau", "Corps", "Groupe abélien"] : ["Pas une loi interne", "Magma", "Monoïde", "Groupe", "Groupe abélien"];
-        names.forEach(function (nm) {
+        q.textContent = "(" + k.E + ", " + k.op + ") " + (en ? "is a group?" : "est-il un groupe ?");
+        // Les propriétés ne s'écrivent qu'après la réponse : c'est à toi de
+        // les vérifier
+        strDraw("(" + k.E + ", " + k.op + ")", []);
+        var yes = en ? "Yes" : "Oui", no = en ? "No" : "Non", good = k.ans ? yes : no;
+        [yes, no].forEach(function (nm) {
           var c = document.createElement("button");
           c.textContent = nm;
           c.addEventListener("click", function () {
             if (strState.done) return;
             strState.done = true;
-            var ok = nm === k.ans;
+            var ok = nm === good;
             examHit(ok, "Structures");
             if (ok) SND.ok(); else SND.bad();
-            chips.querySelectorAll("button").forEach(function (x) { if (x.textContent === k.ans) x.classList.add("good"); });
+            chips.querySelectorAll("button").forEach(function (x) { if (x.textContent === good) x.classList.add("good"); });
             if (!ok) c.classList.add("bad");
-            if (exam) strDraw("(" + k.E + ", " + k.op + ")", strLines(k));
-            msg.textContent = (ok ? "✓ " : "✗ ") + "(" + k.E + ", " + k.op + ") : " + k.ans.toLowerCase() + ".";
+            strDraw("(" + k.E + ", " + k.op + ")", strLines(k));
+            var whyTxt = k.why ? k.why[Object.keys(k.why)[0]].replace("|", " → ") : "";
+            msg.textContent = (ok ? "✓ " : "✗ ") + "(" + k.E + ", " + k.op + ") " + (k.ans ? (en ? "is a group." : "est un groupe.") : (en ? "is not a group" : "n'est pas un groupe") + (whyTxt ? " — " + whyTxt : "") + ".");
             nextBtn.disabled = false;
             if (ok) quickNext("str", strStart);
           });
@@ -6533,6 +6549,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v105", text: "Bouton Examen sous le titre (le titre du chapitre prend toute la ligne). Structures, réduit à la définition du cours : un groupe = loi interne, associative, élément neutre, symétriques. Construire (la commutativité est un piège) et « (ℤ, −) est-il un groupe ? » oui / non, puis les propriétés ✓ / ✗ avec la façon dont on sort de la structure (3 − 5 = −2 ∉ ℕ ; l'inverse de 2 serait 1/2 ∉ ℤ…). Toucher la flèche annule le passage automatique à la question suivante (plus de question sautée)." },
         { v: "v104", text: "Deux badges bien distincts. Regrouper rapproche : les x côte à côte à gauche, les nombres à droite (entre parenthèses, c'est une somme à calculer). x en facteur fait (3 + 1)·x — il faut avoir réussi son chapitre. Dans Regrouper : Regrouper, puis x en facteur, puis le badge 10." },
         { v: "v103", text: "Le badge Regrouper agissait aussi sur les mises en facteur (retiré en v104 : c'est le rôle du badge x en facteur)." },
         { v: "v102", text: "En-tête : « Validé ✓ » tout court, le titre du chapitre garde sa place." },
