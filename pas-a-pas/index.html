@@ -1165,6 +1165,25 @@
     .venn-opts button.good { background: var(--accent-soft); }
     .venn-opts button.bad { color: var(--sign); border-color: var(--sign); }
 
+    /* Chapitre Regrouper : les termes se touchent, se glissent, se rangent */
+    #reg { gap: 0.8rem; }
+    .reg-row {
+      flex: 1 1 0; min-height: 0; width: 100%;
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center; align-content: center;
+      gap: 0.15em; font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 500;
+      font-size: clamp(1.7rem, 8vw, 2.5rem);
+    }
+    .rg-term {
+      display: inline-flex; align-items: center; gap: 0.06em; padding: 0.08em 0.14em;
+      border: 1px solid transparent; border-radius: 0.3em; cursor: pointer; touch-action: none;
+    }
+    .rg-term.sel { border-color: var(--accent); background: var(--accent-soft); }
+    .rg-term .rg-coef { padding: 0 0.04em; border-radius: 0.2em; }
+    .rg-term .rg-coef.sel { background: var(--accent); color: var(--bg); }
+    .rg-term .rg-sign { margin-right: 0.12em; }
+    .rg-term.group { border-color: var(--ink-soft); }
+    .rg-term.group.sel { border-color: var(--accent); }
+
     /* Chapitre Structures : un cercle (E, loi), ses propriétés dedans */
     #str { gap: 0.5rem; }
     .str-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; width: 100%; min-height: 6.4rem; align-content: flex-start; }
@@ -1602,6 +1621,12 @@
       <div class="sol-btns" id="solBtns"></div>
     </section>
 
+    <section class="sg" id="reg" hidden>
+      <p class="venn-q" id="regQ"></p>
+      <div class="reg-row" id="regRow"></div>
+      <p class="sg-msg venn-msg" id="regMsg"></p>
+    </section>
+
     <section class="sg" id="str" hidden>
       <p class="venn-q" id="strQ"></p>
       <svg class="venn-svg" id="strSvg" viewBox="0 0 300 230" aria-label="Structure"></svg>
@@ -1697,7 +1722,7 @@
         { title: "Fusion", custom: "fus", set: "R", steps: [{ expr: [] }] },
         { title: "Pascal", custom: "pas", set: "R", steps: [{ expr: [] }] },
         // Remplis plus bas par leurs générateurs (trois énoncés chacun)
-        { title: "Regrouper", steps: [] },
+        { title: "Regrouper", custom: "reg", steps: [{ expr: [] }] },
         { title: "x en facteur", steps: [] },
         {
           title: "−( … )",
@@ -2519,7 +2544,6 @@
           return st;
         }
         DEMOS.forEach(function (d) {
-          if (d.title === "Regrouper") d.baseSteps = d.steps = regroupZ([tm("+", "3" + X, 1), tm("+", "5"), tm("+", "2" + X, 1), tm("+", "7")]);
           if (d.title === "x en facteur") d.baseSteps = d.steps = factorX([2, 1]);
         });
 
@@ -2538,8 +2562,6 @@
           "Équation": [equation(3, 5, 17), equation(4, 1, 21)],
           // Dans ℕ : que des +, le geste reste le même (et le badge, lui,
           // sert aussi dans ℤ, signes compris)
-          "Regrouper": [regroupZ([tm("+", "2" + X, 1), tm("+", "4"), tm("+", X, 1), tm("+", "6")]),
-                        regroupZ([tm("+", "4"), tm("+", "3" + X, 1), tm("+", "6"), tm("+", X, 1)])],
           "x en facteur": [factorX([3, 5]), factorX([4, 1])]
         };
         var GEN_V = {
@@ -3589,6 +3611,7 @@
           if (DEMOS[demoIndex].custom === "pas") { pasStart(); return; }
           if (DEMOS[demoIndex].custom === "venn") { if (!nextBtn.disabled) vennStart(); return; }
           if (DEMOS[demoIndex].custom === "str") { if (!nextBtn.disabled) strStart(); return; }
+          if (DEMOS[demoIndex].custom === "reg") { if (!nextBtn.disabled) regStart(); return; }
           if (DEMOS[demoIndex].custom === "fus") { if (fus.won) { fus.level = (fus.level + 1) % FUS_LEVELS.length; fusStart(); } return; }
           if (DEMOS[demoIndex].custom === "sol") { if (nextBtn.disabled) return; solIndex = (solIndex + 1 + Math.floor(Math.random() * (SOL.length - 1))) % SOL.length; solRender(false); return; }
           if (sgState && sgState.ready) sgStart();
@@ -3678,7 +3701,7 @@
       var examBtn = document.getElementById("examBtn");
       // Chapitres qui ont un examen : ceux où l'on répond (démos, Premiers,
       // Ensembles, Singapour). Calcul, Pascal, Solutions, Fusion s'explorent.
-      function examable(d) { return !!d && (!d.custom || /^(pf|ens|sg|sol|venn|str)$/.test(d.custom)); }
+      function examable(d) { return !!d && (!d.custom || /^(pf|ens|sg|sol|venn|str|reg)$/.test(d.custom)); }
       function examNeed() { return EXAM_NEED[DEMOS[demoIndex].title] || 3; }
       function renderExam() {
         var t = DEMOS[demoIndex].title, en = LANG === "en";
@@ -3881,6 +3904,7 @@
         pfEl.hidden = custom !== "pf";
         vennEl.hidden = custom !== "venn";
         strEl.hidden = custom !== "str";
+        regEl.hidden = custom !== "reg";
         ensEl.hidden = custom !== "ens";
         solEl.hidden = custom !== "sol";
         calcEl.hidden = custom !== "calc";
@@ -3901,6 +3925,7 @@
         if (custom === "pf") { pfStart(); return; }
         if (custom === "venn") { vennStart(); return; }
         if (custom === "str") { strStart(); return; }
+        if (custom === "reg") { regStart(); return; }
         if (custom === "ens") { ensStart(); return; }
         if (custom === "sol") { solStart(); return; }
         if (custom === "calc") { calcStart(); return; }
@@ -5681,6 +5706,178 @@
         });
       }
 
+      // ---------- Chapitre Regrouper (à la main) ----------
+      // Chaque terme, avec son signe, se touche :
+      //   toucher un terme puis un terme semblable (ou glisser l'un sur
+      //   l'autre) : ils se rapprochent, la ligne se réarrange
+      //   côte à côte, 3x puis 2x : (3 + 2)·x — de même 5 puis 7 : (5 + 7)
+      //   toucher le groupe puis le badge 10 (ou retoucher le groupe) :
+      //   le calcul se fait, 5x
+      // Fini quand il ne reste qu'un terme en x, puis un nombre.
+      var regEl = document.getElementById("reg"), regRow = document.getElementById("regRow");
+      var REG_EX = [
+        { need: "N", t: [[3, "x"], [5, ""], [2, "x"], [7, ""]] },
+        { need: "N", t: [[2, "x"], [4, ""], [1, "x"], [6, ""]] },
+        { need: "N", t: [[4, ""], [3, "x"], [6, ""], [1, "x"]] },
+        { need: "N", t: [[6, "x"], [1, ""], [3, "x"], [8, ""]] },
+        { need: "Z", t: [[-2, "x"], [3, ""], [-1, "x"]] },
+        { need: "Z", t: [[5, "x"], [-4, ""], [-2, "x"], [9, ""]] }
+      ];
+      var reg = null, regUid = 0, regLast = -1;
+      function regStart() {
+        var pool = REG_EX.map(function (e, i) { return i; }).filter(function (i) { return sets[REG_EX[i].need] && i !== regLast; });
+        var i = pool[Math.floor(Math.random() * pool.length)];
+        regLast = i;
+        reg = { terms: REG_EX[i].t.map(function (t) { return { id: ++regUid, k: t[0], s: t[1] }; }), sel: null, mistake: false, done: false };
+        document.getElementById("regQ").textContent = LANG === "en" ? "Group, factor, compute." : "Regroupe, mets en facteur, calcule.";
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        regRender(true);
+        regHint();
+      }
+      function regHint() {
+        var m = document.getElementById("regMsg"), en = LANG === "en";
+        if (exam) { m.textContent = ""; return; }
+        var hasGroup = reg.terms.some(function (t) { return t.parts; });
+        m.textContent = hasGroup
+          ? (en ? "Tap the bracket, then the 10 badge (or tap it again): it computes." : "Touche la parenthèse, puis le badge 10 (ou retouche-la) : le calcul se fait.")
+          : (en ? "Tap a term, then a similar one — or slide one onto the other." : "Touche un terme, puis un terme semblable — ou glisse l'un sur l'autre.");
+      }
+      function regSum(t) { return t.parts ? t.parts.reduce(function (a, p) { return a + p; }, 0) : t.k; }
+      function regRender(appear) {
+        var old = {};
+        regRow.querySelectorAll(".rg-term").forEach(function (e) { old[e.dataset.id] = e.getBoundingClientRect(); });
+        regRow.innerHTML = "";
+        reg.terms.forEach(function (t, i) {
+          var e = document.createElement("span");
+          e.className = "rg-term" + (t.parts ? " group" : "") + (reg.sel && reg.sel.id === t.id && !reg.sel.coef ? " sel" : "");
+          e.dataset.id = t.id;
+          var html = "";
+          if (t.parts) {
+            // Le groupe garde un + devant lui (sauf en tête)
+            if (i > 0) html += '<span class="rg-sign">+</span>';
+            html += "(" + t.parts.map(function (k, j) {
+              return (j === 0 ? (k < 0 ? "−" : "") : (k < 0 ? " − " : " + ")) + Math.abs(k);
+            }).join("") + ")" + (t.s ? "·<i>" + t.s + "</i>" : "");
+          } else {
+            var neg = t.k < 0;
+            if (i > 0 || neg) html += '<span class="rg-sign">' + (neg ? "−" : "+") + "</span>";
+            var a = Math.abs(t.k), csel = reg.sel && reg.sel.id === t.id && reg.sel.coef ? " sel" : "";
+            if (t.s) html += '<span class="rg-coef' + csel + '">' + (a === 1 ? "" : a) + "</span><i>" + t.s + "</i>";
+            else html += '<span class="rg-coef' + csel + '">' + a + "</span>";
+          }
+          e.innerHTML = html;
+          regRow.appendChild(e);
+        });
+        // Glissement fluide de chaque terme depuis son ancienne place
+        regRow.querySelectorAll(".rg-term").forEach(function (e) {
+          var o = old[e.dataset.id], r = e.getBoundingClientRect();
+          if (o) {
+            var dx = o.left - r.left, dy = o.top - r.top;
+            if (Math.abs(dx) + Math.abs(dy) > 1) e.animate([{ transform: "translate(" + dx + "px," + dy + "px)" }, { transform: "none" }], { duration: ms(550), easing: "cubic-bezier(.45,0,.25,1)" });
+          } else if (!appear) {
+            e.animate([{ transform: "scale(0.4)", opacity: 0 }, { transform: "scale(1.12)", opacity: 1, offset: 0.7 }, { transform: "none" }], { duration: ms(500) });
+          }
+        });
+        badgeChip.classList.toggle("ready", !!reg && reg.terms.some(function (t) { return t.parts; }));
+      }
+      function regFind(id) { for (var i = 0; i < reg.terms.length; i++) if (reg.terms[i].id === id) return i; return -1; }
+      function regWrong(el) {
+        reg.mistake = true;
+        examHit(false, "Regrouper");
+        SND.bad();
+        if (el) el.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
+      }
+      // Action entre deux termes A puis B
+      function regPair(ia, ib) {
+        var A = reg.terms[ia], B = reg.terms[ib];
+        reg.sel = null;
+        if (A.s !== B.s) { regWrong(regRow.children[ib]); regRender(); return; }
+        if (Math.abs(ia - ib) > 1) {
+          // Pas côte à côte : B vient se placer juste après A
+          reg.terms.splice(ib, 1);
+          ia = regFind(A.id);
+          reg.terms.splice(ia + 1, 0, B);
+          SND.tick();
+          regRender();
+          return;
+        }
+        // Côte à côte : on regroupe dans une parenthèse (en x : facteur commun)
+        var first = Math.min(ia, ib), L = reg.terms[first], Rt = reg.terms[first + 1];
+        var parts = (L.parts || [L.k]).concat(Rt.parts || [Rt.k]);
+        var g = { id: ++regUid, parts: parts, s: L.s };
+        reg.terms.splice(first, 2, g);
+        SND.meet();
+        regRender();
+        regHint();
+      }
+      // Calcul d'une parenthèse (badge 10 ou second toucher)
+      function regCompute(fromBadge) {
+        if (!reg || reg.done) return false;
+        var i = reg.sel ? regFind(reg.sel.id) : -1;
+        if (i < 0 || !reg.terms[i].parts) {
+          var gi = reg.terms.findIndex(function (t) { return t.parts; });
+          if (gi < 0) return false;
+          i = gi;
+        }
+        var g = reg.terms[i], k = regSum(g);
+        reg.sel = null;
+        SND.badge();
+        if (fromBadge) badgeFloat(badgeChip, LANG === "en" ? "Ten frame" : "Cadre de dix");
+        if (k === 0) reg.terms.splice(i, 1); else reg.terms.splice(i, 1, { id: g.id, k: k, s: g.s });
+        regRender();
+        regHint();
+        regCheck();
+        return true;
+      }
+      function regCheck() {
+        var t = reg.terms;
+        if (t.some(function (x) { return x.parts; })) return;
+        var xs = t.filter(function (x) { return x.s; }), ns = t.filter(function (x) { return !x.s; });
+        if (xs.length > 1 || ns.length > 1 || (xs.length && ns.length && t[0].s === "")) return;
+        reg.done = true;
+        examHit(!reg.mistake, "Regrouper");
+        SND.ok();
+        document.getElementById("regMsg").textContent = "✓ " + regRow.textContent.replace(/\s+/g, " ").trim();
+        nextBtn.disabled = false;
+        nextBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: ms(600) });
+        quickNext("reg", regStart, 1600);
+      }
+      // Toucher / glisser
+      (function () {
+        var down = null;
+        regRow.addEventListener("pointerdown", function (ev) {
+          var el = ev.target.closest(".rg-term");
+          if (!el || !reg || reg.done) return;
+          ev.preventDefault();
+          down = { id: Number(el.dataset.id), coef: !!ev.target.closest(".rg-coef"), x: ev.clientX, y: ev.clientY, el: el };
+        });
+        regRow.addEventListener("pointerup", function (ev) {
+          if (!down || !reg) return;
+          var d = down; down = null;
+          var moved = Math.hypot(ev.clientX - d.x, ev.clientY - d.y) > 12;
+          var under = document.elementFromPoint(ev.clientX, ev.clientY);
+          var tEl = under && under.closest ? under.closest(".rg-term") : null;
+          var ia = regFind(d.id);
+          if (moved) {
+            // Glisser A sur B
+            if (tEl && Number(tEl.dataset.id) !== d.id) regPair(ia, regFind(Number(tEl.dataset.id)));
+            return;
+          }
+          var t = reg.terms[ia];
+          if (reg.sel && reg.sel.id === d.id) {
+            // Second toucher sur une parenthèse : le calcul
+            if (t.parts) { regCompute(false); return; }
+            reg.sel = null; regRender(); return;
+          }
+          if (reg.sel) { regPair(regFind(reg.sel.id), ia); return; }
+          reg.sel = { id: d.id, coef: d.coef && !t.parts };
+          SND.tick();
+          regRender();
+        });
+      })();
+
       // ---------- Chapitre Structures ----------
       // Un ensemble muni d'une loi, dans un cercle. Deux exercices :
       //   construire : on coche les propriétés qui font un groupe (etc.),
@@ -6279,6 +6476,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v95", text: "Regrouper se fait à la main : chaque terme (avec son signe) se touche. Toucher un terme puis un terme semblable, ou glisser l'un sur l'autre : ils se rapprochent et la ligne se réarrange en douceur. Côte à côte, 3x et 2x deviennent (3 + 2)·x, 5 et 7 deviennent (5 + 7). Toucher la parenthèse puis le badge 10 (ou la retoucher) fait le calcul. Fini quand il reste un terme en x puis un nombre." },
         { v: "v94", text: "Bonne réponse : la question suivante arrive seule après un court instant (Venn, Structures, Ensembles, Solutions). Après une erreur, on reste sur la correction ; la flèche fait passer." },
         { v: "v93", text: "Venn : plus de cadre autour, hachures plus fines, chaque lettre d'ensemble écrite à l'intérieur de sa zone (plus sur le trait). Une légende dit ce que sont 2ℕ, 3ℕ, 𝔻, ℝ₊, iℝ… (pas en examen). Un nombre hors des deux cercles s'écrit −√2 ∉ ℤ ∪ ℝ₊." },
         { v: "v92", text: "Nouveau chapitre Structures : un cercle (E, loi). Construire — coche les propriétés d'un magma, d'un monoïde, d'un groupe, d'un groupe abélien, elles s'inscrivent dans le cercle. Reconnaître — (ℕ, +), (ℤ, −), (ℚ*, ×), (ℤ, +, ×)… avec leurs propriétés : magma, monoïde, groupe, anneau, corps ? En examen, les propriétés ne sont pas écrites." },
@@ -6631,6 +6829,7 @@
         return nx && nx.fx && nx.fx.type === "meet" && nx.fx.blocks ? cur + 1 : -1;
       }
       badgeChip.addEventListener("click", function () {
+        if (DEMOS[demoIndex].custom === "reg") { if (!regCompute(true)) showBadgeInfo(BADGE_INFO.dix, "Badge"); return; }
         var k = dixTarget();
         if (k < 0 || busy) { showBadgeInfo(BADGE_INFO.dix, "Badge"); return; }
         closeChoice();
@@ -6858,7 +7057,7 @@
         calcRun++;
         examBtn.hidden = true;
         closeChoice();
-        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, pasEl, vennEl, strEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
+        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, pasEl, vennEl, strEl, regEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
         univEl.hidden = true;
         homeEl.hidden = false;
         document.getElementById("title").textContent = "Pas à Pas";
