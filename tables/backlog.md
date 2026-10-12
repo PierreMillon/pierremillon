@@ -40,6 +40,8 @@ Tri : priorité décroissante.
 - [x] v6 — Case allumée : on tape le résultat au pavé (plus de 4 choix),
   sans touche « OK » — validé dès qu'on a tapé autant de chiffres que la
   réponse ; numéro de version affiché dans le menu
+- [x] v7 — Partie « tout » : triangle 2–9 + lignes 12–19 réunis dans une
+  seule grande grille (100 cases), compteurs d'erreurs partagés
 
 ## À faire
 
