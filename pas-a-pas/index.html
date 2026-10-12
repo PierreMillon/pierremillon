@@ -3668,6 +3668,13 @@
       document.body.classList.toggle("exam", exam);
       var EXAM_NEED = { "Singapour": 3 };
       function playing() { return gameMode || exam; }
+      // Bonne réponse : la question suivante arrive seule, après un court
+      // instant pour voir le ✓. Erreur : on reste, pour lire la correction.
+      function quickNext(custom, fn, delay) {
+        setTimeout(function () {
+          if (DEMOS[demoIndex].custom === custom && !busy && homeEl.hidden) fn();
+        }, ms(delay || 700));
+      }
       var examBtn = document.getElementById("examBtn");
       // Chapitres qui ont un examen : ceux où l'on répond (démos, Premiers,
       // Ensembles, Singapour). Calcul, Pascal, Solutions, Fusion s'explorent.
@@ -5776,6 +5783,7 @@
             });
             msg.textContent = (ok ? "✓ " : "✗ ") + b.name + " : " + need.map(function (id) { return PROPS[id][en ? 1 : 0]; }).join(", ") + ".";
             nextBtn.disabled = false;
+            if (ok) quickNext("str", strStart, 900);
           });
           chips.appendChild(go);
           return;
@@ -5803,6 +5811,7 @@
             if (exam) strDraw("(" + k.E + ", " + k.op + ")", strLines(k));
             msg.textContent = (ok ? "✓ " : "✗ ") + "(" + k.E + ", " + k.op + ") : " + k.ans.toLowerCase() + ".";
             nextBtn.disabled = false;
+            if (ok) quickNext("str", strStart);
           });
           chips.appendChild(c);
         });
@@ -5935,6 +5944,7 @@
               if (!ok) b.classList.add("bad");
               msg.textContent = (ok ? "✓ " : "") + it.ok;
               nextBtn.disabled = false;
+              if (ok) quickNext("venn", vennStart);
             });
             opts.appendChild(b);
           });
@@ -5961,6 +5971,7 @@
         document.getElementById("vennMsg").textContent = (ok ? "✓ " : "✗ ") + vennState.n[0] +
           (good === "out" ? " ∉ " + it.A + " ∪ " + it.B : " ∈ " + vennZoneName(it, good));
         nextBtn.disabled = false;
+        if (ok) quickNext("venn", vennStart, 900);
       });
 
       // ---------- Chapitre Solutions ----------
@@ -6007,6 +6018,7 @@
             if (box.dataset.done) return;
             box.dataset.done = "1";
             var ok = lab === good;
+            box.dataset.ok = ok ? "1" : "";
             examHit(ok, "Solutions");
             if (ok) SND.ok(); else SND.bad();
             box.querySelectorAll("button").forEach(function (x) { if (x.textContent === good) x.classList.add("good"); });
@@ -6038,8 +6050,10 @@
           msg.textContent = LANG === "en" ? "The smallest set with a solution?" : "Le plus petit ensemble avec une solution ?";
           solButtons(UNIV.map(function (k) { return SYM[k]; }), SYM[first], function () {
             document.getElementById("solBtns").innerHTML = "";
+            var okLast = !!document.getElementById("solBtns").dataset.ok;
             msg.textContent = (LANG === "en" ? "First solution in " : "Première solution dans ") + SYM[first] + " : S = " + p.a[first];
             nextBtn.disabled = false;
+            if (okLast) quickNext("sol", function () { next(); }, 1300);
             nextBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: ms(600) });
           });
         });
@@ -6201,6 +6215,7 @@
           (ensState.small && smallest ? (LANG === "en" ? " — smallest: " : " — le plus petit : ") + smallest._e.sym : "");
         ensScoreEl.textContent = ensScore.ok + " / " + ensScore.n;
         nextBtn.disabled = false;
+        if (ok) quickNext("ens", ensStart, 1100);
       }
 
       // Glisser le nombre sur une case
@@ -6264,6 +6279,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v94", text: "Bonne réponse : la question suivante arrive seule après un court instant (Venn, Structures, Ensembles, Solutions). Après une erreur, on reste sur la correction ; la flèche fait passer." },
         { v: "v93", text: "Venn : plus de cadre autour, hachures plus fines, chaque lettre d'ensemble écrite à l'intérieur de sa zone (plus sur le trait). Une légende dit ce que sont 2ℕ, 3ℕ, 𝔻, ℝ₊, iℝ… (pas en examen). Un nombre hors des deux cercles s'écrit −√2 ∉ ℤ ∪ ℝ₊." },
         { v: "v92", text: "Nouveau chapitre Structures : un cercle (E, loi). Construire — coche les propriétés d'un magma, d'un monoïde, d'un groupe, d'un groupe abélien, elles s'inscrivent dans le cercle. Reconnaître — (ℕ, +), (ℤ, −), (ℚ*, ×), (ℤ, +, ×)… avec leurs propriétés : magma, monoïde, groupe, anneau, corps ? En examen, les propriétés ne sont pas écrites." },
         { v: "v91", text: "Accueil : dans un ensemble encore verrouillé, aucun chapitre n'apparaît comme réussi (plus de ✓ ni de « 1/1 »)." },
