@@ -246,26 +246,7 @@
     }
     .tgrid svg.tdup line { stroke: var(--accent); stroke-width: 1; stroke-linecap: round; opacity: 0.8; }
 
-    .keypad {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 0.35rem;
-      width: min(100%, 360px);
-    }
-    .keypad[hidden] { display: none; }
-    .key {
-      font-family: inherit;
-      font-size: 1.05rem;
-      height: 2.2rem;
-      color: var(--ink);
-      background: transparent;
-      border: 1px solid var(--ink-soft);
-      border-radius: 10px;
-      cursor: pointer;
-    }
-    .key:active { background: var(--accent-soft); }
-    .key.ok { border-color: var(--accent); color: var(--accent); }
-    /* Choisir le résultat parmi quatre (2e sens du mode « Les deux ») */
+    /* Choisir le résultat parmi quatre (quand la case s'allume) */
     .choices {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -273,7 +254,7 @@
       width: min(100%, 360px);
     }
     .choices[hidden] { display: none; }
-    /* Question « trouver la case » du mode alterné : la place reste
+    /* Question « trouver la case » : la place reste
        réservée, la grille ne change pas de taille d'une question à l'autre */
     .choices.ghost { visibility: hidden; }
     .choice {
@@ -429,7 +410,6 @@
 
   <div class="stage col" id="stage">
     <div class="tgrid" id="tgrid"></div>
-    <div class="keypad" id="keypad"></div>
     <div class="choices" id="choices"></div>
   </div>
 
@@ -476,11 +456,11 @@
       var TXT = {
         fr: {
           parts: { t9: "2–9", t20: "12–19", sq: "x²", cu: "x³", p2: "2ⁿ" },
-          find: "Trouver", write: "Écrire", mix: "Les deux", errs: "Erreurs {n}", restart: "Recommencer la grille",
+          errs: "Erreurs {n}", restart: "Recommencer la grille",
           full: "Grille pleine",
           noErr: "Aucune erreur dans cette partie", clean: "Sans aucune erreur.",
           dirty: "{e} erreur(s) : elles sont comptées dans les cases.",
-          other: "Essaie maintenant l'autre exercice.", again: "Encore",
+          again: "Encore",
           cheers: ["Bravo !", "Parfait !", "Impeccable !", "Superbe !"],
           langItem: "Language : English", hist: "Historique", erase: "Réinitialiser la progression",
           eraseSure: "Appuie encore pour tout effacer", erased: "Progression effacée",
@@ -489,11 +469,11 @@
         },
         en: {
           parts: { t9: "2–9", t20: "12–19", sq: "x²", cu: "x³", p2: "2ⁿ" },
-          find: "Find", write: "Write", mix: "Both", errs: "Mistakes {n}", restart: "Restart the grid",
+          errs: "Mistakes {n}", restart: "Restart the grid",
           full: "Grid complete",
           noErr: "No mistakes in this part", clean: "Without a single mistake.",
           dirty: "{e} mistake(s): they are counted in the cells.",
-          other: "Now try the other exercise.", again: "Again",
+          again: "Again",
           cheers: ["Well done!", "Perfect!", "Flawless!", "Superb!"],
           langItem: "Langue : français", hist: "History", erase: "Reset progress",
           eraseSure: "Tap again to erase everything", erased: "Progress erased",
@@ -565,20 +545,21 @@
       // Une progression par partie et par portée : toute la partie (« all »)
       // ou seulement ses cases ratées (« err », liste figée au départ)
 
-      // Trois exercices : trouver la case, écrire le résultat, et « les
-      // deux » qui alterne les deux sens de la mémoire (demande de Pierre) :
-      // une question sur deux on touche la case du résultat donné, l'autre
-      // la case s'allume et on choisit son résultat parmi quatre
-      var MODES = ["find", "write", "mix"];
-      function freshProg() { return { done: { find: {}, write: {}, mix: {} }, errors: { find: 0, write: 0, mix: 0 } }; }
+      // Un seul exercice, qui fait travailler la mémoire dans les deux sens
+      // (demande de Pierre) : au hasard, soit on donne un résultat et on
+      // touche sa case, soit une case s'allume et on choisit son résultat
+      // parmi quatre. (Les anciens exercices séparés « Trouver » et
+      // « Écrire » sont retirés ; leur progression sauvegardée est ignorée.)
+      var MODES = ["mix"];
+      function freshProg() { return { done: { mix: {} }, errors: { mix: 0 } }; }
       function freshState() {
-        var s = { mode: "find", part: "t9", err: false, prog: {}, errKeys: {}, clean: {}, games: {},
-                  cellErr: {}, sr: {}, avg: { find: { n: 0, mean: 0 }, write: { n: 0, mean: 0 }, mix: { n: 0, mean: 0 } } };
+        var s = { mode: "mix", part: "t9", err: false, prog: {}, errKeys: {}, clean: {}, games: {},
+                  cellErr: {}, sr: {}, avg: { mix: { n: 0, mean: 0 } } };
         PARTS.forEach(function (p) {
           s.prog[p] = freshProg();
           s.prog[p + "e"] = freshProg();
           s.errKeys[p] = [];
-          s.clean[p] = { find: false, write: false, mix: false };
+          s.clean[p] = { mix: false };
           s.games[p] = 0;
         });
         return s;
@@ -591,7 +572,6 @@
         try {
           var o = JSON.parse(load("state") || "null");
           if (!o || typeof o !== "object") return s;
-          if (MODES.indexOf(o.mode) >= 0) s.mode = o.mode;
           if (PARTS.indexOf(o.part) >= 0) s.part = o.part;
           s.err = o.err === true;
           PARTS.forEach(function (p) {
@@ -641,10 +621,10 @@
         }));
       }
 
-      var target = null, targetKey = null, input = "", flash = null;
-      // Sens de la question en cours : « find », « write » ou « choose »
-      // (en mode « Les deux », find et choose alternent)
-      var dir = "find", mixN = 0, choices = [], badChoice = {};
+      var target = null, targetKey = null, flash = null;
+      // Sens de la question en cours : « find » (toucher la case) ou
+      // « choose » (choisir le résultat), tiré au hasard
+      var dir = "find", lastDirs = [], choices = [], badChoice = {};
 
       function cur() { return S.prog[S.part + (S.err ? "e" : "")]; }
       function scopeKeys() { return S.err ? S.errKeys[S.part] : PART_KEYS[S.part]; }
@@ -788,7 +768,6 @@
 
       var stageEl = document.getElementById("stage");
       var tgrid = document.getElementById("tgrid");
-      var keypad = document.getElementById("keypad");
       var winEl = document.getElementById("winOverlay");
       var menuOverlay = document.getElementById("menuOverlay");
       var histOverlay = document.getElementById("histOverlay");
@@ -802,11 +781,13 @@
         var x = Math.random() * total, k = rem[rem.length - 1];
         for (var i = 0; i < rem.length; i++) { x -= weights[i]; if (x < 0) { k = rem[i]; break; } }
         targetKey = k;
-        dir = S.mode === "mix" ? (mixN++ % 2 ? "choose" : "find") : S.mode;
+        // Au hasard, mais jamais trois fois de suite le même sens
+        dir = Math.random() < 0.5 ? "find" : "choose";
+        if (lastDirs.length === 2 && lastDirs[0] === lastDirs[1] && lastDirs[1] === dir) dir = dir === "find" ? "choose" : "find";
+        lastDirs = lastDirs.concat(dir).slice(-2);
         target = dir === "find" ? valK(k) : k;
         badChoice = {};
         choices = dir === "choose" ? makeChoices(k) : [];
-        input = "";
         tStart = Date.now();
       }
 
@@ -854,7 +835,6 @@
       // Revenir sur une grille déjà pleine : elle repart de zéro
       function enter() {
         winEl.hidden = true;
-        input = "";
         caption = null;
         if (!remainingKeys().length) resetCurrent();
         pickTarget();
@@ -865,12 +845,6 @@
         if (S.part === p) return;
         S.part = p;
         S.err = false;
-        saveState();
-        enter();
-      }
-      function setMode(m) {
-        if (S.mode === m) return;
-        S.mode = m;
         saveState();
         enter();
       }
@@ -927,20 +901,6 @@
         if (valK(k) === target) right(k);
         else wrong(k);
       }
-      function typeKey(key) {
-        if (dir !== "write" || target === null || !winEl.hidden) return;
-        if (key === "⌫") input = input.slice(0, -1);
-        else if (key === "OK") {
-          if (!input) return;
-          var k = target;
-          if (Number(input) === valK(k)) right(k);
-          else { input = ""; wrong(k); }
-          return;
-        }
-        else if (input.length < 4) input += key;
-        render();
-      }
-
       function pickChoice(c) {
         if (dir !== "choose" || target === null || badChoice[c] || !winEl.hidden) return;
         if (c === valK(target)) right(target);
@@ -955,11 +915,10 @@
           S.clean[S.part][m] = clean;
         }
         saveState();
-        var other = !S.err && clean && m !== "mix" && !S.clean[S.part][m === "find" ? "write" : "find"];
         setTimeout(function () {
           var ch = TXT[lang].cheers;
           document.getElementById("winTitle").textContent = clean ? ch[Math.floor(Math.random() * ch.length)] : t("full");
-          document.getElementById("winText").textContent = clean ? t("clean") + (other ? " " + t("other") : "") : t("dirty", { e: nErr });
+          document.getElementById("winText").textContent = clean ? t("clean") : t("dirty", { e: nErr });
           document.getElementById("againBtn").textContent = t("again");
           winEl.hidden = false;
           winEl.classList.remove("show");
@@ -978,7 +937,7 @@
         box.textContent = "";
         PARTS.forEach(function (p, i) {
           var bt = document.createElement("button");
-          bt.className = "chip" + (S.clean[p].find && (S.clean[p].write || S.clean[p].mix) ? " clean" : "");
+          bt.className = "chip" + (S.clean[p].mix ? " clean" : "");
           bt.textContent = TXT[lang].parts[p];
           bt.setAttribute("aria-pressed", p === S.part ? "true" : "false");
           bt.addEventListener("click", function () { setPart(p); });
@@ -998,9 +957,6 @@
           bt.addEventListener("click", fn);
           bar.appendChild(bt);
         }
-        chip(t("find"), "", S.mode === "find", function () { setMode("find"); });
-        chip(t("write"), "", S.mode === "write", function () { setMode("write"); });
-        chip(t("mix"), "", S.mode === "mix", function () { setMode("mix"); });
         chip(t("errs", { n: partErrKeys(S.part).length }), "errs", S.err, toggleErrors);
         chip("↻", "restart", null, restart, t("restart"));
       }
@@ -1086,7 +1042,7 @@
       function sizeGrid() {
         var sh = gridShape();
         var w = stageEl.clientWidth - 32, h = stageEl.clientHeight - 12;
-        var kp = S.mode === "write" ? keypad.offsetHeight + 10 : S.mode === "mix" ? choicesEl.offsetHeight + 10 : 0;
+        var kp = choicesEl.offsetHeight + 10;
         var cell = Math.floor(Math.min((w - 2 * sh.cols) / sh.cols, (h - kp - 2 * sh.rows) / sh.rows, sh.max));
         tgrid.style.setProperty("--cell", Math.max(14, cell) + "px");
         tgrid.style.gridTemplateColumns = "repeat(" + sh.cols + ", var(--cell))";
@@ -1124,20 +1080,8 @@
         tgrid.insertBefore(svg, tgrid.firstChild);
       }
 
-      function buildKeypad() {
-        keypad.textContent = "";
-        ["1", "2", "3", "4", "5", "⌫", "6", "7", "8", "9", "0", "OK"].forEach(function (k) {
-          var bt = document.createElement("button");
-          bt.className = "key" + (k === "OK" ? " ok" : "");
-          bt.textContent = k;
-          bt.addEventListener("click", function () { typeKey(k); });
-          keypad.appendChild(bt);
-        });
-      }
-
       var choicesEl = document.getElementById("choices");
       function renderChoices() {
-        choicesEl.hidden = S.mode !== "mix";
         choicesEl.classList.toggle("ghost", dir !== "choose" || target === null);
         choicesEl.textContent = "";
         // Toujours quatre boutons : même hauteur à chaque question
@@ -1155,7 +1099,6 @@
         renderParts();
         renderBottom();
         renderGrid();
-        keypad.hidden = S.mode !== "write";
         renderChoices();
         // Épuré : seulement le nombre à trouver, ou le calcul à écrire
         var task = document.getElementById("task");
@@ -1167,7 +1110,7 @@
           if (dir !== "find") task.appendChild(document.createTextNode(exprK(target) + " = "));
           var num = document.createElement("span");
           num.className = "tnum";
-          num.textContent = dir === "find" ? String(target) : (dir === "write" && input) || "?";
+          num.textContent = dir === "find" ? String(target) : "?";
           task.appendChild(num);
         }
         renderSplit();
@@ -1176,12 +1119,10 @@
         drawDupLines();
       }
 
-      // Clavier physique (ordinateur) : chiffres, Entrée, Retour arrière
+      // Clavier physique (ordinateur) : touches 1 à 4 pour les quatre choix
       document.addEventListener("keydown", function (e) {
-        if (dir !== "write") return;
-        if (/^[0-9]$/.test(e.key)) typeKey(e.key);
-        else if (e.key === "Enter") typeKey("OK");
-        else if (e.key === "Backspace") typeKey("⌫");
+        var n = "1234".indexOf(e.key);
+        if (dir === "choose" && n >= 0 && choices[n] !== undefined) pickChoice(choices[n]);
       });
 
       // Glisser l'écran de droite à gauche : partie suivante ; de gauche à
@@ -1286,6 +1227,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v5", text: "Un seul exercice : les boutons Trouver, Écrire et Les deux sont retirés. Chaque question tire au hasard l'un des deux sens — toucher la case du résultat donné, ou choisir parmi quatre le résultat de la case allumée (jamais trois fois de suite le même sens). Une partie gagne ✓ quand sa grille est faite sans erreur." },
         { v: "v4", text: "Nouvel exercice « Les deux » : il alterne les deux sens de la mémoire — une question sur deux, on touche la case du résultat donné ; l'autre, la case s'allume et on choisit son résultat parmi quatre. Grille des grandes tables réduite à 12–19 (lignes 11 et 20, trop faciles, retirées). Boutons du haut sans « × » ni trait de séparation ; glisser l'écran à gauche ou à droite passe à la partie voisine. Carrés et cubes notés x² et x³." },
         { v: "v3", text: "Nouvelle partie dans le chapitre des carrés et cubes : puissances de 2, de 2¹ = 2 à 2¹⁰ = 1024 (bouton 2ⁿ)." },
         { v: "v2", text: "Plus de rappel du résultat sous le nombre après une réponse (« 17² = 289 ») : seule la case remplie, ou rouge en cas d'erreur, répond." },
@@ -1311,7 +1253,6 @@
 
       document.documentElement.lang = lang;
       applyStatic();
-      buildKeypad();
       enter();
 
       var resizeT = 0;
