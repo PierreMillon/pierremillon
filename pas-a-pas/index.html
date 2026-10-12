@@ -921,8 +921,9 @@
     .home-map text { fill: var(--ink); font-family: inherit; font-size: 13px; pointer-events: none; text-anchor: middle; }
     .home-map text.lock { fill: var(--ink-soft); }
     .home-map text.big { font-size: 22px; }
-    .home-info { margin: 0; font-size: 0.76rem; line-height: 1.45; color: var(--ink-soft); text-align: center; flex: none; }
-    .home-info:empty { display: none; }
+    /* Zone du bas réservée, de hauteur fixe : quel que soit le texte ou le
+       nombre de chapitres, les anneaux ne bougent pas */
+    .home-info { margin: 0; font-size: 0.72rem; line-height: 1.4; color: var(--ink-soft); text-align: center; flex: none; height: 4.2em; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
 
     .home-list {
       display: flex;
@@ -931,6 +932,9 @@
       gap: 0.4rem;
       flex: none;
       width: 100%;
+      height: 5.4rem;
+      align-content: flex-start;
+      overflow: hidden;
       padding-bottom: 0.4rem;
     }
 
@@ -5914,6 +5918,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v89", text: "Accueil : la zone du bas (texte et chapitres) a une hauteur fixe ; changer d'ensemble ne fait plus bouger les anneaux." },
         { v: "v88", text: "Accueil : les anneaux sont centrés dans la place libre (autant de noir au-dessus qu'en dessous), les chapitres sont tout en bas, en entier ; un chapitre validé porte un ✓. Examen : un chapitre validé affiche « Validé ✓ » au lieu du compteur ; le compteur est gardé chapitre par chapitre (aller voir ailleurs ne le remet plus à 0, seule une erreur)." },
         { v: "v87", text: "Examen : 3 réponses justes d'affilée suffisent pour valider un chapitre (au lieu de 9)." },
         { v: "v86", text: "Calcul : plus rien n'avance tout seul. Chaque étape s'arrête avec une phrase qui dit ce qui se passe (dizaines et unités, 6 = 5 + 1, il manque 3 pour faire 10…) ; la flèche passe à l'étape suivante, puis à un autre calcul." },
