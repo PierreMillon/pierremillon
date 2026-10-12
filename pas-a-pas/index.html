@@ -3736,6 +3736,10 @@
         document.getElementById("controls").hidden = false;
         prevBtn.style.visibility = custom ? "hidden" : "";
         prevBtn.textContent = "←";
+        // Premiers : ni ensembles ni badges, ils n'y servent à rien
+        var bare = custom === "pf";
+        document.getElementById("univ").hidden = bare || !homeEl.hidden;
+        document.getElementById("badgeShelf").style.visibility = bare ? "hidden" : "";
         if (custom === "sg") { sgStart(); return; }
         if (custom === "pf") { pfStart(); return; }
         if (custom === "ens") { ensStart(); return; }
@@ -5748,6 +5752,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v83", text: "Premiers : la barre des ensembles et les badges du bas sont masqués, ils n'y servent pas." },
         { v: "v82", text: "Fiche des règles, « Faire apparaître » : nouveau geste « Un coefficient sans tout développer » — le coefficient de xᵏ d'un produit = somme des produits de coefficients dont les exposants font k ; le reste part dans xⁿP(x)." },
         { v: "v81", text: "Regrouper et x en facteur passent dans ℕ (exemples sans signe moins ; leurs badges servent aussi dans ℤ). Accueil : ℕ en petite boule en bas, les lettres dans les bandes du haut ; plus de lettre qui flotte sous les anneaux. Chapitres de l'accueil sur deux lignes, boutons resserrés." },
         { v: "v80", text: "Mode jeu : les deux propositions apparaissent d'elles-mêmes à chaque étape, dès le début du chapitre et après une étape sans question — plus besoin de toucher la flèche. En revenant en arrière, rien ne s'affiche : on relit." },
