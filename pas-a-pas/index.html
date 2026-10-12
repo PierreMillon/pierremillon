@@ -5790,25 +5790,48 @@
         });
         badgeChip.classList.toggle("ready", !!reg && reg.terms.some(function (t) { return t.parts; }));
         badgeReg.classList.toggle("ready", regCanGroup());
+        badgeFac.classList.toggle("ready", regCanFactor());
       }
-      // Badge Regrouper : tout d'un coup — les x à gauche dans une
-      // parenthèse, les nombres à droite dans une autre
+      // Badge Regrouper : rapprocher, tout d'un coup — les x côte à côte à
+      // gauche, les nombres à droite (eux entre parenthèses : c'est déjà
+      // une somme à calculer). Les x ne sont PAS mis en facteur : c'est le
+      // badge « x en facteur ».
+      function regSplit() {
+        return { xs: reg.terms.filter(function (t) { return t.s; }), ns: reg.terms.filter(function (t) { return !t.s; }) };
+      }
       function regCanGroup() {
         if (!reg || reg.done || !doneMap["Regrouper"]) return false;
-        var xs = reg.terms.filter(function (t) { return t.s; }), ns = reg.terms.filter(function (t) { return !t.s; });
-        return xs.length > 1 || ns.length > 1 || (xs.length && ns.length && !reg.terms[0].s);
+        var p = regSplit();
+        var ordered = reg.terms.every(function (t, i) { return i < p.xs.length ? t.s : !t.s; });
+        return !ordered || p.ns.length > 1;
+      }
+      function regMerge(list) {
+        if (list.length < 2) return list;
+        var parts = [];
+        list.forEach(function (t) { parts = parts.concat(t.parts || [t.k]); });
+        return [{ id: ++regUid, parts: parts, s: list[0].s }];
+      }
+      // Badge x en facteur : les termes en x côte à côte → (a + b)·x
+      function regCanFactor() {
+        if (!reg || reg.done || !doneMap["x en facteur"]) return false;
+        var p = regSplit();
+        return p.xs.length > 1 && reg.terms.every(function (t, i) { return i < p.xs.length ? t.s : true; });
+      }
+      function regFactorAll() {
+        if (!regCanFactor()) return false;
+        reg.sel = null;
+        var p = regSplit();
+        reg.terms = regMerge(p.xs).concat(p.ns);
+        regRender();
+        regHint();
+        regCheck();
+        return true;
       }
       function regGroupAll() {
         if (!regCanGroup()) return false;
         reg.sel = null;
-        var xs = reg.terms.filter(function (t) { return t.s; }), ns = reg.terms.filter(function (t) { return !t.s; });
-        function merge(list) {
-          if (list.length < 2) return list;
-          var parts = [];
-          list.forEach(function (t) { parts = parts.concat(t.parts || [t.k]); });
-          return [{ id: ++regUid, parts: parts, s: list[0].s }];
-        }
-        reg.terms = merge(xs).concat(merge(ns));
+        var p = regSplit();
+        reg.terms = p.xs.concat(regMerge(p.ns));
         regRender();
         regHint();
         regCheck();
@@ -6510,7 +6533,8 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
-        { v: "v103", text: "Le badge Regrouper agit aussi sur les étapes de mise en facteur des chapitres à étapes : sur 2x + x, il passe directement à (2 + 1)·x." },
+        { v: "v104", text: "Deux badges bien distincts. Regrouper rapproche : les x côte à côte à gauche, les nombres à droite (entre parenthèses, c'est une somme à calculer). x en facteur fait (3 + 1)·x — il faut avoir réussi son chapitre. Dans Regrouper : Regrouper, puis x en facteur, puis le badge 10." },
+        { v: "v103", text: "Le badge Regrouper agissait aussi sur les mises en facteur (retiré en v104 : c'est le rôle du badge x en facteur)." },
         { v: "v102", text: "En-tête : « Validé ✓ » tout court, le titre du chapitre garde sa place." },
         { v: "v101", text: "Nouvelles icônes : Regrouper = des parenthèses ( + ), x en facteur = x devant une parenthèse x( ). Dans le chapitre Regrouper, le badge Regrouper luit quand on peut regrouper et range tout d'un coup (x à gauche dans une parenthèse, nombres à droite) ; ensuite le badge 10 luit pour calculer." },
         { v: "v100", text: "Badges : un appui court agit ; si l'action n'est pas possible, une étiquette jaune dit pourquoi (« Regroupe d'abord : pas encore de parenthèse à calculer », « Pas de (−1) à calculer ici »…). Un appui long montre l'explication complète du badge." },
@@ -6955,16 +6979,22 @@
         return k > cur ? k : -1;
       }
       var ACTS = [
-        // Regrouper = rapprocher ET mettre entre parenthèses (comme dans son
-        // chapitre) : il couvre aussi les étapes de mise en facteur
-        { el: badgeReg, ch: "Regrouper", test: function (a, b) { return isRegroup(a, b) || isFactor(a, b); }, why: function () { return LANG === "en" ? "Nothing to group here" : "Rien à regrouper ici"; } },
+        // Regrouper rapproche ; mettre x en facteur, c'est l'autre badge
+        { el: badgeReg, ch: "Regrouper", test: isRegroup, why: function () { return LANG === "en" ? "Nothing to group here" : "Rien à regrouper ici"; } },
         { el: badgeFac, ch: "x en facteur", test: isFactor, why: function () { return LANG === "en" ? "No x to factor out here" : "Pas de x à mettre en facteur ici"; } }
       ];
       ACTS.forEach(function (A) {
         A.el.addEventListener("click", function () {
-          if (DEMOS[demoIndex].custom === "reg" && A.ch === "Regrouper" && !badgeLong) {
-            if (regGroupAll()) { badgeFloat(A.el, tr(A.ch)); SND.badge(); }
-            else badgeNo(A.el, LANG === "en" ? "Already grouped — compute with the 10 badge" : "Déjà regroupé — calcule avec le badge 10");
+          if (DEMOS[demoIndex].custom === "reg" && !badgeLong) {
+            var en = LANG === "en";
+            if (A.ch === "Regrouper") {
+              if (regGroupAll()) { badgeFloat(A.el, tr(A.ch)); SND.badge(); }
+              else badgeNo(A.el, en ? "Already grouped" : "Déjà regroupé");
+            } else {
+              if (regFactorAll()) { badgeFloat(A.el, tr(A.ch)); SND.badge(); }
+              else badgeNo(A.el, regSplit().xs.length < 2 ? (en ? "Only one x term: nothing to factor" : "Un seul terme en x : rien à mettre en facteur")
+                                                         : (en ? "Group the x terms first" : "Regroupe d'abord les termes en x"));
+            }
             return;
           }
           var k = actTarget(A.test, A.ch);
