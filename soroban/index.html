@@ -410,6 +410,7 @@
     .menu-item:active { background: var(--accent-soft); }
     .menu-item.danger { color: var(--ink-soft); }
     .menu-item.armed { color: var(--accent); }
+    .overlay p.version { margin-top: -0.6rem; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--accent); }
     .counter { font-variant-numeric: tabular-nums; }
     .counter b { color: var(--accent); font-weight: 500; }
 
@@ -653,6 +654,7 @@
   <!-- Menu ☰ : tout ce qui n'est pas le boulier lui-même -->
   <div class="overlay" id="menuOverlay" hidden>
     <div class="big">Menu</div>
+    <p class="version" id="mVersion"></p>
     <div class="menu-list">
       <button class="menu-item" id="mSandbox"></button>
       <button class="menu-item" id="mLang"></button>
@@ -2586,6 +2588,9 @@
       var menuOverlay = document.getElementById("menuOverlay");
       var eraseArmed = 0;
       function refreshMenu() {
+        // Numéro de version toujours visible dans le menu (règle de Pierre,
+        // pour tous les programmes) ; le détail est dans l'Historique
+        document.getElementById("mVersion").textContent = "Version " + VERSIONS[0].v;
         document.getElementById("mSandbox").textContent = mode === "ops" ? t("sandboxOn") : t("sandboxOff");
         document.getElementById("mLang").textContent = t("langItem");
         var er = document.getElementById("mErase");
@@ -2695,6 +2700,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v32", text: "Numéro de version affiché dans le menu ☰ (le détail de chaque version reste dans l'Historique)." },
         { v: "v31", text: "Tables : répétition espacée — une case réussie deux fois plus vite que ta moyenne est grisée avec sa réponse, et revient au bout de 2 parties, puis 4, 8… (une erreur ou une réponse lente la remet en jeu). Table de 5 un peu effacée, comme celle de 2." },
         { v: "v30", text: "Une fois les tables réussies, trois parties au choix : toute la table (les erreurs restent comptées), mes erreurs (seulement les tables déjà ratées), et carrés de 11 à 20 (11² … 20², trouver la case ou écrire le résultat)." },
         { v: "v29", text: "Tables : en « Trouver la case », une mauvaise case compte deux erreurs — sur la case touchée (son résultat n'était pas connu) et sur celle qu'il fallait toucher." },

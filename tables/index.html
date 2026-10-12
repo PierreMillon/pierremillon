@@ -246,30 +246,29 @@
     }
     .tgrid svg.tdup line { stroke: var(--accent); stroke-width: 1; stroke-linecap: round; opacity: 0.8; }
 
-    /* Choisir le résultat parmi quatre (quand la case s'allume) */
-    .choices {
+    /* Pavé de chiffres, sans touche « OK » : la réponse part toute seule
+       dès qu'on a tapé autant de chiffres qu'elle en a */
+    .keypad {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.4rem;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.35rem;
       width: min(100%, 360px);
     }
-    .choices[hidden] { display: none; }
-    /* Question « trouver la case » : la place reste
-       réservée, la grille ne change pas de taille d'une question à l'autre */
-    .choices.ghost { visibility: hidden; }
-    .choice {
+    /* Question « trouver la case » : la place reste réservée, la grille
+       ne change pas de taille d'une question à l'autre */
+    .keypad.ghost { visibility: hidden; }
+    .key {
       font-family: inherit;
-      font-size: 1.25rem;
-      height: 2.7rem;
+      font-size: 1.15rem;
+      height: 2.5rem;
       color: var(--ink);
       background: transparent;
       border: 1px solid var(--ink-soft);
       border-radius: 10px;
       cursor: pointer;
-      font-variant-numeric: tabular-nums;
     }
-    .choice:active { background: var(--accent-soft); }
-    .choice.bad { border-color: var(--bad); color: var(--bad); opacity: 0.6; cursor: default; }
+    .key:active { background: var(--accent-soft); }
+    .key.blank { visibility: hidden; }
 
     .bottombar {
       display: flex;
@@ -369,6 +368,7 @@
     .menu-item:active { background: var(--accent-soft); }
     .menu-item.danger { color: var(--ink-soft); }
     .menu-item.armed { color: var(--accent); }
+    .overlay p.version { margin-top: -0.6rem; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--accent); }
     .counter { font-variant-numeric: tabular-nums; }
     .counter b { color: var(--bad); font-weight: 500; }
     .hist-list {
@@ -410,7 +410,7 @@
 
   <div class="stage col" id="stage">
     <div class="tgrid" id="tgrid"></div>
-    <div class="choices" id="choices"></div>
+    <div class="keypad" id="keypad"></div>
   </div>
 
   <div class="bottombar col" id="bottomBar"></div>
@@ -423,6 +423,7 @@
 
   <div class="overlay" id="menuOverlay" hidden>
     <div class="big">Menu</div>
+    <p class="version" id="mVersion"></p>
     <div class="menu-list">
       <button class="menu-item" id="mLang"></button>
       <button class="menu-item" id="mHist"></button>
@@ -623,8 +624,8 @@
 
       var target = null, targetKey = null, flash = null;
       // Sens de la question en cours : « find » (toucher la case) ou
-      // « choose » (choisir le résultat), tiré au hasard
-      var dir = "find", lastDirs = [], choices = [], badChoice = {};
+      // « write » (taper le résultat de la case allumée), tiré au hasard
+      var dir = "find", lastDirs = [], input = "";
 
       function cur() { return S.prog[S.part + (S.err ? "e" : "")]; }
       function scopeKeys() { return S.err ? S.errKeys[S.part] : PART_KEYS[S.part]; }
@@ -782,35 +783,12 @@
         for (var i = 0; i < rem.length; i++) { x -= weights[i]; if (x < 0) { k = rem[i]; break; } }
         targetKey = k;
         // Au hasard, mais jamais trois fois de suite le même sens
-        dir = Math.random() < 0.5 ? "find" : "choose";
-        if (lastDirs.length === 2 && lastDirs[0] === lastDirs[1] && lastDirs[1] === dir) dir = dir === "find" ? "choose" : "find";
+        dir = Math.random() < 0.5 ? "find" : "write";
+        if (lastDirs.length === 2 && lastDirs[0] === lastDirs[1] && lastDirs[1] === dir) dir = dir === "find" ? "write" : "find";
         lastDirs = lastDirs.concat(dir).slice(-2);
         target = dir === "find" ? valK(k) : k;
-        badChoice = {};
-        choices = dir === "choose" ? makeChoices(k) : [];
+        input = "";
         tStart = Date.now();
-      }
-
-      // Quatre réponses : la bonne et trois voisines plausibles — les
-      // résultats les plus proches de la même partie, et pour une table
-      // les cases d'à côté (7 × 8 → 7 × 7, 7 × 9, 6 × 8, 8 × 8)
-      function makeChoices(k) {
-        var v = valK(k), seen = {}, cand = [];
-        function addC(c) { if (c > 0 && c !== v && !seen[c]) { seen[c] = 1; cand.push(c); } }
-        PART_KEYS[KEY_PART[k]].forEach(function (o) { addC(valK(o)); });
-        if (!isPow(k)) {
-          var f = k.split(".").map(Number);
-          addC(f[0] * (f[1] + 1)); addC(f[0] * (f[1] - 1));
-          addC((f[0] + 1) * f[1]); addC((f[0] - 1) * f[1]);
-          addC(v + 10); addC(v - 10);
-        } else if (k.charAt(0) === "p") {
-          addC(v * 4); addC(v + 2); addC(v - 2);
-        } else { addC(v + 10); addC(v - 10); }
-        cand.sort(function (x, y) { return Math.abs(x - v) - Math.abs(y - v); });
-        var near = cand.slice(0, 6), out = [v];
-        while (out.length < 4 && near.length) out.push(near.splice(Math.floor(Math.random() * near.length), 1)[0]);
-        for (var i = out.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), tmp = out[i]; out[i] = out[j]; out[j] = tmp; }
-        return out;
       }
 
       function resetCurrent() {
@@ -901,10 +879,16 @@
         if (valK(k) === target) right(k);
         else wrong(k);
       }
-      function pickChoice(c) {
-        if (dir !== "choose" || target === null || badChoice[c] || !winEl.hidden) return;
-        if (c === valK(target)) right(target);
-        else { badChoice[c] = 1; wrong(target); }
+      // Pas de touche « OK » (demande de Pierre) : dès qu'on a tapé autant
+      // de chiffres que la réponse en a, elle est validée
+      function typeKey(key) {
+        if (dir !== "write" || target === null || !winEl.hidden) return;
+        if (key === "⌫") { input = input.slice(0, -1); render(); return; }
+        input += key;
+        var want = String(valK(target));
+        if (input.length < want.length) { render(); return; }
+        if (input === want) right(target);
+        else { input = ""; wrong(target); }
       }
 
       // Grille pleine : bilan dans le bandeau
@@ -1042,7 +1026,7 @@
       function sizeGrid() {
         var sh = gridShape();
         var w = stageEl.clientWidth - 32, h = stageEl.clientHeight - 12;
-        var kp = choicesEl.offsetHeight + 10;
+        var kp = keypad.offsetHeight + 10;
         var cell = Math.floor(Math.min((w - 2 * sh.cols) / sh.cols, (h - kp - 2 * sh.rows) / sh.rows, sh.max));
         tgrid.style.setProperty("--cell", Math.max(14, cell) + "px");
         tgrid.style.gridTemplateColumns = "repeat(" + sh.cols + ", var(--cell))";
@@ -1080,26 +1064,23 @@
         tgrid.insertBefore(svg, tgrid.firstChild);
       }
 
-      var choicesEl = document.getElementById("choices");
-      function renderChoices() {
-        choicesEl.classList.toggle("ghost", dir !== "choose" || target === null);
-        choicesEl.textContent = "";
-        // Toujours quatre boutons : même hauteur à chaque question
-        for (var i = 0; i < 4; i++) {
-          var c = choices[i];
+      var keypad = document.getElementById("keypad");
+      function buildKeypad() {
+        ["1", "2", "3", "4", "5", "⌫", "6", "7", "8", "9", "0", ""].forEach(function (k) {
           var bt = document.createElement("button");
-          bt.className = "choice" + (c !== undefined && badChoice[c] ? " bad" : "");
-          bt.textContent = c !== undefined ? c : "0";
-          if (c !== undefined) bt.addEventListener("click", pickChoice.bind(null, c));
-          choicesEl.appendChild(bt);
-        }
+          bt.className = "key" + (k ? "" : " blank");
+          bt.textContent = k;
+          if (k) bt.addEventListener("click", function () { typeKey(k); });
+          else bt.tabIndex = -1;
+          keypad.appendChild(bt);
+        });
       }
 
       function render() {
         renderParts();
         renderBottom();
         renderGrid();
-        renderChoices();
+        keypad.classList.toggle("ghost", dir !== "write" || target === null);
         // Épuré : seulement le nombre à trouver, ou le calcul à écrire
         var task = document.getElementById("task");
         task.textContent = "";
@@ -1110,7 +1091,7 @@
           if (dir !== "find") task.appendChild(document.createTextNode(exprK(target) + " = "));
           var num = document.createElement("span");
           num.className = "tnum";
-          num.textContent = dir === "find" ? String(target) : "?";
+          num.textContent = dir === "find" ? String(target) : input || "?";
           task.appendChild(num);
         }
         renderSplit();
@@ -1119,10 +1100,10 @@
         drawDupLines();
       }
 
-      // Clavier physique (ordinateur) : touches 1 à 4 pour les quatre choix
+      // Clavier physique (ordinateur) : chiffres et retour arrière
       document.addEventListener("keydown", function (e) {
-        var n = "1234".indexOf(e.key);
-        if (dir === "choose" && n >= 0 && choices[n] !== undefined) pickChoice(choices[n]);
+        if (/^[0-9]$/.test(e.key)) typeKey(e.key);
+        else if (e.key === "Backspace") typeKey("⌫");
       });
 
       // Glisser l'écran de droite à gauche : partie suivante ; de gauche à
@@ -1152,6 +1133,9 @@
         return n;
       }
       function refreshMenu() {
+        // Numéro de version toujours visible dans le menu (règle de Pierre,
+        // pour tous les programmes) ; le détail est dans l'Historique
+        document.getElementById("mVersion").textContent = "Version " + VERSIONS[0].v;
         document.getElementById("mLang").textContent = t("langItem");
         document.getElementById("mHist").textContent = t("hist");
         var er = document.getElementById("mErase");
@@ -1227,6 +1211,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v6", text: "Quand une case s'allume, on tape son résultat au pavé de chiffres (plus de 4 choix). Pas de touche « OK » : la réponse part toute seule dès qu'on a tapé autant de chiffres qu'elle en a." },
         { v: "v5", text: "Un seul exercice : les boutons Trouver, Écrire et Les deux sont retirés. Chaque question tire au hasard l'un des deux sens — toucher la case du résultat donné, ou choisir parmi quatre le résultat de la case allumée (jamais trois fois de suite le même sens). Une partie gagne ✓ quand sa grille est faite sans erreur." },
         { v: "v4", text: "Nouvel exercice « Les deux » : il alterne les deux sens de la mémoire — une question sur deux, on touche la case du résultat donné ; l'autre, la case s'allume et on choisit son résultat parmi quatre. Grille des grandes tables réduite à 12–19 (lignes 11 et 20, trop faciles, retirées). Boutons du haut sans « × » ni trait de séparation ; glisser l'écran à gauche ou à droite passe à la partie voisine. Carrés et cubes notés x² et x³." },
         { v: "v3", text: "Nouvelle partie dans le chapitre des carrés et cubes : puissances de 2, de 2¹ = 2 à 2¹⁰ = 1024 (bouton 2ⁿ)." },
@@ -1253,6 +1238,7 @@
 
       document.documentElement.lang = lang;
       applyStatic();
+      buildKeypad();
       enter();
 
       var resizeT = 0;

@@ -183,6 +183,8 @@ Tri : priorité décroissante.
   finie ; pas de répétition espacée dans « Mes erreurs ». Table de 5 en
   opacité légère, comme celle de 2
 
+- [x] v32 — Numéro de version affiché dans le menu ☰
+
 ## À faire
 
 - [ ] P1 — Retour de Pierre sur téléphone : le son s'entend-il sur iPhone ?

@@ -33,6 +33,10 @@ Un nouveau projet (jeu ou page d'essai) :
   principal, qui ouvre la liste des versions — une ligne par version avec
   ce qui a changé. À mettre à jour à chaque modification poussée sur ce
   projet, jamais laissé en retard par rapport au code
+- **affiche son numéro de version dans le menu** (ex. « Version v6 »,
+  tiré de la première entrée de l'Historique) : chaque version a un numéro
+  et un commentaire qui permettent de retracer l'historique. Règle valable
+  pour tous les programmes de Pierre, dès le premier commit
 - **désactive systématiquement le zoom tactile et la loupe iOS** (déjà
   demandé pour le jeu d'avion, à refaire à chaque fois) :
   - `<meta name="viewport" content="... user-scalable=no, maximum-scale=1">`
