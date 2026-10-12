@@ -1688,10 +1688,10 @@
           <svg viewBox="0 0 20 20"><rect x="1.5" y="5.5" width="17" height="9" rx="1"/><circle cx="3.9" cy="8" r="1.1"/><circle cx="7" cy="8" r="1.1"/><circle cx="10" cy="8" r="1.1"/><circle cx="13" cy="8" r="1.1"/><circle cx="16.1" cy="8" r="1.1"/><circle cx="3.9" cy="12" r="1.1"/><circle cx="7" cy="12" r="1.1"/><circle cx="10" cy="12" r="1.1"/><circle cx="13" cy="12" r="1.1"/><circle cx="16.1" cy="12" r="1.1"/></svg>
         </button>
         <button class="badge" id="badgeReg" aria-label="Badge regrouper" hidden>
-          <svg viewBox="0 0 20 20"><path d="M3 13 Q6 4 9.4 8.6"/><path d="M17 13 Q14 4 10.6 8.6"/><circle cx="3" cy="14.5" r="1.4"/><circle cx="17" cy="14.5" r="1.4"/><circle cx="10" cy="10" r="1.4"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M7 3 Q2.5 10 7 17"/><path d="M13 3 Q17.5 10 13 17"/><path d="M8 10 L12 10 M10 8 L10 12"/></svg>
         </button>
         <button class="badge" id="badgeFac" aria-label="Badge x en facteur" hidden>
-          <svg viewBox="0 0 20 20"><path d="M1.5 8 L5.5 12.5 M5.5 8 L1.5 12.5"/><path d="M10 4 Q7 10 10 16"/><path d="M16.5 4 Q19.5 10 16.5 16"/><path d="M11.5 10 L15 10 M13.25 8.25 L13.25 11.75"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M1.5 7.5 L6 12.5 M6 7.5 L1.5 12.5"/><path d="M11 3.5 Q7.5 10 11 16.5"/><path d="M17 3.5 Q20.5 10 17 16.5"/></svg>
         </button>
         <button class="badge" id="badgeMM" aria-label="Badge (−1)·(−1) = 1" hidden>
           <svg viewBox="0 0 20 20"><line x1="2" y1="10" x2="18" y2="10" stroke-opacity="0.45"/><path d="M16 10 A6 6 0 0 0 4 10"/><path d="M4 10 A6 6 0 0 0 16 10" stroke-dasharray="1.6 1.6"/><path d="M14.2 12.6 L16 10 L17.4 12.8"/></svg>
@@ -5789,6 +5789,30 @@
           }
         });
         badgeChip.classList.toggle("ready", !!reg && reg.terms.some(function (t) { return t.parts; }));
+        badgeReg.classList.toggle("ready", regCanGroup());
+      }
+      // Badge Regrouper : tout d'un coup — les x à gauche dans une
+      // parenthèse, les nombres à droite dans une autre
+      function regCanGroup() {
+        if (!reg || reg.done || !doneMap["Regrouper"]) return false;
+        var xs = reg.terms.filter(function (t) { return t.s; }), ns = reg.terms.filter(function (t) { return !t.s; });
+        return xs.length > 1 || ns.length > 1 || (xs.length && ns.length && !reg.terms[0].s);
+      }
+      function regGroupAll() {
+        if (!regCanGroup()) return false;
+        reg.sel = null;
+        var xs = reg.terms.filter(function (t) { return t.s; }), ns = reg.terms.filter(function (t) { return !t.s; });
+        function merge(list) {
+          if (list.length < 2) return list;
+          var parts = [];
+          list.forEach(function (t) { parts = parts.concat(t.parts || [t.k]); });
+          return [{ id: ++regUid, parts: parts, s: list[0].s }];
+        }
+        reg.terms = merge(xs).concat(merge(ns));
+        regRender();
+        regHint();
+        regCheck();
+        return true;
       }
       function regFind(id) { for (var i = 0; i < reg.terms.length; i++) if (reg.terms[i].id === id) return i; return -1; }
       function regWrong(el) {
@@ -6486,6 +6510,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v101", text: "Nouvelles icônes : Regrouper = des parenthèses ( + ), x en facteur = x devant une parenthèse x( ). Dans le chapitre Regrouper, le badge Regrouper luit quand on peut regrouper et range tout d'un coup (x à gauche dans une parenthèse, nombres à droite) ; ensuite le badge 10 luit pour calculer." },
         { v: "v100", text: "Badges : un appui court agit ; si l'action n'est pas possible, une étiquette jaune dit pourquoi (« Regroupe d'abord : pas encore de parenthèse à calculer », « Pas de (−1) à calculer ici »…). Un appui long montre l'explication complète du badge." },
         { v: "v99", text: "Regrouper, avec le badge 10 : un toucher sur une parenthèse la calcule directement, et le badge calcule toutes les parenthèses d'un coup. Sans le badge : deux touchers sur la parenthèse." },
         { v: "v98", text: "Regrouper : deux termes en x associés partent directement tout à gauche, deux nombres tout à droite (et leur parenthèse aussi)." },
@@ -6933,6 +6958,11 @@
       ];
       ACTS.forEach(function (A) {
         A.el.addEventListener("click", function () {
+          if (DEMOS[demoIndex].custom === "reg" && A.ch === "Regrouper" && !badgeLong) {
+            if (regGroupAll()) { badgeFloat(A.el, tr(A.ch)); SND.badge(); }
+            else badgeNo(A.el, LANG === "en" ? "Already grouped — compute with the 10 badge" : "Déjà regroupé — calcule avec le badge 10");
+            return;
+          }
           var k = actTarget(A.test, A.ch);
           if (badgeLong) return;
           if (k < 0 || busy) { badgeNo(A.el, A.why()); return; }
