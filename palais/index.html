@@ -30,6 +30,8 @@
     #stage { position: relative; }
     canvas { display: block; width: 100%; height: 100%; touch-action: none; transition: filter 0.35s; }
     canvas.inv { filter: invert(1); }
+    #fade { position: absolute; inset: 0; background: #0c0c0b; opacity: 0; pointer-events: none; transition: opacity 0.18s; }
+    #fade.on { opacity: 1; }
     /* Grappe de quatre cercles, comme l'interface de Helix */
     .pad { position: absolute; right: 10px; bottom: calc(env(safe-area-inset-bottom) + 10px); width: 104px; height: 104px; }
     .pad button {
@@ -38,7 +40,7 @@
       display: flex; align-items: center; justify-content: center; padding: 0; cursor: pointer;
       box-shadow: 0 0 0 2px #f2f1ec;
     }
-    .pad .t { left: 30px; top: 0; } .pad .l { left: 0; top: 30px; } .pad .r { left: 60px; top: 30px; } .pad .b { left: 30px; top: 60px; }
+    .pad .r { left: 60px; top: 30px; } .pad .b { left: 30px; top: 60px; }
     .pad button.on { background: #111; color: #f2f1ec; }
     .scrap {
       position: absolute; left: 50%; top: 14%; transform: translateX(-50%) rotate(-1.5deg);
@@ -47,8 +49,14 @@
     }
     .scrap.show { opacity: 1; transform: translateX(-50%) rotate(-1.5deg) translateY(4px); }
     .scrap small { display: block; font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase; color: #555; margin-bottom: 6px; }
-    .scrap .f { font-family: "Courier New", monospace; font-size: 1.05rem; line-height: 1.45; }
-    .scrap .hid { color: transparent; border-bottom: 2px dotted #111; }
+    .scrap .name { font-style: italic; font-size: 1.25rem; line-height: 1.3; }
+    .scrap .hint { margin-top: 8px; font-size: 0.72rem; color: #666; }
+    .scrap canvas { display: none; width: 100%; height: auto; }
+    /* en mode noir : la formule, tracée à la plume, blanc sur noir */
+    .scrap.ink { background: #0e0e0d; color: #f2f1ec; border-color: #f2f1ec; box-shadow: 6px 6px 0 #f2f1ec; }
+    .scrap.ink small { color: #9a988f; }
+    .scrap.ink .name, .scrap.ink .hint { display: none; }
+    .scrap.ink canvas { display: block; }
     .overlay {
       position: absolute; inset: 0; background: rgba(12, 12, 11, 0.95); display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 12px; padding: 24px 18px; text-align: center;
@@ -60,24 +68,23 @@
     .overlay li b { margin-right: 8px; }
     .overlay button { background: var(--bg); color: var(--ink); border: 1px solid var(--ink); padding: 0.5rem 1.2rem; font: inherit; }
     .ver { font-size: 0.7rem; letter-spacing: 0.25em; color: var(--soft); }
-    .lab { position: absolute; left: 10px; top: calc(env(safe-area-inset-top) + 8px); font-size: 0.7rem; letter-spacing: 0.25em; color: #111; background: #f2f1ec; border: 2px solid #111; padding: 3px 8px; }
+    .lab { cursor: pointer; position: absolute; left: 10px; top: calc(env(safe-area-inset-top) + 8px); font-size: 0.7rem; letter-spacing: 0.25em; color: #111; background: #f2f1ec; border: 2px solid #111; padding: 3px 8px; }
   </style>
 </head>
 <body>
   <div id="stage">
     <canvas id="cv"></canvas>
+    <div id="fade"></div>
     <div class="lab" id="lab"></div>
-    <div class="scrap" id="scrap"><small id="scrapWho"></small><div class="f" id="scrapTxt"></div></div>
+    <div class="scrap" id="scrap"><small id="scrapWho"></small><div class="name" id="scrapName"></div><div class="hint">◐ pour voir la formule</div><canvas id="scrapCv"></canvas></div>
     <div class="pad">
-      <button class="t" id="bVar" aria-label="Variante">A</button>
-      <button class="l" id="bInfo" aria-label="Historique">i</button>
       <button class="r" id="bInv" aria-label="Inverser">◐</button>
       <button class="b" id="bRedo" aria-label="Redessiner">↻</button>
     </div>
     <div class="overlay" id="info" hidden>
       <h1>PALAIS</h1>
       <div class="ver" id="ver"></div>
-      <p>Page d'essai du rendu, avant le jeu. Touche le sol pour marcher ; marche sur une plaque ◇ pour lire ce qu'elle garde. ◐ inverse le noir et le blanc : la ligne cachée apparaît. A / B : deux densités de dessin. ↻ : retirer les détails au hasard.</p>
+      <p>Page d'essai du rendu, avant le jeu. Touche le sol pour marcher, ou garde le doigt appuyé : le personnage suit le doigt. Marche sur une plaque ◇ pour lire ce qu'elle garde. ◐ inverse le noir et le blanc : la ligne cachée apparaît. ↻ redessine les détails au hasard. Le passage à droite du hall mène à la bibliothèque.</p>
       <ul id="hist"></ul>
       <button id="infoClose">Fermer</button>
       <a href="../" style="color:#8e8c85;font-size:0.8rem">← Portfolio</a>
@@ -90,6 +97,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v5", text: "Deuxième salle à droite : une bibliothèque (étagères pleines de livres autour d'une fenêtre en arc sous la lune, parquet, tapis rond, table de lecture avec livre ouvert et bougie, bibliothèques basses le long des murs, piles de livres, feuilles éparses, échelle), reliée au hall par un passage. Le personnage se dirige aussi en gardant le doigt appuyé : il suit le doigt. Il ne traverse plus colonnes et meubles. Au repos, il respire, puis se tourne vers nous et danse un peu. Une seule version du dessin, la plus dense (boutons A / B et i retirés — l'historique s'ouvre en touchant l'étiquette en haut à gauche). Trait encore plus à la main : lignes qui ondulent et ne sont jamais droites, coins jamais d'équerre, crasse, usure, griffures et hachures croisées par endroits. Les plaques ne montrent plus que le nom de la formule (ex. « Formule d'Euler pour cos x ») ; en mode noir (◐), la formule apparaît, tracée à la plume — lettres de travers, pression qui varie, taches et coulures d'encre, vraies barres de fraction." },
         { v: "v4", text: "Retour au personnage de la v2 (robe longue, tête nue à deux pointes), demande de Pierre. La coupe au carré et le ras-de-cou de la v3 sont retirés." },
         { v: "v3", text: "Le personnage change de tenue : robe raccourcie (on voit les jambes), coupe au carré noire avec frange droite et reflets en traits blancs, et un ras-de-cou noir, à la manière de Mathilda dans Léon. Il garde ses deux pointes, qui sortent des cheveux." },
         { v: "v2", text: "Variante B (sobre) par défaut, choisie par Pierre. Dessin plus « fait main » : traits au pinceau effilés aux deux bouts qui débordent aux coins, joints de dalles qui ploient, hachures irrégulières, éclaboussures d'encre, pinceau sec au bord des masses noires, fibres du papier. Le personnage devient un vrai modèle 3D rendu à l'encre — blanc à la lumière, trame de points dans la demi-teinte, hachures dans l'ombre, contour noir — qui se tourne vers où il va et marche (jambes, bras, tête qui balance)." },
@@ -104,7 +112,7 @@
       var scale = 1, dpr = 1, bg = null;
       var variant = "B", seed = 7, inverted = false;
       try { var st = JSON.parse(localStorage.getItem("palais_essai_v1") || "null"); if (st) { if (st.variant === "A") variant = "A"; if (Number.isInteger(st.seed)) seed = st.seed; } } catch (e) {}
-      function saveSt() { try { localStorage.setItem("palais_essai_v1", JSON.stringify({ variant: variant, seed: seed })); } catch (e) {} }
+      function saveSt() { try { localStorage.setItem("palais_essai_v1", JSON.stringify({ variant: variant, seed: seed, room: room })); } catch (e) {} }
 
       // Hasard reproductible : la même salle à chaque ouverture
       var rnd;
@@ -115,7 +123,7 @@
       function R(a, b) { return a + (b - a) * rnd(); }
 
       var PAPER = "#efede6", INK = "#141412";
-      var dense = function () { return variant === "A"; };
+      var dense = function () { return true; }; // une seule version : la plus dense
 
       // ---------- Outils d'encre ----------
       var g; // contexte de la planche
@@ -139,15 +147,21 @@
         var len = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / len, uy = (y2 - y1) / len;
         var o1 = w >= 1 ? R(0, 1.6) : R(0, 0.6), o2 = w >= 1 ? R(0, 1.6) : R(0, 0.6);
         x1 -= ux * o1; y1 -= uy * o1; x2 += ux * o2; y2 += uy * o2; len += o1 + o2;
-        var n = Math.max(3, Math.round(len / 5)), nx = -uy, ny = ux, j = jit === undefined ? 0.4 : jit, bow = R(-0.7, 0.7) * Math.min(1, len / 40);
+        var n = Math.max(3, Math.round(len / 5)), nx = -uy, ny = ux, j = jit === undefined ? 0.4 : jit, bow = R(-1.5, 1.5) * Math.min(1, len / 40);
+        // la main ne trace jamais droit : un ventre, une ondulation lente, un tremblé
+        var wav = R(0.2, 0.7) * Math.min(1, len / 30), wf = R(1.5, 3.5), wp = R(0, 6.28);
         var pts = [];
         for (var i = 0; i <= n; i++) {
-          var t = i / n, off = Math.sin(Math.PI * t) * bow + R(-j, j) * 0.6;
+          var t = i / n, off = Math.sin(Math.PI * t) * bow + Math.sin(t * wf * Math.PI + wp) * wav + R(-j, j) * 0.6;
           pts.push([x1 + (x2 - x1) * t + nx * off, y1 + (y2 - y1) * t + ny * off]);
         }
         brush(pts, w * 1.15);
       }
-      function jrect(x, y, w, h, lw, jit) { jline(x, y, x + w, y, lw, jit); jline(x + w, y, x + w, y + h, lw, jit); jline(x + w, y + h, x, y + h, lw, jit); jline(x, y + h, x, y, lw, jit); }
+      function jrect(x, y, w, h, lw, jit) {
+        // coins jamais tout à fait d'équerre
+        var k = Math.min(1.4, Math.min(w, h) * 0.06), a = [x + R(-k, k), y + R(-k, k)], b = [x + w + R(-k, k), y + R(-k, k)], c = [x + w + R(-k, k), y + h + R(-k, k)], d = [x + R(-k, k), y + h + R(-k, k)];
+        jline(a[0], a[1], b[0], b[1], lw, jit); jline(b[0], b[1], c[0], c[1], lw, jit); jline(c[0], c[1], d[0], d[1], lw, jit); jline(d[0], d[1], a[0], a[1], lw, jit);
+      }
       function stipple(x, y, w, h, n, rmax) {
         g.fillStyle = INK;
         for (var i = 0; i < n; i++) { g.beginPath(); g.arc(x + rnd() * w, y + rnd() * h, R(0.25, rmax || 0.8), 0, 7); g.fill(); }
@@ -194,11 +208,29 @@
       }
 
       // ---------- Éléments ----------
+      // Crasse et usure : amas de points, gribouillis, hachures croisées
+      function grime(x, y, w, h, n) {
+        for (var i = 0; i < n; i++) {
+          var cx = x + rnd() * w, cy = y + rnd() * h, r = R(3, 9), kind = rnd();
+          if (kind < 0.45) { // amas de points, plus dense au centre
+            g.fillStyle = INK;
+            for (var k = 0; k < 26; k++) { var a = R(0, 6.283), d = r * Math.pow(rnd(), 1.6); g.beginPath(); g.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, R(0.2, 0.65), 0, 7); g.fill(); }
+          } else if (kind < 0.75) { // hachures croisées en petite tache
+            var a2 = R(0.5, 1.1);
+            for (var q = -r; q < r; q += 1.8) {
+              jline(cx + q, cy - r * 0.5 + R(-1, 1), cx + q + r * Math.cos(a2) * 0.6, cy + r * 0.5 + R(-1, 1), 0.45, 0.15);
+              if (rnd() < 0.5) jline(cx - r * 0.5, cy + q * 0.6, cx + r * 0.5, cy + q * 0.6 + R(-1, 1), 0.4, 0.15);
+            }
+          } else { // gribouillis de griffures
+            for (var m = 0; m < 5; m++) { var sx = cx + R(-r, r), sy = cy + R(-r, r), ang = R(0, 6.283), L = R(2, 6); jline(sx, sy, sx + Math.cos(ang) * L, sy + Math.sin(ang) * L, 0.5, 0.2); }
+          }
+        }
+      }
       function floorTiles(x0, y0, x1, y1, s) {
         // dalles carrées, joints tremblés, quelques fissures, éclats et poussière
         g.strokeStyle = INK;
-        for (var x = x0; x <= x1 + 0.1; x += s) jline(x, y0, x, y1, 1.1, 0.6);
-        for (var y = y0; y <= y1 + 0.1; y += s) jline(x0, y, x1, y, 1.1, 0.6);
+        for (var x = x0; x <= x1 + 0.1; x += s) jline(x + R(-1.2, 1.2), y0, x + R(-1.2, 1.2), y1, R(0.9, 1.3), 0.7);
+        for (var y = y0; y <= y1 + 0.1; y += s) jline(x0, y + R(-1.2, 1.2), x1, y + R(-1.2, 1.2), R(0.9, 1.3), 0.7);
         for (var ty = y0; ty < y1 - 1; ty += s) for (var tx = x0; tx < x1 - 1; tx += s) {
           var r = rnd();
           if (r < 0.16) { // fissure
@@ -387,23 +419,65 @@
         }
       }
 
-      // ---------- La salle ----------
+      // ---------- Les salles ----------
       var FLOOR = { x0: 36, y0: 196, x1: 324, y1: 560 };
-      var PLATES = [
-        { x: 108, y: 312, who: "Le prof", txt: ["(uₙ) converge vers ℓ si :", "∀ε > 0, ∃N ∈ ℕ, ∀n ≥ N, |uₙ − ℓ| < ε"] },
-        { x: 252, y: 312, who: "Un élève", txt: ["« Une suite bornée converge-t-elle ? »", "Non : (−1)ⁿ est bornée et diverge."] },
-        { x: 180, y: 492, who: "Moi", txt: ["Inégalité triangulaire :", "|a + b| ≤ |a| + |b|"] }
+      var DOOR = { y0: 350, y1: 410 }; // passage entre les deux salles
+      var HALL_PLATES = [
+        { x: 108, y: 312, who: "Le prof", name: "Formule d'Euler pour cos x", f: [["cos x = ", { n: "eⁱˣ + e⁻ⁱˣ", d: "2" }]] },
+        { x: 252, y: 312, who: "Le prof", name: "Définition de la limite d'une suite", f: [["uₙ → ℓ  ⇔"], ["∀ε > 0, ∃N ∈ ℕ, ∀n ≥ N,"], ["|uₙ − ℓ| < ε"]] },
+        { x: 180, y: 492, who: "Moi", name: "Inégalité triangulaire", f: [["|a + b| ≤ |a| + |b|"]] }
       ];
+      var LIB_PLATES = [
+        { x: 98, y: 476, who: "Le livre", name: "Continuité de f en a", f: [[{ lim: "x → a" }, " f(x) = f(a)"]] },
+        { x: 240, y: 256, who: "Le prof", name: "Formule d'Euler pour sin x", f: [["sin x = ", { n: "eⁱˣ − e⁻ⁱˣ", d: "2i" }]] }
+      ];
+      var PLATES = HALL_PLATES;
       var TILE = 24;
+      var ROOMS = [
+        { name: "Hall", plates: HALL_PLATES, door: "right",
+          obstacles: [{ c: [84, 244, 17] }, { c: [276, 244, 17] }, { c: [84, 452, 17] }, { c: [276, 452, 17] }] },
+        { name: "Bibliothèque", plates: LIB_PLATES, door: "left",
+          obstacles: [{ r: [138, 366, 84, 50] }, { r: [164, 414, 32, 22] }, { r: [290, 212, 34, 330] }, { r: [36, 212, 34, 124] }, { r: [36, 424, 34, 118] }, { c: [92, 252, 13] }, { c: [262, 506, 13] }] }
+      ];
+      var room = 0;
+      try { var st2 = JSON.parse(localStorage.getItem("palais_essai_v1") || "null"); if (st2 && st2.room === 1) room = 1; } catch (e) {}
+      PLATES = ROOMS[room].plates;
 
       function drawRoom() {
-        seedRnd(seed);
+        seedRnd(seed + room * 101);
         g.lineCap = "round"; g.lineJoin = "round";
+        if (room === 1) drawLibrary(); else drawHall();
+      }
+      function paperBack() {
         // fond : papier gris, vignettage plus sombre sur les bords
         g.fillStyle = "#cfcdc6"; g.fillRect(0, 0, LW, LH);
         var vg = g.createRadialGradient(LW / 2, LH * 0.55, LH * 0.15, LW / 2, LH * 0.55, LH * 0.62);
         vg.addColorStop(0, "#e4e2db"); vg.addColorStop(1, "#77756f");
         g.fillStyle = vg; g.fillRect(0, 0, LW, LH);
+      }
+      function bottomEdge() {
+        g.fillStyle = INK; g.fillRect(0, 580, LW, LH - 580);
+        g.fillStyle = PAPER; g.fillRect(FLOOR.x0, FLOOR.y1, FLOOR.x1 - FLOOR.x0, 14);
+        jrect(FLOOR.x0, FLOOR.y1, FLOOR.x1 - FLOOR.x0, 14, 1.6, 0.3);
+        g.save(); g.beginPath(); g.rect(FLOOR.x0, FLOOR.y1 + 2, FLOOR.x1 - FLOOR.x0, 12); g.clip();
+        g.strokeStyle = INK; for (var x = FLOOR.x0; x < FLOOR.x1; x += 2.4) jline(x, FLOOR.y1 + 3, x, FLOOR.y1 + 13, 0.8, 0.1);
+        g.restore();
+      }
+      // Passage vers la salle voisine, percé dans le bord du sol
+      function doorway(side) {
+        var y0 = DOOR.y0, y1 = DOOR.y1, xa = side === "right" ? FLOOR.x1 - 13 : -2, xb = side === "right" ? LW + 2 : FLOOR.x0 + 13;
+        g.fillStyle = PAPER; g.fillRect(xa, y0, xb - xa, y1 - y0);
+        g.strokeStyle = INK;
+        for (var x = side === "right" ? FLOOR.x1 : FLOOR.x0; side === "right" ? x < LW : x > 0; x += side === "right" ? TILE : -TILE) jline(x, y0, x, y1, 1.1, 0.5);
+        jline(xa, y0 + (y1 - y0) / 2, xb, y0 + (y1 - y0) / 2, 1, 0.5);
+        jline(xa, y0, xb, y0, 2.4, 0.4); jline(xa, y1, xb, y1, 2.4, 0.4);
+        g.save(); g.beginPath(); g.rect(xa, y0 + 1, xb - xa, 9); g.clip(); hshadow(xa, y0 + 1, xb - xa, 9, "mid", 2.1); g.restore();
+        // bornes de pierre de part et d'autre
+        var bx = side === "right" ? FLOOR.x1 - 5 : FLOOR.x0 - 5;
+        [y0 - 8, y1].forEach(function (yy) { g.fillStyle = PAPER; g.fillRect(bx, yy, 10, 8); jrect(bx, yy, 10, 8, 1.8, 0.2); g.fillStyle = INK; g.fillRect(bx + 6, yy + 1, 3, 6); });
+      }
+      function drawHall() {
+        paperBack();
         // haut : masse noire (machinerie, ronces)
         g.fillStyle = INK; g.fillRect(0, 0, LW, 64);
         bramble(30, 40, 46, 4); bramble(330, 34, 46, 4);
@@ -416,6 +490,9 @@
         hshadow(FLOOR.x0 - 22, FLOOR.y0, 22, FLOOR.y1 - FLOOR.y0 + 16, "left", 2.3);
         hshadow(FLOOR.x1, FLOOR.y0, 22, FLOOR.y1 - FLOOR.y0 + 16, "right", 2.3);
         floorTiles(FLOOR.x0, FLOOR.y0, FLOOR.x1, FLOOR.y1, TILE);
+        grime(FLOOR.x0 + 4, FLOOR.y0 + 4, 40, FLOOR.y1 - FLOOR.y0 - 8, 9); grime(FLOOR.x1 - 44, FLOOR.y0 + 4, 40, FLOOR.y1 - FLOOR.y0 - 8, 9);
+        grime(FLOOR.x0 + 40, FLOOR.y0 + 4, FLOOR.x1 - FLOOR.x0 - 80, 30, 7); grime(FLOOR.x0 + 40, FLOOR.y1 - 40, FLOOR.x1 - FLOOR.x0 - 80, 36, 7);
+        grime(FLOOR.x0 + 30, FLOOR.y0 + 40, FLOOR.x1 - FLOOR.x0 - 60, FLOOR.y1 - FLOOR.y0 - 80, 8);
         jrect(FLOOR.x0, FLOOR.y0, FLOOR.x1 - FLOOR.x0, FLOOR.y1 - FLOOR.y0, 2.4, 0.4);
         // bandes à rayures le long des bords (comme le couloir de la capture)
         stripes(FLOOR.x0 + 2, FLOOR.y0 + 30, 10, FLOOR.y1 - FLOOR.y0 - 60);
@@ -425,6 +502,7 @@
         spiral(180, 404, 34);
         // mur du fond, vu de face
         brickWall(36, 74, 324, 196);
+        grime(40, 78, 280, 112, 10);
         niche(84, 104, 30, 70); niche(276, 104, 30, 70);
         archway(180, 92, 54, 196);
         // ombre du mur sur le sol
@@ -438,12 +516,8 @@
         PLATES.forEach(function (p) { plate(p.x, p.y, 30); });
         grate(180, 540, 30);
         // bas : marche, rebord et vide noir
-        g.fillStyle = INK; g.fillRect(0, 580, LW, LH - 580);
-        g.fillStyle = PAPER; g.fillRect(FLOOR.x0, FLOOR.y1, FLOOR.x1 - FLOOR.x0, 14);
-        jrect(FLOOR.x0, FLOOR.y1, FLOOR.x1 - FLOOR.x0, 14, 1.6, 0.3);
-        g.save(); g.beginPath(); g.rect(FLOOR.x0, FLOOR.y1 + 2, FLOOR.x1 - FLOOR.x0, 12); g.clip();
-        g.strokeStyle = INK; for (var x = FLOOR.x0; x < FLOOR.x1; x += 2.4) jline(x, FLOOR.y1 + 3, x, FLOOR.y1 + 13, 0.8, 0.1);
-        g.restore();
+        bottomEdge();
+        doorway("right");
         // ronces qui envahissent les coins et les bords
         dryBrush(18, 566, 40, 26); dryBrush(342, 570, 40, 26); dryBrush(180, 620, 52, 30); dryBrush(16, 210, 32, 16); dryBrush(344, 220, 32, 16);
         bramble(16, 210, 34, 3); bramble(344, 220, 34, 3);
@@ -454,6 +528,171 @@
         // éclaboussures d'encre et grain du papier
         for (var sp = 0; sp < (dense() ? 9 : 5); sp++) splat(R(40, 320), R(200, 556), R(0.8, 2));
         splat(30, 250, 2.4); splat(334, 470, 2.2);
+        paper();
+      }
+      // ---------- La bibliothèque ----------
+      function planks(x0, y0, x1, y1) {
+        // parquet à lames verticales, joints décalés, veinures
+        g.strokeStyle = INK;
+        for (var x = x0; x <= x1 + 0.1; x += 16) jline(x + R(-1, 1), y0, x + R(-1, 1), y1, R(0.9, 1.3), 0.6);
+        for (var px = x0; px < x1 - 1; px += 16) {
+          var y = y0 + R(0, 60);
+          while (y < y1 - 4) { jline(px, y, px + 16, y, 1, 0.2); y += R(50, 90); }
+          for (var v = 0; v < 6; v++) {
+            var vy = R(y0 + 4, y1 - 20), vx = px + R(4, 12), L = R(12, 40);
+            brush([[vx, vy], [vx + R(-1.5, 1.5), vy + L / 3], [vx + R(-1.5, 1.5), vy + L * 2 / 3], [vx, vy + L]], R(0.35, 0.6));
+          }
+          if (rnd() < 0.5) { g.fillStyle = INK; g.beginPath(); g.ellipse(px + 8, R(y0 + 10, y1 - 10), 1.6, 2.6, 0, 0, 7); g.fill(); }
+        }
+      }
+      function shelfRow(x0, x1, yTop, yBot) {
+        // une étagère vue de face : livres serrés, quelques-uns couchés
+        var x = x0 + 1, hgt = yBot - yTop;
+        while (x < x1 - 3) {
+          var w = R(3.5, 7.5), h = hgt * R(0.62, 0.95), r = rnd();
+          if (x + w > x1 - 1) break;
+          if (r < 0.06) { x += R(3, 8); continue; } // trou
+          if (r < 0.12 && x + 22 < x1) { // pile couchée
+            for (var k = 0; k < 3; k++) { var lw = R(16, 22), yy = yBot - (k + 1) * 3.6; g.fillStyle = k % 2 ? INK : PAPER; g.fillRect(x, yy, lw, 3.4); jrect(x, yy, lw, 3.4, 0.7, 0.1); }
+            x += 24; continue;
+          }
+          var y = yBot - h;
+          if (r < 0.34) { g.fillStyle = INK; g.fillRect(x, y, w, h); g.strokeStyle = PAPER; jline(x + 1, y + h * 0.2, x + w - 1, y + h * 0.2, 0.6, 0.05); jline(x + 1, y + h * 0.75, x + w - 1, y + h * 0.75, 0.6, 0.05); g.strokeStyle = INK; }
+          else {
+            g.fillStyle = PAPER; g.fillRect(x, y, w, h); jrect(x, y, w, h, 0.9, 0.15);
+            if (r < 0.55) { g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); for (var hy = y - w; hy < yBot; hy += 2.2) jline(x, hy + w, x + w, hy, 0.5, 0.05); g.restore(); }
+            else { jline(x + 1, y + 3, x + w - 1, y + 3, 0.6, 0.05); jline(x + 1, yBot - 4, x + w - 1, yBot - 4, 0.6, 0.05); }
+          }
+          x += w + R(0, 0.6);
+        }
+        jline(x0 - 2, yBot + 0.5, x1 + 2, yBot + 0.5, 2.6, 0.3);
+      }
+      function archWindow(cx, top, w, bottom) {
+        var r = w / 2, sy = top + r;
+        g.fillStyle = PAPER; g.beginPath(); g.moveTo(cx - r - 8, bottom); g.lineTo(cx - r - 8, sy); g.arc(cx, sy, r + 8, Math.PI, 0); g.lineTo(cx + r + 8, bottom); g.closePath(); g.fill();
+        g.strokeStyle = INK; g.lineWidth = 1.8; g.stroke();
+        g.fillStyle = INK; g.beginPath(); g.moveTo(cx - r, bottom); g.lineTo(cx - r, sy); g.arc(cx, sy, r, Math.PI, 0); g.lineTo(cx + r, bottom); g.closePath(); g.fill();
+        g.save(); g.clip();
+        // ciel : lune en croissant, étoiles
+        g.fillStyle = PAPER; g.beginPath(); g.arc(cx + 8, sy + 2, 11, 0, 7); g.fill();
+        g.fillStyle = INK; g.beginPath(); g.arc(cx + 13, sy - 1, 10, 0, 7); g.fill();
+        g.fillStyle = PAPER; for (var i = 0; i < 18; i++) { g.beginPath(); g.arc(cx + R(-r, r), R(top, bottom), R(0.3, 0.9), 0, 7); g.fill(); }
+        // vitrail : réseau de plomb
+        g.strokeStyle = PAPER;
+        for (var x = cx - r; x <= cx + r; x += w / 4) jline(x, top, x, bottom, 0.9, 0.1);
+        for (var y = sy; y < bottom; y += 13) jline(cx - r, y, cx + r, y, 0.9, 0.1);
+        g.restore(); g.strokeStyle = INK;
+        jline(cx - r - 10, bottom - 1, cx + r + 10, bottom - 1, 3, 0.2);
+      }
+      function bookcaseTop(x, y, w, h) {
+        // bibliothèque basse vue de dessus : tranches des livres alignées
+        g.save(); g.beginPath(); g.rect(x - 14, y, 14, h); g.clip(); hshadow(x - 14, y, 14, h, "left", 2.2); g.restore();
+        g.fillStyle = PAPER; g.fillRect(x, y, w, h); jrect(x, y, w, h, 2.2, 0.3); jrect(x + 3, y + 3, w - 6, h - 6, 0.8, 0.2);
+        var yy = y + 4;
+        while (yy < y + h - 6) {
+          var bh = R(3, 6), bw = (w - 8) * R(0.55, 0.95), r = rnd();
+          if (r < 0.3) { g.fillStyle = INK; g.fillRect(x + 4, yy, bw, bh); } else jrect(x + 4, yy, bw, bh, 0.7, 0.1);
+          yy += bh + R(0.4, 1.2);
+        }
+      }
+      function bookStack(cx, cy) {
+        for (var k = 0; k < 4; k++) {
+          g.save(); g.translate(cx + R(-2, 2), cy - k * 2.5); g.rotate(R(-0.35, 0.35));
+          g.fillStyle = k % 2 ? INK : PAPER; g.fillRect(-11, -8, 22, 16); jrect(-11, -8, 22, 16, 1.2, 0.2);
+          if (k % 2 === 0) { jline(-9, -5, 9, -5, 0.6, 0.1); }
+          g.restore();
+        }
+      }
+      function page(cx, cy, a) {
+        g.save(); g.translate(cx, cy); g.rotate(a);
+        g.fillStyle = PAPER; g.fillRect(-8, -10, 16, 20); jrect(-8, -10, 16, 20, 0.9, 0.2);
+        for (var y = -6; y < 8; y += 2.6) jline(-5, y, R(0, 5), y, 0.45, 0.05);
+        g.restore();
+      }
+      function rug(cx, cy, rx, ry) {
+        g.fillStyle = PAPER; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.fill();
+        g.strokeStyle = INK; g.lineWidth = 2.4; g.beginPath(); g.ellipse(cx, cy, rx, ry, 0, 0, 7); g.stroke();
+        g.lineWidth = 1; g.beginPath(); g.ellipse(cx, cy, rx - 6, ry - 6, 0, 0, 7); g.stroke();
+        g.beginPath(); g.ellipse(cx, cy, rx - 16, ry - 14, 0, 0, 7); g.stroke();
+        for (var a = 0; a < 6.283; a += 0.21) {
+          var c = Math.cos(a), sn = Math.sin(a);
+          jline(cx + c * (rx - 6), cy + sn * (ry - 6), cx + c * (rx - 16), cy + sn * (ry - 14), 0.8, 0.1);
+          jline(cx + c * rx, cy + sn * ry, cx + c * (rx + 5), cy + sn * (ry + 5), 0.7, 0.2); // franges
+        }
+        g.save(); g.beginPath(); g.ellipse(cx, cy, rx - 16, ry - 14, 0, 0, 7); g.clip();
+        for (var y = cy - ry; y < cy + ry; y += 2.6) jline(cx - rx, y, cx + rx, y + R(-0.3, 0.3), 0.45, 0.1);
+        g.restore();
+      }
+      function readingTable(x, y, w, h) {
+        g.save(); g.beginPath(); g.rect(x + w, y + 4, 16, h + 4); g.clip(); hshadow(x + w, y + 4, 16, h + 2, "right", 2.1); g.restore();
+        g.save(); g.beginPath(); g.rect(x + 4, y + h, w, 8); g.clip(); hshadow(x + 4, y + h, w, 8, "mid", 2.1); g.restore();
+        g.fillStyle = PAPER; g.fillRect(x, y, w, h); jrect(x, y, w, h, 2.4, 0.3); jrect(x + 4, y + 4, w - 8, h - 8, 0.8, 0.2);
+        // livre ouvert, vu de dessus
+        var bx = x + w / 2 - 8, by = y + h / 2;
+        g.fillStyle = PAPER; g.beginPath(); g.moveTo(bx, by - 11); g.lineTo(bx - 20, by - 13); g.lineTo(bx - 20, by + 11); g.lineTo(bx, by + 13); g.lineTo(bx + 20, by + 11); g.lineTo(bx + 20, by - 13); g.closePath(); g.fill();
+        g.strokeStyle = INK; g.lineWidth = 1.6; g.stroke();
+        jline(bx, by - 11, bx, by + 13, 1.2, 0.1);
+        for (var k = 0; k < 5; k++) { var ly = by - 8 + k * 4; jline(bx - 17, ly - 1, bx - 3, ly, 0.5, 0.05); jline(bx + 3, ly, bx + 17, ly - 1, 0.5, 0.05); }
+        // bougie : coupelle, cire, flamme noire
+        var cx = x + w - 13, cy = y + 12;
+        g.fillStyle = PAPER; g.beginPath(); g.arc(cx, cy, 6.5, 0, 7); g.fill(); g.lineWidth = 1.4; g.stroke();
+        g.beginPath(); g.arc(cx, cy, 3, 0, 7); g.stroke();
+        g.fillStyle = INK; g.beginPath(); g.moveTo(cx, cy - 9); g.quadraticCurveTo(cx + 3, cy - 3, cx, cy - 1); g.quadraticCurveTo(cx - 3, cy - 3, cx, cy - 9); g.fill();
+        splat(cx + 7, cy + 6, 1.1);
+      }
+      function chair(x, y, w, h) {
+        g.fillStyle = PAPER; g.fillRect(x, y, w, h); jrect(x, y, w, h, 1.8, 0.2);
+        g.fillStyle = INK; g.fillRect(x, y + h - 5, w, 5);
+        g.save(); g.beginPath(); g.rect(x + 2, y + 2, w - 4, h - 8); g.clip(); for (var yy = y; yy < y + h; yy += 2.3) jline(x, yy, x + w, yy, 0.45, 0.05); g.restore();
+      }
+      function ladder(x0, y0, x1, y1) {
+        var dx = x1 - x0, dy = y1 - y0, L = Math.hypot(dx, dy), nx = -dy / L * 5, ny = dx / L * 5;
+        jline(x0 + nx, y0 + ny, x1 + nx, y1 + ny, 1.8, 0.2); jline(x0 - nx, y0 - ny, x1 - nx, y1 - ny, 1.8, 0.2);
+        for (var t = 0.06; t < 1; t += 0.1) jline(x0 + dx * t + nx, y0 + dy * t + ny, x0 + dx * t - nx, y0 + dy * t - ny, 1.1, 0.1);
+      }
+      function drawLibrary() {
+        paperBack();
+        // haut : poutres noires et chaînes de lustre
+        g.fillStyle = INK; g.fillRect(0, 0, LW, 64);
+        bramble(22, 36, 40, 3); bramble(340, 30, 40, 3);
+        pipe([[-10, 30], [100, 30], [100, 52], [260, 52], [260, 30], [370, 30]], 7);
+        // sol : parquet
+        g.fillStyle = PAPER; g.fillRect(FLOOR.x0, FLOOR.y0, FLOOR.x1 - FLOOR.x0, FLOOR.y1 - FLOOR.y0);
+        g.strokeStyle = INK;
+        hshadow(FLOOR.x0 - 22, FLOOR.y0, 22, FLOOR.y1 - FLOOR.y0 + 16, "left", 2.3);
+        hshadow(FLOOR.x1, FLOOR.y0, 22, FLOOR.y1 - FLOOR.y0 + 16, "right", 2.3);
+        planks(FLOOR.x0, FLOOR.y0, FLOOR.x1, FLOOR.y1);
+        grime(FLOOR.x0 + 4, FLOOR.y0 + 4, FLOOR.x1 - FLOOR.x0 - 8, FLOOR.y1 - FLOOR.y0 - 8, 22);
+        jrect(FLOOR.x0, FLOOR.y0, FLOOR.x1 - FLOOR.x0, FLOOR.y1 - FLOOR.y0, 2.4, 0.4);
+        // mur du fond : rayonnages pleins autour d'une fenêtre en arc
+        g.fillStyle = PAPER; g.fillRect(36, 74, 288, 122);
+        g.fillStyle = PAPER; g.fillRect(30, 64, 300, 10); jrect(30, 64, 300, 10, 1.8, 0.3);
+        for (var dx = 34; dx < 328; dx += 7) jline(dx, 68, dx, 73, 1, 0.1);
+        [[40, 146], [214, 320]].forEach(function (span) {
+          shelfRow(span[0], span[1], 78, 112); shelfRow(span[0], span[1], 116, 152); shelfRow(span[0], span[1], 156, 192);
+          jline(span[0] - 2, 74, span[0] - 2, 196, 3, 0.3); jline(span[1] + 2, 74, span[1] + 2, 196, 3, 0.3);
+        });
+        archWindow(180, 82, 48, 194);
+        jrect(36, 74, 288, 122, 2.4, 0.3);
+        g.save(); g.beginPath(); g.rect(FLOOR.x0, 196, FLOOR.x1 - FLOOR.x0, 16); g.clip();
+        hshadow(FLOOR.x0, 197, FLOOR.x1 - FLOOR.x0, 14, "mid", 2.1); g.restore();
+        // mobilier
+        rug(180, 392, 92, 66);
+        bookcaseTop(290, 212, 34, 330);
+        bookcaseTop(36, 212, 34, 124); bookcaseTop(36, 424, 34, 118);
+        ladder(278, 236, 266, 330);
+        readingTable(138, 366, 84, 50);
+        chair(164, 414, 32, 22);
+        bookStack(92, 252); bookStack(262, 506);
+        page(124, 520, 0.4); page(230, 330, -0.5); page(206, 548, 0.9); page(70, 372, -0.2);
+        LIB_PLATES.forEach(function (p) { plate(p.x, p.y, 30); });
+        bottomEdge();
+        doorway("left");
+        // ronces, plus discrètes ici
+        dryBrush(342, 570, 40, 24); dryBrush(20, 572, 36, 20); dryBrush(180, 622, 50, 26);
+        bramble(342, 570, 40, 5); bramble(20, 572, 36, 4); bramble(180, 622, 50, 6);
+        thornStem([[360, 300], [340, 330], [350, 372], [328, 396]]);
+        for (var sp = 0; sp < 5; sp++) splat(R(80, 280), R(220, 550), R(0.8, 1.8));
         paper();
       }
       function stripes(x, y, w, h) {
@@ -571,10 +810,21 @@
         var target = hero.yawT === undefined ? 0 : hero.yawT, dyw = target - H3.yaw;
         while (dyw > Math.PI) dyw -= 2 * Math.PI; while (dyw < -Math.PI) dyw += 2 * Math.PI;
         H3.yaw += dyw * 0.25; H3.root.rotation.y = H3.yaw;
+        // au repos : respiration ; après quelques secondes, petite danse face à nous
+        var it = mv ? 0 : (hero.idle || 0), br = Math.sin(it * 2.3), ph = it % 14;
+        var dn = mv ? 0 : Math.min(1, Math.max(0, (ph - 5) / 0.6)) * Math.min(1, Math.max(0, (11 - ph) / 0.6));
+        if (dn > 0) hero.yawT = 0;
+        var beat = it * 5.2;
         H3.limbs[-1].hip.rotation.x = sw; H3.limbs[1].hip.rotation.x = -sw;
+        H3.limbs[-1].hip.rotation.z = -dn * 0.18 * Math.max(0, Math.sin(beat)); H3.limbs[1].hip.rotation.z = dn * 0.18 * Math.max(0, -Math.sin(beat));
         H3.limbs[-1].sh.rotation.x = -sw * 0.8; H3.limbs[1].sh.rotation.x = sw * 0.8;
-        H3.body.position.y = Math.abs(Math.cos(w * 11)) * 0.05 * mv;
-        H3.head.rotation.z = Math.sin(w * 5.5) * 0.08 * mv;
+        H3.limbs[-1].sh.rotation.z = -0.35 - dn * (1.1 + 0.35 * Math.sin(beat * 2));
+        H3.limbs[1].sh.rotation.z = 0.35 + dn * (1.1 + 0.35 * Math.sin(beat * 2 + Math.PI));
+        H3.body.position.y = Math.abs(Math.cos(w * 11)) * 0.05 * mv + dn * Math.abs(Math.sin(beat)) * 0.07;
+        H3.body.scale.set(1 - br * 0.012 * (1 - dn), 1 + br * 0.025 * (1 - dn), 1);
+        H3.root.rotation.z = dn * Math.sin(beat) * 0.12;
+        H3.head.rotation.z = Math.sin(w * 5.5) * 0.08 * mv + dn * Math.sin(beat + 0.6) * 0.18 + (1 - dn) * (mv ? 0 : br * 0.03);
+        H3.head.rotation.x = (mv ? 0 : -br * 0.03);
         H3.body.rotation.x = 0.12 * mv;
         H3.r.render(H3.scene, H3.cam);
         return H3.r.domElement;
@@ -619,16 +869,28 @@
       var running = false, last = 0;
       function kick() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(tick); } }
       function tick(now) {
-        var dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
+        var raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
         var dx = hero.tx - hero.x, dy = hero.ty - hero.y, d = Math.hypot(dx, dy), sp = 70 * dt;
-        hero.moving = d > 0.5;
+        hero.moving = d > 0.5 && !switching;
         if (hero.moving) {
-          var k = Math.min(1, sp / d); hero.x += dx * k; hero.y += dy * k; hero.walk += dt;
+          var k = Math.min(1, sp / d), nx = hero.x + dx * k, ny = hero.y + dy * k;
+          // glisser le long d'un obstacle plutôt que le traverser
+          if (!blocked(nx, ny)) { hero.x = nx; hero.y = ny; }
+          else if (!blocked(nx, hero.y)) hero.x = nx;
+          else if (!blocked(hero.x, ny)) hero.y = ny;
+          else { hero.tx = hero.x; hero.ty = hero.y; hero.moving = false; }
+          hero.walk += dt;
           if (Math.abs(dx) > 1) hero.face = dx > 0 ? 1 : -1;
           hero.yawT = Math.atan2(dx, dy);
           hero.puffT = (hero.puffT || 0) - dt;
           if (hero.puffT <= 0) { hero.puffT = 0.16; puffs.push({ x: hero.x + R(-6, 6), y: hero.y + 13, r: R(1.5, 2.6), life: 1 }); step(); }
         }
+        // temps de repos mesuré à l'horloge (la boucle de repos ne tourne qu'à ~30 i/s)
+        if (hero.moving || switching || hero.idleStart === undefined) hero.idleStart = now;
+        hero.idle = (now - hero.idleStart) / 1000;
+        // passage vers la salle voisine
+        var dr = ROOMS[room].door;
+        if (!switching && ((dr === "right" && hero.x > FLOOR.x1 + 8) || (dr === "left" && hero.x < FLOOR.x0 - 8))) changeRoom();
         // arrivé (ou presque) : la plaque sous les pieds parle
         if (Math.hypot(hero.tx - hero.x, hero.ty - hero.y) < 0.6) checkPlate(); else if (current >= 0) { current = -1; scrap.classList.remove("show"); }
         puffs.forEach(function (p) { p.r += dt * 6; p.y -= dt * 4; p.life -= dt * 1.6; });
@@ -637,6 +899,45 @@
         running = false;
         var turning = H3 && hero.yawT !== undefined && Math.abs(Math.atan2(Math.sin(hero.yawT - H3.yaw), Math.cos(hero.yawT - H3.yaw))) > 0.01;
         if (hero.moving || puffs.length || turning) kick();
+        // au repos : respiration et petite danse, à ~30 images/s seulement
+        else if (H3 && !document.hidden) { clearTimeout(idleTimer); idleTimer = setTimeout(kick, 33); }
+      }
+      var idleTimer = 0;
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) kick(); });
+
+      // ---------- Obstacles, cibles, passage d'une salle à l'autre ----------
+      function blocked(x, y) {
+        var obs = ROOMS[room].obstacles;
+        for (var i = 0; i < obs.length; i++) {
+          var o = obs[i];
+          if (o.c && Math.hypot(x - o.c[0], y - o.c[1]) < o.c[2] + 7) return true;
+          if (o.r && x > o.r[0] - 7 && x < o.r[0] + o.r[2] + 7 && y > o.r[1] - 4 && y < o.r[1] + o.r[3] + 6) return true;
+        }
+        return false;
+      }
+      function setTarget(x, y) {
+        var dr = ROOMS[room].door, inBand = y > DOOR.y0 + 8 && y < DOOR.y1 - 6;
+        if (dr === "right" && inBand && x > FLOOR.x1 - 16) { hero.tx = Math.min(LW + 4, x + 20); hero.ty = y; }
+        else if (dr === "left" && inBand && x < FLOOR.x0 + 16) { hero.tx = Math.max(-4, x - 20); hero.ty = y; }
+        else {
+          hero.tx = Math.max(FLOOR.x0 + 16, Math.min(FLOOR.x1 - 16, x));
+          hero.ty = Math.max(FLOOR.y0 + 22, Math.min(FLOOR.y1 - 8, y));
+        }
+      }
+      var switching = false;
+      function changeRoom() {
+        switching = true;
+        var fromRight = ROOMS[room].door === "right", yy = hero.y;
+        document.getElementById("fade").classList.add("on");
+        setTimeout(function () {
+          room = fromRight ? 1 : 0; PLATES = ROOMS[room].plates; saveSt();
+          current = -1; scrap.classList.remove("show");
+          hero.x = fromRight ? FLOOR.x0 - 2 : FLOOR.x1 + 2; hero.y = yy;
+          hero.tx = fromRight ? FLOOR.x0 + 30 : FLOOR.x1 - 30; hero.ty = yy;
+          puffs = []; refreshPad(); layout();
+          document.getElementById("fade").classList.remove("on");
+          switching = false; kick();
+        }, 200);
       }
 
       // ---------- Plaques : une phrase de cours ----------
@@ -654,14 +955,98 @@
       }
       function renderScrap() {
         if (current < 0) return;
-        var p = PLATES[current], box = document.getElementById("scrapTxt");
-        box.textContent = "";
-        p.txt.forEach(function (line, i) {
-          var d = document.createElement("div");
-          d.textContent = line;
-          // la dernière ligne reste cachée tant qu'on n'a pas inversé
-          if (i === p.txt.length - 1 && !inverted) d.className = "hid";
-          box.appendChild(d);
+        var p = PLATES[current];
+        document.getElementById("scrapName").textContent = p.name;
+        scrap.classList.toggle("ink", inverted);
+        if (inverted) quill(document.getElementById("scrapCv"), p.f, current + room * 7 + 1);
+      }
+
+      // ---------- Formule tracée à la plume ----------
+      // Chaque lettre un peu de travers (angle, ligne de base, taille), la
+      // pression de la plume qui varie, des taches et des coulures d'encre ;
+      // fractions à barre horizontale tracée d'un geste, « lim » et sa flèche.
+      var QFONT = '"Bradley Hand", "Snell Roundhand", "Segoe Script", "Apple Chancery", "Comic Sans MS", cursive';
+      function quill(canvas, lines, sd) {
+        var a = (sd * 2654435761 + 12345) >>> 0;
+        function rr(lo, hi) { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return lo + (hi - lo) * (((t ^ (t >>> 14)) >>> 0) / 4294967296); }
+        var cssW = Math.max(120, canvas.parentNode.clientWidth - 34), pr = Math.min(window.devicePixelRatio || 1, 3);
+        var FS = 30, lineH = FS * 1.7, fracH = FS * 2.7;
+        var c = canvas.getContext("2d");
+        function wText(t, fs) { c.font = "italic " + fs + "px " + QFONT; var w = 0; Array.from(t).forEach(function (ch) { w += c.measureText(ch).width * 1.04; }); return w; }
+        function wPart(pt) {
+          if (typeof pt === "string") return wText(pt, FS);
+          if (pt.n !== undefined) return Math.max(wText(pt.n, FS * 0.9), wText(pt.d, FS * 0.9)) + 16;
+          if (pt.lim !== undefined) return Math.max(wText("lim", FS), wText(pt.lim, FS * 0.55)) + 8;
+          return 0;
+        }
+        var widths = lines.map(function (ln) { return ln.reduce(function (s2, pt) { return s2 + wPart(pt); }, 0); });
+        var heights = lines.map(function (ln) { return ln.some(function (pt) { return typeof pt === "object"; }) ? fracH : lineH; });
+        var natW = Math.max.apply(null, widths) + 26, natH = heights.reduce(function (s2, h) { return s2 + h; }, 0) + 10;
+        var k = Math.min(1, cssW / natW);
+        canvas.width = Math.round(cssW * pr); canvas.height = Math.round(natH * k * pr);
+        canvas.style.height = (natH * k) + "px";
+        c.setTransform(pr * k, 0, 0, pr * k, 0, 0);
+        var INKC = "#f2f1ec";
+        c.fillStyle = INKC; c.strokeStyle = INKC; c.lineCap = "round"; c.lineJoin = "round"; c.textBaseline = "alphabetic";
+        function glyphs(t, x, y, fs) {
+          c.font = "italic " + fs + "px " + QFONT;
+          Array.from(t).forEach(function (ch) {
+            var w = c.measureText(ch).width;
+            if (ch !== " ") {
+              c.save(); c.translate(x + w / 2, y + rr(-fs * 0.05, fs * 0.05)); c.rotate(rr(-0.08, 0.08));
+              var sc = rr(0.92, 1.08); c.scale(sc, sc);
+              c.globalAlpha = rr(0.8, 1);
+              c.fillText(ch, -w / 2, 0);
+              // pression de la plume : un second passage décalé, parfois
+              if (rr(0, 1) < 0.55) { c.globalAlpha = 0.5; c.fillText(ch, -w / 2 + rr(0.3, 1), rr(-0.5, 0.5)); }
+              c.restore();
+              var r = rr(0, 1);
+              if (r < 0.07) { c.globalAlpha = 0.9; c.beginPath(); c.arc(x + w * rr(0.2, 0.9), y + rr(-fs * 0.5, fs * 0.15), rr(1.2, 2.8), 0, 7); c.fill(); }
+              else if (r < 0.1) {
+                c.globalAlpha = 0.7; c.lineWidth = rr(0.8, 1.4);
+                var dx = x + w * rr(0.3, 0.8), L = fs * rr(0.25, 0.5);
+                c.beginPath(); c.moveTo(dx, y + 2); c.quadraticCurveTo(dx + rr(-1, 1), y + L * 0.6, dx + rr(-1, 1), y + L); c.stroke();
+                c.beginPath(); c.arc(dx, y + L, 1.3, 0, 7); c.fill();
+              }
+              c.globalAlpha = 1;
+            }
+            x += w * 1.04;
+          });
+          return x;
+        }
+        function penLine(x1, y1, x2) {
+          // barre tracée d'un geste : appuyée au départ, qui ondule et s'allège
+          var n = 16, f = rr(1, 2), tilt = rr(-1.5, 1.5);
+          for (var i = 0; i < n; i++) {
+            var t0 = i / n, t1 = (i + 1) / n;
+            c.lineWidth = 2.8 - 1.6 * t0;
+            c.beginPath();
+            c.moveTo(x1 + (x2 - x1) * t0, y1 + Math.sin(t0 * Math.PI * f) * 1.1 + t0 * tilt);
+            c.lineTo(x1 + (x2 - x1) * t1, y1 + Math.sin(t1 * Math.PI * f) * 1.1 + t1 * tilt);
+            c.stroke();
+          }
+          c.beginPath(); c.arc(x1, y1, 1.7, 0, 7); c.fill();
+        }
+        var y = 4;
+        lines.forEach(function (ln, li) {
+          var h = heights[li], base = y + h / 2 + FS * 0.3, x = 12 + rr(-3, 3);
+          ln.forEach(function (pt) {
+            if (typeof pt === "string") { x = glyphs(pt, x, base + rr(-2, 2), FS); return; }
+            if (pt.n !== undefined) {
+              var fw = wPart(pt) - 8, nw = wText(pt.n, FS * 0.9), dw = wText(pt.d, FS * 0.9), mid = base - FS * 0.3;
+              glyphs(pt.n, x + (fw - nw) / 2, mid - FS * 0.3, FS * 0.9);
+              penLine(x - 2, mid, x + fw + 2);
+              glyphs(pt.d, x + (fw - dw) / 2, mid + FS * 0.95, FS * 0.9);
+              x += fw + 12; return;
+            }
+            if (pt.lim !== undefined) {
+              var lw = wPart(pt) - 8, l1 = wText("lim", FS), l2 = wText(pt.lim, FS * 0.55);
+              glyphs("lim", x + (lw - l1) / 2, base, FS);
+              glyphs(pt.lim, x + (lw - l2) / 2, base + FS * 0.62, FS * 0.55);
+              x += lw + 8;
+            }
+          });
+          y += h;
         });
       }
 
@@ -678,26 +1063,30 @@
       function chime() { blip(392, 0.8, 0.06); blip(587, 1, 0.05); }
 
       // ---------- Gestes ----------
-      cv.addEventListener("pointerdown", function (e) {
-        audio();
+      // Toucher : il va là. Garder le doigt appuyé et le déplacer : il suit le doigt.
+      var holding = null;
+      function aim(e) {
         var r = cv.getBoundingClientRect();
-        var x = (e.clientX - r.left) / r.width * LW, y = (e.clientY - r.top) / r.height * LH;
-        hero.tx = Math.max(FLOOR.x0 + 16, Math.min(FLOOR.x1 - 16, x));
-        hero.ty = Math.max(FLOOR.y0 + 22, Math.min(FLOOR.y1 - 8, y));
+        setTarget((e.clientX - r.left) / r.width * LW, (e.clientY - r.top) / r.height * LH);
         kick();
-      });
-      function refreshPad() {
-        document.getElementById("bVar").textContent = variant;
-        document.getElementById("bInv").className = "r" + (inverted ? " on" : "");
-        document.getElementById("lab").textContent = "ESSAI · " + VERSION + " · " + variant;
       }
-      document.getElementById("bVar").addEventListener("click", function () { variant = variant === "A" ? "B" : "A"; saveSt(); refreshPad(); layout(); });
+      cv.addEventListener("pointerdown", function (e) {
+        audio(); holding = e.pointerId;
+        try { cv.setPointerCapture(e.pointerId); } catch (er) {}
+        aim(e);
+      });
+      cv.addEventListener("pointermove", function (e) { if (holding === e.pointerId && !switching) aim(e); });
+      ["pointerup", "pointercancel"].forEach(function (ty) { cv.addEventListener(ty, function (e) { if (holding === e.pointerId) holding = null; }); });
+      function refreshPad() {
+        document.getElementById("bInv").className = "r" + (inverted ? " on" : "");
+        document.getElementById("lab").textContent = ROOMS[room].name.toUpperCase() + " · " + VERSION;
+      }
       document.getElementById("bRedo").addEventListener("click", function () { seed = (seed * 9301 + 49297) % 233280; saveSt(); layout(); });
       document.getElementById("bInv").addEventListener("click", function () {
         audio(); inverted = !inverted; cv.classList.toggle("inv", inverted); refreshPad(); renderScrap();
         blip(inverted ? 110 : 165, 0.5, 0.07, "triangle");
       });
-      document.getElementById("bInfo").addEventListener("click", function () {
+      document.getElementById("lab").addEventListener("click", function () {
         document.getElementById("ver").textContent = "VERSION " + VERSION;
         var ul = document.getElementById("hist"); ul.textContent = "";
         VERSIONS.forEach(function (v) { var li = document.createElement("li"), b = document.createElement("b"); b.textContent = v.v; li.appendChild(b); li.appendChild(document.createTextNode(v.text)); ul.appendChild(li); });
@@ -713,7 +1102,7 @@
       var rt = 0;
       window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(layout, 150); });
       makeHero3D();
-      refreshPad(); layout();
+      refreshPad(); layout(); kick();
       if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
     })();
   </script>
