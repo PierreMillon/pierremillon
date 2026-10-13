@@ -55,8 +55,10 @@
     /* en mode noir : la formule, tracée à la plume, blanc sur noir */
     .scrap.ink { background: #0e0e0d; color: #f2f1ec; border-color: #f2f1ec; box-shadow: 6px 6px 0 #f2f1ec; }
     .scrap.ink small { color: #9a988f; }
-    .scrap.ink .name, .scrap.ink .hint { display: none; }
     .scrap.ink canvas { display: block; }
+    .scrap.book.show { pointer-events: auto; cursor: pointer; }
+    .scrap.ink .hint { display: block; color: #9a988f; }
+    .scrap.ink .name { display: none; }
     .overlay {
       position: absolute; inset: 0; background: rgba(12, 12, 11, 0.95); display: flex; flex-direction: column;
       align-items: center; justify-content: center; gap: 12px; padding: 24px 18px; text-align: center;
@@ -76,7 +78,7 @@
     <canvas id="cv"></canvas>
     <div id="fade"></div>
     <div class="lab" id="lab"></div>
-    <div class="scrap" id="scrap"><small id="scrapWho"></small><div class="name" id="scrapName"></div><div class="hint">◐ pour voir la formule</div><canvas id="scrapCv"></canvas></div>
+    <div class="scrap" id="scrap"><small id="scrapWho"></small><div class="name" id="scrapName"></div><div class="hint" id="scrapHint">◐ pour voir la formule</div><canvas id="scrapCv"></canvas></div>
     <div class="pad">
       <button class="r" id="bInv" aria-label="Inverser">◐</button>
       <button class="b" id="bRedo" aria-label="Redessiner">↻</button>
@@ -97,6 +99,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v6", text: "Entre le hall et la bibliothèque, un écran de couloir en S inversé : on entre en haut à gauche, on va vers la droite, on descend au milieu, puis on repart à droite en bas. Six cadres aux murs : en s'approchant, une question (« Dérivée d'un quotient ? ») ; en mode noir, la formule. Sur la table de la bibliothèque, le livre « L'héritage de Pythagore » : six pages, du théorème de Pythagore à e^(iπ) + 1 = 0, en touchant le papier pour tourner la page. Le personnage calcule son chemin et contourne colonnes, meubles et coudes." },
         { v: "v5", text: "Deuxième salle à droite : une bibliothèque (étagères pleines de livres autour d'une fenêtre en arc sous la lune, parquet, tapis rond, table de lecture avec livre ouvert et bougie, bibliothèques basses le long des murs, piles de livres, feuilles éparses, échelle), reliée au hall par un passage. Le personnage se dirige aussi en gardant le doigt appuyé : il suit le doigt. Il ne traverse plus colonnes et meubles. Au repos, il respire, puis se tourne vers nous et danse un peu. Une seule version du dessin, la plus dense (boutons A / B et i retirés — l'historique s'ouvre en touchant l'étiquette en haut à gauche). Trait encore plus à la main : lignes qui ondulent et ne sont jamais droites, coins jamais d'équerre, crasse, usure, griffures et hachures croisées par endroits. Les plaques ne montrent plus que le nom de la formule (ex. « Formule d'Euler pour cos x ») ; en mode noir (◐), la formule apparaît, tracée à la plume — lettres de travers, pression qui varie, taches et coulures d'encre, vraies barres de fraction." },
         { v: "v4", text: "Retour au personnage de la v2 (robe longue, tête nue à deux pointes), demande de Pierre. La coupe au carré et le ras-de-cou de la v3 sont retirés." },
         { v: "v3", text: "Le personnage change de tenue : robe raccourcie (on voit les jambes), coupe au carré noire avec frange droite et reflets en traits blancs, et un ras-de-cou noir, à la manière de Mathilda dans Léon. Il garde ses deux pointes, qui sortent des cheveux." },
@@ -431,22 +434,50 @@
         { x: 98, y: 476, who: "Le livre", name: "Continuité de f en a", f: [[{ lim: "x → a" }, " f(x) = f(a)"]] },
         { x: 240, y: 256, who: "Le prof", name: "Formule d'Euler pour sin x", f: [["sin x = ", { n: "eⁱˣ − e⁻ⁱˣ", d: "2i" }]] }
       ];
+      // Le livre de la table de lecture : de Pythagore à l'identité d'Euler
+      var PYTHAGORE = { title: "L'héritage de Pythagore", pages: [
+        { name: "Théorème de Pythagore (triangle rectangle, hypoténuse c)", f: [["a² + b² = c²"]] },
+        { name: "Sur le cercle unité : l'hypoténuse vaut 1", f: [["cos²θ + sin²θ = 1"]] },
+        { name: "Formule d'Euler", f: [["eⁱᶿ = cos θ + i sin θ"]] },
+        { name: "Le module de eⁱᶿ", f: [["|eⁱᶿ|² = cos²θ + sin²θ = 1"]] },
+        { name: "On prend θ = π", f: [["e", { s: "iπ" }, " = cos π + i sin π = −1"]] },
+        { name: "Identité d'Euler", f: [["e", { s: "iπ" }, " + 1 = 0"]] }
+      ] };
+      LIB_PLATES.push({ x: 180, y: 391, r: 64, who: "Le livre ouvert", book: PYTHAGORE });
+      // Couloir en S inversé : cadres aux murs, une question chacun
+      var CORRIDOR_FRAMES = [
+        { fx: 52, fy: 92, x: 52, y: 152, r: 30, who: "Un cadre", name: "Dérivée d'un produit ?", f: [["(uv)′ = u′v + uv′"]] },
+        { fx: 150, fy: 92, x: 150, y: 152, r: 30, who: "Un cadre", name: "Dérivée d'un quotient ?", f: [["(", { n: "u", d: "v" }, ")′ = ", { n: "u′v − uv′", d: "v²" }]] },
+        { side: "left", fx: 140, fy: 300, x: 164, y: 300, r: 30, who: "Un cadre", name: "Racines du trinôme ax² + bx + c (Δ > 0) ?", f: [["Δ = b² − 4ac"], ["x = ", { n: "−b ± √Δ", d: "2a" }]] },
+        { side: "right", fx: 214, fy: 372, x: 190, y: 372, r: 30, who: "Un cadre", name: "Somme des n premiers entiers ?", f: [["1 + 2 + … + n = ", { n: "n(n + 1)", d: "2" }]] },
+        { fx: 262, fy: 422, x: 262, y: 482, r: 30, who: "Un cadre", name: "Intégration par parties ?", f: [["∫ u′v = uv − ∫ uv′"]] },
+        { fx: 326, fy: 422, x: 326, y: 482, r: 30, who: "Un cadre", name: "Logarithme d'un produit ?", f: [["ln(ab) = ln a + ln b"]] }
+      ];
       var PLATES = HALL_PLATES;
       var TILE = 24;
+      var DY = (DOOR.y0 + DOOR.y1) / 2 + 2;
+      // areas : zones où les pieds peuvent aller ; exits : où l'on change d'écran
       var ROOMS = [
-        { name: "Hall", plates: HALL_PLATES, door: "right",
-          obstacles: [{ c: [84, 244, 17] }, { c: [276, 244, 17] }, { c: [84, 452, 17] }, { c: [276, 452, 17] }] },
-        { name: "Bibliothèque", plates: LIB_PLATES, door: "left",
-          obstacles: [{ r: [138, 366, 84, 50] }, { r: [164, 414, 32, 22] }, { r: [290, 212, 34, 330] }, { r: [36, 212, 34, 124] }, { r: [36, 424, 34, 118] }, { c: [92, 252, 13] }, { c: [262, 506, 13] }] }
+        { name: "Hall", plates: HALL_PLATES,
+          obstacles: [{ c: [84, 244, 17] }, { c: [276, 244, 17] }, { c: [84, 452, 17] }, { c: [276, 452, 17] }],
+          areas: [[FLOOR.x0 + 16, FLOOR.y0 + 22, FLOOR.x1 - 16, FLOOR.y1 - 8], [FLOOR.x1 - 20, DOOR.y0 + 12, LW, DOOR.y1 - 6]],
+          exits: [{ z: [FLOOR.x1 + 10, 0, LW + 9, LH], to: 2, at: [10, 156], go: [40, 156] }] },
+        { name: "Bibliothèque", plates: LIB_PLATES,
+          obstacles: [{ r: [138, 366, 84, 50] }, { r: [164, 414, 32, 22] }, { r: [290, 212, 34, 330] }, { r: [36, 212, 34, 124] }, { r: [36, 424, 34, 118] }, { c: [92, 252, 13] }, { c: [262, 506, 13] }],
+          areas: [[FLOOR.x0 + 16, FLOOR.y0 + 22, FLOOR.x1 - 16, FLOOR.y1 - 8], [0, DOOR.y0 + 12, FLOOR.x0 + 20, DOOR.y1 - 6]],
+          exits: [{ z: [-9, 0, FLOOR.x0 - 10, LH], to: 2, at: [LW - 10, 490], go: [LW - 40, 490] }] },
+        { name: "Couloir", plates: CORRIDOR_FRAMES, obstacles: [],
+          areas: [[0, 138, 204, 186], [150, 138, 204, 516], [150, 468, LW, 516]],
+          exits: [{ z: [-9, 0, 3, LH], to: 0, at: [FLOOR.x1 + 6, DY], go: [FLOOR.x1 - 30, DY] }, { z: [LW - 3, 0, LW + 9, LH], to: 1, at: [FLOOR.x0 - 6, DY], go: [FLOOR.x0 + 30, DY] }] }
       ];
       var room = 0;
-      try { var st2 = JSON.parse(localStorage.getItem("palais_essai_v1") || "null"); if (st2 && st2.room === 1) room = 1; } catch (e) {}
+      try { var st2 = JSON.parse(localStorage.getItem("palais_essai_v1") || "null"); if (st2 && (st2.room === 1 || st2.room === 2)) room = st2.room; } catch (e) {}
       PLATES = ROOMS[room].plates;
 
       function drawRoom() {
         seedRnd(seed + room * 101);
         g.lineCap = "round"; g.lineJoin = "round";
-        if (room === 1) drawLibrary(); else drawHall();
+        if (room === 1) drawLibrary(); else if (room === 2) drawCorridor(); else drawHall();
       }
       function paperBack() {
         // fond : papier gris, vignettage plus sombre sur les bords
@@ -695,6 +726,119 @@
         for (var sp = 0; sp < 5; sp++) splat(R(80, 280), R(220, 550), R(0.8, 1.8));
         paper();
       }
+      // ---------- Le couloir en S inversé ----------
+      function wallFront(x0, y0, x1, y1) {
+        // mur vu de face, en pierres taillées, corniche en haut
+        g.fillStyle = PAPER; g.fillRect(x0, y0, x1 - x0, y1 - y0);
+        g.strokeStyle = INK;
+        var row = 0;
+        for (var y = y0 + 2; y < y1 - 2; y += 10, row++) {
+          var x = x0 - (row % 2 ? 9 : 0);
+          while (x < x1) {
+            var w = R(16, 26), bx = Math.max(x0, x), bw = Math.min(x1, x + w) - bx;
+            if (bw > 3) {
+              jrect(bx + 0.8, y + 0.8, bw - 1.6, 8.4, 0.9, 0.35);
+              if (rnd() < 0.35) stipple(bx + 1, y + 1, bw - 2, 8, 12, 0.55);
+              if (rnd() < 0.12) { g.fillStyle = INK; g.fillRect(bx + 1, y + 1, bw - 2, 8); }
+            }
+            x += w;
+          }
+        }
+        g.fillStyle = PAPER; g.fillRect(x0 - 2, y0 - 8, x1 - x0 + 4, 8); jrect(x0 - 2, y0 - 8, x1 - x0 + 4, 8, 1.8, 0.3);
+        for (var dx = x0 + 3; dx < x1; dx += 7) jline(dx, y0 - 5, dx, y0 - 1, 0.9, 0.1);
+        jline(x0, y1, x1, y1, 2.4, 0.3);
+      }
+      function frameFront(cx, cy, w, h, motif) {
+        // cadre accroché au mur : ficelle, moulure, image à l'encre
+        jline(cx - w * 0.25, cy - h / 2, cx, cy - h / 2 - 9, 0.8, 0.1); jline(cx, cy - h / 2 - 9, cx + w * 0.25, cy - h / 2, 0.8, 0.1);
+        g.fillStyle = INK; g.beginPath(); g.arc(cx, cy - h / 2 - 9, 1.5, 0, 7); g.fill();
+        g.save(); g.beginPath(); g.rect(cx + w / 2, cy - h / 2 + 3, 5, h); g.clip(); hshadow(cx + w / 2, cy - h / 2 + 3, 5, h, "right", 1.8); g.restore();
+        g.fillStyle = PAPER; g.fillRect(cx - w / 2, cy - h / 2, w, h);
+        jrect(cx - w / 2, cy - h / 2, w, h, 2.4, 0.2); jrect(cx - w / 2 + 4, cy - h / 2 + 4, w - 8, h - 8, 1, 0.15);
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) { g.fillStyle = INK; g.beginPath(); g.arc(cx + c[0] * (w / 2 - 2), cy + c[1] * (h / 2 - 2), 2.2, 0, 7); g.fill(); });
+        var ix = cx - w / 2 + 6, iy = cy - h / 2 + 6, iw = w - 12, ih = h - 12;
+        g.save(); g.beginPath(); g.rect(ix, iy, iw, ih); g.clip();
+        if (motif === 0) { // spirale
+          g.lineWidth = 0.8; g.beginPath();
+          for (var a = 0; a < 18; a += 0.15) { var r = a * 0.6, px = cx + Math.cos(a) * r, py = cy + Math.sin(a) * r * 0.8; if (a === 0) g.moveTo(px, py); else g.lineTo(px, py); }
+          g.stroke();
+        } else if (motif === 1) { // profil de buste
+          g.fillStyle = INK; g.beginPath(); g.arc(cx, cy - 3, ih * 0.22, 0, 7); g.fill();
+          g.beginPath(); g.moveTo(cx - iw * 0.35, iy + ih); g.quadraticCurveTo(cx, cy + 2, cx + iw * 0.35, iy + ih); g.fill();
+        } else if (motif === 2) { // montagnes et lune
+          g.beginPath(); g.moveTo(ix, iy + ih * 0.8); g.lineTo(ix + iw * 0.35, iy + ih * 0.35); g.lineTo(ix + iw * 0.55, iy + ih * 0.6); g.lineTo(ix + iw * 0.75, iy + ih * 0.3); g.lineTo(ix + iw, iy + ih * 0.7); g.lineWidth = 1; g.stroke();
+          g.beginPath(); g.arc(ix + iw * 0.8, iy + ih * 0.2, 2.5, 0, 7); g.stroke();
+          for (var hy = iy + ih * 0.8; hy < iy + ih; hy += 1.8) jline(ix, hy, ix + iw, hy, 0.4, 0.05);
+        } else { // point d'interrogation
+          g.fillStyle = INK; g.font = "italic " + Math.round(ih * 0.8) + "px Georgia, serif"; g.textAlign = "center"; g.textBaseline = "middle";
+          g.fillText("?", cx, cy + 1); g.textAlign = "start"; g.textBaseline = "alphabetic";
+        }
+        g.restore();
+      }
+      function frameSide(x, cy, side) {
+        // cadre accroché au mur latéral, vu par la tranche
+        var w = 6, h = 34, x0 = side === "left" ? x - w + 1 : x - 1;
+        g.fillStyle = INK; g.fillRect(x0, cy - h / 2, w, h);
+        g.strokeStyle = PAPER; jline(x0 + w / 2, cy - h / 2 + 3, x0 + w / 2, cy + h / 2 - 3, 0.6, 0.1); g.strokeStyle = INK;
+        g.fillStyle = PAPER; g.beginPath(); g.arc(x0 + w / 2, cy, 1.4, 0, 7); g.fill();
+        // petit écriteau au sol devant le cadre
+        var px = side === "left" ? x + 10 : x - 10;
+        jline(px - 3, cy + 6, px + 3, cy + 6, 0.8, 0.1);
+      }
+      function drawCorridor() {
+        paperBack();
+        var A = [0, 118, 214, 192], B = [140, 118, 214, 522], C = [140, 448, LW, 522];
+        // masses : ronces et machinerie dans les zones vides
+        g.fillStyle = INK; g.fillRect(0, 0, LW, 62);
+        bramble(320, 30, 44, 4); bramble(26, 28, 40, 3);
+        pipe([[-10, 40], [120, 40], [120, 24], [260, 24], [260, 60], [300, 60], [300, 280], [370, 280]], 7);
+        hose(330, 300, 400, 13);
+        g.strokeStyle = INK;
+        // ombres portées tout autour du chemin (traits horizontaux)
+        hshadow(118, A[3], 22, B[3] - A[3] + 10, "left", 2.3);
+        hshadow(0, A[3], 140, 12, "mid", 2.2);
+        hshadow(B[2], 196, 22, C[1] - 196, "right", 2.3);
+        hshadow(C[0], C[3], C[2] - C[0], 14, "mid", 2.2);
+        // sol : dalles en losange avec un point noir aux croisements
+        g.save(); g.beginPath(); g.rect(A[0], A[1], A[2] - A[0], A[3] - A[1]); g.rect(B[0], B[1], B[2] - B[0], B[3] - B[1]); g.rect(C[0], C[1], C[2] - C[0], C[3] - C[1]); g.clip();
+        g.fillStyle = PAPER; g.fillRect(0, 100, LW, 440);
+        var S = 22;
+        for (var k = -40; k < 40; k++) { jline(k * S, 100, k * S + 440, 540, 0.9, 0.4); jline(k * S + 440, 100, k * S, 540, 0.9, 0.4); }
+        g.fillStyle = INK;
+        for (var yy = 100; yy < 540; yy += S / 2) for (var xx = (((yy - 100) / (S / 2)) % 2) * S / 2; xx < LW; xx += S) { g.beginPath(); g.arc(xx, yy, R(0.9, 1.6), 0, 7); g.fill(); }
+        grime(0, 118, LW, 410, 26);
+        g.restore();
+        // bandes à rayures le long des bords, comme dans Helix
+        function band(x, y, w, h, vertical) {
+          g.fillStyle = PAPER; g.fillRect(x, y, w, h); jrect(x, y, w, h, 1, 0.2); g.fillStyle = INK;
+          if (vertical) for (var t = y + 2; t < y + h - 3; t += 7) g.fillRect(x + 1.5, t, w - 3, 3.4);
+          else for (var t2 = x + 2; t2 < x + w - 3; t2 += 7) g.fillRect(t2, y + 1.5, 3.4, h - 3);
+        }
+        band(B[0] + 2, A[3] + 6, 9, B[3] - A[3] - 12, true);
+        band(B[2] - 11, A[1] + 30, 9, C[1] - A[1] - 30, true);
+        band(6, A[3] - 11, B[0] - 12, 9, false);
+        band(B[2] + 6, C[1] + 2, C[2] - B[2] - 12, 9, false);
+        // contour du chemin, au trait épais
+        [[A[0], A[1], A[2], A[1]], [A[2], A[1], B[2], C[1]], [B[2], C[1], C[2], C[1]], [C[2], C[3], B[0], C[3]], [B[0], C[3], B[0], A[3]], [B[0], A[3], A[0], A[3]]]
+          .forEach(function (l) { jline(l[0], l[1], l[2], l[3], 2.6, 0.35); });
+        // murs vus de face au-dessus des deux tronçons horizontaux
+        wallFront(0, 70, 214, 118);
+        wallFront(214, 400, LW, 448);
+        g.save(); g.beginPath(); g.rect(0, 118, 214, 12); g.clip(); hshadow(0, 119, 214, 11, "mid", 2.1); g.restore();
+        g.save(); g.beginPath(); g.rect(214, 448, 146, 12); g.clip(); hshadow(214, 449, 146, 11, "mid", 2.1); g.restore();
+        // cadres
+        CORRIDOR_FRAMES.forEach(function (f, i) {
+          if (f.side) frameSide(f.fx, f.fy, f.side);
+          else frameFront(f.fx, f.fy, 40, 34, i % 4);
+        });
+        // ronces dans les vides
+        dryBrush(56, 320, 50, 30); bramble(56, 320, 54, 6); bramble(70, 470, 46, 5); dryBrush(70, 470, 46, 24);
+        bramble(260, 600, 50, 5); bramble(60, 610, 46, 5); thornStem([[0, 380], [30, 400], [24, 440], [60, 470]]);
+        bramble(290, 190, 40, 4); dryBrush(290, 190, 40, 20); thornStem([[360, 330], [330, 350], [345, 380], [320, 396]]);
+        g.fillStyle = INK; g.fillRect(0, 590, LW, 50); bramble(180, 610, 60, 6);
+        for (var sp = 0; sp < 6; sp++) splat(R(150, 210), R(200, 440), R(0.8, 1.8));
+        paper();
+      }
       function stripes(x, y, w, h) {
         g.fillStyle = PAPER; g.fillRect(x, y, w, h);
         g.strokeStyle = INK; jrect(x, y, w, h, 1, 0.2);
@@ -702,7 +846,7 @@
       }
 
       // ---------- Personnage ----------
-      var hero = { x: 180, y: 520, tx: 180, ty: 520, face: 1, walk: 0 }, puffs = [];
+      var hero = { x: 180, y: 520, tx: 180, ty: 520, face: 1, walk: 0, path: [] }, puffs = [];
       function drawHero(c) {
         c.save(); c.translate(hero.x, hero.y); c.scale(1.6, 1.6);
         var x = 0, y = 0, bob = Math.sin(hero.walk * 9) * (hero.moving ? 1.2 : 0);
@@ -870,15 +1014,15 @@
       function kick() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(tick); } }
       function tick(now) {
         var raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
-        var dx = hero.tx - hero.x, dy = hero.ty - hero.y, d = Math.hypot(dx, dy), sp = 70 * dt;
-        hero.moving = d > 0.5 && !switching;
+        // suivre le chemin calculé, point par point
+        var sp = 70 * dt, dx = 0, dy = 0;
+        while (hero.path.length && sp > 0 && !switching) {
+          var wp = hero.path[0], ex = wp[0] - hero.x, ey = wp[1] - hero.y, ed = Math.hypot(ex, ey);
+          if (ed <= sp) { hero.x = wp[0]; hero.y = wp[1]; hero.path.shift(); sp -= ed; dx += ex; dy += ey; }
+          else { hero.x += ex / ed * sp; hero.y += ey / ed * sp; dx += ex; dy += ey; sp = 0; }
+        }
+        hero.moving = (dx !== 0 || dy !== 0) && !switching;
         if (hero.moving) {
-          var k = Math.min(1, sp / d), nx = hero.x + dx * k, ny = hero.y + dy * k;
-          // glisser le long d'un obstacle plutôt que le traverser
-          if (!blocked(nx, ny)) { hero.x = nx; hero.y = ny; }
-          else if (!blocked(nx, hero.y)) hero.x = nx;
-          else if (!blocked(hero.x, ny)) hero.y = ny;
-          else { hero.tx = hero.x; hero.ty = hero.y; hero.moving = false; }
           hero.walk += dt;
           if (Math.abs(dx) > 1) hero.face = dx > 0 ? 1 : -1;
           hero.yawT = Math.atan2(dx, dy);
@@ -888,11 +1032,10 @@
         // temps de repos mesuré à l'horloge (la boucle de repos ne tourne qu'à ~30 i/s)
         if (hero.moving || switching || hero.idleStart === undefined) hero.idleStart = now;
         hero.idle = (now - hero.idleStart) / 1000;
-        // passage vers la salle voisine
-        var dr = ROOMS[room].door;
-        if (!switching && ((dr === "right" && hero.x > FLOOR.x1 + 8) || (dr === "left" && hero.x < FLOOR.x0 - 8))) changeRoom();
-        // arrivé (ou presque) : la plaque sous les pieds parle
-        if (Math.hypot(hero.tx - hero.x, hero.ty - hero.y) < 0.6) checkPlate(); else if (current >= 0) { current = -1; scrap.classList.remove("show"); }
+        // passage vers l'écran voisin
+        if (!switching) ROOMS[room].exits.forEach(function (ex) { var z = ex.z; if (!switching && hero.x > z[0] && hero.x < z[2] && hero.y > z[1] && hero.y < z[3]) changeRoom(ex); });
+        // la plaque sous les pieds, le cadre ou le livre tout proche, parle
+        checkPlate();
         puffs.forEach(function (p) { p.r += dt * 6; p.y -= dt * 4; p.life -= dt * 1.6; });
         puffs = puffs.filter(function (p) { return p.life > 0; });
         draw();
@@ -906,7 +1049,13 @@
       document.addEventListener("visibilitychange", function () { if (!document.hidden) kick(); });
 
       // ---------- Obstacles, cibles, passage d'une salle à l'autre ----------
+      function inAreas(x, y) {
+        var a = ROOMS[room].areas;
+        for (var i = 0; i < a.length; i++) if (x >= a[i][0] && x <= a[i][2] && y >= a[i][1] && y <= a[i][3]) return true;
+        return false;
+      }
       function blocked(x, y) {
+        if (!inAreas(x, y)) return true;
         var obs = ROOMS[room].obstacles;
         for (var i = 0; i < obs.length; i++) {
           var o = obs[i];
@@ -915,26 +1064,74 @@
         }
         return false;
       }
+      // Grille de marche (cases de 6 unités) et chemin le plus court : on
+      // contourne colonnes, meubles et coudes du couloir sans s'y coller.
+      var CS = 6, GW = Math.ceil(LW / CS), GH = Math.ceil(LH / CS), grid = null, gridRoom = -1;
+      function buildGrid() {
+        grid = new Uint8Array(GW * GH);
+        for (var j = 0; j < GH; j++) for (var i = 0; i < GW; i++) grid[j * GW + i] = blocked(i * CS + CS / 2, j * CS + CS / 2) ? 0 : 1;
+        gridRoom = room;
+      }
+      function clearLine(x0, y0, x1, y1) {
+        var n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 2);
+        for (var i = 1; i <= n; i++) if (blocked(x0 + (x1 - x0) * i / n, y0 + (y1 - y0) * i / n)) return false;
+        return true;
+      }
       function setTarget(x, y) {
-        var dr = ROOMS[room].door, inBand = y > DOOR.y0 + 8 && y < DOOR.y1 - 6;
-        if (dr === "right" && inBand && x > FLOOR.x1 - 16) { hero.tx = Math.min(LW + 4, x + 20); hero.ty = y; }
-        else if (dr === "left" && inBand && x < FLOOR.x0 + 16) { hero.tx = Math.max(-4, x - 20); hero.ty = y; }
-        else {
-          hero.tx = Math.max(FLOOR.x0 + 16, Math.min(FLOOR.x1 - 16, x));
-          hero.ty = Math.max(FLOOR.y0 + 22, Math.min(FLOOR.y1 - 8, y));
+        if (gridRoom !== room) buildGrid();
+        // toucher près d'une sortie : on y va pour de bon (jusqu'au bord)
+        ROOMS[room].exits.forEach(function (ex) {
+          var z = ex.z;
+          if (x > z[0] - 18 && x < z[2] + 18 && y > z[1] && y < z[3]) x = z[2] < LW / 2 ? 1 : LW - 1;
+        });
+        var cell = function (px, py) { return [Math.max(0, Math.min(GW - 1, Math.floor(px / CS))), Math.max(0, Math.min(GH - 1, Math.floor(py / CS)))]; };
+        // case libre la plus proche du doigt
+        var t = cell(x, y), best = -1, bd = 1e9;
+        for (var k = 0; k < grid.length; k++) if (grid[k]) { var cx = k % GW, cy = (k / GW) | 0, dd = (cx - t[0]) * (cx - t[0]) + (cy - t[1]) * (cy - t[1]); if (dd < bd) { bd = dd; best = k; } }
+        if (best < 0) return;
+        var goal = best, st = cell(hero.x, hero.y), start = st[1] * GW + st[0];
+        if (!grid[start]) { // si l'on est un peu hors grille, partir de la case libre la plus proche
+          var b2 = -1, d2 = 1e9;
+          for (var m = 0; m < grid.length; m++) if (grid[m]) { var mx = m % GW, my = (m / GW) | 0, e2 = (mx - st[0]) * (mx - st[0]) + (my - st[1]) * (my - st[1]); if (e2 < d2) { d2 = e2; b2 = m; } }
+          start = b2;
         }
+        var prev = new Int32Array(grid.length).fill(-2), q = [start]; prev[start] = -1;
+        var N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+        for (var qi = 0; qi < q.length && prev[goal] === -2; qi++) {
+          var c = q[qi], ci = c % GW, cj = (c / GW) | 0;
+          for (var d = 0; d < 8; d++) {
+            var ni = ci + N8[d][0], nj = cj + N8[d][1];
+            if (ni < 0 || nj < 0 || ni >= GW || nj >= GH) continue;
+            var nk = nj * GW + ni;
+            if (!grid[nk] || prev[nk] !== -2) continue;
+            if (d >= 4 && (!grid[cj * GW + ni] || !grid[nj * GW + ci])) continue; // pas de coin coupé
+            prev[nk] = c; q.push(nk);
+          }
+        }
+        if (prev[goal] === -2) return;
+        var cells = [];
+        for (var p = goal; p !== -1; p = prev[p]) cells.unshift([(p % GW) * CS + CS / 2, ((p / GW) | 0) * CS + CS / 2]);
+        // la fin du chemin : le point exact du doigt s'il est libre
+        if (!blocked(x, y)) cells[cells.length - 1] = [x, y];
+        // lisser : sauter les points qu'on voit en ligne droite
+        var out = [], from = [hero.x, hero.y], i2 = 0;
+        while (i2 < cells.length) {
+          var j2 = cells.length - 1;
+          while (j2 > i2 && !clearLine(from[0], from[1], cells[j2][0], cells[j2][1])) j2--;
+          out.push(cells[j2]); from = cells[j2]; i2 = j2 + 1;
+        }
+        hero.path = out;
+        var last = out[out.length - 1]; hero.tx = last[0]; hero.ty = last[1];
       }
       var switching = false;
-      function changeRoom() {
-        switching = true;
-        var fromRight = ROOMS[room].door === "right", yy = hero.y;
+      function changeRoom(ex) {
+        switching = true; hero.path = [];
         document.getElementById("fade").classList.add("on");
         setTimeout(function () {
-          room = fromRight ? 1 : 0; PLATES = ROOMS[room].plates; saveSt();
+          room = ex.to; PLATES = ROOMS[room].plates; saveSt();
           current = -1; scrap.classList.remove("show");
-          hero.x = fromRight ? FLOOR.x0 - 2 : FLOOR.x1 + 2; hero.y = yy;
-          hero.tx = fromRight ? FLOOR.x0 + 30 : FLOOR.x1 - 30; hero.ty = yy;
-          puffs = []; refreshPad(); layout();
+          hero.x = ex.at[0]; hero.y = ex.at[1]; hero.path = [ex.go.slice()]; hero.tx = ex.go[0]; hero.ty = ex.go[1];
+          puffs = []; refreshPad(); layout(); buildGrid();
           document.getElementById("fade").classList.remove("on");
           switching = false; kick();
         }, 200);
@@ -944,22 +1141,37 @@
       var scrap = document.getElementById("scrap"), current = -1;
       function checkPlate() {
         var hit = -1;
-        PLATES.forEach(function (p, i) { if (Math.abs(hero.x - p.x) < 15 && Math.abs(hero.y - p.y) < 18) hit = i; });
+        PLATES.forEach(function (p, i) {
+          if (p.r ? Math.hypot(hero.x - p.x, hero.y - p.y) < p.r : (Math.abs(hero.x - p.x) < 15 && Math.abs(hero.y - p.y) < 18)) hit = i;
+        });
         if (hit === current) return;
         current = hit;
         if (hit < 0) { scrap.classList.remove("show"); return; }
         var p = PLATES[hit];
         document.getElementById("scrapWho").textContent = "— " + p.who;
+        bookPage = 0;
         renderScrap();
         scrap.classList.add("show"); chime();
       }
       function renderScrap() {
         if (current < 0) return;
-        var p = PLATES[current];
-        document.getElementById("scrapName").textContent = p.name;
+        var p = PLATES[current], name = p.name, f = p.f, hint = "◐ pour voir la formule";
+        if (p.book) {
+          var pg = p.book.pages[bookPage];
+          name = p.book.title + " — " + (bookPage + 1) + " / " + p.book.pages.length + " · " + pg.name; f = pg.f;
+          hint = "touche le papier pour tourner la page · ◐ pour voir la formule";
+        }
+        document.getElementById("scrapName").textContent = name;
+        document.getElementById("scrapHint").textContent = hint;
+        scrap.classList.toggle("book", !!p.book);
         scrap.classList.toggle("ink", inverted);
-        if (inverted) quill(document.getElementById("scrapCv"), p.f, current + room * 7 + 1);
+        if (inverted) quill(document.getElementById("scrapCv"), f, current * 13 + room * 7 + bookPage * 3 + 1);
       }
+      var bookPage = 0;
+      scrap.addEventListener("click", function () {
+        var p = PLATES[current]; if (!p || !p.book) return;
+        bookPage = (bookPage + 1) % p.book.pages.length; blip(880, 0.12, 0.03, "triangle"); renderScrap();
+      });
 
       // ---------- Formule tracée à la plume ----------
       // Chaque lettre un peu de travers (angle, ligne de base, taille), la
@@ -977,10 +1189,11 @@
           if (typeof pt === "string") return wText(pt, FS);
           if (pt.n !== undefined) return Math.max(wText(pt.n, FS * 0.9), wText(pt.d, FS * 0.9)) + 16;
           if (pt.lim !== undefined) return Math.max(wText("lim", FS), wText(pt.lim, FS * 0.55)) + 8;
+          if (pt.s !== undefined) return wText(pt.s, FS * 0.6) + 3;
           return 0;
         }
         var widths = lines.map(function (ln) { return ln.reduce(function (s2, pt) { return s2 + wPart(pt); }, 0); });
-        var heights = lines.map(function (ln) { return ln.some(function (pt) { return typeof pt === "object"; }) ? fracH : lineH; });
+        var heights = lines.map(function (ln) { return ln.some(function (pt) { return typeof pt === "object" && (pt.n !== undefined || pt.lim !== undefined); }) ? fracH : lineH; });
         var natW = Math.max.apply(null, widths) + 26, natH = heights.reduce(function (s2, h) { return s2 + h; }, 0) + 10;
         var k = Math.min(1, cssW / natW);
         canvas.width = Math.round(cssW * pr); canvas.height = Math.round(natH * k * pr);
@@ -1039,6 +1252,7 @@
               glyphs(pt.d, x + (fw - dw) / 2, mid + FS * 0.95, FS * 0.9);
               x += fw + 12; return;
             }
+            if (pt.s !== undefined) { x = glyphs(pt.s, x + 1, base - FS * 0.48, FS * 0.6) + 2; return; }
             if (pt.lim !== undefined) {
               var lw = wPart(pt) - 8, l1 = wText("lim", FS), l2 = wText(pt.lim, FS * 0.55);
               glyphs("lim", x + (lw - l1) / 2, base, FS);
@@ -1065,7 +1279,9 @@
       // ---------- Gestes ----------
       // Toucher : il va là. Garder le doigt appuyé et le déplacer : il suit le doigt.
       var holding = null;
-      function aim(e) {
+      var lastAim = 0;
+      function aim(e, force) {
+        var now = performance.now(); if (!force && now - lastAim < 60) return; lastAim = now;
         var r = cv.getBoundingClientRect();
         setTarget((e.clientX - r.left) / r.width * LW, (e.clientY - r.top) / r.height * LH);
         kick();
@@ -1073,7 +1289,7 @@
       cv.addEventListener("pointerdown", function (e) {
         audio(); holding = e.pointerId;
         try { cv.setPointerCapture(e.pointerId); } catch (er) {}
-        aim(e);
+        aim(e, true);
       });
       cv.addEventListener("pointermove", function (e) { if (holding === e.pointerId && !switching) aim(e); });
       ["pointerup", "pointercancel"].forEach(function (ty) { cv.addEventListener(ty, function (e) { if (holding === e.pointerId) holding = null; }); });
