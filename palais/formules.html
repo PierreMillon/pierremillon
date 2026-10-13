@@ -85,6 +85,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v3", text: "22 formules d'analyse en plus, tirées du cours (limites, continuité, dérivation, DL, intégrales, suites, séries) : 35 au total pour l'analyse." },
         { v: "v2", text: "Même style que le jeu : feuille de papier texturé aux bords déchirés, traits tirés à la règle (l'encre accumulée aux bouts), cases tracées à l'encre et cochées d'une croix, belle police, vraies fractions à barre, quelques taches d'encre dans les marges." },
         { v: "v1", text: "Liste des formules les plus importantes tirées des cours de Pierre (licence-math, exercices, fiches), à cocher ; le choix est gardé sur le téléphone, et « Copier le résultat » donne un texte à coller à Claude." }
       ];
@@ -143,6 +144,28 @@
         ["Analyse", "Croissances comparées", "lim(x→+∞) [ln x]/[x] = 0 ; lim(x→+∞) [eˣ]/[xⁿ] = +∞ ¶ ln x ≪ xᵃ ≪ eˣ (a > 0)", false],
         ["Analyse", "Série géométrique", "∑ ρⁿ converge ⇔ |ρ| < 1 ¶ et alors ∑ₙ₌₀^∞ ρⁿ = [1]/[1 − ρ]", false],
         ["Analyse", "Série de Riemann", "∑ [1]/[nᵅ] converge ⇔ α > 1", false],
+        ["Analyse", "Passage à la limite dans une inégalité", "f(x) ≤ g(x) près de a ⇒ lim f ≤ lim g ¶ (une inégalité stricte devient large : < devient ≤)", false],
+        ["Analyse", "Fonctions équivalentes", "f ∼ₐ g ⇔ lim(x→a) [f(x)]/[g(x)] = 1", false],
+        ["Analyse", "Théorème des bornes atteintes", "f continue sur un segment [a, b] ¶ ⇒ f est bornée et atteint son minimum et son maximum", false],
+        ["Analyse", "Dérivable implique continue", "f dérivable en a ⇒ f continue en a (réciproque fausse : |x| en 0)", false],
+        ["Analyse", "Arccos et arcsin", "arccos x + arcsin x = [π]/[2] pour x ∈ [−1, 1]", false],
+        ["Analyse", "Dérivée de arctan", "(arctan x)' = [1]/[1 + x²] sur ℝ", false],
+        ["Analyse", "Développement limité de eˣ à l'ordre n", "eˣ = 1 + x + [x²]/[2!] + … + [xⁿ]/[n!] + o(xⁿ)", false],
+        ["Analyse", "Développement limité à l'ordre 1", "f(x) = f(a) + f'(a)(x − a) + o(x − a)", false],
+        ["Analyse", "Relation de Chasles", "∫ de a à b + ∫ de b à c = ∫ de a à c (de f(t) dt)", false],
+        ["Analyse", "Changement de variable", "x = φ(t) : ∫ f(x) dx entre φ(a) et φ(b) ¶ = ∫ₐᵇ f(φ(t)) φ'(t) dt", false],
+        ["Analyse", "Deux primitives d'une même fonction", "F' = G' = f sur un intervalle I ⇒ F − G est constante sur I", false],
+        ["Analyse", "Théorème de convergence monotone", "suite croissante et majorée ⇒ converge ¶ suite décroissante et minorée ⇒ converge", false],
+        ["Analyse", "Limite d'une suite géométrique", "ρⁿ → 0 si |ρ| < 1 ; ρⁿ = 1 si ρ = 1 ¶ (ρⁿ) diverge sinon (ex. ρ = −1)", false],
+        ["Analyse", "Suites extraites (paire et impaire)", "u₂ₙ → l et u₂ₙ₊₁ → l ⇔ uₙ → l ¶ deux limites différentes ⇒ (uₙ) diverge", false],
+        ["Analyse", "Suites adjacentes", "(uₙ) croissante, (vₙ) décroissante, vₙ − uₙ → 0 ¶ ⇒ elles convergent vers la même limite", false],
+        ["Analyse", "Suites équivalentes et négligeables", "uₙ ∼ vₙ ⇔ [uₙ]/[vₙ] → 1 ; uₙ = o(vₙ) ⇔ [uₙ]/[vₙ] → 0", false],
+        ["Analyse", "Divergence grossière d'une série", "uₙ ne tend pas vers 0 ⇒ ∑ uₙ diverge ¶ (uₙ → 0 ne suffit pas : ∑ [1]/[n] diverge)", false],
+        ["Analyse", "Critère des séries alternées", "(aₙ) décroissante et aₙ → 0 ⇒ ∑ (−1)ⁿ aₙ converge", false],
+        ["Analyse", "Convergence absolue", "∑ |uₙ| converge ⇒ ∑ uₙ converge (réciproque fausse)", false],
+        ["Analyse", "Règle de d'Alembert", "uₙ > 0, [uₙ₊₁]/[uₙ] → L : ¶ L < 1 ⇒ converge ; L > 1 ⇒ diverge ; L = 1 : on ne sait pas", false],
+        ["Analyse", "Règle de Cauchy", "uₙ ≥ 0, ⁿ√uₙ → L : ¶ L < 1 ⇒ converge ; L > 1 ⇒ diverge ; L = 1 : on ne sait pas", false],
+        ["Analyse", "Comparaison de séries positives", "0 ≤ uₙ ≤ vₙ et ∑ vₙ converge ⇒ ∑ uₙ converge ¶ ∑ uₙ diverge ⇒ ∑ vₙ diverge", false],
         ["Probabilités", "Probabilité d'une réunion et du contraire", "P(A ∪ B) = P(A) + P(B) − P(A ∩ B) ¶ P(Ā) = 1 − P(A)", false],
         ["Probabilités", "Probabilité conditionnelle", "P(A | B) = [P(A ∩ B)]/[P(B)] (P(B) > 0)", false],
         ["Probabilités", "Indépendance de deux événements", "A, B indépendants ⇔ P(A ∩ B) = P(A) × P(B)", false],
