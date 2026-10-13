@@ -40,6 +40,8 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v8 — Joystick virtuel : apparaît là où l'on pose le doigt, direction et
+  vitesse selon le glissé ; simple touche = aller au point touché
 - [x] v7 — Écriture des formules nette (belle police), taches d'encre
   autour seulement, billets en papier abîmé ; textures pierre / papier,
   traits de structure à la règle, encre qui diffuse dans le papier ; les
