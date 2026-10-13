@@ -90,6 +90,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v4", text: "Retour au personnage de la v2 (robe longue, tête nue à deux pointes), demande de Pierre. La coupe au carré et le ras-de-cou de la v3 sont retirés." },
         { v: "v3", text: "Le personnage change de tenue : robe raccourcie (on voit les jambes), coupe au carré noire avec frange droite et reflets en traits blancs, et un ras-de-cou noir, à la manière de Mathilda dans Léon. Il garde ses deux pointes, qui sortent des cheveux." },
         { v: "v2", text: "Variante B (sobre) par défaut, choisie par Pierre. Dessin plus « fait main » : traits au pinceau effilés aux deux bouts qui débordent aux coins, joints de dalles qui ploient, hachures irrégulières, éclaboussures d'encre, pinceau sec au bord des masses noires, fibres du papier. Le personnage devient un vrai modèle 3D rendu à l'encre — blanc à la lumière, trame de points dans la demi-teinte, hachures dans l'ombre, contour noir — qui se tourne vers où il va et marche (jambes, bras, tête qui balance)." },
         { v: "v1", text: "Page d'essai du rendu, avant le jeu : une salle en portrait, vue de dessus avec le mur du fond vu de face, dessinée à l'encre par le code à la manière de Helix — dallage fissuré, plaques ◇, mur de briques à arche et niches, tuyaux à brides, gaine annelée, colonnes, spirale gravée, ronces à épines, ombres en traits horizontaux, voile gris et vignettage. Petite créature blanche qui marche avec des bouffées de fumée. Plaques ◇ : un bout de papier avec une phrase de cours ; ◐ inverse noir et blanc et révèle la ligne cachée. Variantes A (dense) et B (sobre), ↻ pour redessiner." }
@@ -503,7 +504,7 @@
           renderer.setPixelRatio(1); renderer.setSize(px, px, false); renderer.setClearColor(0x000000, 0);
           var scene = new THREE.Scene();
           var cam = new THREE.OrthographicCamera(-1.35, 1.35, 1.35, -1.35, 0.1, 30);
-          cam.position.set(0, 3.3, 4.6); cam.lookAt(0, 0.9, 0); cam.updateMatrixWorld(true);
+          cam.position.set(0, 3.3, 4.6); cam.lookAt(0, 0.8, 0); cam.updateMatrixWorld(true);
           var ink = new THREE.ShaderMaterial({
             uniforms: { uL: { value: new THREE.Vector3(-0.45, 0.75, 0.5).normalize() }, uS: { value: 1 } },
             vertexShader: "varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
@@ -536,26 +537,11 @@
           var root = new THREE.Group(); scene.add(root);
           var bodyG = new THREE.Group(); root.add(bodyG);
           // corps en cloche (petite cape)
-          var prof = [[0.0, 0.46], [0.3, 0.46], [0.38, 0.48], [0.36, 0.53], [0.3, 0.66], [0.22, 0.83], [0.14, 0.95], [0.0, 0.98]].map(function (q) { return new THREE.Vector2(q[0], q[1]); });
+          var prof = [[0.0, 0.22], [0.3, 0.22], [0.4, 0.24], [0.38, 0.3], [0.3, 0.55], [0.24, 0.8], [0.16, 0.95], [0.0, 0.98]].map(function (q) { return new THREE.Vector2(q[0], q[1]); });
           part(new THREE.LatheGeometry(prof, 28), null, bodyG);
           // tête ronde un peu écrasée, deux pointes
-          var head = new THREE.Group(); head.position.y = 1.56; head.rotation.x = -0.32; bodyG.add(head);
-          // cou et ras-de-cou noir (Mathilda, dans Léon)
-          var neck = part(new THREE.CylinderGeometry(0.075, 0.085, 0.34, 16), null, bodyG); neck.position.y = 1.1;
-          var choker = new THREE.Mesh(new THREE.TorusGeometry(0.098, 0.05, 10, 28), black);
-          choker.rotation.x = Math.PI / 2 + 0.2; choker.position.set(0, 1.03, 0.02); bodyG.add(choker);
+          var head = new THREE.Group(); head.position.y = 1.28; bodyG.add(head);
           var hm = part(new THREE.SphereGeometry(0.43, 32, 24), null, head); hm.scale.set(1.05, 0.9, 0.95);
-          // coupe au carré : calotte noire, frange droite au-dessus des yeux,
-          // côtés coupés net à hauteur de la mâchoire ; reflets en traits blancs
-          var hairMat = new THREE.ShaderMaterial({
-            side: THREE.DoubleSide,
-            vertexShader: "varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
-            fragmentShader: "varying vec3 vN; void main(){ float hl = step(0.5, vN.y) * step(vN.y, 0.66) * step(mod(gl_FragCoord.x * 0.9 + gl_FragCoord.y * 0.25, 4.0), 1.3); gl_FragColor = vec4(mix(vec3(0.07), vec3(0.96), hl), 1.0); }"
-          });
-          var gap = 2.0;
-          var hairTop = part(new THREE.SphereGeometry(0.47, 32, 16, 0, Math.PI * 2, 0, 1.17), hairMat, head);
-          var hairSide = part(new THREE.SphereGeometry(0.475, 32, 16, Math.PI / 2 + gap / 2, Math.PI * 2 - gap, 1.2, 0.95), hairMat, head);
-          [hairTop, hairSide].forEach(function (h) { h.scale.set(1.05, 0.92, 0.97); var o = new THREE.Mesh(h.geometry, outline); h.add(o); });
           [-1, 1].forEach(function (sd) {
             var ear = part(new THREE.ConeGeometry(0.15, 0.5, 18), null, head);
             ear.position.set(sd * 0.28, 0.38, -0.03); ear.rotation.z = -sd * 0.45;
@@ -567,8 +553,8 @@
           // bras et jambes (pivots aux épaules et aux hanches)
           var limbs = {};
           [-1, 1].forEach(function (sd) {
-            var hip = new THREE.Group(); hip.position.set(sd * 0.12, 0.5, 0); root.add(hip);
-            var leg = part(new THREE.CapsuleGeometry(0.072, 0.38, 6, 12), null, hip); leg.position.y = -0.26;
+            var hip = new THREE.Group(); hip.position.set(sd * 0.13, 0.3, 0); root.add(hip);
+            var leg = part(new THREE.CapsuleGeometry(0.075, 0.2, 6, 12), null, hip); leg.position.y = -0.18;
             var sh = new THREE.Group(); sh.position.set(sd * 0.27, 0.78, 0); bodyG.add(sh);
             var arm = part(new THREE.CapsuleGeometry(0.06, 0.24, 6, 12), null, sh); arm.position.y = -0.17; sh.rotation.z = sd * 0.35;
             limbs[sd] = { hip: hip, sh: sh };

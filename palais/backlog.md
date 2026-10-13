@@ -40,6 +40,7 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v4 — Retour au personnage de la v2 (demande de Pierre)
 - [x] v1 — Lien ajouté au menu du portfolio (demande de Pierre), groupe des jeux
 
 ## À faire
