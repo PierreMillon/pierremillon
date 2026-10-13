@@ -38,6 +38,8 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   éclaboussures, pinceau sec, fibres du papier) ; personnage en vrai 3D
   (three.js copié dans vendor/, rendu à l'encre : trame, hachures, contour),
   qui se tourne et marche
+- [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
+  à frange, ras-de-cou noir (demande de Pierre)
 - [x] v1 — Lien ajouté au menu du portfolio (demande de Pierre), groupe des jeux
 
 ## À faire
