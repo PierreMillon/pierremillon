@@ -1190,6 +1190,13 @@
     .rg-term.group .rg-box { border-color: var(--ink-soft); }
     .rg-term.group.sel .rg-box { border-color: var(--accent); }
 
+    /* Chapitre Exp / ln : une expression, trois réponses, le geste */
+    #expl { gap: 0.7rem; }
+    .expl-f { flex: 1 1 0; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center;
+      font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: clamp(1.4rem, 7vw, 2.1rem); line-height: 1.5; }
+    .expl-f sup, .venn-opts sup { font-size: 0.62em; }
+    .expl-why { min-height: 4.2em; }
+
     /* Chapitre Structures : un cercle (E, loi), ses propriétés dedans */
     #str { gap: 0.5rem; }
     .str-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; width: 100%; min-height: 6.4rem; align-content: flex-start; }
@@ -1638,6 +1645,13 @@
       <p class="sg-msg venn-msg" id="regMsg"></p>
     </section>
 
+    <section class="sg" id="expl" hidden>
+      <p class="venn-q" id="explQ"></p>
+      <div class="expl-f" id="explF"></div>
+      <p class="sg-msg venn-msg expl-why" id="explMsg"></p>
+      <div class="venn-opts" id="explOpts"></div>
+    </section>
+
     <section class="sg" id="str" hidden>
       <p class="venn-q" id="strQ"></p>
       <svg class="venn-svg" id="strSvg" viewBox="0 0 300 230" aria-label="Structure"></svg>
@@ -1728,6 +1742,7 @@
         { title: "Ensembles", custom: "ens", steps: [{ expr: [] }] },
         { title: "Venn", custom: "venn", steps: [{ expr: [] }] },
         { title: "Structures", custom: "str", steps: [{ expr: [] }] },
+        { title: "Exp / ln", custom: "expl", steps: [{ expr: [] }] },
         { title: "Solutions", custom: "sol", steps: [{ expr: [] }] },
         { title: "Calcul", custom: "calc", steps: [{ expr: [] }] },
         { title: "Fusion", custom: "fus", set: "R", steps: [{ expr: [] }] },
@@ -3623,6 +3638,7 @@
           if (DEMOS[demoIndex].custom === "pas") { pasStart(); return; }
           if (DEMOS[demoIndex].custom === "venn") { if (!nextBtn.disabled) vennStart(); return; }
           if (DEMOS[demoIndex].custom === "str") { if (!nextBtn.disabled) strStart(); return; }
+          if (DEMOS[demoIndex].custom === "expl") { if (!nextBtn.disabled) explStart(); return; }
           if (DEMOS[demoIndex].custom === "reg") { if (!nextBtn.disabled) regStart(); return; }
           if (DEMOS[demoIndex].custom === "fus") { if (fus.won) { fus.level = (fus.level + 1) % FUS_LEVELS.length; fusStart(); } return; }
           if (DEMOS[demoIndex].custom === "sol") { if (nextBtn.disabled) return; solIndex = (solIndex + 1 + Math.floor(Math.random() * (SOL.length - 1))) % SOL.length; solRender(false); return; }
@@ -3716,7 +3732,7 @@
       var examBtn = document.getElementById("examBtn");
       // Chapitres qui ont un examen : ceux où l'on répond (démos, Premiers,
       // Ensembles, Singapour). Calcul, Pascal, Solutions, Fusion s'explorent.
-      function examable(d) { return !!d && (!d.custom || /^(pf|ens|sg|sol|venn|str|reg)$/.test(d.custom)); }
+      function examable(d) { return !!d && (!d.custom || /^(pf|ens|sg|sol|venn|str|reg|expl)$/.test(d.custom)); }
       function examNeed() { return EXAM_NEED[DEMOS[demoIndex].title] || 3; }
       function renderExam() {
         var t = DEMOS[demoIndex].title, en = LANG === "en";
@@ -3920,6 +3936,7 @@
         pfEl.hidden = custom !== "pf";
         vennEl.hidden = custom !== "venn";
         strEl.hidden = custom !== "str";
+        explEl.hidden = custom !== "expl";
         regEl.hidden = custom !== "reg";
         ensEl.hidden = custom !== "ens";
         solEl.hidden = custom !== "sol";
@@ -3941,6 +3958,7 @@
         if (custom === "pf") { pfStart(); return; }
         if (custom === "venn") { vennStart(); return; }
         if (custom === "str") { strStart(); return; }
+        if (custom === "expl") { explStart(); return; }
         if (custom === "reg") { regStart(); return; }
         if (custom === "ens") { ensStart(); return; }
         if (custom === "sol") { solStart(); return; }
@@ -5944,6 +5962,70 @@
         });
       })();
 
+      // ---------- Chapitre Exp / ln ----------
+      // Le TD « exponentielle, logarithme, puissance » en gestes : simplifier,
+      // résoudre, limites. Une expression, trois réponses (la bonne et deux
+      // erreurs typiques), puis le geste qui y mène.
+      var E_ = function (t) { return "e<sup>" + t + "</sup>"; };
+      var EXPL = [
+        { k: "s", f: "ln(" + E_("2x") + ")", ok: "2x", no: [E_("2x"), "ln 2 · x"], why: "ln et exp s'annulent : ln(" + E_("u") + ") = u." },
+        { k: "s", f: E_("3 ln x") + " &nbsp;(x &gt; 0)", ok: "x<sup>3</sup>", no: ["3x", E_("3") + " · x"], why: "3 ln x = ln(x<sup>3</sup>), puis " + E_("ln u") + " = u." },
+        { k: "s", f: "ln(x<sup>2</sup>) − ln x &nbsp;(x &gt; 0)", ok: "ln x", no: ["ln(x<sup>2</sup> − x)", "2"], why: "ln(x<sup>2</sup>) = 2 ln x, donc 2 ln x − ln x = ln x. (ln ne se distribue pas sur une soustraction.)" },
+        { k: "s", f: E_("x²") + " / " + E_("2x"), ok: E_("x² − 2x"), no: [E_("x/2"), E_("x² / 2x")], why: E_("a") + " / " + E_("b") + " = " + E_("a − b") + "." },
+        { k: "s", f: "ln √x &nbsp;(x &gt; 0)", ok: "½ ln x", no: ["√(ln x)", "ln x / 2x"], why: "√x = x<sup>1/2</sup>, et ln(x<sup>n</sup>) = n ln x." },
+        { k: "s", f: "log(1000)", ok: "3", no: ["100", "ln 1000"], why: "log = logarithme décimal : log(10<sup>n</sup>) = n, et 1000 = 10<sup>3</sup>." },
+        { k: "s", f: "log(5 × 10<sup>−3</sup>)", ok: "log 5 − 3", no: ["−3 log 5", "2"], why: "log(ab) = log a + log b, et log(10<sup>−3</sup>) = −3." },
+        { k: "s", f: "x<sup>√x</sup> &nbsp;(x &gt; 0)", ok: E_("√x · ln x"), no: ["(√x)<sup>x</sup>", "√x · " + E_("x")], why: "Une puissance réelle s'écrit toujours a<sup>b</sup> = " + E_("b ln a") + "." },
+        { k: "s", f: "ln(" + E_("2x") + " + " + E_("x") + ")", ok: "x + ln(" + E_("x") + " + 1)", no: ["2x + x", "ln(" + E_("2x") + ") + ln(" + E_("x") + ")"], why: "Faire apparaître un facteur : " + E_("2x") + " + " + E_("x") + " = " + E_("x") + "(" + E_("x") + " + 1), puis ln(ab) = ln a + ln b." },
+        { k: "s", f: "(" + E_("x") + ")<sup>2</sup>", ok: E_("2x"), no: [E_("x²"), "2" + E_("x")], why: "(" + E_("a") + ")<sup>n</sup> = " + E_("na") + " — attention, ce n'est pas " + E_("x²") + "." },
+        { k: "e", f: E_("x") + " = −1", ok: "aucune solution", no: ["x = −1", "x = ln(−1)"], why: E_("x") + " &gt; 0 pour tout x : il ne vaut jamais −1." },
+        { k: "e", f: "ln x = 2", ok: "x = " + E_("2"), no: ["x = ln 2", "x = 2e"], why: "On applique exp des deux côtés : x = " + E_("ln x") + " = " + E_("2") + "." },
+        { k: "e", f: E_("2x") + " + " + E_("x") + " − 2 = 0", ok: "x = 0", no: ["x = 0 ou x = ln(−2)", "x = 1"], why: "On pose X = " + E_("x") + " &gt; 0 : X<sup>2</sup> + X − 2 = 0, X = 1 ou X = −2 (refusé, X &gt; 0). " + E_("x") + " = 1 donne x = 0." },
+        { k: "e", f: "ln(x + 1) = ln 5", ok: "x = 4", no: ["x = 5", "x = ln 4"], why: "ln est injective : x + 1 = 5 (et x + 1 &gt; 0)." },
+        { k: "l", f: "lim<sub>x→+∞</sub> x<sup>3</sup>" + E_("−x"), ok: "0", no: ["+∞", "on ne peut pas savoir"], why: "Croissances comparées : l'exponentielle l'emporte sur toute puissance de x." },
+        { k: "l", f: "lim<sub>x→+∞</sub> ln x / x", ok: "0", no: ["1", "+∞"], why: "Croissances comparées : x l'emporte sur ln x." },
+        { k: "l", f: "lim<sub>x→0⁺</sub> x ln x", ok: "0", no: ["−∞", "1"], why: "Croissances comparées en 0 : x tend vers 0 plus vite que ln x vers −∞." },
+        { k: "l", f: "lim<sub>x→+∞</sub> " + E_("x") + " / x<sup>5</sup>", ok: "+∞", no: ["0", "1"], why: "Croissances comparées : " + E_("x") + " l'emporte sur x<sup>5</sup>." },
+        { k: "l", f: "lim<sub>x→+∞</sub> (ln x − ln(x<sup>2</sup> + 1))", ok: "−∞", no: ["0", "+∞"], why: "ln a − ln b = ln(a/b) : ln(x / (x<sup>2</sup> + 1)), et x / (x<sup>2</sup> + 1) → 0<sup>+</sup>, donc ln → −∞." },
+        { k: "l", f: "lim<sub>x→−∞</sub> x<sup>3</sup>" + E_("x"), ok: "0", no: ["−∞", "+∞"], why: "On pose X = −x → +∞ : x<sup>3</sup>" + E_("x") + " = −X<sup>3</sup>" + E_("−X") + " → 0." },
+        { k: "l", f: "lim<sub>x→+∞</sub> (1 + 1/x)<sup>x</sup>", ok: "e", no: ["1", "+∞"], why: "(1 + 1/x)<sup>x</sup> = " + E_("x ln(1 + 1/x)") + ", et x ln(1 + 1/x) → 1 car ln(1 + u) ≈ u." }
+      ];
+      var explEl = document.getElementById("expl"), explLast = -1, explState = null;
+      function explStart() {
+        var en = LANG === "en";
+        var pool = EXPL.map(function (e, i) { return i; }).filter(function (i) { return i !== explLast; });
+        var i = pool[Math.floor(Math.random() * pool.length)];
+        explLast = i;
+        var it = EXPL[i];
+        explState = { it: it, done: false };
+        document.getElementById("explQ").textContent = it.k === "s" ? (en ? "Simplify" : "Simplifie") : it.k === "e" ? (en ? "Solve in ℝ" : "Résous dans ℝ") : (en ? "Limit" : "Limite");
+        document.getElementById("explF").innerHTML = "<span>" + it.f + "</span>"; // (un bloc : les exposants restent en haut)
+        var msg = document.getElementById("explMsg"), opts = document.getElementById("explOpts");
+        msg.textContent = "";
+        opts.innerHTML = "";
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        [it.ok].concat(it.no).sort(function () { return Math.random() - 0.5; }).forEach(function (h) {
+          var b = document.createElement("button");
+          b.innerHTML = h;
+          b.addEventListener("click", function () {
+            if (explState.done) return;
+            explState.done = true;
+            var ok = h === it.ok;
+            examHit(ok, "Exp / ln");
+            if (ok) SND.ok(); else SND.bad();
+            [].forEach.call(opts.children, function (x) { if (x._ok) x.classList.add("good"); });
+            if (!ok) b.classList.add("bad");
+            msg.innerHTML = (ok ? "✓ " : "") + it.why;
+            nextBtn.disabled = false;
+            if (ok) quickNext("expl", explStart, 2200);
+          });
+          b._ok = h === it.ok;
+          opts.appendChild(b);
+        });
+      }
+
       // ---------- Chapitre Structures ----------
       // Un ensemble muni d'une loi, dans un cercle. Deux exercices :
       //   construire : on coche les propriétés qui font un groupe (etc.),
@@ -6549,6 +6631,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v106", text: "Nouveau chapitre Exp / ln (dans ℝ), sur le thème du TD 3 : simplifier (ln(e²ˣ + eˣ) = x + ln(eˣ + 1), e^(3 ln x) = x³, log(5 × 10⁻³)…), résoudre (eˣ = −1, e²ˣ + eˣ − 2 = 0 avec X = eˣ…), limites (croissances comparées, x ln x en 0, (1 + 1/x)ˣ → e). Trois réponses, puis le geste qui y mène." },
         { v: "v105", text: "Bouton Examen sous le titre (le titre du chapitre prend toute la ligne). Structures, réduit à la définition du cours : un groupe = loi interne, associative, élément neutre, symétriques. Construire (la commutativité est un piège) et « (ℤ, −) est-il un groupe ? » oui / non, puis les propriétés ✓ / ✗ avec la façon dont on sort de la structure (3 − 5 = −2 ∉ ℕ ; l'inverse de 2 serait 1/2 ∉ ℤ…). Toucher la flèche annule le passage automatique à la question suivante (plus de question sautée)." },
         { v: "v104", text: "Deux badges bien distincts. Regrouper rapproche : les x côte à côte à gauche, les nombres à droite (entre parenthèses, c'est une somme à calculer). x en facteur fait (3 + 1)·x — il faut avoir réussi son chapitre. Dans Regrouper : Regrouper, puis x en facteur, puis le badge 10." },
         { v: "v103", text: "Le badge Regrouper agissait aussi sur les mises en facteur (retiré en v104 : c'est le rôle du badge x en facteur)." },
@@ -6735,7 +6818,7 @@
       var SET_OF = {
         "Singapour": "N", "Premiers": "N", "Ensembles": "N", "Venn": "N", "Structures": "N", "Regrouper": "N", "x en facteur": "N", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
         "Fraction": "Q", "Piège": "Q", "Équation": "Q",
-        "Distribuer": "R", "Factoriser": "R", "Double": "R", "Fusion": "R", "Pascal": "R"
+        "Distribuer": "R", "Factoriser": "R", "Exp / ln": "R", "Double": "R", "Fusion": "R", "Pascal": "R"
       };
       // Univers emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ : on choisit dans quel ensemble
       // on travaille (barre toujours visible en bas). Tout ce qui est plus
@@ -7188,7 +7271,7 @@
         calcRun++;
         examBtn.hidden = true;
         closeChoice();
-        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, pasEl, vennEl, strEl, regEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
+        [sgEl, pfEl, ensEl, solEl, calcEl, fusEl, pasEl, vennEl, strEl, regEl, explEl, stageWrap, document.getElementById("controls")].forEach(function (e) { e.hidden = true; });
         univEl.hidden = true;
         homeEl.hidden = false;
         document.getElementById("title").textContent = "Pas à Pas";
