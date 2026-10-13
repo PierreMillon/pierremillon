@@ -78,6 +78,17 @@
       align-items: center; justify-content: center; gap: 12px; padding: 24px 18px; text-align: center;
     }
     .overlay[hidden] { display: none; }
+    /* Historique : le texte défile au doigt, « Fermer » reste toujours visible en bas */
+    #info { justify-content: flex-start; padding: calc(env(safe-area-inset-top) + 14px) 0 0; gap: 0; }
+    #info .infoScroll {
+      flex: 1; min-height: 0; width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y;
+      display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 10px 18px 24px;
+    }
+    #info .infoFoot {
+      width: 100%; display: flex; gap: 14px; align-items: center; justify-content: center;
+      padding: 12px 18px calc(env(safe-area-inset-bottom) + 14px); border-top: 1px solid #3a3934; background: rgba(12, 12, 11, 0.98);
+    }
+    #info .infoX { position: absolute; top: calc(env(safe-area-inset-top) + 8px); right: 10px; width: 38px; height: 38px; padding: 0; border-radius: 50%; font-size: 1.1rem; z-index: 2; }
     .overlay h1 { font-weight: normal; letter-spacing: 0.35em; margin: 0; padding-left: 0.35em; font-size: 2rem; }
     .overlay p { margin: 0; color: var(--soft); font-size: 0.85rem; line-height: 1.5; max-width: 30em; }
     .overlay ul { list-style: none; padding: 0; margin: 0; text-align: left; max-width: 30em; font-size: 0.85rem; line-height: 1.45; }
@@ -99,12 +110,17 @@
       <button class="b" id="bAsk" aria-label="Ouvrir">?</button>
     </div>
     <div class="overlay" id="info" hidden>
-      <h1>PALAIS</h1>
-      <div class="ver" id="ver"></div>
-      <p>Page d'essai du rendu, avant le jeu. Touche le sol pour marcher, ou garde le doigt appuyé : le personnage suit le doigt. Sur une plaque ◇, un cadre ou le livre, un « ? » apparaît au-dessus du personnage : appuie sur le bouton « ? » pour lire. ◐ inverse le noir et le blanc : la ligne cachée apparaît. Le passage à droite du hall mène à la bibliothèque.</p>
-      <ul id="hist"></ul>
-      <button id="infoClose">Fermer</button>
-      <a href="../" style="color:#8e8c85;font-size:0.8rem">← Portfolio</a>
+      <button class="infoX" id="infoX" aria-label="Fermer">✕</button>
+      <div class="infoScroll">
+        <h1>PALAIS</h1>
+        <div class="ver" id="ver"></div>
+        <p>Page d'essai, avant le jeu. Touche le sol pour y aller, ou pose le doigt n'importe où et glisse : un joystick apparaît. Sur une plaque ◇, un cadre ou le livre, un « ? » apparaît au-dessus du personnage : appuie sur le bouton « ? » pour lire. ◐ inverse le noir et le blanc et montre la formule. Le passage à droite du hall mène au couloir, puis à la bibliothèque.</p>
+        <ul id="hist"></ul>
+      </div>
+      <div class="infoFoot">
+        <button id="infoClose">Fermer</button>
+        <a href="../" style="color:#8e8c85;font-size:0.8rem">← Portfolio</a>
+      </div>
     </div>
   </div>
 
@@ -114,6 +130,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v13", text: "Fenêtre de l'historique (numéro de version) : le texte défile au doigt sans dépasser de l'écran, « Fermer » reste toujours visible en bas, et une croix en haut à droite." },
         { v: "v12", text: "Danse en morceaux indépendants : bras (8 mouvements), jambes (6), tête (6) et buste (7, dont la toupie) changent chacun de mouvement à leur propre moment, au hasard, en miroir gauche-droite ou non, sur un tempo fixe de 100 BPM : les changements tombent toujours en début de mesure (4 temps), sans pause, prêts à être calés sur une musique — des milliers de combinaisons, enchaînées en fondu sur un temps." },
         { v: "v11", text: "Danse au repos variée : six pas (bras en l'air, pas chassé, toupie, petits sauts, applaudir en hochant la tête, balancier), tirés au hasard et enchaînés en fondu ; la danse dure plus longtemps." },
         { v: "v10", text: "Correctif joystick : en poussant tout droit contre un mur (vers le haut par exemple), le personnage reste face au mur au lieu de partir à droite ou à gauche ; il ne glisse le long du mur que si le doigt va vraiment de côté. Il ne se met plus à danser pendant qu'on pousse." },
@@ -1606,9 +1623,13 @@
         document.getElementById("info").hidden = false;
       });
       document.getElementById("infoClose").addEventListener("click", function () { document.getElementById("info").hidden = true; });
+      document.getElementById("infoX").addEventListener("click", function () { document.getElementById("info").hidden = true; });
 
       // ---------- Écran figé ----------
-      document.addEventListener("touchmove", function (e) { e.preventDefault(); }, { passive: false });
+      document.addEventListener("touchmove", function (e) {
+        if (e.target.closest && e.target.closest(".infoScroll")) return; // l'historique défile
+        e.preventDefault();
+      }, { passive: false });
       ["gesturestart", "gesturechange", "gestureend"].forEach(function (ty) { document.addEventListener(ty, function (e) { e.preventDefault(); }, { passive: false }); });
       document.addEventListener("dblclick", function (e) { e.preventDefault(); }, { passive: false });
 
