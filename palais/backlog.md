@@ -40,6 +40,8 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v10 — Joystick contre un mur : reste face au mur, ne glisse de côté que
+  si le doigt va de côté ; pas de danse pendant qu'on pousse
 - [x] v9 — Billets ouverts au bouton « ? » (plus en marchant), « ? » au-dessus
   du personnage sur une zone ; bouton ↻ retiré
 - [x] v8 — Joystick virtuel : apparaît là où l'on pose le doigt, direction et
