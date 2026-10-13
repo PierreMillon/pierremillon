@@ -32,6 +32,17 @@
     canvas.inv { filter: invert(1); }
     #fade { position: absolute; inset: 0; background: #0c0c0b; opacity: 0; pointer-events: none; transition: opacity 0.18s; }
     #fade.on { opacity: 1; }
+    /* Joystick virtuel : apparaît là où l'on pose le doigt */
+    #joy {
+      position: absolute; width: 104px; height: 104px; margin: -52px 0 0 -52px; display: none; pointer-events: none;
+      border: 2px solid #141412; border-radius: 49% 51% 48% 52%; background: rgba(239, 237, 230, 0.32);
+      box-shadow: 0 0 0 1px rgba(239, 237, 230, 0.5);
+    }
+    #joy.on { display: block; }
+    #joy i {
+      position: absolute; left: 50%; top: 50%; width: 40px; height: 40px; margin: -20px 0 0 -20px;
+      border-radius: 50% 48% 52% 49%; background: #141412; border: 2px solid #efede6;
+    }
     /* Grappe de quatre cercles, comme l'interface de Helix */
     .pad { position: absolute; right: 10px; bottom: calc(env(safe-area-inset-bottom) + 10px); width: 104px; height: 104px; }
     .pad button {
@@ -77,6 +88,7 @@
   <div id="stage">
     <canvas id="cv"></canvas>
     <div id="fade"></div>
+    <div id="joy"><i id="joyKnob"></i></div>
     <div class="lab" id="lab"></div>
     <div class="scrap" id="scrap"><small id="scrapWho"></small><div class="name" id="scrapName"></div><div class="hint" id="scrapHint">◐ pour voir la formule</div><canvas id="scrapCv"></canvas></div>
     <div class="pad">
@@ -99,6 +111,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v8", text: "Joystick virtuel : poser le doigt n'importe où sur l'écran et glisser — un joystick apparaît sous le doigt et le personnage avance dans cette direction, plus vite si l'on éloigne le doigt. Une simple touche sans glisser l'envoie toujours à l'endroit touché." },
         { v: "v7", text: "Écriture des formules nette et sans défaut, dans une belle police : l'encre vit autour (taches, gouttes, trace de doigt) mais jamais sur les lettres ; billets en papier abîmé aux bords déchirés. Chaque matière a sa texture : pierre piquée et grenée pour les dalles et les briques, papier fibreux partout où c'est blanc. Les grands traits de structure sont tirés à la règle, l'encre accumulée aux deux bouts, et l'encre diffuse un peu dans le papier, irrégulièrement, comme sur du Canson. Les 17 formules choisies par Pierre sont rangées dans le palais : logique au hall, dérivées et calcul dans les cadres du couloir, ln, exp, binôme, somme géométrique et croissances comparées dans la bibliothèque, relation fondamentale et valeurs remarquables dans le livre de Pythagore." },
         { v: "v6", text: "Entre le hall et la bibliothèque, un écran de couloir en S inversé : on entre en haut à gauche, on va vers la droite, on descend au milieu, puis on repart à droite en bas. Six cadres aux murs : en s'approchant, une question (« Dérivée d'un quotient ? ») ; en mode noir, la formule. Sur la table de la bibliothèque, le livre « L'héritage de Pythagore » : six pages, du théorème de Pythagore à e^(iπ) + 1 = 0, en touchant le papier pour tourner la page. Le personnage calcule son chemin et contourne colonnes, meubles et coudes." },
         { v: "v5", text: "Deuxième salle à droite : une bibliothèque (étagères pleines de livres autour d'une fenêtre en arc sous la lune, parquet, tapis rond, table de lecture avec livre ouvert et bougie, bibliothèques basses le long des murs, piles de livres, feuilles éparses, échelle), reliée au hall par un passage. Le personnage se dirige aussi en gardant le doigt appuyé : il suit le doigt. Il ne traverse plus colonnes et meubles. Au repos, il respire, puis se tourne vers nous et danse un peu. Une seule version du dessin, la plus dense (boutons A / B et i retirés — l'historique s'ouvre en touchant l'étiquette en haut à gauche). Trait encore plus à la main : lignes qui ondulent et ne sont jamais droites, coins jamais d'équerre, crasse, usure, griffures et hachures croisées par endroits. Les plaques ne montrent plus que le nom de la formule (ex. « Formule d'Euler pour cos x ») ; en mode noir (◐), la formule apparaît, tracée à la plume — lettres de travers, pression qui varie, taches et coulures d'encre, vraies barres de fraction." },
@@ -1088,8 +1101,18 @@
       function kick() { if (!running) { running = true; last = performance.now(); requestAnimationFrame(tick); } }
       function tick(now) {
         var raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
-        // suivre le chemin calculé, point par point
+        // suivre le chemin calculé, point par point — ou le joystick
         var sp = 70 * dt, dx = 0, dy = 0;
+        var jl = Math.hypot(joy.vx, joy.vy);
+        if (joy.active && jl > 0.18 && !switching) {
+          hero.path = [];
+          var js = 88 * dt * Math.min(1, jl), ux = joy.vx / jl, uy = joy.vy / jl, nx = hero.x + ux * js, ny = hero.y + uy * js;
+          // glisser le long d'un mur plutôt que s'y arrêter net
+          if (!blocked(nx, ny)) { hero.x = nx; hero.y = ny; dx = ux; dy = uy; }
+          else if (!blocked(nx, hero.y)) { hero.x = nx; dx = ux; }
+          else if (!blocked(hero.x, ny)) { hero.y = ny; dy = uy; }
+          sp = 0;
+        }
         while (hero.path.length && sp > 0 && !switching) {
           var wp = hero.path[0], ex = wp[0] - hero.x, ey = wp[1] - hero.y, ed = Math.hypot(ex, ey);
           if (ed <= sp) { hero.x = wp[0]; hero.y = wp[1]; hero.path.shift(); sp -= ed; dx += ex; dy += ey; }
@@ -1115,7 +1138,7 @@
         draw();
         running = false;
         var turning = H3 && hero.yawT !== undefined && Math.abs(Math.atan2(Math.sin(hero.yawT - H3.yaw), Math.cos(hero.yawT - H3.yaw))) > 0.01;
-        if (hero.moving || puffs.length || turning) kick();
+        if (hero.moving || puffs.length || turning || joy.active) kick();
         // au repos : respiration et petite danse, à ~30 images/s seulement
         else if (H3 && !document.hidden) { clearTimeout(idleTimer); idleTimer = setTimeout(kick, 33); }
       }
@@ -1389,8 +1412,11 @@
       function chime() { blip(392, 0.8, 0.06); blip(587, 1, 0.05); }
 
       // ---------- Gestes ----------
-      // Toucher : il va là. Garder le doigt appuyé et le déplacer : il suit le doigt.
-      var holding = null;
+      // Toucher sans glisser : il va là. Poser le doigt n'importe où et
+      // glisser : un joystick virtuel apparaît sous le doigt, le personnage
+      // avance dans la direction donnée (plus loin = plus vite).
+      var holding = null, joy = { active: false, ox: 0, oy: 0, vx: 0, vy: 0 }, JR = 42;
+      var joyEl = document.getElementById("joy"), joyKnob = document.getElementById("joyKnob");
       var lastAim = 0;
       function aim(e, force) {
         var now = performance.now(); if (!force && now - lastAim < 60) return; lastAim = now;
@@ -1401,10 +1427,32 @@
       cv.addEventListener("pointerdown", function (e) {
         audio(); holding = e.pointerId;
         try { cv.setPointerCapture(e.pointerId); } catch (er) {}
-        aim(e, true);
+        joy.ox = e.clientX; joy.oy = e.clientY; joy.vx = joy.vy = 0; joy.active = false;
       });
-      cv.addEventListener("pointermove", function (e) { if (holding === e.pointerId && !switching) aim(e); });
-      ["pointerup", "pointercancel"].forEach(function (ty) { cv.addEventListener(ty, function (e) { if (holding === e.pointerId) holding = null; }); });
+      cv.addEventListener("pointermove", function (e) {
+        if (holding !== e.pointerId || switching) return;
+        var dx = e.clientX - joy.ox, dy = e.clientY - joy.oy, d = Math.hypot(dx, dy);
+        if (!joy.active && d > 10) {
+          joy.active = true;
+          var sr = stage.getBoundingClientRect();
+          joyEl.style.left = (joy.ox - sr.left) + "px"; joyEl.style.top = (joy.oy - sr.top) + "px";
+          joyEl.classList.add("on");
+        }
+        if (!joy.active) return;
+        var k = d > JR ? JR / d : 1;
+        joyKnob.style.transform = "translate(" + (dx * k) + "px," + (dy * k) + "px)";
+        joy.vx = dx * k / JR; joy.vy = dy * k / JR;
+        kick();
+      });
+      ["pointerup", "pointercancel"].forEach(function (ty) {
+        cv.addEventListener(ty, function (e) {
+          if (holding !== e.pointerId) return;
+          holding = null;
+          if (!joy.active && ty === "pointerup") aim(e, true); // simple touche : y aller
+          joy.active = false; joy.vx = joy.vy = 0;
+          joyEl.classList.remove("on"); joyKnob.style.transform = "";
+        });
+      });
       function refreshPad() {
         document.getElementById("bInv").className = "r" + (inverted ? " on" : "");
         document.getElementById("lab").textContent = ROOMS[room].name.toUpperCase() + " · " + VERSION;
