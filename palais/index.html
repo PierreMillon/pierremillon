@@ -130,6 +130,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v14", text: "Danse hip-hop : le personnage a maintenant des genoux (cuisse + tibia), un bassin qui roule et tourne, un buste qui pivote depuis les hanches et un cou qui avance et recule. Nouveaux pas : groove (rebond des genoux), running man, roulé de bassin, genou à genou, two-step, chest pop, vague du buste, penché en arrière, pops de côté, cou de poulet, tête qui roule — toujours mélangés au hasard, sur le tempo." },
         { v: "v13", text: "Fenêtre de l'historique (numéro de version) : le texte défile au doigt sans dépasser de l'écran, « Fermer » reste toujours visible en bas, et une croix en haut à droite." },
         { v: "v12", text: "Danse en morceaux indépendants : bras (8 mouvements), jambes (6), tête (6) et buste (7, dont la toupie) changent chacun de mouvement à leur propre moment, au hasard, en miroir gauche-droite ou non, sur un tempo fixe de 100 BPM : les changements tombent toujours en début de mesure (4 temps), sans pause, prêts à être calés sur une musique — des milliers de combinaisons, enchaînées en fondu sur un temps." },
         { v: "v11", text: "Danse au repos variée : six pas (bras en l'air, pas chassé, toupie, petits sauts, applaudir en hochant la tête, balancier), tirés au hasard et enchaînés en fondu ; la danse dure plus longtemps." },
@@ -989,7 +990,10 @@
             return m;
           }
           var root = new THREE.Group(); scene.add(root);
-          var bodyG = new THREE.Group(); root.add(bodyG);
+          // buste articulé aux hanches (pivot à hauteur du bassin), bassin à part
+          var torso = new THREE.Group(); torso.position.y = 0.3; root.add(torso);
+          var bodyG = new THREE.Group(); bodyG.position.y = -0.3; torso.add(bodyG);
+          var hipsG = new THREE.Group(); hipsG.position.y = 0.3; root.add(hipsG);
           // corps en cloche (petite cape)
           var prof = [[0.0, 0.22], [0.3, 0.22], [0.4, 0.24], [0.38, 0.3], [0.3, 0.55], [0.24, 0.8], [0.16, 0.95], [0.0, 0.98]].map(function (q) { return new THREE.Vector2(q[0], q[1]); });
           part(new THREE.LatheGeometry(prof, 28), null, bodyG);
@@ -1007,15 +1011,18 @@
           // bras et jambes (pivots aux épaules et aux hanches)
           var limbs = {};
           [-1, 1].forEach(function (sd) {
-            var hip = new THREE.Group(); hip.position.set(sd * 0.13, 0.3, 0); root.add(hip);
-            var leg = part(new THREE.CapsuleGeometry(0.075, 0.2, 6, 12), null, hip); leg.position.y = -0.18;
+            // jambe en deux : cuisse depuis la hanche, tibia depuis le genou
+            var hip = new THREE.Group(); hip.position.set(sd * 0.13, 0, 0); hipsG.add(hip);
+            var thigh = part(new THREE.CapsuleGeometry(0.075, 0.07, 6, 12), null, hip); thigh.position.y = -0.07;
+            var knee = new THREE.Group(); knee.position.y = -0.145; hip.add(knee);
+            var shin = part(new THREE.CapsuleGeometry(0.07, 0.07, 6, 12), null, knee); shin.position.y = -0.075;
             var sh = new THREE.Group(); sh.position.set(sd * 0.27, 0.78, 0); bodyG.add(sh);
             var arm = part(new THREE.CapsuleGeometry(0.06, 0.24, 6, 12), null, sh); arm.position.y = -0.17; sh.rotation.z = sd * 0.35;
-            limbs[sd] = { hip: hip, sh: sh };
+            limbs[sd] = { hip: hip, knee: knee, sh: sh };
           });
           // pied au sol : où tombe l'origine dans l'image
           var foot = new THREE.Vector3(0, 0, 0).project(cam);
-          H3 = { r: renderer, scene: scene, cam: cam, root: root, body: bodyG, head: head, limbs: limbs, yaw: 0, footY: (1 - foot.y) / 2, ink: ink };
+          H3 = { r: renderer, scene: scene, cam: cam, root: root, body: bodyG, torso: torso, hips: hipsG, head: head, limbs: limbs, yaw: 0, footY: (1 - foot.y) / 2, ink: ink };
           return true;
         } catch (e) { H3 = null; return false; }
       }
@@ -1042,7 +1049,12 @@
           function (b) { return { hLz: -0.35 * pos(Math.sin(b)), hRz: 0.35 * pos(-Math.sin(b)) }; },                           // ruades de côté
           function (b) { return { hLx: -0.8 * pos(Math.sin(b)), hRx: -0.8 * pos(-Math.sin(b)) }; },                            // coups de pied devant
           function (b) { return { hLz: 0.15 * Math.sin(b * 2), hRz: 0.15 * Math.sin(b * 2) }; },                               // pieds qui tortillent
-          function (b) { var t = Math.abs(Math.sin(b)); return { hLx: -0.4 * t, hRx: -0.4 * t }; }                             // genoux repliés
+          function (b) { var t = Math.abs(Math.sin(b)); return { kL: 0.7 * t, kR: 0.7 * t }; },                              // genoux qui plient
+          function (b) { var g = pos(Math.sin(b * 2)); return { kL: 0.15 + 0.45 * g, kR: 0.15 + 0.45 * g }; },                 // groove : rebond des genoux sur chaque temps
+          function (b) { return { hLx: Math.sin(b) * 0.5, hRx: -Math.sin(b) * 0.5, kL: 1.1 * pos(-Math.sin(b)), kR: 1.1 * pos(Math.sin(b)) }; }, // running man
+          function (b) { return { pZ: Math.sin(b) * 0.22, pY: Math.cos(b) * 0.25, kL: 0.25 + 0.15 * Math.sin(b), kR: 0.25 - 0.15 * Math.sin(b) }; }, // roulé de bassin
+          function (b) { return { kL: 0.8 * pos(Math.sin(b)), kR: 0.8 * pos(-Math.sin(b)), hLz: -0.12 * pos(Math.sin(b)), hRz: 0.12 * pos(-Math.sin(b)) }; }, // genou à genou
+          function (b) { return { hLz: -0.3 * pos(Math.sin(b)), hRz: 0.3 * pos(-Math.sin(b)), kL: 0.4 * pos(Math.sin(b)), kR: 0.4 * pos(-Math.sin(b)), pZ: Math.sin(b) * 0.1 }; } // two-step
         ],
         head: [
           function () { return {}; },                                                                                          // immobile
@@ -1050,7 +1062,9 @@
           function (b) { return { hdZ: Math.sin(b) * 0.2 }; },                                                                // penche
           function (b) { return { hdY: Math.sin(b * 0.5) * 0.6 }; },                                                          // regarde autour
           function (b) { return { hdX: pos(Math.sin(b * 2)) * 0.28 - 0.05 }; },                                               // headbang
-          function (b) { return { hdPx: Math.sin(b) * 0.06 }; }                                                               // glissé égyptien
+          function (b) { return { hdPx: Math.sin(b) * 0.06 }; },                                                              // glissé égyptien
+          function (b) { return { hdPz: pos(Math.sin(b * 2)) * 0.09 - 0.02 }; },                                              // cou de poulet (pop avant)
+          function (b) { return { hdZ: Math.sin(b) * 0.16, hdX: Math.cos(b) * 0.16 }; }                                        // tête qui roule
         ],
         body: [
           function (b) { return { bY: Math.abs(Math.sin(b)) * 0.05 }; },                                                      // rebond
@@ -1059,7 +1073,11 @@
           function (b) { return { bY: Math.abs(Math.sin(b)) * 0.16 }; },                                                      // sauts
           function (b, u) { var s = Math.min(1, u / 4); return { spin: u < 4 ? s * s * (3 - 2 * s) * Math.PI * 2 : 0, bY: Math.abs(Math.sin(b * 2)) * 0.03 }; }, // toupie (4 temps)
           function (b) { return { rZ: Math.sin(b * 0.5) * 0.22 }; },                                                          // roulis lent
-          function (b) { return { bRy: Math.sin(b) * 0.4, bY: Math.abs(Math.sin(b * 2)) * 0.02 }; }                          // torsion du buste
+          function (b) { return { bRy: Math.sin(b) * 0.4, bY: Math.abs(Math.sin(b * 2)) * 0.02 }; },                         // torsion du buste
+          function (b) { return { bRx: -pos(Math.sin(b * 2)) * 0.3 }; },                                                     // chest pop
+          function (b) { return { bRz: Math.sin(b) * 0.2, bRx: Math.cos(b) * 0.14 }; },                                       // vague du buste
+          function (b) { return { bRx: 0.2 + Math.sin(b * 2) * 0.08 }; },                                                    // penché en arrière, groove
+          function (b) { return { bRz: Math.sin(b * 2) * 0.13, bRy: Math.sin(b) * 0.15 }; }                                    // pops de côté
         ]
       };
       var SPIN_MOVE = 4;
@@ -1073,9 +1091,11 @@
         return { sLx: p.sRx, sRx: p.sLx, sLz: p.sRz === undefined ? undefined : -p.sRz, sRz: p.sLz === undefined ? undefined : -p.sLz,
           hLx: p.hRx, hRx: p.hLx, hLz: p.hRz === undefined ? undefined : -p.hRz, hRz: p.hLz === undefined ? undefined : -p.hLz,
           hdZ: p.hdZ === undefined ? undefined : -p.hdZ, hdY: p.hdY === undefined ? undefined : -p.hdY, hdPx: p.hdPx === undefined ? undefined : -p.hdPx,
-          hdX: p.hdX, bY: p.bY, rZ: p.rZ === undefined ? undefined : -p.rZ, rX: p.rX === undefined ? undefined : -p.rX, spin: p.spin, bRy: p.bRy === undefined ? undefined : -p.bRy };
+          hdX: p.hdX, bY: p.bY, rZ: p.rZ === undefined ? undefined : -p.rZ, rX: p.rX === undefined ? undefined : -p.rX, spin: p.spin, bRy: p.bRy === undefined ? undefined : -p.bRy,
+          kL: p.kR, kR: p.kL, pZ: p.pZ === undefined ? undefined : -p.pZ, pY: p.pY === undefined ? undefined : -p.pY,
+          bRz: p.bRz === undefined ? undefined : -p.bRz, bRx: p.bRx, hdPz: p.hdPz };
       }
-      var POSE_KEYS = ["sLx", "sRx", "sLz", "sRz", "hLx", "hRx", "hLz", "hRz", "hdX", "hdZ", "hdY", "hdPx", "bY", "rZ", "rX", "spin", "bRy"];
+      var POSE_KEYS = ["sLx", "sRx", "sLz", "sRz", "hLx", "hRx", "hLz", "hRz", "hdX", "hdZ", "hdY", "hdPx", "bY", "rZ", "rX", "spin", "bRy", "kL", "kR", "pZ", "pY", "bRz", "bRx", "hdPz"];
       var BAR_CHOICES = [4, 8, 8, 12, 16];
       function danceChannel(st, list, name, gb, b) {
         if (gb >= st.next) {
@@ -1129,12 +1149,19 @@
           spin = P.spin;
         } else H3.dance = null; // on bouge : la prochaine danse repartira de zéro
         H3.root.rotation.y = H3.yaw + spin * dn;
-        H3.limbs[-1].hip.rotation.x = sw + dn * P.hLx; H3.limbs[1].hip.rotation.x = -sw + dn * P.hRx;
+        // genoux : un peu de flexion en marchant, beaucoup en dansant ; la
+        // cuisse avance d'autant pour que le pied reste sous le corps
+        var kL = mv * 0.5 * pos(-Math.sin(w * 11)) + dn * pos(P.kL), kR = mv * 0.5 * pos(Math.sin(w * 11)) + dn * pos(P.kR);
+        H3.limbs[-1].knee.rotation.x = kL; H3.limbs[1].knee.rotation.x = kR;
+        var drop = 0.29 * (1 - Math.cos(Math.min(kL, kR) * 0.5)); // on s'abaisse quand les deux genoux plient
+        H3.limbs[-1].hip.rotation.x = sw + dn * P.hLx - kL * 0.5; H3.limbs[1].hip.rotation.x = -sw + dn * P.hRx - kR * 0.5;
+        H3.hips.rotation.z = dn * P.pZ; H3.hips.rotation.y = dn * P.pY;
         H3.limbs[-1].hip.rotation.z = dn * P.hLz; H3.limbs[1].hip.rotation.z = dn * P.hRz;
         H3.limbs[-1].sh.rotation.x = -sw * 0.8 + dn * P.sLx; H3.limbs[1].sh.rotation.x = sw * 0.8 + dn * P.sRx;
         H3.limbs[-1].sh.rotation.z = -0.35 + dn * P.sLz;
         H3.limbs[1].sh.rotation.z = 0.35 + dn * P.sRz;
-        H3.body.position.y = Math.abs(Math.cos(w * 11)) * 0.05 * mv + dn * P.bY;
+        H3.body.position.y = -0.3 + Math.abs(Math.cos(w * 11)) * 0.05 * mv;
+        H3.root.position.y = dn * P.bY - drop;
         H3.body.scale.set(1 - br * 0.012 * (1 - dn), 1 + br * 0.025 * (1 - dn), 1);
         H3.root.rotation.z = dn * P.rZ;
         H3.root.position.x = dn * P.rX;
@@ -1142,8 +1169,10 @@
         H3.head.rotation.x = (mv ? 0 : -br * 0.03) + dn * P.hdX;
         H3.head.rotation.y = dn * P.hdY;
         H3.head.position.x = dn * P.hdPx;
-        H3.body.rotation.y = dn * P.bRy;
-        H3.body.rotation.x = 0.12 * mv;
+        H3.head.position.z = dn * P.hdPz;
+        H3.torso.rotation.y = dn * P.bRy;
+        H3.torso.rotation.x = 0.12 * mv + dn * P.bRx;
+        H3.torso.rotation.z = dn * P.bRz;
         H3.r.render(H3.scene, H3.cam);
         return H3.r.domElement;
       }
