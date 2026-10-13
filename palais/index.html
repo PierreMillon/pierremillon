@@ -44,16 +44,16 @@
     .pad button.on { background: #111; color: #f2f1ec; }
     .scrap {
       position: absolute; left: 50%; top: 14%; transform: translateX(-50%) rotate(-1.5deg);
-      width: 78%; background: #f4f2ea; color: #111; border: 2px solid #111; padding: 14px 16px 16px;
-      box-shadow: 6px 6px 0 #111; opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s;
+      width: 80%; background: #f2efe4; color: #111; padding: 18px 20px 20px;
+      opacity: 0; pointer-events: none; transition: opacity 0.3s, transform 0.3s;
     }
     .scrap.show { opacity: 1; transform: translateX(-50%) rotate(-1.5deg) translateY(4px); }
     .scrap small { display: block; font-size: 0.68rem; letter-spacing: 0.22em; text-transform: uppercase; color: #555; margin-bottom: 6px; }
-    .scrap .name { font-style: italic; font-size: 1.25rem; line-height: 1.3; }
+    .scrap .name { font-style: italic; font-size: 1.3rem; line-height: 1.3; font-family: "Iowan Old Style", Palatino, "Palatino Linotype", Georgia, serif; }
     .scrap .hint { margin-top: 8px; font-size: 0.72rem; color: #666; }
     .scrap canvas { display: none; width: 100%; height: auto; }
     /* en mode noir : la formule, tracée à la plume, blanc sur noir */
-    .scrap.ink { background: #0e0e0d; color: #f2f1ec; border-color: #f2f1ec; box-shadow: 6px 6px 0 #f2f1ec; }
+    .scrap.ink { background-color: #10100f; color: #f2f1ec; }
     .scrap.ink small { color: #9a988f; }
     .scrap.ink canvas { display: block; }
     .scrap.book.show { pointer-events: auto; cursor: pointer; }
@@ -99,6 +99,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v7", text: "Écriture des formules nette et sans défaut, dans une belle police : l'encre vit autour (taches, gouttes, trace de doigt) mais jamais sur les lettres ; billets en papier abîmé aux bords déchirés. Chaque matière a sa texture : pierre piquée et grenée pour les dalles et les briques, papier fibreux partout où c'est blanc. Les grands traits de structure sont tirés à la règle, l'encre accumulée aux deux bouts, et l'encre diffuse un peu dans le papier, irrégulièrement, comme sur du Canson. Les 17 formules choisies par Pierre sont rangées dans le palais : logique au hall, dérivées et calcul dans les cadres du couloir, ln, exp, binôme, somme géométrique et croissances comparées dans la bibliothèque, relation fondamentale et valeurs remarquables dans le livre de Pythagore." },
         { v: "v6", text: "Entre le hall et la bibliothèque, un écran de couloir en S inversé : on entre en haut à gauche, on va vers la droite, on descend au milieu, puis on repart à droite en bas. Six cadres aux murs : en s'approchant, une question (« Dérivée d'un quotient ? ») ; en mode noir, la formule. Sur la table de la bibliothèque, le livre « L'héritage de Pythagore » : six pages, du théorème de Pythagore à e^(iπ) + 1 = 0, en touchant le papier pour tourner la page. Le personnage calcule son chemin et contourne colonnes, meubles et coudes." },
         { v: "v5", text: "Deuxième salle à droite : une bibliothèque (étagères pleines de livres autour d'une fenêtre en arc sous la lune, parquet, tapis rond, table de lecture avec livre ouvert et bougie, bibliothèques basses le long des murs, piles de livres, feuilles éparses, échelle), reliée au hall par un passage. Le personnage se dirige aussi en gardant le doigt appuyé : il suit le doigt. Il ne traverse plus colonnes et meubles. Au repos, il respire, puis se tourne vers nous et danse un peu. Une seule version du dessin, la plus dense (boutons A / B et i retirés — l'historique s'ouvre en touchant l'étiquette en haut à gauche). Trait encore plus à la main : lignes qui ondulent et ne sont jamais droites, coins jamais d'équerre, crasse, usure, griffures et hachures croisées par endroits. Les plaques ne montrent plus que le nom de la formule (ex. « Formule d'Euler pour cos x ») ; en mode noir (◐), la formule apparaît, tracée à la plume — lettres de travers, pression qui varie, taches et coulures d'encre, vraies barres de fraction." },
         { v: "v4", text: "Retour au personnage de la v2 (robe longue, tête nue à deux pointes), demande de Pierre. La coupe au carré et le ras-de-cou de la v3 sont retirés." },
@@ -153,6 +154,15 @@
         var n = Math.max(3, Math.round(len / 5)), nx = -uy, ny = ux, j = jit === undefined ? 0.4 : jit, bow = R(-1.5, 1.5) * Math.min(1, len / 40);
         // la main ne trace jamais droit : un ventre, une ondulation lente, un tremblé
         var wav = R(0.2, 0.7) * Math.min(1, len / 30), wf = R(1.5, 3.5), wp = R(0, 6.28);
+        // les grands traits de structure sont tirés à la règle : droits,
+        // l'encre s'accumule au départ et à l'arrivée
+        var rulerLine = w >= 2.2 && len > 24;
+        if (rulerLine) {
+          bow = R(-0.25, 0.25); wav = 0; j = 0.12;
+          var pf = g.fillStyle; g.fillStyle = g.strokeStyle;
+          g.beginPath(); g.arc(x1 + ux * o1, y1 + uy * o1, w * R(0.55, 0.75), 0, 7); g.arc(x2 - ux * o2, y2 - uy * o2, w * R(0.5, 0.7), 0, 7); g.fill();
+          g.fillStyle = pf;
+        }
         var pts = [];
         for (var i = 0; i <= n; i++) {
           var t = i / n, off = Math.sin(Math.PI * t) * bow + Math.sin(t * wf * Math.PI + wp) * wav + R(-j, j) * 0.6;
@@ -211,6 +221,20 @@
       }
 
       // ---------- Éléments ----------
+      // Texture de pierre : piqûres, grain serré, petites fêlures, coups de ciseau
+      function stone(x, y, w, h, dens) {
+        var n = Math.round(w * h * (dens || 0.02));
+        g.fillStyle = INK;
+        for (var i = 0; i < n; i++) { g.globalAlpha = R(0.35, 0.9); g.fillRect(x + rnd() * w, y + rnd() * h, R(0.3, 0.8), R(0.3, 0.8)); }
+        g.globalAlpha = 1;
+        var pits = Math.round(w * h / 260);
+        for (var p = 0; p < pits; p++) {
+          var px = x + R(2, w - 2), py = y + R(2, h - 2), r = R(0.5, 1.3);
+          g.beginPath(); g.moveTo(px + r, py); for (var k = 1; k < 6; k++) { var an = k / 6 * 6.283, q = r * R(0.6, 1.2); g.lineTo(px + Math.cos(an) * q, py + Math.sin(an) * q); } g.closePath(); g.fill();
+        }
+        if (rnd() < 0.5) { var cx = x + R(2, w - 2), cy = y + R(2, h - 2); brush([[cx, cy], [cx + R(-3, 3), cy + R(1, 4)], [cx + R(-4, 4), cy + R(3, 7)]], 0.45); }
+        if (rnd() < 0.4) { var sx = x + R(1, w - 6), sy = y + R(1, h - 3); jline(sx, sy, sx + R(3, 6), sy + R(-1, 1), 0.4, 0.05); }
+      }
       // Crasse et usure : amas de points, gribouillis, hachures croisées
       function grime(x, y, w, h, n) {
         for (var i = 0; i < n; i++) {
@@ -248,6 +272,7 @@
             g.moveTo(cx, cy); g.lineTo(cx + (cx === tx ? e : -e), cy); g.lineTo(cx, cy + (cy === ty ? e : -e)); g.closePath(); g.fill();
           } else if (r < 0.42 && dense()) stipple(tx + 2, ty + 2, s - 4, s - 4, 26, 0.7);
           if (dense() && rnd() < 0.5) scratches(tx + 2, ty + 2, s - 4, s - 4, 3);
+          stone(tx + 1.5, ty + 1.5, s - 3, s - 3, 0.012);
         }
       }
       function plate(cx, cy, s) {
@@ -349,6 +374,7 @@
             var w = R(18, 28), bx = Math.max(x0, x), bw = Math.min(x1, x + w) - bx;
             if (bw > 3) {
               jrect(bx + 0.8, y + 0.8, bw - 1.6, 7.4, 0.9, 0.35);
+              stone(bx + 1.2, y + 1.2, bw - 2.4, 6.6, 0.03);
               var r = rnd();
               if (r < 0.2) { g.save(); g.beginPath(); g.rect(bx + 1, y + 1, bw - 2, 7); g.clip(); g.lineWidth = 0.7; for (var hx = bx - 8; hx < bx + bw; hx += 2.3) jline(hx, y + 8, hx + 7, y + 1, 0.65, 0.1); g.restore(); }
               else if (r < 0.45 && dense()) stipple(bx + 1, y + 1, bw - 2, 7, 10, 0.6);
@@ -425,19 +451,27 @@
       // ---------- Les salles ----------
       var FLOOR = { x0: 36, y0: 196, x1: 324, y1: 560 };
       var DOOR = { y0: 350, y1: 410 }; // passage entre les deux salles
+      // Les 17 formules choisies par Pierre (page formules.html), réparties
+      // dans le palais : logique au hall, calcul dans le couloir, ln / exp /
+      // sommes dans la bibliothèque, trigonométrie dans le livre de Pythagore.
       var HALL_PLATES = [
-        { x: 108, y: 312, who: "Le prof", name: "Formule d'Euler pour cos x", f: [["cos x = ", { n: "eⁱˣ + e⁻ⁱˣ", d: "2" }]] },
-        { x: 252, y: 312, who: "Le prof", name: "Définition de la limite d'une suite", f: [["uₙ → ℓ  ⇔"], ["∀ε > 0, ∃N ∈ ℕ, ∀n ≥ N,"], ["|uₙ − ℓ| < ε"]] },
-        { x: 180, y: 492, who: "Moi", name: "Inégalité triangulaire", f: [["|a + b| ≤ |a| + |b|"]] }
+        { x: 108, y: 312, who: "Le prof", name: "Négation de « et » et de « ou »", f: [["¬(s et S) ⇔ ¬s ou ¬S"], ["¬(s ou S) ⇔ ¬s et ¬S"]] },
+        { x: 252, y: 312, who: "Le prof", name: "Négation d'une implication", f: [["¬(s ⇒ S) ⇔ s et ¬S"]] },
+        { x: 180, y: 250, who: "Le prof", name: "Raisonnement par contraposée", f: [["(s ⇒ S) ⇔ (¬S ⇒ ¬s)"]] },
+        { x: 180, y: 492, who: "Le prof", name: "Négation des quantificateurs", f: [["¬(∀x, s(x)) ⇔ ∃x, ¬s(x)"], ["¬(∃x, s(x)) ⇔ ∀x, ¬s(x)"]] }
       ];
       var LIB_PLATES = [
-        { x: 98, y: 476, who: "Le livre", name: "Continuité de f en a", f: [[{ lim: "x → a" }, " f(x) = f(a)"]] },
-        { x: 240, y: 256, who: "Le prof", name: "Formule d'Euler pour sin x", f: [["sin x = ", { n: "eⁱˣ − e⁻ⁱˣ", d: "2i" }]] }
+        { x: 98, y: 476, who: "Le livre", name: "Propriétés du logarithme", f: [["ln(ab) = ln a + ln b"], ["ln(", { n: "a", d: "b" }, ") = ln a − ln b"], ["ln(aʳ) = r ln a ;  ln 1 = 0 ;  ln e = 1"]] },
+        { x: 240, y: 256, who: "Le livre", name: "Propriétés de l'exponentielle", f: [["eˣ⁺ʸ = eˣ × eʸ"], ["a = ln b ⇔ eᵃ = b   (b > 0)"]] },
+        { x: 122, y: 300, who: "Le prof", name: "Formule du binôme de Newton", f: [["(a + b)ⁿ = ∑ₖ₌₀ⁿ C(n, k) aᵏ bⁿ⁻ᵏ"]] },
+        { x: 236, y: 474, who: "Le prof", name: "Somme géométrique", f: [["1 + z + … + zⁿ⁻¹ = ", { n: "1 − zⁿ", d: "1 − z" }], ["(z ≠ 1)"]] },
+        { x: 176, y: 532, who: "Le prof", name: "Croissances comparées", f: [[{ lim: "x → +∞" }, " ", { n: "ln x", d: "x" }, " = 0"], [{ lim: "x → +∞" }, " ", { n: "eˣ", d: "xⁿ" }, " = +∞"], ["ln x ≪ xᵃ ≪ eˣ   (a > 0)"]] }
       ];
       // Le livre de la table de lecture : de Pythagore à l'identité d'Euler
       var PYTHAGORE = { title: "L'héritage de Pythagore", pages: [
         { name: "Théorème de Pythagore (triangle rectangle, hypoténuse c)", f: [["a² + b² = c²"]] },
-        { name: "Sur le cercle unité : l'hypoténuse vaut 1", f: [["cos²θ + sin²θ = 1"]] },
+        { name: "Relation fondamentale (cercle unité : l'hypoténuse vaut 1)", f: [["cos²θ + sin²θ = 1"]] },
+        { name: "Valeurs remarquables de cos et sin", f: [["cos ", { n: "π", d: "6" }, " = ", { n: "√3", d: "2" }, " ,  sin ", { n: "π", d: "6" }, " = ", { n: "1", d: "2" }], ["cos ", { n: "π", d: "4" }, " = sin ", { n: "π", d: "4" }, " = ", { n: "√2", d: "2" }], ["cos ", { n: "π", d: "3" }, " = ", { n: "1", d: "2" }, " ,  sin ", { n: "π", d: "3" }, " = ", { n: "√3", d: "2" }]] },
         { name: "Formule d'Euler", f: [["eⁱᶿ = cos θ + i sin θ"]] },
         { name: "Le module de eⁱᶿ", f: [["|eⁱᶿ|² = cos²θ + sin²θ = 1"]] },
         { name: "On prend θ = π", f: [["e", { s: "iπ" }, " = cos π + i sin π = −1"]] },
@@ -448,10 +482,10 @@
       var CORRIDOR_FRAMES = [
         { fx: 52, fy: 92, x: 52, y: 152, r: 30, who: "Un cadre", name: "Dérivée d'un produit ?", f: [["(uv)′ = u′v + uv′"]] },
         { fx: 150, fy: 92, x: 150, y: 152, r: 30, who: "Un cadre", name: "Dérivée d'un quotient ?", f: [["(", { n: "u", d: "v" }, ")′ = ", { n: "u′v − uv′", d: "v²" }]] },
-        { side: "left", fx: 140, fy: 300, x: 164, y: 300, r: 30, who: "Un cadre", name: "Racines du trinôme ax² + bx + c (Δ > 0) ?", f: [["Δ = b² − 4ac"], ["x = ", { n: "−b ± √Δ", d: "2a" }]] },
-        { side: "right", fx: 214, fy: 372, x: 190, y: 372, r: 30, who: "Un cadre", name: "Somme des n premiers entiers ?", f: [["1 + 2 + … + n = ", { n: "n(n + 1)", d: "2" }]] },
+        { side: "left", fx: 140, fy: 300, x: 164, y: 300, r: 30, who: "Un cadre", name: "Dérivée d'une composée ?", f: [["(f ∘ g)′(x) = g′(x) × f′(g(x))"]] },
+        { side: "right", fx: 214, fy: 372, x: 190, y: 372, r: 30, who: "Un cadre", name: "Dérivées usuelles ?", f: [["(xⁿ)′ = n xⁿ⁻¹ ;  (eˣ)′ = eˣ"], ["(ln x)′ = ", { n: "1", d: "x" }], ["(sin x)′ = cos x ;  (cos x)′ = −sin x"]] },
         { fx: 262, fy: 422, x: 262, y: 482, r: 30, who: "Un cadre", name: "Intégration par parties ?", f: [["∫ u′v = uv − ∫ uv′"]] },
-        { fx: 326, fy: 422, x: 326, y: 482, r: 30, who: "Un cadre", name: "Logarithme d'un produit ?", f: [["ln(ab) = ln a + ln b"]] }
+        { fx: 326, fy: 422, x: 326, y: 482, r: 30, who: "Un cadre", name: "Somme des n premiers entiers ?", f: [["∑ₖ₌₁ⁿ k = ", { n: "n(n + 1)", d: "2" }]] }
       ];
       var PLATES = HALL_PLATES;
       var TILE = 24;
@@ -544,7 +578,7 @@
         // colonnes
         column(84, 244, 17); column(276, 244, 17); column(84, 452, 17); column(276, 452, 17);
         // plaques
-        PLATES.forEach(function (p) { plate(p.x, p.y, 30); });
+        HALL_PLATES.forEach(function (p) { plate(p.x, p.y, 30); });
         grate(180, 540, 30);
         // bas : marche, rebord et vide noir
         bottomEdge();
@@ -716,7 +750,7 @@
         chair(164, 414, 32, 22);
         bookStack(92, 252); bookStack(262, 506);
         page(124, 520, 0.4); page(230, 330, -0.5); page(206, 548, 0.9); page(70, 372, -0.2);
-        LIB_PLATES.forEach(function (p) { plate(p.x, p.y, 30); });
+        LIB_PLATES.forEach(function (p) { if (!p.book) plate(p.x, p.y, 30); });
         bottomEdge();
         doorway("left");
         // ronces, plus discrètes ici
@@ -738,7 +772,7 @@
             var w = R(16, 26), bx = Math.max(x0, x), bw = Math.min(x1, x + w) - bx;
             if (bw > 3) {
               jrect(bx + 0.8, y + 0.8, bw - 1.6, 8.4, 0.9, 0.35);
-              if (rnd() < 0.35) stipple(bx + 1, y + 1, bw - 2, 8, 12, 0.55);
+              stone(bx + 1.2, y + 1.2, bw - 2.4, 7.6, 0.03);
               if (rnd() < 0.12) { g.fillStyle = INK; g.fillRect(bx + 1, y + 1, bw - 2, 8); }
             }
             x += w;
@@ -993,7 +1027,47 @@
         bg = document.createElement("canvas"); bg.width = cv.width; bg.height = cv.height;
         g = bg.getContext("2d"); g.setTransform(cv.width / LW, 0, 0, cv.height / LH, 0, 0);
         drawRoom();
+        inkInPaper();
         draw();
+      }
+      // Tout le blanc est du papier (type Canson) : l'encre y diffuse un peu,
+      // de façon irrégulière selon l'absorption du grain, et le papier a sa
+      // propre texture. Calculé une seule fois par salle, pas à chaque image.
+      function inkInPaper() {
+        try {
+          var W = bg.width, H = bg.height, bc = bg.getContext("2d"), sc = W / LW;
+          // carte d'absorption : taches douces, plus ou moins buvardes
+          var nw = Math.max(8, Math.ceil(W / 14)), nh = Math.max(8, Math.ceil(H / 14));
+          var nc = document.createElement("canvas"); nc.width = nw; nc.height = nh;
+          var nx = nc.getContext("2d"), id = nx.createImageData(nw, nh);
+          for (var i = 0; i < id.data.length; i += 4) { id.data[i + 3] = Math.round(40 + Math.pow(rnd(), 1.6) * 215); }
+          nx.putImageData(id, 0, 0);
+          // halo : l'image étalée d'un rien dans toutes les directions
+          var halo = document.createElement("canvas"); halo.width = W; halo.height = H;
+          var hc = halo.getContext("2d"), off = Math.max(0.7, sc * 0.33);
+          hc.globalAlpha = 1 / 3;
+          [[1, 0], [-1, 0], [0, 1], [0, -1], [0.7, 0.7], [-0.7, 0.7], [0.7, -0.7], [-0.7, -0.7]].forEach(function (d, k) {
+            hc.globalAlpha = k < 4 ? 0.34 : 0.22; hc.drawImage(bg, d[0] * off, d[1] * off);
+          });
+          hc.globalAlpha = 1; hc.globalCompositeOperation = "destination-in"; hc.imageSmoothingEnabled = true; hc.drawImage(nc, 0, 0, W, H);
+          bc.save(); bc.setTransform(1, 0, 0, 1, 0, 0);
+          bc.globalCompositeOperation = "darken"; bc.globalAlpha = 0.55; bc.drawImage(halo, 0, 0);
+          // grain du papier : marbrures et fibres, en multiplication
+          var tw = Math.ceil(W / 2), th = Math.ceil(H / 2), tc = document.createElement("canvas"); tc.width = tw; tc.height = th;
+          var tx = tc.getContext("2d"); tx.fillStyle = "#fff"; tx.fillRect(0, 0, tw, th);
+          var ti = tx.getImageData(0, 0, tw, th), td = ti.data;
+          for (var j = 0; j < td.length; j += 4) { var v = 255 - Math.pow(rnd(), 3) * 34; td[j] = td[j + 1] = td[j + 2] = v; }
+          tx.putImageData(ti, 0, 0);
+          for (var m = 0; m < 40; m++) {
+            var mx = rnd() * tw, my = rnd() * th, mr = (20 + rnd() * 70) * (tw / 360), gr = tx.createRadialGradient(mx, my, 0, mx, my, mr);
+            gr.addColorStop(0, "rgba(70,62,45," + (0.03 + rnd() * 0.05) + ")"); gr.addColorStop(1, "rgba(70,62,45,0)");
+            tx.fillStyle = gr; tx.fillRect(mx - mr, my - mr, mr * 2, mr * 2);
+          }
+          tx.strokeStyle = "rgba(40,36,28,0.10)"; tx.lineWidth = Math.max(0.5, tw / 900);
+          for (var f = 0; f < 260; f++) { var fx = rnd() * tw, fy = rnd() * th, an = rnd() * 6.283, l = (3 + rnd() * 10) * (tw / 360); tx.beginPath(); tx.moveTo(fx, fy); tx.quadraticCurveTo(fx + Math.cos(an + 0.8) * l / 2, fy + Math.sin(an + 0.8) * l / 2, fx + Math.cos(an) * l, fy + Math.sin(an) * l); tx.stroke(); }
+          bc.globalCompositeOperation = "multiply"; bc.globalAlpha = 1; bc.imageSmoothingEnabled = true; bc.drawImage(tc, 0, 0, W, H);
+          bc.restore();
+        } catch (e) {}
       }
       function draw() {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1173,96 +1247,134 @@
         bookPage = (bookPage + 1) % p.book.pages.length; blip(880, 0.12, 0.03, "triangle"); renderScrap();
       });
 
-      // ---------- Formule tracée à la plume ----------
-      // Chaque lettre un peu de travers (angle, ligne de base, taille), la
-      // pression de la plume qui varie, des taches et des coulures d'encre ;
-      // fractions à barre horizontale tracée d'un geste, « lim » et sa flèche.
-      var QFONT = '"Bradley Hand", "Snell Roundhand", "Segoe Script", "Apple Chancery", "Comic Sans MS", cursive';
+      // ---------- Formule écrite à la plume ----------
+      // L'écriture elle-même est nette et sans faute (une belle police, pas
+      // déformée) ; l'encre vit autour : taches, gouttes et coulures posées
+      // dans les marges, jamais sur les lettres. Fractions à barre tirée à la
+      // règle, l'encre un peu plus chargée au départ et à l'arrivée.
+      var QFONT = '"Iowan Old Style", "Palatino", "Palatino Linotype", "Book Antiqua", Georgia, serif';
       function quill(canvas, lines, sd) {
         var a = (sd * 2654435761 + 12345) >>> 0;
         function rr(lo, hi) { a = (a + 0x6D2B79F5) >>> 0; var t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return lo + (hi - lo) * (((t ^ (t >>> 14)) >>> 0) / 4294967296); }
         var cssW = Math.max(120, canvas.parentNode.clientWidth - 34), pr = Math.min(window.devicePixelRatio || 1, 3);
-        var FS = 30, lineH = FS * 1.7, fracH = FS * 2.7;
+        var FS = 28, lineH = FS * 1.75, fracH = FS * 2.8;
         var c = canvas.getContext("2d");
-        function wText(t, fs) { c.font = "italic " + fs + "px " + QFONT; var w = 0; Array.from(t).forEach(function (ch) { w += c.measureText(ch).width * 1.04; }); return w; }
+        function fnt(fs) { return "italic " + fs + "px " + QFONT; }
+        function wText(t, fs) { c.font = fnt(fs); return c.measureText(t).width; }
         function wPart(pt) {
           if (typeof pt === "string") return wText(pt, FS);
-          if (pt.n !== undefined) return Math.max(wText(pt.n, FS * 0.9), wText(pt.d, FS * 0.9)) + 16;
+          if (pt.n !== undefined) return Math.max(wText(pt.n, FS * 0.88), wText(pt.d, FS * 0.88)) + 14;
           if (pt.lim !== undefined) return Math.max(wText("lim", FS), wText(pt.lim, FS * 0.55)) + 8;
-          if (pt.s !== undefined) return wText(pt.s, FS * 0.6) + 3;
+          if (pt.s !== undefined) return wText(pt.s, FS * 0.62) + 3;
           return 0;
         }
         var widths = lines.map(function (ln) { return ln.reduce(function (s2, pt) { return s2 + wPart(pt); }, 0); });
         var heights = lines.map(function (ln) { return ln.some(function (pt) { return typeof pt === "object" && (pt.n !== undefined || pt.lim !== undefined); }) ? fracH : lineH; });
-        var natW = Math.max.apply(null, widths) + 26, natH = heights.reduce(function (s2, h) { return s2 + h; }, 0) + 10;
+        var PAD = 22, natW = Math.max.apply(null, widths) + PAD * 2, natH = heights.reduce(function (s2, h) { return s2 + h; }, 0) + PAD;
         var k = Math.min(1, cssW / natW);
         canvas.width = Math.round(cssW * pr); canvas.height = Math.round(natH * k * pr);
         canvas.style.height = (natH * k) + "px";
         c.setTransform(pr * k, 0, 0, pr * k, 0, 0);
-        var INKC = "#f2f1ec";
-        c.fillStyle = INKC; c.strokeStyle = INKC; c.lineCap = "round"; c.lineJoin = "round"; c.textBaseline = "alphabetic";
-        function glyphs(t, x, y, fs) {
-          c.font = "italic " + fs + "px " + QFONT;
-          Array.from(t).forEach(function (ch) {
-            var w = c.measureText(ch).width;
-            if (ch !== " ") {
-              c.save(); c.translate(x + w / 2, y + rr(-fs * 0.05, fs * 0.05)); c.rotate(rr(-0.08, 0.08));
-              var sc = rr(0.92, 1.08); c.scale(sc, sc);
-              c.globalAlpha = rr(0.8, 1);
-              c.fillText(ch, -w / 2, 0);
-              // pression de la plume : un second passage décalé, parfois
-              if (rr(0, 1) < 0.55) { c.globalAlpha = 0.5; c.fillText(ch, -w / 2 + rr(0.3, 1), rr(-0.5, 0.5)); }
-              c.restore();
-              var r = rr(0, 1);
-              if (r < 0.07) { c.globalAlpha = 0.9; c.beginPath(); c.arc(x + w * rr(0.2, 0.9), y + rr(-fs * 0.5, fs * 0.15), rr(1.2, 2.8), 0, 7); c.fill(); }
-              else if (r < 0.1) {
-                c.globalAlpha = 0.7; c.lineWidth = rr(0.8, 1.4);
-                var dx = x + w * rr(0.3, 0.8), L = fs * rr(0.25, 0.5);
-                c.beginPath(); c.moveTo(dx, y + 2); c.quadraticCurveTo(dx + rr(-1, 1), y + L * 0.6, dx + rr(-1, 1), y + L); c.stroke();
-                c.beginPath(); c.arc(dx, y + L, 1.3, 0, 7); c.fill();
-              }
-              c.globalAlpha = 1;
-            }
-            x += w * 1.04;
-          });
-          return x;
+        var INKC = "#f2f1ec", boxes = [];
+        c.fillStyle = INKC; c.strokeStyle = INKC; c.lineCap = "round"; c.textBaseline = "alphabetic";
+        function write(t, x, y, fs) {
+          c.font = fnt(fs); c.globalAlpha = 1; c.fillText(t, x, y);
+          var w = c.measureText(t).width; boxes.push([x - 3, y - fs * 0.85, x + w + 3, y + fs * 0.3]);
+          return x + w;
         }
-        function penLine(x1, y1, x2) {
-          // barre tracée d'un geste : appuyée au départ, qui ondule et s'allège
-          var n = 16, f = rr(1, 2), tilt = rr(-1.5, 1.5);
-          for (var i = 0; i < n; i++) {
-            var t0 = i / n, t1 = (i + 1) / n;
-            c.lineWidth = 2.8 - 1.6 * t0;
-            c.beginPath();
-            c.moveTo(x1 + (x2 - x1) * t0, y1 + Math.sin(t0 * Math.PI * f) * 1.1 + t0 * tilt);
-            c.lineTo(x1 + (x2 - x1) * t1, y1 + Math.sin(t1 * Math.PI * f) * 1.1 + t1 * tilt);
-            c.stroke();
-          }
-          c.beginPath(); c.arc(x1, y1, 1.7, 0, 7); c.fill();
+        function ruler(x1, y1, x2) {
+          // trait à la règle : droit, l'encre s'accumule aux deux bouts
+          c.lineWidth = 1.7; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y1); c.stroke();
+          c.beginPath(); c.arc(x1 + 0.6, y1, 1.35, 0, 7); c.arc(x2 - 0.6, y1, 1.15, 0, 7); c.fill();
+          boxes.push([x1 - 3, y1 - 4, x2 + 3, y1 + 4]);
         }
-        var y = 4;
+        var y = PAD * 0.5;
         lines.forEach(function (ln, li) {
-          var h = heights[li], base = y + h / 2 + FS * 0.3, x = 12 + rr(-3, 3);
+          var h = heights[li], base = y + h / 2 + FS * 0.3, x = PAD;
           ln.forEach(function (pt) {
-            if (typeof pt === "string") { x = glyphs(pt, x, base + rr(-2, 2), FS); return; }
+            if (typeof pt === "string") { x = write(pt, x, base, FS); return; }
             if (pt.n !== undefined) {
-              var fw = wPart(pt) - 8, nw = wText(pt.n, FS * 0.9), dw = wText(pt.d, FS * 0.9), mid = base - FS * 0.3;
-              glyphs(pt.n, x + (fw - nw) / 2, mid - FS * 0.3, FS * 0.9);
-              penLine(x - 2, mid, x + fw + 2);
-              glyphs(pt.d, x + (fw - dw) / 2, mid + FS * 0.95, FS * 0.9);
-              x += fw + 12; return;
+              var fw = wPart(pt) - 8, nw = wText(pt.n, FS * 0.88), dw = wText(pt.d, FS * 0.88), mid = base - FS * 0.3;
+              write(pt.n, x + (fw - nw) / 2, mid - FS * 0.32, FS * 0.88);
+              ruler(x - 1, mid, x + fw + 1);
+              write(pt.d, x + (fw - dw) / 2, mid + FS * 0.92, FS * 0.88);
+              x += fw + 10; return;
             }
-            if (pt.s !== undefined) { x = glyphs(pt.s, x + 1, base - FS * 0.48, FS * 0.6) + 2; return; }
+            if (pt.s !== undefined) { x = write(pt.s, x + 1, base - FS * 0.46, FS * 0.62) + 2; return; }
             if (pt.lim !== undefined) {
               var lw = wPart(pt) - 8, l1 = wText("lim", FS), l2 = wText(pt.lim, FS * 0.55);
-              glyphs("lim", x + (lw - l1) / 2, base, FS);
-              glyphs(pt.lim, x + (lw - l2) / 2, base + FS * 0.62, FS * 0.55);
+              write("lim", x + (lw - l1) / 2, base, FS);
+              write(pt.lim, x + (lw - l2) / 2, base + FS * 0.62, FS * 0.55);
               x += lw + 8;
             }
           });
           y += h;
         });
+        // taches d'encre dans les marges, jamais sur l'écriture
+        function free(px, py, r) {
+          for (var i = 0; i < boxes.length; i++) { var b = boxes[i]; if (px + r > b[0] && px - r < b[2] && py + r > b[1] && py - r < b[3]) return false; }
+          return px > r && py > r && px < natW - r && py < natH - r;
+        }
+        function blot(px, py, r) {
+          c.globalAlpha = rr(0.75, 0.95); c.beginPath();
+          for (var i = 0; i <= 14; i++) { var an = i / 14 * 6.283, q = r * rr(0.75, 1.2); if (i === 0) c.moveTo(px + Math.cos(an) * q, py + Math.sin(an) * q); else c.lineTo(px + Math.cos(an) * q, py + Math.sin(an) * q); }
+          c.closePath(); c.fill();
+          for (var d = 0; d < 5; d++) { var a2 = rr(0, 6.283), dist = r * rr(1.5, 3), dr = rr(0.4, r * 0.25); if (free(px + Math.cos(a2) * dist, py + Math.sin(a2) * dist, dr)) { c.beginPath(); c.arc(px + Math.cos(a2) * dist, py + Math.sin(a2) * dist, dr, 0, 7); c.fill(); } }
+          c.globalAlpha = 1;
+        }
+        var placed = 0;
+        for (var tries = 0; tries < 60 && placed < 4; tries++) {
+          var bx = rr(4, natW - 4), by = rr(4, natH - 4), br = rr(1.2, 3.6);
+          if (free(bx, by, br * 3.4)) { blot(bx, by, br); placed++; }
+        }
+        // une trace de doigt encré, très légère, dans un coin libre
+        for (var t2 = 0; t2 < 20; t2++) {
+          var fx = rr(10, natW - 10), fy = rr(10, natH - 10);
+          if (free(fx, fy, 12)) {
+            c.globalAlpha = 0.08; c.lineWidth = 0.7;
+            for (var ring = 3; ring < 10; ring += 1.6) { c.beginPath(); c.ellipse(fx, fy, ring, ring * 1.3, 0.4, 0, 7); c.stroke(); }
+            c.globalAlpha = 1; break;
+          }
+        }
       }
+
+      // Papier abîmé du billet : grain, fibres, rousseurs, bords plus sombres,
+      // contour déchiré (une texture claire pour le jour, une sombre en mode noir)
+      function paperTexture(dark) {
+        var w = 320, h = 220, cnv = document.createElement("canvas"); cnv.width = w; cnv.height = h;
+        var c = cnv.getContext("2d"), base = dark ? [16, 16, 15] : [242, 239, 228];
+        c.fillStyle = "rgb(" + base.join(",") + ")"; c.fillRect(0, 0, w, h);
+        var img = c.getImageData(0, 0, w, h), d = img.data;
+        for (var i = 0; i < d.length; i += 4) { var n = (Math.random() - 0.5) * (dark ? 10 : 16); d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+        c.putImageData(img, 0, 0);
+        for (var m = 0; m < 26; m++) { // marbrures
+          var mx = Math.random() * w, my = Math.random() * h, mr = 10 + Math.random() * 40, gr = c.createRadialGradient(mx, my, 0, mx, my, mr);
+          gr.addColorStop(0, dark ? "rgba(255,255,255,0.035)" : "rgba(60,55,40,0.07)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+          c.fillStyle = gr; c.fillRect(mx - mr, my - mr, mr * 2, mr * 2);
+        }
+        c.strokeStyle = dark ? "rgba(255,255,255,0.06)" : "rgba(40,35,25,0.12)"; c.lineWidth = 0.5;
+        for (var f = 0; f < 90; f++) { var fx = Math.random() * w, fy = Math.random() * h, an = Math.random() * 6.283, l = 4 + Math.random() * 10; c.beginPath(); c.moveTo(fx, fy); c.quadraticCurveTo(fx + Math.cos(an + 0.7) * l / 2, fy + Math.sin(an + 0.7) * l / 2, fx + Math.cos(an) * l, fy + Math.sin(an) * l); c.stroke(); }
+        if (!dark) for (var s = 0; s < 7; s++) { c.fillStyle = "rgba(90,70,40," + (0.05 + Math.random() * 0.08) + ")"; c.beginPath(); c.arc(Math.random() * w, Math.random() * h, 1 + Math.random() * 3.5, 0, 7); c.fill(); }
+        var ed = c.createRadialGradient(w / 2, h / 2, h * 0.3, w / 2, h / 2, w * 0.62);
+        ed.addColorStop(0, "rgba(0,0,0,0)"); ed.addColorStop(1, dark ? "rgba(255,255,255,0.05)" : "rgba(50,40,20,0.22)");
+        c.fillStyle = ed; c.fillRect(0, 0, w, h);
+        return cnv.toDataURL("image/png");
+      }
+      function tornEdge() {
+        var pts = [], i;
+        for (i = 0; i <= 20; i++) pts.push((i * 5) + "% " + (Math.random() * 2.2).toFixed(2) + "%");
+        for (i = 0; i <= 12; i++) pts.push((100 - Math.random() * 1.4).toFixed(2) + "% " + (i * 100 / 12) + "%");
+        for (i = 20; i >= 0; i--) pts.push((i * 5) + "% " + (100 - Math.random() * 2.6).toFixed(2) + "%");
+        for (i = 12; i >= 0; i--) pts.push((Math.random() * 1.4).toFixed(2) + "% " + (i * 100 / 12) + "%");
+        return "polygon(" + pts.join(",") + ")";
+      }
+      (function () {
+        try {
+          var st = document.createElement("style");
+          st.textContent = ".scrap{background-image:url(" + paperTexture(false) + ");background-size:cover;clip-path:" + tornEdge() + ";} .scrap.ink{background-image:url(" + paperTexture(true) + ");}";
+          document.head.appendChild(st);
+        } catch (e) {}
+      })();
 
       // ---------- Son (court, débloqué au premier geste) ----------
       var AC = null;
