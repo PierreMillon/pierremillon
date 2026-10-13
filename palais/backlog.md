@@ -40,6 +40,8 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v14 — Danse hip-hop : genoux (cuisse + tibia), bassin, buste pivotant aux
+  hanches, cou ; 11 nouveaux pas (groove, running man, chest pop…)
 - [x] v13 — Historique qui défile au doigt, « Fermer » toujours visible, croix
 - [x] v12 — Danse en morceaux indépendants (bras 8, jambes 6, tête 6, buste 7,
   miroirs), tempo fixe 100 BPM, changements en début de mesure, sans pause
