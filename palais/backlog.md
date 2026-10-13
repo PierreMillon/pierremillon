@@ -40,6 +40,8 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v12 — Danse en morceaux indépendants (bras 8, jambes 6, tête 6, buste 7,
+  miroirs), tempo fixe 100 BPM, changements en début de mesure, sans pause
 - [x] v11 — Danse variée : six pas tirés au hasard, enchaînés en fondu
 - [x] v10 — Joystick contre un mur : reste face au mur, ne glisse de côté que
   si le doigt va de côté ; pas de danse pendant qu'on pousse
