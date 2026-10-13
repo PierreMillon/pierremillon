@@ -40,6 +40,12 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v5 — Bibliothèque à droite du hall (passage), diriger au doigt
+  appuyé, obstacles, respiration et petite danse au repos, une seule
+  version du dessin (la plus dense), boutons A/B et i retirés (historique
+  via l'étiquette en haut à gauche), trait plus irrégulier, crasse et
+  usure ; plaques = nom de la formule, formule tracée à la plume en mode
+  noir
 - [x] v4 — Retour au personnage de la v2 (demande de Pierre)
 - [x] v1 — Lien ajouté au menu du portfolio (demande de Pierre), groupe des jeux
 
@@ -70,7 +76,8 @@ vendor/, licence MIT), hors ligne (service
 worker « réseau d'abord », cache `palais-vN`), portrait (choix de Pierre),
 zoom tactile et loupe iOS désactivés, écran figé, mise à jour automatique,
 version et historique (bouton i), réglage sauvegardé en `localStorage`
-(try/catch), boucle d'animation seulement quand le personnage bouge.
+(try/catch), boucle d'animation : pleine vitesse quand le personnage bouge, ~30 i/s au
+repos (respiration, danse), arrêtée quand la page est cachée.
 
 Écarts :
 
