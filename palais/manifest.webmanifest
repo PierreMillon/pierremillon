@@ -1,0 +1,16 @@
+{
+  "name": "Palais — palais de mémoire",
+  "short_name": "Palais",
+  "description": "Dessiner un palais, s'y promener et y ranger ses cours, phrase par phrase.",
+  "lang": "fr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0b0a",
+  "theme_color": "#0b0b0a",
+  "icons": [
+    { "src": "../apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "../favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
