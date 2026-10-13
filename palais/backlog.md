@@ -40,6 +40,9 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v16 — Formules écrites comme en cours (KaTeX copié dans vendor/) : Σ
+  avec bornes dessus/dessous, coefficient binomial en parenthèse, fractions ;
+  taches d'encre seulement dans les marges
 - [x] v15 — Robe plus courte, ressort sur la plante des pieds à chaque temps,
   mouvements de 1 à 2 cycles sans répéter les 3 derniers, danse dans sa direction
 - [x] v14 — Danse hip-hop : genoux (cuisse + tibia), bassin, buste pivotant aux
@@ -95,7 +98,7 @@ Ce sera un outil de mémoire plus qu'un jeu (pas d'échec possible) : seule
 la partie technique de la charte s'appliquera. Pour l'instant c'est une
 page d'essai.
 
-Déjà conforme : un seul fichier HTML sans build (plus three.js copié dans
+Déjà conforme : un seul fichier HTML sans build (plus three.js et KaTeX copiés dans
 vendor/, licence MIT), hors ligne (service
 worker « réseau d'abord », cache `palais-vN`), portrait (choix de Pierre),
 zoom tactile et loupe iOS désactivés, écran figé, mise à jour automatique,
