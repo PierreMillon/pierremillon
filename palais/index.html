@@ -130,6 +130,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v15", text: "Robe un peu plus courte. En dansant : genoux toujours un peu pliés, sur la plante des pieds, avec un rebond de ressort sur chaque temps. Chaque mouvement ne dure qu'un ou deux cycles puis passe à autre chose, sans revenir sur les trois derniers — variété permanente. Le personnage danse dans la direction où il se trouve, sans se retourner vers nous." },
         { v: "v14", text: "Danse hip-hop : le personnage a maintenant des genoux (cuisse + tibia), un bassin qui roule et tourne, un buste qui pivote depuis les hanches et un cou qui avance et recule. Nouveaux pas : groove (rebond des genoux), running man, roulé de bassin, genou à genou, two-step, chest pop, vague du buste, penché en arrière, pops de côté, cou de poulet, tête qui roule — toujours mélangés au hasard, sur le tempo." },
         { v: "v13", text: "Fenêtre de l'historique (numéro de version) : le texte défile au doigt sans dépasser de l'écran, « Fermer » reste toujours visible en bas, et une croix en haut à droite." },
         { v: "v12", text: "Danse en morceaux indépendants : bras (8 mouvements), jambes (6), tête (6) et buste (7, dont la toupie) changent chacun de mouvement à leur propre moment, au hasard, en miroir gauche-droite ou non, sur un tempo fixe de 100 BPM : les changements tombent toujours en début de mesure (4 temps), sans pause, prêts à être calés sur une musique — des milliers de combinaisons, enchaînées en fondu sur un temps." },
@@ -995,7 +996,7 @@
           var bodyG = new THREE.Group(); bodyG.position.y = -0.3; torso.add(bodyG);
           var hipsG = new THREE.Group(); hipsG.position.y = 0.3; root.add(hipsG);
           // corps en cloche (petite cape)
-          var prof = [[0.0, 0.22], [0.3, 0.22], [0.4, 0.24], [0.38, 0.3], [0.3, 0.55], [0.24, 0.8], [0.16, 0.95], [0.0, 0.98]].map(function (q) { return new THREE.Vector2(q[0], q[1]); });
+          var prof = [[0.0, 0.34], [0.3, 0.34], [0.38, 0.36], [0.36, 0.41], [0.3, 0.58], [0.24, 0.8], [0.16, 0.95], [0.0, 0.98]].map(function (q) { return new THREE.Vector2(q[0], q[1]); });
           part(new THREE.LatheGeometry(prof, 28), null, bodyG);
           // tête ronde un peu écrasée, deux pointes
           var head = new THREE.Group(); head.position.y = 1.28; bodyG.add(head);
@@ -1096,10 +1097,15 @@
           bRz: p.bRz === undefined ? undefined : -p.bRz, bRx: p.bRx, hdPz: p.hdPz };
       }
       var POSE_KEYS = ["sLx", "sRx", "sLz", "sRz", "hLx", "hRx", "hLz", "hRz", "hdX", "hdZ", "hdY", "hdPx", "bY", "rZ", "rX", "spin", "bRy", "kL", "kR", "pZ", "pY", "bRz", "bRx", "hdPz"];
-      var BAR_CHOICES = [4, 8, 8, 12, 16];
+      // un mouvement dure 1 ou 2 cycles (2 ou 4 temps), jamais plus : on passe
+      // tout de suite à autre chose, sans revenir sur les 3 derniers
+      var BAR_CHOICES = [2, 2, 4];
       function danceChannel(st, list, name, gb, b) {
         if (gb >= st.next) {
-          var pick; do { pick = Math.floor(Math.random() * list.length); } while (pick === st.cur && list.length > 1);
+          st.hist = st.hist || [];
+          var pick, guard = 0;
+          do { pick = Math.floor(Math.random() * list.length); } while ((pick === st.cur || st.hist.indexOf(pick) >= 0) && ++guard < 40);
+          st.hist.push(pick); if (st.hist.length > 3) st.hist.shift();
           st.prev = st.cur; st.pmir = st.mir; st.pstart = st.start;
           st.cur = pick; st.mir = Math.random() < 0.5; st.start = st.next; // pile sur le début de mesure
           // chaque partie du corps a sa propre durée (en mesures) : les changements se croisent
@@ -1126,7 +1132,7 @@
         var it = mv ? 0 : (hero.idle || 0), br = Math.sin(it * 2.3), ph = it % 16;
         // la danse commence après 4 s de repos et ne s'arrête plus (pas de pause)
         var dn = mv ? 0 : Math.min(1, Math.max(0, (it - 4) / 0.8));
-        if (dn > 0) hero.yawT = 0;
+        // il danse dans la direction où il se trouve, sans se retourner vers nous
         var P = {}, spin = 0;
         POSE_KEYS.forEach(function (key) { P[key] = 0; });
         if (dn > 0) {
@@ -1151,7 +1157,11 @@
         H3.root.rotation.y = H3.yaw + spin * dn;
         // genoux : un peu de flexion en marchant, beaucoup en dansant ; la
         // cuisse avance d'autant pour que le pied reste sous le corps
-        var kL = mv * 0.5 * pos(-Math.sin(w * 11)) + dn * pos(P.kL), kR = mv * 0.5 * pos(Math.sin(w * 11)) + dn * pos(P.kR);
+        // en dansant : genoux toujours un peu pliés, sur la plante des pieds,
+        // et un rebond de ressort sur chaque temps
+        var gbt = performance.now() / 1000 * DANCE_BPM / 60, dip = Math.pow(Math.cos(Math.PI * gbt), 2);
+        var spring = dn * (0.28 + 0.38 * dip);
+        var kL = mv * 0.5 * pos(-Math.sin(w * 11)) + dn * pos(P.kL) + spring, kR = mv * 0.5 * pos(Math.sin(w * 11)) + dn * pos(P.kR) + spring;
         H3.limbs[-1].knee.rotation.x = kL; H3.limbs[1].knee.rotation.x = kR;
         var drop = 0.29 * (1 - Math.cos(Math.min(kL, kR) * 0.5)); // on s'abaisse quand les deux genoux plient
         H3.limbs[-1].hip.rotation.x = sw + dn * P.hLx - kL * 0.5; H3.limbs[1].hip.rotation.x = -sw + dn * P.hRx - kR * 0.5;
@@ -1161,7 +1171,7 @@
         H3.limbs[-1].sh.rotation.z = -0.35 + dn * P.sLz;
         H3.limbs[1].sh.rotation.z = 0.35 + dn * P.sRz;
         H3.body.position.y = -0.3 + Math.abs(Math.cos(w * 11)) * 0.05 * mv;
-        H3.root.position.y = dn * P.bY - drop;
+        H3.root.position.y = dn * P.bY - drop + dn * 0.035 * (1 - dip); // remonte sur la pointe entre deux temps
         H3.body.scale.set(1 - br * 0.012 * (1 - dn), 1 + br * 0.025 * (1 - dn), 1);
         H3.root.rotation.z = dn * P.rZ;
         H3.root.position.x = dn * P.rX;
