@@ -40,6 +40,9 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v6 — Couloir en S inversé entre hall et bibliothèque (6 cadres =
+  questions / formules), livre « L'héritage de Pythagore » (6 pages),
+  chemin calculé sur une grille
 - [x] Page formules.html : 65 formules tirées des cours de Pierre
   (licence-math, exercices-l1-math, fiche-de-math-gael), à cocher ; le
   résultat se copie pour Claude
