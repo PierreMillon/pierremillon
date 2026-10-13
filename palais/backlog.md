@@ -40,6 +40,10 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] v7 — Écriture des formules nette (belle police), taches d'encre
+  autour seulement, billets en papier abîmé ; textures pierre / papier,
+  traits de structure à la règle, encre qui diffuse dans le papier ; les
+  17 formules choisies par Pierre rangées dans les trois pièces et le livre
 - [x] v6 — Couloir en S inversé entre hall et bibliothèque (6 cadres =
   questions / formules), livre « L'héritage de Pythagore » (6 pages),
   chemin calculé sur une grille
