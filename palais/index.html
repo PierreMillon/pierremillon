@@ -53,6 +53,9 @@
     }
     .pad .r { left: 60px; top: 30px; } .pad .b { left: 30px; top: 60px; }
     .pad button.on { background: #111; color: #f2f1ec; }
+    /* Bouton « ? » : terne tant qu'il n'y a rien à ouvrir, s'allume sur une zone */
+    .pad #bAsk { font-size: 1.15rem; opacity: 0.35; transition: opacity 0.2s, transform 0.2s; }
+    .pad #bAsk.ready { opacity: 1; transform: scale(1.08); }
     .scrap {
       position: absolute; left: 50%; top: 14%; transform: translateX(-50%) rotate(-1.5deg);
       width: 80%; background: #f2efe4; color: #111; padding: 18px 20px 20px;
@@ -93,12 +96,12 @@
     <div class="scrap" id="scrap"><small id="scrapWho"></small><div class="name" id="scrapName"></div><div class="hint" id="scrapHint">◐ pour voir la formule</div><canvas id="scrapCv"></canvas></div>
     <div class="pad">
       <button class="r" id="bInv" aria-label="Inverser">◐</button>
-      <button class="b" id="bRedo" aria-label="Redessiner">↻</button>
+      <button class="b" id="bAsk" aria-label="Ouvrir">?</button>
     </div>
     <div class="overlay" id="info" hidden>
       <h1>PALAIS</h1>
       <div class="ver" id="ver"></div>
-      <p>Page d'essai du rendu, avant le jeu. Touche le sol pour marcher, ou garde le doigt appuyé : le personnage suit le doigt. Marche sur une plaque ◇ pour lire ce qu'elle garde. ◐ inverse le noir et le blanc : la ligne cachée apparaît. ↻ redessine les détails au hasard. Le passage à droite du hall mène à la bibliothèque.</p>
+      <p>Page d'essai du rendu, avant le jeu. Touche le sol pour marcher, ou garde le doigt appuyé : le personnage suit le doigt. Sur une plaque ◇, un cadre ou le livre, un « ? » apparaît au-dessus du personnage : appuie sur le bouton « ? » pour lire. ◐ inverse le noir et le blanc : la ligne cachée apparaît. Le passage à droite du hall mène à la bibliothèque.</p>
       <ul id="hist"></ul>
       <button id="infoClose">Fermer</button>
       <a href="../" style="color:#8e8c85;font-size:0.8rem">← Portfolio</a>
@@ -111,6 +114,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v9", text: "Les billets ne s'ouvrent plus tout seuls en marchant : sur une plaque, un cadre ou le livre, un petit « ? » flotte au-dessus du personnage et le bouton « ? » en bas s'allume — on appuie pour ouvrir, encore pour refermer (il se referme aussi en s'éloignant). Bouton ↻ (redessiner) retiré." },
         { v: "v8", text: "Joystick virtuel : poser le doigt n'importe où sur l'écran et glisser — un joystick apparaît sous le doigt et le personnage avance dans cette direction, plus vite si l'on éloigne le doigt. Une simple touche sans glisser l'envoie toujours à l'endroit touché." },
         { v: "v7", text: "Écriture des formules nette et sans défaut, dans une belle police : l'encre vit autour (taches, gouttes, trace de doigt) mais jamais sur les lettres ; billets en papier abîmé aux bords déchirés. Chaque matière a sa texture : pierre piquée et grenée pour les dalles et les briques, papier fibreux partout où c'est blanc. Les grands traits de structure sont tirés à la règle, l'encre accumulée aux deux bouts, et l'encre diffuse un peu dans le papier, irrégulièrement, comme sur du Canson. Les 17 formules choisies par Pierre sont rangées dans le palais : logique au hall, dérivées et calcul dans les cadres du couloir, ln, exp, binôme, somme géométrique et croissances comparées dans la bibliothèque, relation fondamentale et valeurs remarquables dans le livre de Pythagore." },
         { v: "v6", text: "Entre le hall et la bibliothèque, un écran de couloir en S inversé : on entre en haut à gauche, on va vers la droite, on descend au milieu, puis on repart à droite en bas. Six cadres aux murs : en s'approchant, une question (« Dérivée d'un quotient ? ») ; en mode noir, la formule. Sur la table de la bibliothèque, le livre « L'héritage de Pythagore » : six pages, du théorème de Pythagore à e^(iπ) + 1 = 0, en touchant le papier pour tourner la page. Le personnage calcule son chemin et contourne colonnes, meubles et coudes." },
@@ -1082,6 +1086,18 @@
           bc.restore();
         } catch (e) {}
       }
+      // Petite bulle « ? » à l'encre au-dessus du personnage, qui flotte
+      function askBubble(x, y) {
+        var t = performance.now() / 1000, by = y - 2 + Math.sin(t * 3.2) * 1.6, r = 8;
+        ctx.save();
+        ctx.fillStyle = "#f2f0e8"; ctx.strokeStyle = INK; ctx.lineWidth = 1.6;
+        ctx.beginPath(); ctx.arc(x, by, r, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(x - 2.5, by + r - 1); ctx.lineTo(x + 1, by + r + 5); ctx.lineTo(x + 2.5, by + r - 1.2); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#f2f0e8"; ctx.fillRect(x - 2, by + r - 3, 4, 2.6);
+        ctx.fillStyle = INK; ctx.font = "italic bold 12px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("?", x + 0.3, by + 0.8);
+        ctx.restore();
+      }
       function draw() {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.drawImage(bg, 0, 0);
@@ -1093,6 +1109,7 @@
           ctx.strokeStyle = INK; ctx.lineWidth = 0.8;
           for (var k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(x - 12 + Math.abs(k) * 3, y + 2 + k * 1.7); ctx.lineTo(x + 12 - Math.abs(k) * 3, y + 2 + k * 1.7); ctx.stroke(); }
           ctx.drawImage(renderHero3D(), x - HS / 2, y - HS * H3.footY + 2, HS, HS);
+          if (near >= 0 && current < 0) askBubble(x, y - HS * H3.footY + 4);
         } else drawHero(ctx);
       }
 
@@ -1241,15 +1258,26 @@
         PLATES.forEach(function (p, i) {
           if (p.r ? Math.hypot(hero.x - p.x, hero.y - p.y) < p.r : (Math.abs(hero.x - p.x) < 15 && Math.abs(hero.y - p.y) < 18)) hit = i;
         });
-        if (hit === current) return;
-        current = hit;
-        if (hit < 0) { scrap.classList.remove("show"); return; }
-        var p = PLATES[hit];
+        // on ne s'ouvre plus tout seul : un « ? » au-dessus du personnage
+        // signale la zone, le bouton « ? » ouvre le billet
+        if (hit === near) return;
+        near = hit;
+        document.getElementById("bAsk").classList.toggle("ready", near >= 0);
+        if (near >= 0) blip(1175, 0.09, 0.025, "triangle");
+        if (current >= 0 && current !== near) { current = -1; scrap.classList.remove("show"); }
+      }
+      var near = -1;
+      function toggleSpot() {
+        if (current >= 0) { current = -1; scrap.classList.remove("show"); return; }
+        if (near < 0) return;
+        current = near;
+        var p = PLATES[current];
         document.getElementById("scrapWho").textContent = "— " + p.who;
         bookPage = 0;
         renderScrap();
         scrap.classList.add("show"); chime();
       }
+      document.getElementById("bAsk").addEventListener("click", function () { audio(); toggleSpot(); });
       function renderScrap() {
         if (current < 0) return;
         var p = PLATES[current], name = p.name, f = p.f, hint = "◐ pour voir la formule";
@@ -1457,7 +1485,6 @@
         document.getElementById("bInv").className = "r" + (inverted ? " on" : "");
         document.getElementById("lab").textContent = ROOMS[room].name.toUpperCase() + " · " + VERSION;
       }
-      document.getElementById("bRedo").addEventListener("click", function () { seed = (seed * 9301 + 49297) % 233280; saveSt(); layout(); });
       document.getElementById("bInv").addEventListener("click", function () {
         audio(); inverted = !inverted; cv.classList.toggle("inv", inverted); refreshPad(); renderScrap();
         blip(inverted ? 110 : 165, 0.5, 0.07, "triangle");
