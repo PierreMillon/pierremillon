@@ -114,6 +114,7 @@
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v10", text: "Correctif joystick : en poussant tout droit contre un mur (vers le haut par exemple), le personnage reste face au mur au lieu de partir à droite ou à gauche ; il ne glisse le long du mur que si le doigt va vraiment de côté. Il ne se met plus à danser pendant qu'on pousse." },
         { v: "v9", text: "Les billets ne s'ouvrent plus tout seuls en marchant : sur une plaque, un cadre ou le livre, un petit « ? » flotte au-dessus du personnage et le bouton « ? » en bas s'allume — on appuie pour ouvrir, encore pour refermer (il se referme aussi en s'éloignant). Bouton ↻ (redessiner) retiré." },
         { v: "v8", text: "Joystick virtuel : poser le doigt n'importe où sur l'écran et glisser — un joystick apparaît sous le doigt et le personnage avance dans cette direction, plus vite si l'on éloigne le doigt. Une simple touche sans glisser l'envoie toujours à l'endroit touché." },
         { v: "v7", text: "Écriture des formules nette et sans défaut, dans une belle police : l'encre vit autour (taches, gouttes, trace de doigt) mais jamais sur les lettres ; billets en papier abîmé aux bords déchirés. Chaque matière a sa texture : pierre piquée et grenée pour les dalles et les briques, papier fibreux partout où c'est blanc. Les grands traits de structure sont tirés à la règle, l'encre accumulée aux deux bouts, et l'encre diffuse un peu dans le papier, irrégulièrement, comme sur du Canson. Les 17 formules choisies par Pierre sont rangées dans le palais : logique au hall, dérivées et calcul dans les cadres du couloir, ln, exp, binôme, somme géométrique et croissances comparées dans la bibliothèque, relation fondamentale et valeurs remarquables dans le livre de Pythagore." },
@@ -1124,11 +1125,13 @@
         if (joy.active && jl > 0.18 && !switching) {
           hero.path = [];
           var js = 88 * dt * Math.min(1, jl), ux = joy.vx / jl, uy = joy.vy / jl, nx = hero.x + ux * js, ny = hero.y + uy * js;
-          // glisser le long d'un mur plutôt que s'y arrêter net
+          // contre un mur : on ne glisse de côté que si le doigt va vraiment
+          // de côté ; tout droit contre le mur, on reste face au mur, sur place
           if (!blocked(nx, ny)) { hero.x = nx; hero.y = ny; dx = ux; dy = uy; }
-          else if (!blocked(nx, hero.y)) { hero.x = nx; dx = ux; }
-          else if (!blocked(hero.x, ny)) { hero.y = ny; dy = uy; }
+          else if (Math.abs(ux) > 0.45 && !blocked(nx, hero.y)) { hero.x = nx; dx = ux; }
+          else if (Math.abs(uy) > 0.45 && !blocked(hero.x, ny)) { hero.y = ny; dy = uy; }
           sp = 0;
+          var joyYaw = Math.atan2(ux, uy);
         }
         while (hero.path.length && sp > 0 && !switching) {
           var wp = hero.path[0], ex = wp[0] - hero.x, ey = wp[1] - hero.y, ed = Math.hypot(ex, ey);
@@ -1143,8 +1146,10 @@
           hero.puffT = (hero.puffT || 0) - dt;
           if (hero.puffT <= 0) { hero.puffT = 0.16; puffs.push({ x: hero.x + R(-6, 6), y: hero.y + 13, r: R(1.5, 2.6), life: 1 }); step(); }
         }
+        // au joystick, le personnage regarde toujours où pointe le doigt (même bloqué)
+        if (joy.active && jl > 0.18 && !switching) hero.yawT = joyYaw;
         // temps de repos mesuré à l'horloge (la boucle de repos ne tourne qu'à ~30 i/s)
-        if (hero.moving || switching || hero.idleStart === undefined) hero.idleStart = now;
+        if (hero.moving || switching || joy.active || hero.idleStart === undefined) hero.idleStart = now;
         hero.idle = (now - hero.idleStart) / 1000;
         // passage vers l'écran voisin
         if (!switching) ROOMS[room].exits.forEach(function (ex) { var z = ex.z; if (!switching && hero.x > z[0] && hero.x < z[2] && hero.y > z[1] && hero.y < z[3]) changeRoom(ex); });
