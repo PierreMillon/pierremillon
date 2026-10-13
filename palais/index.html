@@ -84,10 +84,13 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
+    // three.js (MIT, licence dans vendor/) copié dans le projet : hors ligne
+    import * as THREE from "./vendor/three-0.170.0.module.min.js";
     (function () {
       "use strict";
       var VERSIONS = [
+        { v: "v2", text: "Variante B (sobre) par défaut, choisie par Pierre. Dessin plus « fait main » : traits au pinceau effilés aux deux bouts qui débordent aux coins, joints de dalles qui ploient, hachures irrégulières, éclaboussures d'encre, pinceau sec au bord des masses noires, fibres du papier. Le personnage devient un vrai modèle 3D rendu à l'encre — blanc à la lumière, trame de points dans la demi-teinte, hachures dans l'ombre, contour noir — qui se tourne vers où il va et marche (jambes, bras, tête qui balance)." },
         { v: "v1", text: "Page d'essai du rendu, avant le jeu : une salle en portrait, vue de dessus avec le mur du fond vu de face, dessinée à l'encre par le code à la manière de Helix — dallage fissuré, plaques ◇, mur de briques à arche et niches, tuyaux à brides, gaine annelée, colonnes, spirale gravée, ronces à épines, ombres en traits horizontaux, voile gris et vignettage. Petite créature blanche qui marche avec des bouffées de fumée. Plaques ◇ : un bout de papier avec une phrase de cours ; ◐ inverse noir et blanc et révèle la ligne cachée. Variantes A (dense) et B (sobre), ↻ pour redessiner." }
       ];
       var VERSION = VERSIONS[0].v;
@@ -97,8 +100,8 @@
       var cv = document.getElementById("cv"), ctx = cv.getContext("2d");
       var stage = document.getElementById("stage");
       var scale = 1, dpr = 1, bg = null;
-      var variant = "A", seed = 7, inverted = false;
-      try { var st = JSON.parse(localStorage.getItem("palais_essai_v1") || "null"); if (st) { if (st.variant === "B") variant = "B"; if (Number.isInteger(st.seed)) seed = st.seed; } } catch (e) {}
+      var variant = "B", seed = 7, inverted = false;
+      try { var st = JSON.parse(localStorage.getItem("palais_essai_v1") || "null"); if (st) { if (st.variant === "A") variant = "A"; if (Number.isInteger(st.seed)) seed = st.seed; } } catch (e) {}
       function saveSt() { try { localStorage.setItem("palais_essai_v1", JSON.stringify({ variant: variant, seed: seed })); } catch (e) {} }
 
       // Hasard reproductible : la même salle à chaque ouverture
@@ -114,14 +117,33 @@
 
       // ---------- Outils d'encre ----------
       var g; // contexte de la planche
+      // Trait au pinceau : forme pleine, effilée aux deux bouts, épaisseur
+      // qui respire le long du trait — et qui déborde un peu aux extrémités
+      function brush(pts, w) {
+        var n = pts.length; if (n < 2) return;
+        var L = [], Rt = [], ph = R(0, 6.28), fq = R(2, 5), prev = g.fillStyle;
+        for (var i = 0; i < n; i++) {
+          var a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+          var dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, t = i / (n - 1);
+          var ww = w * 0.5 * Math.pow(Math.sin(Math.PI * (0.06 + 0.88 * t)), 0.45) * (0.8 + 0.4 * (0.5 + 0.5 * Math.sin(t * fq + ph)));
+          L.push([pts[i][0] - dy / l * ww, pts[i][1] + dx / l * ww]); Rt.push([pts[i][0] + dy / l * ww, pts[i][1] - dx / l * ww]);
+        }
+        g.fillStyle = g.strokeStyle; g.beginPath(); g.moveTo(L[0][0], L[0][1]);
+        for (var k = 1; k < n; k++) g.lineTo(L[k][0], L[k][1]);
+        for (var m = n - 1; m >= 0; m--) g.lineTo(Rt[m][0], Rt[m][1]);
+        g.closePath(); g.fill(); g.fillStyle = prev;
+      }
       function jline(x1, y1, x2, y2, w, jit) {
-        // trait tremblé, d'épaisseur légèrement variable
-        var len = Math.hypot(x2 - x1, y2 - y1), n = Math.max(2, Math.round(len / 7));
-        var nx = -(y2 - y1) / (len || 1), ny = (x2 - x1) / (len || 1), j = jit === undefined ? 0.45 : jit;
-        g.lineWidth = w * R(0.85, 1.15);
-        g.beginPath(); g.moveTo(x1 + nx * R(-j, j), y1 + ny * R(-j, j));
-        for (var i = 1; i <= n; i++) { var t = i / n; g.lineTo(x1 + (x2 - x1) * t + nx * R(-j, j), y1 + (y2 - y1) * t + ny * R(-j, j)); }
-        g.stroke();
+        var len = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+        var o1 = w >= 1 ? R(0, 1.6) : R(0, 0.6), o2 = w >= 1 ? R(0, 1.6) : R(0, 0.6);
+        x1 -= ux * o1; y1 -= uy * o1; x2 += ux * o2; y2 += uy * o2; len += o1 + o2;
+        var n = Math.max(3, Math.round(len / 5)), nx = -uy, ny = ux, j = jit === undefined ? 0.4 : jit, bow = R(-0.7, 0.7) * Math.min(1, len / 40);
+        var pts = [];
+        for (var i = 0; i <= n; i++) {
+          var t = i / n, off = Math.sin(Math.PI * t) * bow + R(-j, j) * 0.6;
+          pts.push([x1 + (x2 - x1) * t + nx * off, y1 + (y2 - y1) * t + ny * off]);
+        }
+        brush(pts, w * 1.15);
       }
       function jrect(x, y, w, h, lw, jit) { jline(x, y, x + w, y, lw, jit); jline(x + w, y, x + w, y + h, lw, jit); jline(x + w, y + h, x, y + h, lw, jit); jline(x, y + h, x, y, lw, jit); }
       function stipple(x, y, w, h, n, rmax) {
@@ -131,15 +153,35 @@
       // Ombre portée en traits horizontaux serrés, bords effilochés (signature de Helix)
       function hshadow(x, y, w, h, side, gap) {
         gap = gap || 2.2;
-        g.lineWidth = 0.9;
-        for (var yy = y; yy < y + h; yy += gap) {
-          var L = w * R(0.55, 1);
-          g.beginPath();
-          if (side === "right") { g.moveTo(x, yy); g.lineTo(x + L, yy); }
-          else if (side === "left") { g.moveTo(x + w, yy); g.lineTo(x + w - L, yy); }
-          else { var c = x + R(0, w * 0.15); g.moveTo(c, yy); g.lineTo(c + w * R(0.7, 0.95), yy); }
-          g.stroke();
+        for (var yy = y; yy < y + h; yy += gap * R(0.85, 1.15)) {
+          var L = w * R(0.5, 1), sl = R(-0.35, 0.35);
+          if (side === "right") jline(x, yy, x + L, yy + sl, 0.85, 0.12);
+          else if (side === "left") jline(x + w, yy, x + w - L, yy + sl, 0.85, 0.12);
+          else { var c = x + R(0, w * 0.12); jline(c, yy, c + w * R(0.7, 0.95), yy + sl, 0.8, 0.12); }
         }
+      }
+      // Éclaboussure d'encre : tache et gouttelettes
+      function splat(x, y, r) {
+        g.fillStyle = INK; g.beginPath();
+        for (var i = 0; i < 10; i++) { var a = i / 10 * 6.283, rr = r * R(0.6, 1.2); if (i === 0) g.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); else g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); }
+        g.closePath(); g.fill();
+        for (var k = 0; k < 6; k++) { var a2 = R(0, 6.283), d = r * R(1.4, 3.2); g.beginPath(); g.arc(x + Math.cos(a2) * d, y + Math.sin(a2) * d, R(0.3, r * 0.3), 0, 7); g.fill(); }
+      }
+      // Pinceau sec : touches effilées qui partent du bord d'une masse noire
+      function dryBrush(cx, cy, r, n) {
+        g.strokeStyle = INK;
+        for (var i = 0; i < n; i++) {
+          var a = R(0, 6.283), r0 = r * R(0.7, 0.95), L = R(4, 12), b = a + R(-0.25, 0.25);
+          jline(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0, cx + Math.cos(b) * (r0 + L), cy + Math.sin(b) * (r0 + L), R(0.6, 1.6), 0.3);
+        }
+      }
+      // Fibres et grain du papier
+      function paper() {
+        g.fillStyle = "rgba(20,20,18,0.18)";
+        for (var i = 0; i < 1600; i++) g.fillRect(rnd() * LW, rnd() * LH, 0.5, 0.5);
+        g.strokeStyle = "rgba(20,20,18,0.12)"; g.lineWidth = 0.35;
+        for (var k = 0; k < 140; k++) { var x = rnd() * LW, y = rnd() * LH, a = R(0, 6.283), l = R(3, 9); g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + Math.cos(a + 0.6) * l * 0.5, y + Math.sin(a + 0.6) * l * 0.5, x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke(); }
+        g.strokeStyle = INK;
       }
       function scratches(x, y, w, h, n) {
         g.lineWidth = 0.6;
@@ -206,7 +248,7 @@
         g.lineWidth = 1; g.beginPath(); g.arc(cx, cy, r * 0.72, 0, 7); g.stroke();
         for (var a = 0; a < Math.PI * 2; a += Math.PI / 10) jline(cx + Math.cos(a) * r * 0.74, cy + Math.sin(a) * r * 0.74, cx + Math.cos(a) * r * 0.95, cy + Math.sin(a) * r * 0.95, 0.9, 0.1);
         g.save(); g.beginPath(); g.arc(cx, cy, r * 0.7, 0, 7); g.clip();
-        g.lineWidth = 0.8; for (var y = cy - r; y < cy + r; y += 2.4) { g.beginPath(); g.moveTo(cx + r * 0.1, y); g.lineTo(cx + r, y); g.stroke(); }
+        for (var y = cy - r; y < cy + r; y += 2.4) jline(cx + r * R(0.05, 0.25), y, cx + r, y + R(-0.3, 0.3), 0.75, 0.1);
         g.restore();
         g.beginPath(); g.arc(cx - r * 0.25, cy - r * 0.25, r * 0.18, 0, 7); g.fillStyle = PAPER; g.fill();
       }
@@ -254,9 +296,9 @@
         g.fillStyle = PAPER; g.fillRect(x - w / 2, y0, w, y1 - y0);
         g.strokeStyle = INK; jline(x - w / 2, y0, x - w / 2, y1, 1.6, 0.3); jline(x + w / 2, y0, x + w / 2, y1, 1.6, 0.3);
         g.lineWidth = 1;
-        for (var y = y0 + 3; y < y1; y += 4) { g.beginPath(); g.moveTo(x - w / 2, y); g.quadraticCurveTo(x, y + 3, x + w / 2, y); g.stroke(); }
+        for (var y = y0 + 3; y < y1; y += 4 * R(0.9, 1.1)) brush([[x - w / 2, y], [x - w / 4, y + 2.2], [x, y + 2.9], [x + w / 4, y + 2.2], [x + w / 2, y]], R(0.8, 1.3));
         g.save(); g.beginPath(); g.rect(x + w * 0.15, y0, w * 0.35, y1 - y0); g.clip();
-        g.lineWidth = 0.7; for (var yy = y0; yy < y1; yy += 1.8) { g.beginPath(); g.moveTo(x + w * 0.15, yy); g.lineTo(x + w / 2, yy); g.stroke(); }
+        for (var yy = y0; yy < y1; yy += 1.9) jline(x + w * R(0.1, 0.22), yy, x + w / 2, yy, 0.65, 0.08);
         g.restore();
       }
       function brickWall(x0, y0, x1, y1) {
@@ -271,7 +313,7 @@
             if (bw > 3) {
               jrect(bx + 0.8, y + 0.8, bw - 1.6, 7.4, 0.9, 0.35);
               var r = rnd();
-              if (r < 0.2) { g.save(); g.beginPath(); g.rect(bx + 1, y + 1, bw - 2, 7); g.clip(); g.lineWidth = 0.7; for (var hx = bx - 8; hx < bx + bw; hx += 2.2) { g.beginPath(); g.moveTo(hx, y + 8); g.lineTo(hx + 7, y + 1); g.stroke(); } g.restore(); }
+              if (r < 0.2) { g.save(); g.beginPath(); g.rect(bx + 1, y + 1, bw - 2, 7); g.clip(); g.lineWidth = 0.7; for (var hx = bx - 8; hx < bx + bw; hx += 2.3) jline(hx, y + 8, hx + 7, y + 1, 0.65, 0.1); g.restore(); }
               else if (r < 0.45 && dense()) stipple(bx + 1, y + 1, bw - 2, 7, 10, 0.6);
               else if (r < 0.55) { g.fillStyle = INK; g.fillRect(bx + 1, y + 1, bw - 2, 7); g.fillStyle = PAPER; }
             }
@@ -303,7 +345,7 @@
         var by = top + h - 12;
         g.fillStyle = PAPER; g.beginPath(); g.arc(cx, by, 7.5, 0, 7); g.fill();
         g.save(); g.beginPath(); g.arc(cx, by, 7.5, 0, 7); g.clip(); g.lineWidth = 0.7; g.strokeStyle = INK;
-        for (var y = by - 8; y < by + 8; y += 1.9) { g.beginPath(); g.moveTo(cx + 1, y); g.lineTo(cx + 8, y); g.stroke(); }
+        for (var y = by - 8; y < by + 8; y += 1.9) jline(cx + R(0, 2), y, cx + 8, y, 0.65, 0.08);
         g.restore();
         g.strokeStyle = PAPER; g.lineWidth = 1; g.beginPath(); g.moveTo(cx - r + 3, top + h - 2); g.lineTo(cx + r - 3, top + h - 2); g.stroke(); g.strokeStyle = INK;
       }
@@ -401,13 +443,16 @@
         g.strokeStyle = INK; for (var x = FLOOR.x0; x < FLOOR.x1; x += 2.4) jline(x, FLOOR.y1 + 3, x, FLOOR.y1 + 13, 0.8, 0.1);
         g.restore();
         // ronces qui envahissent les coins et les bords
+        dryBrush(18, 566, 40, 26); dryBrush(342, 570, 40, 26); dryBrush(180, 620, 52, 30); dryBrush(16, 210, 32, 16); dryBrush(344, 220, 32, 16);
         bramble(16, 210, 34, 3); bramble(344, 220, 34, 3);
         bramble(18, 566, 40, 5); bramble(342, 570, 40, 5); bramble(180, 620, 52, 6);
         thornStem([[0, 300], [26, 330], [14, 372], [40, 396]]);
         thornStem([[360, 420], [334, 444], [344, 486], [322, 512]]);
         if (dense()) { bramble(52, 590, 30, 3); bramble(300, 600, 30, 3); thornStem([[120, 640], [140, 596], [126, 570], [150, 556]]); }
-        // grain de papier
-        if (dense()) { g.fillStyle = "rgba(20,20,18,0.25)"; for (var i = 0; i < 1400; i++) g.fillRect(rnd() * LW, rnd() * LH, 0.6, 0.6); }
+        // éclaboussures d'encre et grain du papier
+        for (var sp = 0; sp < (dense() ? 9 : 5); sp++) splat(R(40, 320), R(200, 556), R(0.8, 2));
+        splat(30, 250, 2.4); splat(334, 470, 2.2);
+        paper();
       }
       function stripes(x, y, w, h) {
         g.fillStyle = PAPER; g.fillRect(x, y, w, h);
@@ -444,6 +489,94 @@
         });
         c.restore();
       }
+      // ---------- Personnage en 3D, rendu à l'encre ----------
+      // Un petit modèle (tête ronde à deux pointes, corps en cloche, bras,
+      // jambes) rendu par three.js dans un petit canevas hors écran, puis
+      // collé dans la planche. Ombrage « manga » : blanc à la lumière, trame
+      // de points en demi-teinte, hachures dans l'ombre, contour noir.
+      var H3 = null, HS = 80; // taille du personnage dans la planche (unités logiques)
+      function makeHero3D() {
+        try {
+          var px = 256;
+          var renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
+          renderer.setPixelRatio(1); renderer.setSize(px, px, false); renderer.setClearColor(0x000000, 0);
+          var scene = new THREE.Scene();
+          var cam = new THREE.OrthographicCamera(-1.35, 1.35, 1.35, -1.35, 0.1, 30);
+          cam.position.set(0, 3.3, 4.6); cam.lookAt(0, 0.8, 0); cam.updateMatrixWorld(true);
+          var ink = new THREE.ShaderMaterial({
+            uniforms: { uL: { value: new THREE.Vector3(-0.45, 0.75, 0.5).normalize() }, uS: { value: 1 } },
+            vertexShader: "varying vec3 vN; void main(){ vN = normalize(normalMatrix * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }",
+            fragmentShader: [
+              "uniform vec3 uL; uniform float uS; varying vec3 vN;",
+              "void main(){",
+              "  float d = dot(normalize(vN), uL) * 0.5 + 0.5;",
+              "  vec2 p = gl_FragCoord.xy / uS; float ink = 0.0;",
+              "  if (d < 0.36) {",
+              "    ink = step(mod(p.x + p.y, 4.6), 1.5);",
+              "    if (d < 0.22) ink = max(ink, step(mod(p.x - p.y, 4.6), 1.5));",
+              "  } else if (d < 0.6) {",
+              "    vec2 c = mod(p, 4.4) - 2.2; float r = mix(1.6, 0.6, (d - 0.36) / 0.24);",
+              "    ink = step(length(c), r);",
+              "  }",
+              "  gl_FragColor = vec4(mix(vec3(0.972, 0.965, 0.945), vec3(0.07), ink), 1.0);",
+              "}"].join("\n")
+          });
+          var outline = new THREE.ShaderMaterial({
+            uniforms: { uT: { value: 0.045 } }, side: THREE.BackSide,
+            vertexShader: "uniform float uT; void main(){ vec3 p = position + normal * uT; gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }",
+            fragmentShader: "void main(){ gl_FragColor = vec4(0.07, 0.07, 0.07, 1.0); }"
+          });
+          var black = new THREE.MeshBasicMaterial({ color: 0x111111 });
+          function part(geo, mat, parent) {
+            var m = new THREE.Mesh(geo, mat || ink); parent.add(m);
+            if (!mat) { var o = new THREE.Mesh(geo, outline); m.add(o); }
+            return m;
+          }
+          var root = new THREE.Group(); scene.add(root);
+          var bodyG = new THREE.Group(); root.add(bodyG);
+          // corps en cloche (petite cape)
+          var prof = [[0.0, 0.22], [0.3, 0.22], [0.4, 0.24], [0.38, 0.3], [0.3, 0.55], [0.24, 0.8], [0.16, 0.95], [0.0, 0.98]].map(function (q) { return new THREE.Vector2(q[0], q[1]); });
+          part(new THREE.LatheGeometry(prof, 28), null, bodyG);
+          // tête ronde un peu écrasée, deux pointes
+          var head = new THREE.Group(); head.position.y = 1.28; bodyG.add(head);
+          var hm = part(new THREE.SphereGeometry(0.43, 32, 24), null, head); hm.scale.set(1.05, 0.9, 0.95);
+          [-1, 1].forEach(function (sd) {
+            var ear = part(new THREE.ConeGeometry(0.15, 0.5, 18), null, head);
+            ear.position.set(sd * 0.28, 0.38, -0.03); ear.rotation.z = -sd * 0.45;
+            // grands yeux noirs en amande, sur la face avant
+            var eye = new THREE.Mesh(new THREE.SphereGeometry(0.1, 16, 12), black);
+            eye.scale.set(0.85, 1.45, 0.5); eye.position.set(sd * 0.16, 0.0, 0.395); eye.rotation.set(-0.1, sd * 0.35, sd * 0.38);
+            head.add(eye);
+          });
+          // bras et jambes (pivots aux épaules et aux hanches)
+          var limbs = {};
+          [-1, 1].forEach(function (sd) {
+            var hip = new THREE.Group(); hip.position.set(sd * 0.13, 0.3, 0); root.add(hip);
+            var leg = part(new THREE.CapsuleGeometry(0.075, 0.2, 6, 12), null, hip); leg.position.y = -0.18;
+            var sh = new THREE.Group(); sh.position.set(sd * 0.27, 0.78, 0); bodyG.add(sh);
+            var arm = part(new THREE.CapsuleGeometry(0.06, 0.24, 6, 12), null, sh); arm.position.y = -0.17; sh.rotation.z = sd * 0.35;
+            limbs[sd] = { hip: hip, sh: sh };
+          });
+          // pied au sol : où tombe l'origine dans l'image
+          var foot = new THREE.Vector3(0, 0, 0).project(cam);
+          H3 = { r: renderer, scene: scene, cam: cam, root: root, body: bodyG, head: head, limbs: limbs, yaw: 0, footY: (1 - foot.y) / 2, ink: ink };
+          return true;
+        } catch (e) { H3 = null; return false; }
+      }
+      function renderHero3D() {
+        var w = hero.walk, mv = hero.moving ? 1 : 0, sw = Math.sin(w * 11) * 0.7 * mv;
+        // se tourner vers où l'on va (vers le bas de l'écran = face à nous)
+        var target = hero.yawT === undefined ? 0 : hero.yawT, dyw = target - H3.yaw;
+        while (dyw > Math.PI) dyw -= 2 * Math.PI; while (dyw < -Math.PI) dyw += 2 * Math.PI;
+        H3.yaw += dyw * 0.25; H3.root.rotation.y = H3.yaw;
+        H3.limbs[-1].hip.rotation.x = sw; H3.limbs[1].hip.rotation.x = -sw;
+        H3.limbs[-1].sh.rotation.x = -sw * 0.8; H3.limbs[1].sh.rotation.x = sw * 0.8;
+        H3.body.position.y = Math.abs(Math.cos(w * 11)) * 0.05 * mv;
+        H3.head.rotation.z = Math.sin(w * 5.5) * 0.08 * mv;
+        H3.body.rotation.x = 0.12 * mv;
+        H3.r.render(H3.scene, H3.cam);
+        return H3.r.domElement;
+      }
       function drawPuffs(c) {
         c.strokeStyle = INK; c.fillStyle = "#f7f6f1"; c.lineWidth = 1;
         puffs.forEach(function (p) {
@@ -471,7 +604,13 @@
         ctx.drawImage(bg, 0, 0);
         ctx.setTransform(cv.width / LW, 0, 0, cv.height / LH, 0, 0);
         ctx.lineCap = "round"; ctx.lineJoin = "round";
-        drawPuffs(ctx); drawHero(ctx);
+        drawPuffs(ctx);
+        if (H3) {
+          var x = hero.x, y = hero.y;
+          ctx.strokeStyle = INK; ctx.lineWidth = 0.8;
+          for (var k = -2; k <= 2; k++) { ctx.beginPath(); ctx.moveTo(x - 12 + Math.abs(k) * 3, y + 2 + k * 1.7); ctx.lineTo(x + 12 - Math.abs(k) * 3, y + 2 + k * 1.7); ctx.stroke(); }
+          ctx.drawImage(renderHero3D(), x - HS / 2, y - HS * H3.footY + 2, HS, HS);
+        } else drawHero(ctx);
       }
 
       // ---------- Boucle (seulement quand quelque chose bouge) ----------
@@ -484,6 +623,7 @@
         if (hero.moving) {
           var k = Math.min(1, sp / d); hero.x += dx * k; hero.y += dy * k; hero.walk += dt;
           if (Math.abs(dx) > 1) hero.face = dx > 0 ? 1 : -1;
+          hero.yawT = Math.atan2(dx, dy);
           hero.puffT = (hero.puffT || 0) - dt;
           if (hero.puffT <= 0) { hero.puffT = 0.16; puffs.push({ x: hero.x + R(-6, 6), y: hero.y + 13, r: R(1.5, 2.6), life: 1 }); step(); }
         }
@@ -493,7 +633,8 @@
         puffs = puffs.filter(function (p) { return p.life > 0; });
         draw();
         running = false;
-        if (hero.moving || puffs.length) kick();
+        var turning = H3 && hero.yawT !== undefined && Math.abs(Math.atan2(Math.sin(hero.yawT - H3.yaw), Math.cos(hero.yawT - H3.yaw))) > 0.01;
+        if (hero.moving || puffs.length || turning) kick();
       }
 
       // ---------- Plaques : une phrase de cours ----------
@@ -569,6 +710,7 @@
 
       var rt = 0;
       window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(layout, 150); });
+      makeHero3D();
       refreshPad(); layout();
       if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(function () {});
     })();
