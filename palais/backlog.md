@@ -33,12 +33,17 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   colonnes, spirale, ronces, ombres en traits, vignettage), petite créature
   qui marche, plaque ◇ = bout de papier avec une phrase de cours, ◐ inverse
   noir et blanc et révèle la ligne cachée ; variantes A (dense) / B (sobre)
+- [x] v2 — Variante B par défaut (choix de Pierre) ; dessin plus fait main
+  (traits au pinceau effilés qui débordent, hachures irrégulières,
+  éclaboussures, pinceau sec, fibres du papier) ; personnage en vrai 3D
+  (three.js copié dans vendor/, rendu à l'encre : trame, hachures, contour),
+  qui se tourne et marche
 - [x] v1 — Lien ajouté au menu du portfolio (demande de Pierre), groupe des jeux
 
 ## À faire
 
-- [ ] P1 — Retour de Pierre sur téléphone : variante A ou B, trait, densité,
-  personnage (seul Pierre peut le faire)
+- [ ] P1 — Retour de Pierre sur téléphone : rendu du personnage 3D (taille,
+  oreilles, trame), densité du trait (seul Pierre peut le faire)
 - [ ] P2 — Étape 2 : déplacement et passage d'un écran à l'autre par les
   bords ; escaliers qui descendent / montent (Descent N Ascent)
 - [ ] P2 — Pièces maîtresses dessinées à la main par Pierre (trône, porte,
@@ -57,7 +62,8 @@ Ce sera un outil de mémoire plus qu'un jeu (pas d'échec possible) : seule
 la partie technique de la charte s'appliquera. Pour l'instant c'est une
 page d'essai.
 
-Déjà conforme : un seul fichier HTML sans build, hors ligne (service
+Déjà conforme : un seul fichier HTML sans build (plus three.js copié dans
+vendor/, licence MIT), hors ligne (service
 worker « réseau d'abord », cache `palais-vN`), portrait (choix de Pierre),
 zoom tactile et loupe iOS désactivés, écran figé, mise à jour automatique,
 version et historique (bouton i), réglage sauvegardé en `localStorage`

@@ -2,12 +2,12 @@
 // Pas) : on sert toujours la version en ligne quand c'est possible (la
 // mise à jour automatique reste maître), et la dernière copie connue hors
 // ligne. Pas de police externe : typo du système.
-var CACHE = "palais-v1";
+var CACHE = "palais-v2";
 var FONT_HOSTS = ["fonts.googleapis.com", "fonts.gstatic.com"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) {
-    return c.addAll(["./", "./index.html", "./manifest.webmanifest", "../favicon.svg", "../apple-touch-icon.png"]);
+    return c.addAll(["./", "./index.html", "./manifest.webmanifest", "./vendor/three-0.170.0.module.min.js", "../favicon.svg", "../apple-touch-icon.png"]);
   }).then(function () { return self.skipWaiting(); }));
 });
 
