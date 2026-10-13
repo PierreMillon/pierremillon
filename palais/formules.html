@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+  <title>Palais — choix des formules</title>
+  <meta name="theme-color" content="#0c0c0b">
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+  <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+  <style>
+    /* Page de choix des formules à ranger dans le palais (outil, pas un
+       jeu) : on coche, puis on copie le résultat pour Claude. */
+    :root { --bg: #0c0c0b; --paper: #efede6; --ink: #141412; --soft: #77756f; }
+    * { box-sizing: border-box; touch-action: manipulation; }
+    html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+    body {
+      position: fixed; inset: 0; margin: 0; background: var(--bg); color: var(--ink);
+      display: flex; justify-content: center; font-family: Georgia, "Times New Roman", serif;
+      -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
+    }
+    .col {
+      width: min(100%, 560px); height: 100%; display: flex; flex-direction: column; background: var(--paper);
+      padding: calc(env(safe-area-inset-top) + 10px) 0 calc(env(safe-area-inset-bottom) + 10px);
+    }
+    header { padding: 0 16px 8px; border-bottom: 2px solid var(--ink); }
+    header h1 { margin: 0; font-weight: normal; letter-spacing: 0.3em; font-size: 1.3rem; }
+    header p { margin: 4px 0 0; font-size: 0.8rem; color: var(--soft); font-style: italic; }
+    header .ver { float: right; font-size: 0.68rem; letter-spacing: 0.2em; color: var(--soft); cursor: pointer; margin-top: 6px; }
+    .list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; touch-action: pan-y; padding: 0 16px 24px; }
+    h2 { font-weight: normal; letter-spacing: 0.25em; text-transform: uppercase; font-size: 0.8rem; margin: 22px 0 8px; display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--ink); padding-bottom: 4px; }
+    h2 button { font: inherit; font-size: 0.65rem; letter-spacing: 0.1em; background: none; border: none; color: var(--soft); text-decoration: underline; cursor: pointer; }
+    label.item { display: grid; grid-template-columns: 30px 1fr; gap: 8px; padding: 10px 0; border-bottom: 1px dashed #c9c6bd; cursor: pointer; }
+    label.item input { width: 22px; height: 22px; margin: 2px 0 0; accent-color: #141412; }
+    .nm { font-style: italic; font-size: 1.02rem; }
+    .fm { font-family: "Courier New", monospace; font-size: 0.92rem; margin-top: 4px; color: #333; white-space: pre-wrap; word-break: break-word; }
+    .off .nm::after { content: " · chapitre pas encore débloqué"; font-size: 0.7rem; color: var(--soft); font-style: normal; }
+    footer { border-top: 2px solid var(--ink); padding: 10px 16px 0; display: flex; flex-direction: column; gap: 8px; }
+    footer .row { display: flex; gap: 8px; align-items: center; }
+    footer button { font: inherit; background: var(--ink); color: var(--paper); border: none; padding: 0.6rem 1rem; cursor: pointer; }
+    footer button.ghost { background: none; color: var(--ink); border: 1px solid var(--ink); }
+    #count { flex: 1; font-size: 0.85rem; }
+    textarea {
+      width: 100%; height: 7.5em; font: 0.8rem "Courier New", monospace; border: 1px solid var(--ink); background: #f8f7f2; padding: 6px;
+      -webkit-user-select: text; user-select: text; resize: none;
+    }
+    textarea[hidden] { display: none; }
+    #msg { font-size: 0.78rem; color: var(--soft); min-height: 1em; }
+    .overlay { position: fixed; inset: 0; background: rgba(12,12,11,0.95); color: #ecebe6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; }
+    .overlay[hidden] { display: none; }
+    .overlay ul { list-style: none; padding: 0; margin: 0; max-width: 30em; font-size: 0.85rem; line-height: 1.45; }
+    .overlay button { background: none; color: #ecebe6; border: 1px solid #ecebe6; padding: 0.5rem 1.2rem; font: inherit; }
+  </style>
+</head>
+<body>
+  <div class="col">
+    <header>
+      <span class="ver" id="ver"></span>
+      <h1>FORMULES</h1>
+      <p>Coche celles à ranger dans le palais, puis « Copier le résultat » et colle-le à Claude.</p>
+    </header>
+    <div class="list" id="list"></div>
+    <footer>
+      <div class="row"><span id="count"></span><button class="ghost" id="bNone">Tout décocher</button><button id="bCopy">Copier le résultat</button></div>
+      <textarea id="out" readonly hidden></textarea>
+      <div id="msg"></div>
+    </footer>
+  </div>
+  <div class="overlay" id="hist" hidden><ul id="histList"></ul><button id="histClose">Fermer</button><a href="./" style="color:#9a988f;font-size:0.8rem">← Palais</a></div>
+
+  <script>
+    (function () {
+      "use strict";
+      var VERSIONS = [
+        { v: "v1", text: "Liste des formules les plus importantes tirées des cours de Pierre (licence-math, exercices, fiches), à cocher ; le choix est gardé sur le téléphone, et « Copier le résultat » donne un texte à coller à Claude." }
+      ];
+      // [chapitre, nom, formule, chapitre débloqué ?] — rempli à partir des cours
+      var DATA = [
+        ["Logique", "Négation de « et » et de « ou »", "¬(s et S) ⇔ ¬s ou ¬S ¶ ¬(s ou S) ⇔ ¬s et ¬S", false],
+        ["Logique", "Négation d'une implication", "¬(s ⇒ S) ⇔ s et ¬S", false],
+        ["Logique", "Raisonnement par contraposée", "(s ⇒ S) ⇔ (¬S ⇒ ¬s)", false],
+        ["Logique", "Négation des quantificateurs", "¬(∀x, s(x)) ⇔ ∃x, ¬s(x) ¶ ¬(∃x, s(x)) ⇔ ∀x, ¬s(x)", false],
+        ["Logique", "Principe de récurrence simple", "P(n₀) vraie et ∀n ≥ n₀, P(n) ⇒ P(n+1) ¶ alors ∀n ≥ n₀, P(n) vraie", false],
+        ["Logique", "Lois de De Morgan (ensembles)", "E∖(A ∩ B) = (E∖A) ∪ (E∖B) ¶ E∖(A ∪ B) = (E∖A) ∩ (E∖B)", false],
+        ["Logique", "Définition d'une application injective", "∀a, b ∈ E, f(a) = f(b) ⇒ a = b", false],
+        ["Logique", "Définition d'une application surjective", "∀y ∈ F, ∃x ∈ E, f(x) = y", false],
+        ["Calculus", "Coefficient binomial", "C(n,p) = [n!]/[p!(n − p)!] si 0 ≤ p ≤ n ¶ C(n,p) = 0 si p > n", true],
+        ["Calculus", "Discriminant et racines du trinôme", "Δ = b² − 4ac ; Δ > 0 : x = [−b ± √Δ]/[2a] ¶ Δ = 0 : x = [−b]/[2a] ; Δ < 0 : aucune racine réelle", true],
+        ["Calculus", "Somme et produit des racines", "x + y = S et xy = P ⇔ x, y racines de X² − SX + P = 0", true],
+        ["Calculus", "Propriétés du logarithme", "ln(ab) = ln a + ln b ; ln([a]/[b]) = ln a − ln b ¶ ln(aʳ) = r ln a ; ln 1 = 0 ; ln e = 1", true],
+        ["Calculus", "Propriétés de l'exponentielle", "eˣ⁺ʸ = eˣ × eʸ ¶ a = ln b ⇔ eᵃ = b (b > 0)", true],
+        ["Calculus", "Dérivée d'un produit", "(uv)' = u'v + uv'", true],
+        ["Calculus", "Dérivée d'un quotient", "([u]/[v])' = [u'v − uv']/[v²]", true],
+        ["Calculus", "Dérivée d'une composée", "(f ∘ g)'(x) = g'(x) × f'(g(x))", true],
+        ["Calculus", "Dérivées usuelles", "(xⁿ)' = n xⁿ⁻¹ ; (eˣ)' = eˣ ; (ln x)' = [1]/[x] ¶ (sin x)' = cos x ; (cos x)' = −sin x", true],
+        ["Calculus", "Intégration par parties", "∫ u'v = uv − ∫ uv'", true],
+        ["Calculus", "Relation fondamentale de trigonométrie", "cos²x + sin²x = 1", true],
+        ["Calculus", "Parité et période de cos, sin, tan", "cos paire ; sin et tan impaires ¶ cos, sin : période 2π ; tan : période π", true],
+        ["Calculus", "Formules d'addition", "cos(a + b) = cos a cos b − sin a sin b ¶ sin(a + b) = sin a cos b + cos a sin b", true],
+        ["Calculus", "Formule de duplication du cosinus", "cos 2x = 2cos²x − 1 = 1 − 2sin²x", true],
+        ["Calculus", "Valeurs remarquables de cos et sin", "cos [π]/[6] = [√3]/[2], sin [π]/[6] = [1]/[2] ; cos [π]/[4] = sin [π]/[4] = [√2]/[2] ¶ cos [π]/[3] = [1]/[2], sin [π]/[3] = [√3]/[2]", true],
+        ["Calculus", "Somme des n premiers entiers", "∑ₖ₌₁ⁿ k = [n(n + 1)]/[2]", true],
+        ["Calculus", "Somme des n premiers carrés", "∑ₖ₌₁ⁿ k² = [n(n + 1)(2n + 1)]/[6]", true],
+        ["Calculus", "Formule du binôme de Newton", "(a + b)ⁿ = ∑ₖ₌₀ⁿ C(n,k) aᵏ bⁿ⁻ᵏ", true],
+        ["Calculus", "Factorisation de aⁿ − bⁿ", "aⁿ − bⁿ = (a − b)(aⁿ⁻¹ + aⁿ⁻²b + … + bⁿ⁻¹)", true],
+        ["Calculus", "Somme et différence de deux cubes", "a³ − b³ = (a − b)(a² + ab + b²) ¶ a³ + b³ = (a + b)(a² − ab + b²)", true],
+        ["Algèbre", "Somme géométrique", "1 + z + … + zⁿ⁻¹ = [1 − zⁿ]/[1 − z] (z ≠ 1)", true],
+        ["Algèbre", "Parties réelle et imaginaire par le conjugué", "Re z = [z + z̄]/[2] ; Im z = [z − z̄]/[2i]", true],
+        ["Algèbre", "Module d'un nombre complexe", "|a + ib| = √(a² + b²) ; |z|² = z z̄ ¶ |zz'| = |z| |z'|", true],
+        ["Algèbre", "Inégalité triangulaire", "|z + z'| ≤ |z| + |z'|", true],
+        ["Algèbre", "Forme exponentielle d'un complexe", "z = ρ eⁱᶿ avec ρ = |z|, θ = arg z (z ≠ 0) ¶ i = e^(iπ/2) ; −1 = e^(iπ)", true],
+        ["Algèbre", "Formule d'Euler pour cos t", "cos t = [eⁱᵗ + e⁻ⁱᵗ]/[2]", true],
+        ["Algèbre", "Formule d'Euler pour sin t", "sin t = [eⁱᵗ − e⁻ⁱᵗ]/[2i]", true],
+        ["Algèbre", "Formule de Moivre", "(eⁱᵗ)ⁿ = eⁱⁿᵗ ¶ (cos t + i sin t)ⁿ = cos(nt) + i sin(nt)", true],
+        ["Algèbre", "Racines n-ièmes de l'unité", "Zⁿ = 1 ⇔ Z = e^(2ikπ/n), k ∈ {0, …, n − 1}", true],
+        ["Algèbre linéaire", "Caractérisation d'un sous-espace vectoriel", "0_E ∈ F et ∀u, v ∈ F, ∀λ, μ ∈ ℝ : λu + μv ∈ F", false],
+        ["Algèbre linéaire", "Théorème du rang", "dim E = dim Ker f + dim Im f", false],
+        ["Algèbre linéaire", "Déterminant et inverse d'une matrice 2×2", "det (a b ; c d) = ad − bc ; inversible ⇔ det ≠ 0 ¶ A⁻¹ = [1]/[ad − bc] (d −b ; −c a)", false],
+        ["Analyse", "Définition de la limite d'une fonction", "lim(x→a) f(x) = l ⇔ ∀ε > 0, ∃α > 0, ∀x, |x − a| < α ⇒ |f(x) − l| < ε", false],
+        ["Analyse", "Nombre dérivé", "f'(a) = lim(x→a) [f(x) − f(a)]/[x − a]", false],
+        ["Analyse", "Théorème des valeurs intermédiaires", "f continue sur [a, b], y entre f(a) et f(b) ¶ ⇒ ∃c ∈ [a, b], f(c) = y", false],
+        ["Analyse", "Théorème de Rolle", "f continue sur [a, b], dérivable sur ]a, b[, f(a) = f(b) ¶ ⇒ ∃c ∈ ]a, b[, f'(c) = 0", false],
+        ["Analyse", "Théorème des accroissements finis", "f continue sur [a, b], dérivable sur ]a, b[ ¶ ⇒ ∃c ∈ ]a, b[, f(b) − f(a) = (b − a) f'(c)", false],
+        ["Analyse", "Formule de Taylor-Young", "f(t) = ∑ₖ₌₀ⁿ [f⁽ᵏ⁾(a)]/[k!] (t − a)ᵏ + o((t − a)ⁿ)", false],
+        ["Analyse", "Développements limités usuels en 0", "eˣ = 1 + x + [x²]/[2] + o(x²) ; ln(1 + x) = x − [x²]/[2] + o(x²) ¶ sin x = x − [x³]/[6] + o(x³) ; cos x = 1 − [x²]/[2] + o(x²)", false],
+        ["Analyse", "Primitive d'une puissance", "∫ xᵅ dx = [xᵅ⁺¹]/[α + 1] + C (α ≠ −1) ¶ ∫ [1]/[x] dx = ln|x| + C", false],
+        ["Analyse", "Théorème fondamental de l'analyse", "f continue : F(x) = ∫ₐˣ f(t) dt vérifie F' = f ¶ ∫ₐᵇ f(t) dt = Φ(b) − Φ(a), Φ primitive de f", false],
+        ["Analyse", "Théorème des gendarmes", "vₙ ≤ uₙ ≤ wₙ et vₙ → l, wₙ → l ⇒ uₙ → l", false],
+        ["Analyse", "Croissances comparées", "lim(x→+∞) [ln x]/[x] = 0 ; lim(x→+∞) [eˣ]/[xⁿ] = +∞ ¶ ln x ≪ xᵃ ≪ eˣ (a > 0)", false],
+        ["Analyse", "Série géométrique", "∑ ρⁿ converge ⇔ |ρ| < 1 ¶ et alors ∑ₙ₌₀^∞ ρⁿ = [1]/[1 − ρ]", false],
+        ["Analyse", "Série de Riemann", "∑ [1]/[nᵅ] converge ⇔ α > 1", false],
+        ["Probabilités", "Probabilité d'une réunion et du contraire", "P(A ∪ B) = P(A) + P(B) − P(A ∩ B) ¶ P(Ā) = 1 − P(A)", false],
+        ["Probabilités", "Probabilité conditionnelle", "P(A | B) = [P(A ∩ B)]/[P(B)] (P(B) > 0)", false],
+        ["Probabilités", "Indépendance de deux événements", "A, B indépendants ⇔ P(A ∩ B) = P(A) × P(B)", false],
+        ["Probabilités", "Formule des probabilités totales", "(Bᵢ) partition de Ω : P(A) = ∑ᵢ P(A | Bᵢ) P(Bᵢ)", false],
+        ["Probabilités", "Formule de Bayes", "P(Bᵢ | A) = [P(A | Bᵢ) P(Bᵢ)]/[∑ⱼ P(A | Bⱼ) P(Bⱼ)]", false],
+        ["Probabilités", "Espérance d'une variable discrète", "E(X) = ∑ᵢ xᵢ P(X = xᵢ)", false],
+        ["Probabilités", "Formule de Koenig-Huygens", "V(X) = E(X²) − E(X)² ; σ(X) = √V(X)", false],
+        ["Probabilités", "Loi binomiale B(n, p)", "P(X = k) = C(n,k) pᵏ (1 − p)ⁿ⁻ᵏ ¶ E(X) = np ; V(X) = np(1 − p)", false],
+        ["Statistiques", "Variance d'une série statistique", "V = [1]/[N] ∑ᵢ nᵢ(xᵢ − x̄)² = [1]/[N] ∑ᵢ nᵢxᵢ² − x̄²", false],
+        ["Statistiques", "Transformation affine (moyenne, variance)", "T = aX + b : moyenne a x̄ + b ; V(T) = a² V(X)", false],
+        ["Statistiques", "Droite de régression (moindres carrés)", "y = ax + b avec a = [Cov(X,Y)]/[V(X)] ; b = ȳ − a x̄", false],
+        ["Statistiques", "Coefficient de corrélation linéaire", "r = [Cov(X,Y)]/[σ(X) σ(Y)] ∈ [−1, 1]", false]
+      ];
+
+      var KEY = "palais_formules_v1", picked = {};
+      try { var o = JSON.parse(localStorage.getItem(KEY) || "{}"); if (o && typeof o === "object") Object.keys(o).forEach(function (k) { if (o[k] === true) picked[k] = true; }); } catch (e) {}
+      function save() { try { localStorage.setItem(KEY, JSON.stringify(picked)); } catch (e) {} }
+      function id(it) { return it[0] + " | " + it[1]; }
+
+      var list = document.getElementById("list"), lastC = null, groups = {};
+      DATA.forEach(function (it) {
+        if (it[0] !== lastC) {
+          lastC = it[0];
+          var h = document.createElement("h2"); var sp = document.createElement("span"); sp.textContent = it[0]; h.appendChild(sp);
+          var b = document.createElement("button"); b.textContent = "tout cocher"; var cname = it[0];
+          b.addEventListener("click", function () { (groups[cname] || []).forEach(function (cb) { cb.checked = true; picked[cb.dataset.k] = true; }); save(); refresh(); });
+          h.appendChild(b); list.appendChild(h); groups[cname] = [];
+        }
+        var lab = document.createElement("label"); lab.className = "item" + (it[3] === false ? " off" : "");
+        var cb = document.createElement("input"); cb.type = "checkbox"; cb.dataset.k = id(it); cb.checked = !!picked[id(it)];
+        cb.addEventListener("change", function () { if (cb.checked) picked[cb.dataset.k] = true; else delete picked[cb.dataset.k]; save(); refresh(); });
+        groups[it[0]].push(cb);
+        var txt = document.createElement("div");
+        var nm = document.createElement("div"); nm.className = "nm"; nm.textContent = it[1];
+        var fm = document.createElement("div"); fm.className = "fm"; fm.textContent = it[2].replace(/ ¶ /g, "\n").replace(/\[([^\]]*)\]\/\[([^\]]*)\]/g, "($1)/($2)");
+        txt.appendChild(nm); txt.appendChild(fm); lab.appendChild(cb); lab.appendChild(txt); list.appendChild(lab);
+      });
+
+      function result() {
+        var lines = ["Formules choisies pour le palais (" + Object.keys(picked).length + ") :"];
+        DATA.forEach(function (it) { if (picked[id(it)]) lines.push("- [" + it[0] + "] " + it[1] + " : " + it[2].replace(/ ¶ /g, " / ")); });
+        return lines.join("\n");
+      }
+      function refresh() {
+        var n = Object.keys(picked).filter(function (k) { return DATA.some(function (it) { return id(it) === k; }); }).length;
+        document.getElementById("count").textContent = n + " / " + DATA.length + " cochées";
+        var out = document.getElementById("out"); if (!out.hidden) out.value = result();
+      }
+      document.getElementById("bNone").addEventListener("click", function () {
+        picked = {}; save(); Array.prototype.forEach.call(document.querySelectorAll("label.item input"), function (cb) { cb.checked = false; }); refresh();
+      });
+      document.getElementById("bCopy").addEventListener("click", function () {
+        var out = document.getElementById("out"), msg = document.getElementById("msg");
+        out.hidden = false; out.value = result();
+        function fallback() { out.focus(); out.select(); try { document.execCommand("copy"); msg.textContent = "Copié. Colle-le à Claude."; } catch (e) { msg.textContent = "Sélectionne le texte ci-dessus et copie-le."; } }
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(out.value).then(function () { msg.textContent = "Copié. Colle-le à Claude."; }, fallback);
+        else fallback();
+      });
+
+      document.getElementById("ver").textContent = "VERSION " + VERSIONS[0].v;
+      document.getElementById("ver").addEventListener("click", function () {
+        var ul = document.getElementById("histList"); ul.textContent = "";
+        VERSIONS.forEach(function (v) { var li = document.createElement("li"), b = document.createElement("b"); b.textContent = v.v + " "; li.appendChild(b); li.appendChild(document.createTextNode(v.text)); ul.appendChild(li); });
+        document.getElementById("hist").hidden = false;
+      });
+      document.getElementById("histClose").addEventListener("click", function () { document.getElementById("hist").hidden = true; });
+
+      // Écran figé : seule la liste défile
+      document.addEventListener("touchmove", function (e) { if (e.target.closest && e.target.closest(".list, textarea")) return; e.preventDefault(); }, { passive: false });
+      ["gesturestart", "gesturechange", "gestureend"].forEach(function (ty) { document.addEventListener(ty, function (e) { e.preventDefault(); }, { passive: false }); });
+      refresh();
+    })();
+  </script>
+
+  <script>
+    // Mise à jour automatique (même principe que la page d'accueil du portfolio)
+    (function () {
+      var PAGE = "palais-formules";
+      var lastCheck = 0;
+      async function checkForUpdate() {
+        var now0 = Date.now();
+        if (now0 - lastCheck < 1500) return;
+        lastCheck = now0;
+        try {
+          var res = await fetch((location.pathname || "formules.html") + "?_cb=" + now0, { cache: "no-store" });
+          if (!res.ok) return;
+          var tag = res.headers.get("etag") || res.headers.get("last-modified");
+          if (!tag) return;
+          var key = "pm_pageVersion_" + PAGE;
+          var stored = localStorage.getItem(key);
+          if (stored === null) { localStorage.setItem(key, tag); return; }
+          if (tag !== stored) {
+            var now = Date.now(), guard = "pm_lastUpdateReload_" + PAGE, lastReload = 0;
+            try { lastReload = Number(sessionStorage.getItem(guard)) || 0; } catch (e) {}
+            if (now - lastReload < 10000) return;
+            try { localStorage.setItem(key, tag); sessionStorage.setItem(guard, String(now)); } catch (e) {}
+            location.replace(location.pathname + "?_r=" + now);
+          }
+        } catch (e) {}
+      }
+      checkForUpdate();
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) checkForUpdate(); });
+      document.addEventListener("pointerdown", checkForUpdate, { passive: true });
+    })();
+  </script>
+</body>
+</html>
