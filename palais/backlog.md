@@ -40,6 +40,9 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   qui se tourne et marche
 - [x] v3 — Tenue façon Mathilda (Léon) : robe courte, coupe au carré noire
   à frange, ras-de-cou noir (demande de Pierre)
+- [x] Page formules.html : 65 formules tirées des cours de Pierre
+  (licence-math, exercices-l1-math, fiche-de-math-gael), à cocher ; le
+  résultat se copie pour Claude
 - [x] v5 — Bibliothèque à droite du hall (passage), diriger au doigt
   appuyé, obstacles, respiration et petite danse au repos, une seule
   version du dessin (la plus dense), boutons A/B et i retirés (historique
