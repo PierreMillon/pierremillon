@@ -6,7 +6,7 @@ phrase, formule par formule — et les reparcourir en entier ou dans le
 désordre.
 
 Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
-(étape 1), pas encore le jeu. Pas dans le menu du portfolio.
+(étape 1), pas encore le jeu. Lien dans le menu du portfolio (demande de Pierre).
 
 ## Fiche de style (tirée des captures envoyées par Pierre)
 
@@ -33,6 +33,7 @@ Tri : priorité décroissante. Pour l'instant : **page d'essai du rendu**
   colonnes, spirale, ronces, ombres en traits, vignettage), petite créature
   qui marche, plaque ◇ = bout de papier avec une phrase de cours, ◐ inverse
   noir et blanc et révèle la ligne cachée ; variantes A (dense) / B (sobre)
+- [x] v1 — Lien ajouté au menu du portfolio (demande de Pierre), groupe des jeux
 
 ## À faire
 
