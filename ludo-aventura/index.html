@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1">
   <meta name="theme-color" content="#1f3a5f">
-  <title>Le Sablier des Siècles</title>
-  <meta name="description" content="Le Sablier des Siècles — jeu de société d'histoire pour les 5-15 ans : présentation, boutique et pages de découverte des grandes époques.">
+  <title>Ludo Aventura</title>
+  <meta name="description" content="Ludo Aventura, jeu de société d'aventure pour les 5-15 ans : des missions à réussir en répondant à des questions de lecture, d'écriture et de calcul.">
   <link rel="icon" href="../favicon.svg" type="image/svg+xml">
   <style>
     :root {
@@ -18,7 +18,7 @@
       --vert: #2f8f5b;
       --rouge: #c0392b;
       --bord: #e6d9bd;
-      --tab-h: 64px;
+      --tab-h: 58px;
     }
     * { box-sizing: border-box; }
     html, body {
@@ -59,6 +59,7 @@
 
     /* ---------- Zone de contenu (seule partie qui défile) ---------- */
     main {
+      padding-bottom: env(safe-area-inset-bottom);
       flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
     }
@@ -151,19 +152,23 @@
     .quiz-opts button.ok { border-color: var(--vert); background: #e3f4ea; }
     .quiz-opts button.ko { border-color: var(--rouge); background: #fbe5e2; }
     .quiz-opts button:disabled { cursor: default; }
+    .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    .table h3 { color: var(--bleu); margin-bottom: 4px; }
+    .table div { display: flex; justify-content: space-between; padding: 2px 0; font-variant-numeric: tabular-nums; }
+    .table div b { color: var(--orange); }
     .back { background: none; border: 0; color: var(--bleu); font-weight: 700; padding: 6px 0; }
 
     /* ---------- Barre d'onglets ---------- */
     nav.tabs {
-      flex: none; display: flex; background: #fff; border-top: 2px solid var(--bord);
-      padding-bottom: env(safe-area-inset-bottom);
+      flex: none; display: flex; background: #fff; border-bottom: 2px solid var(--bord);
     }
     nav.tabs a {
       flex: 1; height: var(--tab-h); display: flex; flex-direction: column; align-items: center;
       justify-content: center; gap: 2px; color: var(--doux); text-decoration: none; font-size: 12px; font-weight: 600;
+      border-bottom: 3px solid transparent; min-width: 0; white-space: nowrap;
     }
     nav.tabs a span { font-size: 22px; line-height: 1; }
-    nav.tabs a.on { color: var(--orange); }
+    nav.tabs a.on { color: var(--orange); border-bottom-color: var(--orange); }
 
     /* ---------- Fenêtre (Historique) ---------- */
     .modal {
@@ -176,7 +181,7 @@
       background: var(--papier); border-radius: 20px 20px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
     }
     .toast {
-      position: fixed; left: 50%; bottom: calc(var(--tab-h) + 16px + env(safe-area-inset-bottom));
+      position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom));
       transform: translateX(-50%); background: var(--encre); color: #fff; padding: 10px 16px; border-radius: 20px;
       font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; z-index: 20; white-space: nowrap;
     }
@@ -187,23 +192,26 @@
 <body>
   <header>
     <a class="logo" href="#jeu" aria-label="Accueil">
-      <svg width="28" height="36" viewBox="0 0 24 32" aria-hidden="true">
-        <path d="M3 2h18M3 30h18M5 2c0 9 14 9 14 14S5 21 5 30M19 2c0 9-14 9-14 14s14 5 14 14" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-        <path d="M8 27l4-4 4 4z" fill="#e07a2e"/>
+      <svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="13" fill="none" stroke="#fff" stroke-width="2"/>
+        <path d="M16 6l4 10h-8z" fill="#e07a2e"/><path d="M16 26l-4-10h8z" fill="#fff"/>
       </svg>
-      <b>Le Sablier des Siècles<small id="versionLabel">Version v1</small></b>
+      <b>Ludo Aventura<small id="versionLabel">Version v1</small></b>
     </a>
     <button class="icon-btn" id="infoBtn" aria-label="Historique des versions">ⓘ</button>
     <button class="icon-btn" id="cartBtn" aria-label="Panier">🛒<span class="badge" id="cartBadge" hidden>0</span></button>
   </header>
 
-  <main id="main"><div class="page" id="view"></div></main>
-
   <nav class="tabs" aria-label="Navigation principale">
     <a href="#jeu" data-tab="jeu"><span>🎲</span>Le jeu</a>
-    <a href="#boutique" data-tab="boutique"><span>🛍️</span>Boutique</a>
+    <a href="#regles" data-tab="regles"><span>📜</span>Règles</a>
+    <a href="#boutique" data-tab="boutique"><span>🛍️</span>Acheter</a>
+    <a href="#tables" data-tab="tables"><span>✖️</span>Tables</a>
     <a href="#decouvrir" data-tab="decouvrir"><span>🧭</span>Découvrir</a>
   </nav>
+
+  <main id="main"><div class="page" id="view"></div></main>
+
 
   <div class="modal" id="histModal" hidden>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="histTitle">
@@ -217,19 +225,20 @@
   <script>
     // ---------- Historique des versions (la première entrée donne le numéro affiché) ----------
     var HISTORY = [
+      { v: "v2", d: "2026-10-27", t: "Le jeu devient Ludo Aventura (missions et cartes questions). Onglets en haut : Le jeu, Règles, Acheter, Tables, Découvrir. Nouvelle page des tables de multiplication de 1 à 10. Règles retirées de l'accueil (page Règles à compléter)." },
       { v: "v1", d: "2026-10-27", t: "Première version : présentation du jeu, boutique de démonstration avec panier, 12 époques à découvrir avec quiz." }
     ];
 
     // ---------- Catalogue (boutique de démonstration) ----------
     var PRODUCTS = [
-      { id: "base", emo: "⏳", name: "Le Sablier des Siècles — boîte de base",
-        desc: "Plateau frise, 240 cartes (120 vertes, 120 rouges), 6 pions voyageurs, 1 sablier, livret de règles.", price: 34.90 },
-      { id: "ext-inventeurs", emo: "💡", name: "Extension « Inventeurs et inventions »",
-        desc: "80 cartes en plus : de la roue à Internet. Nécessite la boîte de base.", price: 14.90 },
-      { id: "ext-femmes", emo: "👑", name: "Extension « Elles ont fait l'Histoire »",
-        desc: "80 cartes sur des femmes célèbres, de Cléopâtre à Marie Curie. Nécessite la boîte de base.", price: 14.90 },
-      { id: "frise", emo: "🗺️", name: "Poster frise chronologique",
-        desc: "Grand poster 60 × 90 cm des 12 époques du jeu, pour la chambre ou la classe.", price: 9.90 }
+      { id: "base", emo: "🧭", name: "Ludo Aventura, boîte de base",
+        desc: "Le jeu complet : plateau, cartes missions, cartes questions (lecture, écriture, calcul, nombres et lettres), pions et livret de règles.", price: 34.90 },
+      { id: "ext-calcul", emo: "🔢", name: "Extension « Missions calcul »",
+        desc: "Des cartes questions en plus sur le calcul et les nombres. Nécessite la boîte de base.", price: 14.90 },
+      { id: "ext-lettres", emo: "🔤", name: "Extension « Missions lettres »",
+        desc: "Des cartes questions en plus sur la lecture, l'écriture et les lettres. Nécessite la boîte de base.", price: 14.90 },
+      { id: "poster", emo: "✖️", name: "Poster des tables de multiplication",
+        desc: "Grand poster des tables de 1 à 10, pour la chambre ou la classe.", price: 9.90 }
     ];
     var SHIPPING = 4.90, FREE_FROM = 40;
 
@@ -372,7 +381,7 @@
     ];
 
     // ---------- Stockage local (namespacé, toujours protégé) ----------
-    var NS = "sablier_";
+    var NS = "ludoaventura_";
     function load(k, def) { try { var v = localStorage.getItem(NS + k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
     function save(k, v) { try { localStorage.setItem(NS + k, JSON.stringify(v)); } catch (e) {} }
     var cart = load("cart", {});      // { idProduit: quantité }
@@ -408,42 +417,45 @@
       save("cart", cart); updateBadge();
     }
 
-    var HOURGLASS = '<svg viewBox="0 0 24 32" aria-hidden="true"><path d="M3 2h18M3 30h18M5 2c0 9 14 9 14 14S5 21 5 30M19 2c0 9-14 9-14 14s14 5 14 14" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/><path d="M8 6h8l-4 6z" fill="#e07a2e"/><path d="M7.5 27.5l4.5-4 4.5 4z" fill="#e07a2e"/><path d="M12 13v9" stroke="#e07a2e" stroke-width="1" stroke-dasharray="1 1.5"/></svg>';
+    var COMPASS = '<svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="#fff" stroke-width="1.4"/><circle cx="16" cy="16" r="10" fill="none" stroke="#fff" stroke-width=".6" stroke-dasharray="1 2"/><path d="M16 4l3.5 12h-7z" fill="#e07a2e"/><path d="M16 28l-3.5-12h7z" fill="#fff"/><circle cx="16" cy="16" r="1.4" fill="#1f3a5f"/></svg>';
 
-    // ---------- Pages ----------
     function pageJeu() {
       return '' +
-        '<section class="hero">' + HOURGLASS +
-          '<div><h1>Le Sablier des Siècles</h1>' +
-          '<p>Le grand sablier du Temps s\'est brisé ! Ses grains sont éparpillés dans 12 époques. Voyagez de la Préhistoire à la conquête spatiale pour les rapporter avant que le dernier grain ne tombe.</p>' +
-          '<div class="tags"><span class="tag">👧 5 à 15 ans</span><span class="tag">👥 2 à 6 joueurs</span><span class="tag">⏱️ 30 min</span><span class="tag">🤝 coopératif ou en équipes</span></div>' +
-          '<div class="row"><a class="btn" href="#boutique">Acheter le jeu</a><a class="btn sec" style="color:#fff;border-color:#fff" href="#decouvrir">Découvrir les époques</a></div></div>' +
+        '<section class="hero">' + COMPASS +
+          '<div><h1>Ludo Aventura</h1>' +
+          '<p>Un jeu de société d\'aventure où chaque joueur part accomplir des missions. Pour réussir une mission, il faut répondre aux questions des cartes : lire, écrire, calculer, reconnaître les nombres et les lettres.</p>' +
+          '<div class="tags"><span class="tag">👧 5 à 15 ans</span><span class="tag">🎯 des missions à réussir</span><span class="tag">🃏 une carte, une question</span></div>' +
+          '<div class="row"><a class="btn" href="#boutique">Acheter le jeu</a><a class="btn sec" style="color:#fff;border-color:#fff" href="#regles">Les règles</a></div></div>' +
         '</section>' +
 
-        '<h2>Comment on joue ?</h2>' +
-        '<div class="card"><ol class="steps">' +
-          '<li><b>Lance le dé</b> et avance ton pion sur la frise du Temps.</li>' +
-          '<li><b>Pioche une carte</b> de l\'époque où tu arrives : un personnage, une invention ou un événement.</li>' +
-          '<li><b>Place-la au bon endroit</b> sur la frise : avant ou après les cartes déjà posées ?</li>' +
-          '<li><b>Bien placée ?</b> Tu gagnes un grain de sable. L\'équipe qui remplit le sablier la première gagne !</li>' +
-        '</ol></div>' +
-
-        '<h2>Un jeu, deux niveaux</h2>' +
-        '<div class="modes">' +
-          '<div class="card mode"><h3>🟢 Cartes vertes · 5-8 ans</h3><p class="muted">De grandes images, peu de texte. On classe « avant / après » : les dinosaures, les châteaux, les fusées… Parfait pour ceux qui ne lisent pas encore bien.</p></div>' +
-          '<div class="card mode rouge"><h3>🔴 Cartes rouges · 9-15 ans</h3><p class="muted">Des dates, des personnages et des défis « vrai ou faux ». Assez costaud pour faire réfléchir les grands… et les parents.</p></div>' +
+        '<h2>Quatre familles de questions</h2>' +
+        '<div class="grid">' +
+          '<div class="card"><h3>📖 Lecture</h3><p class="muted" style="margin:0">Lire un mot, une phrase, une consigne.</p></div>' +
+          '<div class="card"><h3>✏️ Écriture</h3><p class="muted" style="margin:0">Écrire un mot, compléter une phrase.</p></div>' +
+          '<div class="card"><h3>➕ Calcul</h3><p class="muted" style="margin:0">Additions, soustractions, multiplications.</p></div>' +
+          '<div class="card"><h3>🔢 Nombres et lettres</h3><p class="muted" style="margin:0">Reconnaître, compter, ranger dans l\'ordre.</p></div>' +
         '</div>' +
-        '<p class="muted">Petits et grands jouent ensemble à la même table : chacun pioche dans la couleur de son niveau.</p>' +
 
-        '<h2>Dans la boîte</h2>' +
-        '<div class="card"><div class="grid">' +
-          '<div>🗺️ 1 plateau frise</div><div>🃏 240 cartes</div><div>♟️ 6 pions voyageurs</div><div>⏳ 1 sablier</div><div>🎲 1 dé</div><div>📖 1 livret de règles</div>' +
-        '</div></div>' +
+        '<h2>Pour qui ?</h2>' +
+        '<div class="card"><p>De 5 à 15 ans : les plus jeunes découvrent les lettres et les nombres, les plus grands relèvent des défis de lecture et de calcul. Petits et grands jouent ensemble à la même table.</p>' +
+        '<p class="muted" style="margin:0">Pour réviser les multiplications avant de partir en mission, les tables de 1 à 10 sont dans l\'onglet <a href="#tables">Tables</a>.</p></div>' +
+        '<div class="row" style="margin-top:16px"><a class="btn" href="#boutique">Voir la boutique</a><a class="btn sec" href="#regles">Lire les règles</a></div>';
+    }
 
-        '<h2>Pourquoi ce jeu ?</h2>' +
-        '<div class="card"><p>Comprendre l\'Histoire, c\'est d\'abord savoir <b>ce qui vient avant quoi</b>. En jouant, les enfants construisent leur propre frise dans la tête, sans s\'en rendre compte.</p>' +
-        '<p class="muted" style="margin:0">Et pour aller plus loin, chaque époque du jeu a sa page de découverte gratuite sur ce site, avec des anecdotes et un mini-quiz.</p></div>' +
-        '<div class="row" style="margin-top:16px"><a class="btn" href="#boutique">Voir la boutique</a><a class="btn sec" href="#decouvrir">Explorer les époques</a></div>';
+    function pageRegles() {
+      return '<h1>Règles du jeu</h1>' +
+        '<div class="card"><p>📜 Les règles de Ludo Aventura arrivent bientôt sur cette page.</p>' +
+        '<p class="muted" style="margin:0">En attendant, tu peux réviser les <a href="#tables">tables de multiplication</a>.</p></div>';
+    }
+
+    function pageTables() {
+      var h = '<h1>Tables de multiplication</h1><p class="muted">Toutes les tables de 1 à 10, avec leurs réponses.</p><div class="tables">';
+      for (var t = 1; t <= 10; t++) {
+        h += '<div class="card table"><h3>Table de ' + t + '</h3>';
+        for (var k = 1; k <= 10; k++) h += '<div><span>' + t + ' × ' + k + ' =</span><b>' + (t * k) + '</b></div>';
+        h += '</div>';
+      }
+      return h + '</div>';
     }
 
     function pageBoutique() {
@@ -490,7 +502,7 @@
     function pageDecouvrir() {
       var n = 0; EPOQUES.forEach(function (e) { if (done[e.id] != null) n++; });
       var h = '<h1>Découvrir les époques</h1>' +
-        '<p>Douze périodes de l\'Histoire, comme dans le jeu. Chacune a ses anecdotes et son mini-quiz. Ici, tout est gratuit !</p>' +
+        '<p>Douze périodes de l\'Histoire à explorer, avec leurs anecdotes et leur mini-quiz. Ici, tout est gratuit !</p>' +
         '<p class="muted">' + n + ' / ' + EPOQUES.length + ' époques explorées</p><div class="frise">';
       EPOQUES.forEach(function (e) { h += '<i class="' + (done[e.id] != null ? 'on' : '') + '"></i>'; });
       h += '</div><div class="grid">';
@@ -531,6 +543,8 @@
       current = parts;
       var html;
       if (tab === "boutique") html = pageBoutique();
+      else if (tab === "regles") html = pageRegles();
+      else if (tab === "tables") html = pageTables();
       else if (tab === "panier") html = pagePanier();
       else if (tab === "merci") html = pageMerci();
       else if (tab === "decouvrir") html = pageDecouvrir();
@@ -575,7 +589,7 @@
       boxes.forEach(function (b) { if (b.dataset.done) { answered++; if (b.dataset.done === "ok") score++; } });
       var s = document.getElementById("score");
       if (answered < boxes.length) { s.textContent = pick === good ? "Bravo ! 👍" : "Presque ! La bonne réponse est en vert."; return; }
-      s.textContent = "Score : " + score + " / " + boxes.length + (score === boxes.length ? " — parfait, grain de sable gagné ! ⏳" : " — tu peux relire les anecdotes et réessayer.");
+      s.textContent = "Score : " + score + " / " + boxes.length + (score === boxes.length ? " — parfait, mission réussie ! 🎯" : " — tu peux relire les anecdotes et réessayer.");
       done[ep.id] = Math.max(done[ep.id] || 0, score); save("quiz", done);
       if (score < boxes.length) {
         var again = document.createElement("button");
@@ -615,7 +629,7 @@
     // Le paramètre anti-cache est nécessaire : `cache: 'no-store'` ne
     // contourne pas le CDN devant GitHub Pages.
     (function () {
-      var PAGE = "sablier-des-siecles";
+      var PAGE = "ludo-aventura";
       var lastCheck = 0;
       async function checkForUpdate() {
         var now0 = Date.now();
