@@ -156,6 +156,7 @@
     .table h3 { color: var(--bleu); margin-bottom: 4px; }
     .table div { display: flex; justify-content: space-between; padding: 2px 0; font-variant-numeric: tabular-nums; }
     .table div b { color: var(--orange); }
+    .mission { border-left: 6px solid var(--orange); }
     .back { background: none; border: 0; color: var(--bleu); font-weight: 700; padding: 6px 0; }
 
     /* ---------- Barre d'onglets ---------- */
@@ -225,6 +226,7 @@
   <script>
     // ---------- Historique des versions (la première entrée donne le numéro affiché) ----------
     var HISTORY = [
+      { v: "v3", d: "2026-10-27", t: "Les 12 époques de l'onglet Découvrir deviennent les lieux des missions de Ludo Aventura : chaque époque a sa mission." },
       { v: "v2", d: "2026-10-27", t: "Le jeu devient Ludo Aventura (missions et cartes questions). Onglets en haut : Le jeu, Règles, Acheter, Tables, Découvrir. Nouvelle page des tables de multiplication de 1 à 10. Règles retirées de l'accueil (page Règles à compléter)." },
       { v: "v1", d: "2026-10-27", t: "Première version : présentation du jeu, boutique de démonstration avec panier, 12 époques à découvrir avec quiz." }
     ];
@@ -246,7 +248,7 @@
     // Faits vérifiés sur des sources encyclopédiques ; dates arrondies quand
     // les historiens donnent une fourchette.
     var EPOQUES = [
-      { id: "prehistoire", emo: "🦣", nom: "La Préhistoire", quand: "Jusqu'à l'invention de l'écriture (vers 3300 av. J.-C.)",
+      { id: "prehistoire", mission: "Retrouver la grotte peinte et compter les animaux dessinés sur ses murs.", emo: "🦣", nom: "La Préhistoire", quand: "Jusqu'à l'invention de l'écriture (vers 3300 av. J.-C.)",
         intro: "Avant l'écriture, les humains vivaient de chasse, de pêche et de cueillette, puis ont appris à cultiver et à élever des animaux.",
         faits: [
           "Les peintures de la grotte de Lascaux ont environ 17 000 ans. Elles ont été découvertes en 1940 par quatre adolescents.",
@@ -257,7 +259,7 @@
           { q: "Qui a découvert la grotte de Lascaux en 1940 ?", o: ["Des adolescents", "Un roi", "Des astronautes"], a: 0 },
           { q: "Qu'est-ce qui marque la fin de la Préhistoire ?", o: ["L'invention de la roue", "L'invention de l'écriture", "La disparition des dinosaures"], a: 1 }
         ] },
-      { id: "egypte", emo: "🏺", nom: "L'Égypte antique", quand: "Vers 3100 av. J.-C. – 30 av. J.-C.",
+      { id: "egypte", mission: "Déchiffrer les signes gravés sur la porte de la pyramide.", emo: "🏺", nom: "L'Égypte antique", quand: "Vers 3100 av. J.-C. – 30 av. J.-C.",
         intro: "Le long du Nil, les pharaons ont régné pendant près de 3 000 ans et fait construire temples et pyramides.",
         faits: [
           "La grande pyramide de Khéops (vers 2560 av. J.-C.) mesurait environ 146 m. Elle est restée le plus haut monument humain pendant près de 4 000 ans.",
@@ -268,7 +270,7 @@
           { q: "Quel fleuve traverse l'Égypte ?", o: ["La Loire", "Le Nil", "L'Amazone"], a: 1 },
           { q: "Qui a déchiffré les hiéroglyphes ?", o: ["Champollion", "Napoléon", "Toutânkhamon"], a: 0 }
         ] },
-      { id: "grece", emo: "🏛️", nom: "La Grèce antique", quand: "Vers 800 av. J.-C. – 146 av. J.-C.",
+      { id: "grece", mission: "Gagner sa place aux Jeux olympiques d'Olympie.", emo: "🏛️", nom: "La Grèce antique", quand: "Vers 800 av. J.-C. – 146 av. J.-C.",
         intro: "Les Grecs nous ont laissé les Jeux olympiques, le théâtre, la philosophie et l'idée de démocratie.",
         faits: [
           "Les premiers Jeux olympiques connus ont eu lieu en 776 av. J.-C. à Olympie.",
@@ -279,7 +281,7 @@
           { q: "Où ont eu lieu les premiers Jeux olympiques ?", o: ["À Rome", "À Olympie", "À Paris"], a: 1 },
           { q: "Que veut dire « démocratie » ?", o: ["Le pouvoir du peuple", "Le pouvoir du roi", "Le pouvoir des dieux"], a: 0 }
         ] },
-      { id: "rome", emo: "🛡️", nom: "La Rome antique", quand: "753 av. J.-C. (légende) – 476 apr. J.-C.",
+      { id: "rome", mission: "Livrer un message à l'autre bout de l'Empire par les voies romaines.", emo: "🛡️", nom: "La Rome antique", quand: "753 av. J.-C. (légende) – 476 apr. J.-C.",
         intro: "Une petite ville d'Italie devient un immense empire, relié par des routes et des aqueducs.",
         faits: [
           "Selon la légende, Rome a été fondée en 753 av. J.-C. par les jumeaux Romulus et Rémus, élevés par une louve.",
@@ -290,7 +292,7 @@
           { q: "Qui a fondé Rome selon la légende ?", o: ["Astérix et Obélix", "Romulus et Rémus", "Jules César"], a: 1 },
           { q: "Combien de spectateurs le Colisée pouvait-il accueillir ?", o: ["Environ 500", "Environ 50 000", "Environ 5 millions"], a: 1 }
         ] },
-      { id: "chine", emo: "🐉", nom: "La Chine impériale", quand: "221 av. J.-C. – 1912",
+      { id: "chine", mission: "Rapporter une feuille du tout premier papier.", emo: "🐉", nom: "La Chine impériale", quand: "221 av. J.-C. – 1912",
         intro: "Pendant plus de 2 000 ans, des empereurs ont gouverné la Chine, berceau de grandes inventions.",
         faits: [
           "Le papier a été perfectionné en Chine vers l'an 105 ; la tradition l'attribue à un fonctionnaire nommé Cai Lun.",
@@ -301,7 +303,7 @@
           { q: "Laquelle de ces inventions vient de Chine ?", o: ["Le papier", "Le téléphone", "La machine à vapeur"], a: 0 },
           { q: "Voit-on la Grande Muraille à l'œil nu depuis la Lune ?", o: ["Oui, facilement", "Non"], a: 1 }
         ] },
-      { id: "vikings", emo: "⛵", nom: "Les Vikings", quand: "Vers 793 – 1066",
+      { id: "vikings", mission: "Guider le drakkar jusqu'aux côtes d'Amérique.", emo: "⛵", nom: "Les Vikings", quand: "Vers 793 – 1066",
         intro: "Venus de Scandinavie, les Vikings étaient marins, commerçants, pillards et explorateurs.",
         faits: [
           "Les Vikings ne portaient pas de casques à cornes : cette image vient surtout d'opéras et d'illustrations du XIXe siècle.",
@@ -312,7 +314,7 @@
           { q: "Les Vikings portaient-ils des casques à cornes ?", o: ["Oui, toujours", "Non, c'est une légende"], a: 1 },
           { q: "Quelle région française doit son nom aux Vikings ?", o: ["La Bretagne", "La Normandie", "La Provence"], a: 1 }
         ] },
-      { id: "moyen-age", emo: "🏰", nom: "Le Moyen Âge", quand: "476 – 1492",
+      { id: "moyen-age", mission: "Entrer dans le château fort en répondant aux énigmes du gardien.", emo: "🏰", nom: "Le Moyen Âge", quand: "476 – 1492",
         intro: "Le temps des châteaux forts, des chevaliers, des cathédrales et des moines copistes.",
         faits: [
           "Charlemagne a été couronné empereur à Rome le jour de Noël de l'an 800.",
@@ -323,7 +325,7 @@
           { q: "En quelle année Charlemagne devient-il empereur ?", o: ["En 800", "En 1515", "En 1789"], a: 0 },
           { q: "Quelle ville Jeanne d'Arc aide-t-elle à libérer ?", o: ["Marseille", "Orléans", "Lyon"], a: 1 }
         ] },
-      { id: "renaissance", emo: "🎨", nom: "La Renaissance", quand: "XVe – XVIe siècle",
+      { id: "renaissance", mission: "Lire le carnet secret de Léonard de Vinci, écrit en miroir.", emo: "🎨", nom: "La Renaissance", quand: "XVe – XVIe siècle",
         intro: "Artistes et savants redécouvrent l'Antiquité et inventent une nouvelle façon de voir le monde.",
         faits: [
           "Vers 1450, Gutenberg met au point l'imprimerie à caractères mobiles en Europe : les livres se multiplient.",
@@ -334,7 +336,7 @@
           { q: "Qui a peint la Joconde ?", o: ["Léonard de Vinci", "Picasso", "Gutenberg"], a: 0 },
           { q: "Selon Copernic, qu'est-ce qui tourne autour de quoi ?", o: ["Le Soleil autour de la Terre", "La Terre autour du Soleil"], a: 1 }
         ] },
-      { id: "explorations", emo: "🧭", nom: "Les grandes explorations", quand: "XVe – XVIe siècle",
+      { id: "explorations", mission: "Faire le tour du monde sans perdre l'équipage.", emo: "🧭", nom: "Les grandes explorations", quand: "XVe – XVIe siècle",
         intro: "Des navigateurs européens traversent les océans et rencontrent des peuples et des continents.",
         faits: [
           "En 1492, Christophe Colomb atteint les Amériques en croyant arriver en Asie.",
@@ -345,7 +347,7 @@
           { q: "En quelle année Colomb atteint-il les Amériques ?", o: ["1492", "1789", "1969"], a: 0 },
           { q: "Que manquait-il aux marins atteints du scorbut ?", o: ["De l'eau salée", "De la vitamine C", "Du sommeil"], a: 1 }
         ] },
-      { id: "revolution", emo: "🇫🇷", nom: "La Révolution française", quand: "1789 – 1799",
+      { id: "revolution", mission: "Mesurer le tout premier mètre.", emo: "🇫🇷", nom: "La Révolution française", quand: "1789 – 1799",
         intro: "Le peuple français renverse la monarchie absolue et proclame de nouveaux droits.",
         faits: [
           "Le 14 juillet 1789, les Parisiens prennent la prison de la Bastille.",
@@ -356,7 +358,7 @@
           { q: "Que fête-t-on le 14 juillet ?", o: ["La prise de la Bastille", "La fin de l'école", "Le Nouvel An"], a: 0 },
           { q: "Quelle unité est née pendant la Révolution ?", o: ["Le pied", "Le mètre", "Le pouce"], a: 1 }
         ] },
-      { id: "industrie", emo: "🚂", nom: "La révolution industrielle", quand: "Fin XVIIIe – XIXe siècle",
+      { id: "industrie", mission: "Faire partir le train à vapeur à l'heure.", emo: "🚂", nom: "La révolution industrielle", quand: "Fin XVIIIe – XIXe siècle",
         intro: "Machines à vapeur, usines et trains transforment le travail et les villes.",
         faits: [
           "James Watt améliore la machine à vapeur à partir de 1769, ce qui la rend bien plus efficace.",
@@ -367,7 +369,7 @@
           { q: "Quelle énergie faisait avancer les premiers trains ?", o: ["L'électricité", "La vapeur", "Le vent"], a: 1 },
           { q: "En 1841, en France, à partir de quel âge pouvait-on encore travailler à l'usine ?", o: ["8 ans", "18 ans", "25 ans"], a: 0 }
         ] },
-      { id: "espace", emo: "🚀", nom: "La conquête spatiale", quand: "Depuis 1957",
+      { id: "espace", mission: "Préparer la fusée pour le voyage vers la Lune.", emo: "🚀", nom: "La conquête spatiale", quand: "Depuis 1957",
         intro: "Satellites, astronautes et robots partent explorer l'espace autour de la Terre et au-delà.",
         faits: [
           "En 1957, le satellite soviétique Spoutnik 1 est le premier objet humain mis en orbite autour de la Terre.",
@@ -436,6 +438,10 @@
           '<div class="card"><h3>🔢 Nombres et lettres</h3><p class="muted" style="margin:0">Reconnaître, compter, ranger dans l\'ordre.</p></div>' +
         '</div>' +
 
+        '<h2>Douze époques, douze missions</h2>' +
+        '<div class="card"><p>Les missions font voyager dans le temps : de la Préhistoire à la conquête spatiale, chaque époque de l\'Histoire cache sa propre mission.</p>' +
+        '<a class="btn small" href="#decouvrir">Découvrir les époques</a></div>' +
+
         '<h2>Pour qui ?</h2>' +
         '<div class="card"><p>De 5 à 15 ans : les plus jeunes découvrent les lettres et les nombres, les plus grands relèvent des défis de lecture et de calcul. Petits et grands jouent ensemble à la même table.</p>' +
         '<p class="muted" style="margin:0">Pour réviser les multiplications avant de partir en mission, les tables de 1 à 10 sont dans l\'onglet <a href="#tables">Tables</a>.</p></div>' +
@@ -502,7 +508,7 @@
     function pageDecouvrir() {
       var n = 0; EPOQUES.forEach(function (e) { if (done[e.id] != null) n++; });
       var h = '<h1>Découvrir les époques</h1>' +
-        '<p>Douze périodes de l\'Histoire à explorer, avec leurs anecdotes et leur mini-quiz. Ici, tout est gratuit !</p>' +
+        '<p>Les douze époques où t\'emmènent les missions de Ludo Aventura. Pour chacune : sa mission, des anecdotes et un mini-quiz. Ici, tout est gratuit !</p>' +
         '<p class="muted">' + n + ' / ' + EPOQUES.length + ' époques explorées</p><div class="frise">';
       EPOQUES.forEach(function (e) { h += '<i class="' + (done[e.id] != null ? 'on' : '') + '"></i>'; });
       h += '</div><div class="grid">';
@@ -518,6 +524,7 @@
       var e = EPOQUES[i];
       var h = '<button class="back" data-go="#decouvrir">← Toutes les époques</button>' +
         '<h1>' + e.emo + ' ' + esc(e.nom) + '</h1><p class="muted">' + esc(e.quand) + '</p><p>' + esc(e.intro) + '</p>' +
+        '<div class="card mission"><h3>🎯 La mission de cette époque</h3><p style="margin:0">' + esc(e.mission) + '</p></div>' +
         '<h2>Le savais-tu ?</h2>';
       e.faits.forEach(function (f, k) { h += '<div class="card fact"><span class="n">' + ['💡', '🔎', '😮'][k % 3] + '</span><p style="margin:0">' + esc(f) + '</p></div>'; });
       h += '<h2>Mini-quiz</h2><div class="card" id="quiz">';
@@ -531,7 +538,7 @@
       h += '<div class="row" style="justify-content:space-between;margin-top:8px">' +
         (prev ? '<button class="btn sec small" data-go="#epoque/' + prev.id + '">← ' + esc(prev.nom) + '</button>' : '<span></span>') +
         (next ? '<button class="btn sec small" data-go="#epoque/' + next.id + '">' + esc(next.nom) + ' →</button>' : '') + '</div>' +
-        '<div class="card" style="margin-top:16px"><p style="margin:0 0 10px">Envie de jouer avec cette époque en famille ou en classe ?</p><a class="btn small" href="#boutique">Le jeu dans la boutique</a></div>';
+        '<div class="card" style="margin-top:16px"><p style="margin:0 0 10px">Envie de tenter cette mission en famille ou en classe ?</p><a class="btn small" href="#boutique">Le jeu dans la boutique</a></div>';
       return h;
     }
 
