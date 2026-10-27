@@ -7,6 +7,10 @@ l'on accomplit des missions en répondant à des cartes questions (lecture,
 **Ce n'est pas un jeu** au sens de la charte : c'est un site, pas une
 session rejouable. Seule la partie technique de la charte s'applique.
 
+## Fait (v3)
+
+- Les 12 époques de Découvrir deviennent les lieux des missions (une mission par époque, texte provisoire)
+
 ## Fait (v2)
 
 - Nom : **Ludo Aventura** (sans tiret)
@@ -29,7 +33,7 @@ session rejouable. Seule la partie technique de la charte s'applique.
 
 - **Règles** : les intégrer quand Pierre fournit le fichier
 - **Une page par carte question** (demandé pour plus tard, pas encore commencé)
-- Décider si l'onglet Découvrir (époques historiques) reste lié au jeu
+- Écrire les vraies missions de chaque époque (textes actuels provisoires)
 
 - Illustrations réelles du jeu (photos de la boîte, des cartes)
 - Vrai paiement si le jeu existe un jour (prestataire externe, jamais de
