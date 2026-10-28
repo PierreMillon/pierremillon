@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Vie 3D</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg?v=2">
+<link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png?v=2">
+<style>
+  /* Jeu de la vie de Conway en volume. Esthétique par défaut de la
+     charte (../REGLES-JEUX.md) : fond noir, tracé fin vert phosphore,
+     lignes vectorielles. Les cellules vivantes sont des cubes à peine
+     remplis — on voit à travers, donc on lit la profondeur. */
+  :root {
+    --ink: #5ef0a0;      /* vert phosphore, couleur dominante unique */
+    --soft: #2f8f5c;
+    --hair: #143324;
+    --warn: #f0d35e;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body {
+    position: fixed; inset: 0; margin: 0;
+    background: #000; color: var(--ink);
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 13px;
+    touch-action: none;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex; flex-direction: column;
+  }
+
+  header {
+    flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) 8px max(10px, env(safe-area-inset-left));
+  }
+  header .right { display: flex; gap: 8px; }
+  a.back, button {
+    font: inherit; font-size: 11.5px; color: var(--ink);
+    background: transparent; border: 1px solid var(--hair);
+    border-radius: 7px; padding: 9px 11px; min-height: 40px;
+    text-decoration: none; cursor: pointer; white-space: nowrap;
+  }
+  button:active, a.back:active { background: rgba(94,240,160,0.14); }
+  button[aria-pressed="true"] { border-color: var(--ink); background: rgba(94,240,160,0.12); }
+  button:disabled { opacity: 0.35; }
+
+  .stage { flex: 1 1 auto; position: relative; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  .hud {
+    position: absolute; top: 6px; left: 10px; right: 10px;
+    display: flex; gap: 14px; flex-wrap: wrap;
+    font-size: 11.5px; color: var(--soft); pointer-events: none;
+  }
+  .hud b { color: var(--ink); font-weight: 600; }
+  .hint {
+    position: absolute; left: 10px; right: 10px; bottom: 6px;
+    text-align: center; font-size: 10.5px; color: var(--soft);
+    pointer-events: none; line-height: 1.5;
+  }
+  .dead {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    color: var(--warn); font-size: 13px; letter-spacing: 0.08em;
+    text-transform: uppercase; pointer-events: none; text-align: center;
+  }
+  .dead[hidden] { display: none; }
+
+  .panel {
+    flex: 0 0 auto;
+    display: grid; gap: 8px;
+    padding: 8px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    border-top: 1px solid var(--hair);
+  }
+  .row { display: flex; gap: 8px; align-items: center; }
+  .row.keys { display: grid; grid-template-columns: repeat(4, 1fr); }
+  .row.keys > button {
+    text-align: center; padding: 9px 2px; font-size: 11px;
+    min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  }
+  .slider { display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; }
+  .slider label { font-size: 10.5px; color: var(--soft); white-space: nowrap; }
+  .slider output { font-size: 11px; min-width: 2.1em; text-align: right; }
+  input[type=range] {
+    flex: 1 1 0; min-width: 0; height: 34px; background: transparent;
+    accent-color: #5ef0a0; -webkit-appearance: none; appearance: none;
+  }
+  input[type=range]::-webkit-slider-runnable-track { height: 2px; background: var(--soft); }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 20px; height: 20px; margin-top: -9px; border-radius: 50%;
+    background: #000; border: 2px solid var(--ink);
+  }
+  input[type=range]::-moz-range-track { height: 2px; background: var(--soft); }
+  input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #000; border: 2px solid var(--ink);
+  }
+  .ver { font-size: 10.5px; color: var(--soft); text-align: center; }
+
+  /* Petit téléphone (320 px) : l'en-tête à quatre boutons ne tient plus à
+     la taille normale — on resserre plutôt que de laisser déborder. */
+  @media (max-width: 380px) {
+    a.back, button { font-size: 10px; padding: 8px 6px; }
+    header, header .right { gap: 6px; }
+    .hud { font-size: 10.5px; gap: 10px; }
+  }
+  /* Écran court : on rend de la hauteur au cube, sans toucher au numéro
+     de version ni aux zones tactiles des curseurs. */
+  @media (max-height: 640px) {
+    .panel { gap: 6px; }
+    .row.keys > button { padding: 7px 2px; }
+    .hint { display: none; }
+  }
+
+  .modal {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.94);
+    padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; gap: 12px; z-index: 10;
+  }
+  .modal[hidden] { display: none; }
+  .modal h2 { margin: 0; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+  .modal .scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .modal ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .modal li { font-size: 12px; line-height: 1.55; color: var(--soft); }
+  .modal li b { color: var(--ink); margin-right: 8px; }
+  .modal p { font-size: 11.5px; line-height: 1.6; color: var(--soft); margin: 0 0 10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back" href="../" data-t="back">← Portfolio</a>
+  <div class="right">
+    <button id="soundBtn" aria-pressed="false">♪</button>
+    <button id="langBtn">EN</button>
+    <button id="histBtn" data-t="hist">Historique</button>
+  </div>
+</header>
+
+<div class="stage">
+  <canvas id="cv"></canvas>
+  <div class="hud">
+    <span><span data-t="gen">Génération</span> <b id="genOut">0</b></span>
+    <span><span data-t="pop">Vivants</span> <b id="popOut">0</b></span>
+    <span><span data-t="ruleLbl">Règle</span> <b id="ruleOut">5766</b></span>
+  </div>
+  <div class="dead" id="deadMsg" hidden data-t="dead">Colonie éteinte</div>
+  <div class="hint" id="hint" data-t="hint">Tourne au doigt · touche un cube pour l'ôter, l'étage éclairé pour en poser</div>
+</div>
+
+<div class="panel">
+  <div class="row keys">
+    <button id="playBtn" data-t="play">▶ Lecture</button>
+    <button id="stepBtn" data-t="step">⏭ Pas</button>
+    <button id="randBtn" data-t="rand">⟳ Hasard</button>
+    <button id="clearBtn" data-t="clear">⌫ Vider</button>
+  </div>
+  <div class="row">
+    <div class="slider">
+      <label for="sizeIn" data-t="size">Taille</label>
+      <input id="sizeIn" type="range" min="3" max="10" step="1" value="6">
+      <output id="sizeOut">6³</output>
+    </div>
+    <button id="ruleBtn" style="flex:0 0 auto">5766</button>
+  </div>
+  <div class="row">
+    <div class="slider">
+      <label for="layerIn" data-t="layer">Étage</label>
+      <input id="layerIn" type="range" min="1" max="6" step="1" value="1">
+      <output id="layerOut">1</output>
+    </div>
+  </div>
+  <div class="row">
+    <div class="slider">
+      <label for="speedIn" data-t="speed">Vitesse</label>
+      <input id="speedIn" type="range" min="1" max="10" step="1" value="5">
+      <output id="speedOut">5</output>
+    </div>
+  </div>
+  <div class="ver" id="verOut">Version v1</div>
+</div>
+
+<div class="modal" id="hist" hidden>
+  <h2 data-t="hist">Historique</h2>
+  <div class="scroll">
+    <p id="histIntro" data-t="intro"></p>
+    <ul id="histList"></ul>
+  </div>
+  <button id="histClose" data-t="close">Fermer</button>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ======================================================================
+  // Vie 3D — le jeu de la vie de Conway, mais dans un cube.
+  //
+  // Une seule mécanique : des cellules naissent et meurent selon le nombre
+  // de voisines, exactement comme en 2D, sauf qu'ici une cellule a 26
+  // voisines au lieu de 8. Les règles de Conway (B3/S23) ne tiennent pas en
+  // volume — tout meurt ou tout explose — donc on prend les règles 3D
+  // connues, notées sMin/sMax/bMin/bMax.
+  //
+  // Rendu : projection orthographique faite à la main (pas de bibliothèque,
+  // un seul fichier). L'orthographique a un avantage décisif ici — tous les
+  // cubes d'une même taille se projettent EXACTEMENT sur la même forme,
+  // juste décalée. On calcule donc la silhouette d'un cube une fois par
+  // image, puis on la recopie translatée pour chaque cellule vivante :
+  // 1000 cellules restent fluides sur un téléphone.
+  // ======================================================================
+
+  var GREEN = "94,240,160";
+
+  var RULES = [
+    { id: "5766", s0: 5, s1: 7, b0: 6, b1: 7 },
+    { id: "4555", s0: 4, s1: 5, b0: 5, b1: 5 },
+    { id: "5655", s0: 5, s1: 6, b0: 5, b1: 5 }
+  ];
+
+  var VERSIONS = [
+    { v: "v1",
+      fr: "Premier jet : le jeu de la vie de Conway en volume. Cube de 3³ à 10³ en fil de fer, cellules vivantes en petits cubes translucides (on voit celles de derrière), rotation au doigt, étage éditable au toucher, tirage aléatoire, vitesse réglable et trois règles 3D.",
+      en: "First pass: Conway's Game of Life in a cube. 3³ to 10³ wireframe box, live cells as translucent little cubes (you can see the ones behind), drag to rotate, tap the lit layer to edit, random seed, speed slider and three 3D rulesets." }
+  ];
+
+  var TXT = {
+    fr: {
+      back: "← Portfolio", hist: "Historique", close: "Fermer",
+      play: "▶ Lecture", pause: "⏸ Pause", step: "⏭ Pas",
+      rand: "⟳ Hasard", clear: "⌫ Vider",
+      soundOn: "♪ Son", soundOff: "♪ Muet",
+      size: "Taille", layer: "Étage", speed: "Vitesse", ruleLbl: "Règle",
+      gen: "Génération", pop: "Vivants", dead: "Colonie éteinte",
+      hint: "Tourne au doigt · touche un cube pour l'ôter, l'étage éclairé pour en poser",
+      hintFlat: "Incline le cube pour pouvoir toucher l'étage",
+      ver: "Version ",
+      intro: "Les cellules naissent et meurent selon le nombre de voisines — 26 voisines en volume, contre 8 à plat. Les règles sont notées survie-min/survie-max/naissance-min/naissance-max : 5766 est la vie 3D classique, 4555 fait des cristaux, 5655 des nuages. Astuce : ajoute la page à ton écran d'accueil, elle s'ouvre alors en plein écran."
+    },
+    en: {
+      back: "← Portfolio", hist: "History", close: "Close",
+      play: "▶ Play", pause: "⏸ Pause", step: "⏭ Step",
+      rand: "⟳ Random", clear: "⌫ Clear",
+      soundOn: "♪ Sound", soundOff: "♪ Muted",
+      size: "Size", layer: "Layer", speed: "Speed", ruleLbl: "Rule",
+      gen: "Generation", pop: "Alive", dead: "Colony extinct",
+      hint: "Drag to rotate · tap a cube to remove it, the lit layer to add one",
+      hintFlat: "Tilt the cube to be able to tap the layer",
+      ver: "Version ",
+      intro: "Cells are born and die depending on how many neighbours they have — 26 in a volume, against 8 on a flat grid. Rules read survive-min/survive-max/born-min/born-max: 5766 is classic 3D life, 4555 grows crystals, 5655 makes clouds. Tip: add the page to your home screen, it then opens full screen."
+    }
+  };
+
+  // ---------------------------------------------------------------- état
+  var store = {
+    get: function (k) { try { return localStorage.getItem("vie3d_" + k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem("vie3d_" + k, v); } catch (e) {} }
+  };
+
+  var N = 6;
+  var grid = null, born = null, died = null;
+  var gen = 0, pop = 0;
+  var playing = false;
+  var speed = 5;
+  var ruleIdx = 0;
+  var layer = 0;              // étage actif, sur l'axe vertical (Y)
+  var yaw = 0.62, pitch = 0.46;
+  var lang = store.get("lang") === "en" ? "en" : "fr";
+  var soundOn = store.get("sound") === "1";
+
+  function alloc(n) {
+    N = n;
+    grid = new Uint8Array(n * n * n);
+    born = new Uint8Array(n * n * n);
+    died = new Uint8Array(n * n * n);
+    if (layer >= n) layer = n - 1;
+  }
+  function I(i, j, k) { return (k * N + j) * N + i; }
+
+  function countPop() {
+    var p = 0;
+    for (var a = 0; a < grid.length; a++) if (grid[a]) p++;
+    pop = p;
+  }
+
+  function neighbours(i, j, k) {
+    var n = 0;
+    for (var dk = -1; dk <= 1; dk++) {
+      var kk = k + dk; if (kk < 0 || kk >= N) continue;
+      for (var dj = -1; dj <= 1; dj++) {
+        var jj = j + dj; if (jj < 0 || jj >= N) continue;
+        for (var di = -1; di <= 1; di++) {
+          if (di === 0 && dj === 0 && dk === 0) continue;
+          var ii = i + di; if (ii < 0 || ii >= N) continue;
+          if (grid[(kk * N + jj) * N + ii]) n++;
+        }
+      }
+    }
+    return n;
+  }
+
+  // Bords fermés (pas de tore) : le cube visible EST la limite du monde,
+  // une cellule au bord a donc moins de voisines. C'est plus honnête
+  // visuellement qu'un monde qui se reboucle sans qu'on le voie.
+  function step() {
+    var r = RULES[ruleIdx];
+    var next = new Uint8Array(N * N * N);
+    born.fill(0); died.fill(0);
+    var p = 0;
+    for (var k = 0; k < N; k++) {
+      for (var j = 0; j < N; j++) {
+        for (var i = 0; i < N; i++) {
+          var id = (k * N + j) * N + i;
+          var n = neighbours(i, j, k);
+          var was = grid[id];
+          var now = was ? (n >= r.s0 && n <= r.s1) : (n >= r.b0 && n <= r.b1);
+          if (now) { next[id] = 1; p++; if (!was) born[id] = 1; }
+          else if (was) died[id] = 1;
+        }
+      }
+    }
+    grid = next; pop = p; gen++;
+    saveState();
+  }
+
+  function randomize() {
+    for (var a = 0; a < grid.length; a++) grid[a] = Math.random() < 0.3 ? 1 : 0;
+    born.fill(0); died.fill(0);
+    gen = 0; countPop(); saveState();
+  }
+
+  function clearAll() {
+    grid.fill(0); born.fill(0); died.fill(0);
+    gen = 0; pop = 0; saveState();
+  }
+
+  // Sauvegarde locale : réglages + motif en cours, pour que fermer la page
+  // (ou une mise à jour automatique) ne perde pas la colonie. La chaîne
+  // relue n'est jamais interprétée — seulement validée caractère par
+  // caractère puis recopiée dans le tableau.
+  function saveState() {
+    var s = "";
+    for (var a = 0; a < grid.length; a++) s += grid[a] ? "1" : "0";
+    store.set("grid", s);
+    store.set("n", String(N));
+    store.set("gen", String(gen));
+    store.set("rule", String(ruleIdx));
+    store.set("speed", String(speed));
+    store.set("layer", String(layer));
+  }
+
+  function loadState() {
+    var n = parseInt(store.get("n"), 10);
+    if (!(n >= 3 && n <= 10)) n = 6;
+    alloc(n);
+    var r = parseInt(store.get("rule"), 10); if (r >= 0 && r < RULES.length) ruleIdx = r;
+    var sp = parseInt(store.get("speed"), 10); if (sp >= 1 && sp <= 10) speed = sp;
+    var ly = parseInt(store.get("layer"), 10); if (ly >= 0 && ly < n) layer = ly;
+    var s = store.get("grid");
+    if (typeof s === "string" && s.length === n * n * n && /^[01]+$/.test(s)) {
+      for (var a = 0; a < s.length; a++) grid[a] = s.charCodeAt(a) === 49 ? 1 : 0;
+      var g = parseInt(store.get("gen"), 10); if (g >= 0) gen = g;
+      countPop();
+      return true;
+    }
+    return false;
+  }
+
+  // ------------------------------------------------------------- rendu 3D
+  var cv = document.getElementById("cv");
+  var ctx = cv.getContext("2d");
+  var W = 0, H = 0, dpr = 1;
+  var ex, ey, ez, scale = 100, ox = 0, oy = 0;
+
+  function basis() {
+    var cy = Math.cos(yaw), sy = Math.sin(yaw);
+    var cp = Math.cos(pitch), sp = Math.sin(pitch);
+    ex = { x: cy, y: 0, z: -sy };                   // droite écran
+    ey = { x: sy * sp, y: cp, z: cy * sp };         // haut écran
+    ez = { x: sy * cp, y: -sp, z: cy * cp };        // vers la caméra
+  }
+  function sx(p) { return ox + scale * (p.x * ex.x + p.y * ex.y + p.z * ex.z); }
+  function sy_(p) { return oy - scale * (p.x * ey.x + p.y * ey.y + p.z * ey.z); }
+  function depth(p) { return p.x * ez.x + p.y * ez.y + p.z * ez.z; }
+
+  function resize() {
+    var r = cv.parentNode.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = Math.max(1, Math.round(r.width));
+    H = Math.max(1, Math.round(r.height));
+    cv.width = Math.round(W * dpr);
+    cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    scale = Math.min(W, H) * 0.62;
+    ox = W / 2; oy = H / 2;
+    requestRender();
+  }
+
+  // Enveloppe convexe (chaîne monotone d'Andrew) des 8 coins projetés :
+  // la silhouette d'un cube à l'écran est un hexagone, parfois un carré.
+  function hullOf(pts) {
+    var p = pts.slice().sort(function (a, b) { return a.x - b.x || a.y - b.y; });
+    var cross = function (o, a, b) { return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x); };
+    var lo = [], hi = [], t;
+    for (t = 0; t < p.length; t++) {
+      while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], p[t]) <= 0) lo.pop();
+      lo.push(p[t]);
+    }
+    for (t = p.length - 1; t >= 0; t--) {
+      while (hi.length >= 2 && cross(hi[hi.length - 2], hi[hi.length - 1], p[t]) <= 0) hi.pop();
+      hi.push(p[t]);
+    }
+    lo.pop(); hi.pop();
+    return lo.concat(hi);
+  }
+
+  // Forme d'une cellule, calculée une seule fois par image puis recopiée.
+  function cellShape(half) {
+    var corners = [], s;
+    for (s = 0; s < 8; s++) {
+      var c = { x: (s & 1 ? half : -half), y: (s & 2 ? half : -half), z: (s & 4 ? half : -half) };
+      corners.push({
+        x: scale * (c.x * ex.x + c.y * ex.y + c.z * ex.z),
+        y: -scale * (c.x * ey.x + c.y * ey.y + c.z * ey.z),
+        d: c.x * ez.x + c.y * ez.y + c.z * ez.z,
+        bit: s
+      });
+    }
+    var near = corners[0];
+    for (s = 1; s < 8; s++) if (corners[s].d > near.d) near = corners[s];
+    var spokes = [];
+    for (var b = 1; b <= 4; b <<= 1) spokes.push(corners[near.bit ^ b]);
+    return { hull: hullOf(corners), near: near, spokes: spokes };
+  }
+
+  function line(a, b, alpha, width) {
+    ctx.strokeStyle = "rgba(" + GREEN + "," + alpha + ")";
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(sx(a), sy_(a));
+    ctx.lineTo(sx(b), sy_(b));
+    ctx.stroke();
+  }
+
+  function corner(ix, iy, iz) { return { x: ix - 0.5, y: iy - 0.5, z: iz - 0.5 }; }
+
+  // Structure : les 12 arêtes du grand cube, plus un quadrillage sur les
+  // trois faces qui tournent le dos à la caméra — la « boîte en papier
+  // millimétré » qui donne l'échelle sans jamais masquer les cellules.
+  function drawBox() {
+    var faces = [
+      { n: { x: 0, y: 0, z: -1 }, fixed: "z", v: 0 },
+      { n: { x: 0, y: 0, z: 1 }, fixed: "z", v: 1 },
+      { n: { x: -1, y: 0, z: 0 }, fixed: "x", v: 0 },
+      { n: { x: 1, y: 0, z: 0 }, fixed: "x", v: 1 },
+      { n: { x: 0, y: -1, z: 0 }, fixed: "y", v: 0 },
+      { n: { x: 0, y: 1, z: 0 }, fixed: "y", v: 1 }
+    ];
+    var f, t, a, b;
+    for (f = 0; f < faces.length; f++) {
+      var fa = faces[f];
+      if (depth(fa.n) >= 0) continue;              // face tournée vers nous : on la saute
+      for (t = 0; t <= N; t++) {
+        var u = t / N;
+        if (fa.fixed === "z") {
+          a = corner(u, 0, fa.v); b = corner(u, 1, fa.v);
+          line(a, b, 0.1, 1);
+          a = corner(0, u, fa.v); b = corner(1, u, fa.v);
+          line(a, b, 0.1, 1);
+        } else if (fa.fixed === "x") {
+          a = corner(fa.v, u, 0); b = corner(fa.v, u, 1);
+          line(a, b, 0.1, 1);
+          a = corner(fa.v, 0, u); b = corner(fa.v, 1, u);
+          line(a, b, 0.1, 1);
+        } else {
+          a = corner(u, fa.v, 0); b = corner(u, fa.v, 1);
+          line(a, b, 0.1, 1);
+          a = corner(0, fa.v, u); b = corner(1, fa.v, u);
+          line(a, b, 0.1, 1);
+        }
+      }
+    }
+    for (var i = 0; i < 2; i++) for (var j = 0; j < 2; j++) {
+      line(corner(i, j, 0), corner(i, j, 1), 0.42, 1.4);
+      line(corner(i, 0, j), corner(i, 1, j), 0.42, 1.4);
+      line(corner(0, i, j), corner(1, i, j), 0.42, 1.4);
+    }
+  }
+
+  // L'étage actif : la cible des doigts, donc toujours visible, mais
+  // discret pendant la lecture pour ne pas concurrencer les cellules.
+  function drawLayer() {
+    var y = layer / N - 0.5, y2 = (layer + 1) / N - 0.5;
+    var al = playing ? 0.1 : 0.3;
+    for (var t = 0; t <= N; t++) {
+      var u = t / N;
+      line({ x: u - 0.5, y: y, z: -0.5 }, { x: u - 0.5, y: y, z: 0.5 }, al, 1);
+      line({ x: -0.5, y: y, z: u - 0.5 }, { x: 0.5, y: y, z: u - 0.5 }, al, 1);
+    }
+    var hi = playing ? 0.16 : 0.45;
+    line({ x: -0.5, y: y2, z: -0.5 }, { x: 0.5, y: y2, z: -0.5 }, hi, 1);
+    line({ x: -0.5, y: y2, z: 0.5 }, { x: 0.5, y: y2, z: 0.5 }, hi, 1);
+    line({ x: -0.5, y: y2, z: -0.5 }, { x: -0.5, y: y2, z: 0.5 }, hi, 1);
+    line({ x: 0.5, y: y2, z: -0.5 }, { x: 0.5, y: y2, z: 0.5 }, hi, 1);
+  }
+
+  function drawCells() {
+    var cell = 1 / N;
+    var shape = cellShape(cell * 0.44);          // 0.44 : un petit jeu entre cubes voisins
+    var ghost = cellShape(cell * 0.2);
+    var list = [], i, j, k, id;
+    for (k = 0; k < N; k++) for (j = 0; j < N; j++) for (i = 0; i < N; i++) {
+      id = (k * N + j) * N + i;
+      var isGhost = !grid[id] && playing && died[id];
+      if (!grid[id] && !isGhost) continue;
+      var p = { x: (i + 0.5) * cell - 0.5, y: (j + 0.5) * cell - 0.5, z: (k + 0.5) * cell - 0.5 };
+      list.push({ x: sx(p), y: sy_(p), d: depth(p), g: isGhost, b: playing && born[id] });
+    }
+    list.sort(function (a, b) { return a.d - b.d; });   // du fond vers l'avant
+
+    var h = shape.hull, sp = shape.spokes, nr = shape.near;
+    var drawSpokes = N <= 7;                      // au-delà, les cubes sont trop petits
+    for (var c = 0; c < list.length; c++) {
+      var o = list[c];
+      var t = (o.d + 0.87) / 1.74;                 // 0 au fond, 1 au premier plan
+      if (t < 0) t = 0; else if (t > 1) t = 1;
+
+      if (o.g) {                                   // cellule qui vient de mourir
+        var gh = ghost.hull;
+        ctx.beginPath();
+        ctx.moveTo(o.x + gh[0].x, o.y + gh[0].y);
+        for (var q = 1; q < gh.length; q++) ctx.lineTo(o.x + gh[q].x, o.y + gh[q].y);
+        ctx.closePath();
+        ctx.strokeStyle = "rgba(" + GREEN + "," + (0.1 + 0.12 * t) + ")";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        continue;
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(o.x + h[0].x, o.y + h[0].y);
+      for (var q2 = 1; q2 < h.length; q2++) ctx.lineTo(o.x + h[q2].x, o.y + h[q2].y);
+      ctx.closePath();
+      // Remplissage volontairement très faible : la charte demande des
+      // lignes plutôt que des formes pleines, et il faut voir les cellules
+      // de derrière. L'arête porte l'information, le remplissage ne fait
+      // que signaler « plein » et donner un peu de matière.
+      ctx.fillStyle = "rgba(" + GREEN + "," + (o.b ? 0.2 : 0.05 + 0.08 * t) + ")";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(" + GREEN + "," + (o.b ? 1 : 0.3 + 0.6 * t) + ")";
+      ctx.lineWidth = o.b ? 1.6 : 1.1;
+      ctx.stroke();
+
+      if (drawSpokes) {
+        ctx.beginPath();
+        for (var s2 = 0; s2 < 3; s2++) {
+          ctx.moveTo(o.x + nr.x, o.y + nr.y);
+          ctx.lineTo(o.x + sp[s2].x, o.y + sp[s2].y);
+        }
+        ctx.strokeStyle = "rgba(" + GREEN + "," + (0.12 + 0.3 * t) + ")";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+    }
+  }
+
+  function render() {
+    needsRender = false;
+    basis();
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, W, H);
+    ctx.lineJoin = "round";
+    drawBox();
+    drawLayer();
+    drawCells();
+    document.getElementById("genOut").textContent = String(gen);
+    document.getElementById("popOut").textContent = String(pop);
+    document.getElementById("deadMsg").hidden = pop !== 0;
+  }
+
+  // ------------------------------------------------------------- boucle
+  var raf = 0, needsRender = true, acc = 0, last = 0;
+  function interval() { return 1000 - (speed - 1) * 100; }   // 1000 ms → 100 ms
+  function requestRender() { needsRender = true; ensure(); }
+  function ensure() { if (!raf) raf = requestAnimationFrame(frame); }
+  function frame(ts) {
+    raf = 0;
+    if (!last) last = ts;
+    var dt = ts - last; last = ts;
+    if (playing) {
+      acc += dt;
+      if (acc >= interval()) { acc = 0; step(); blip(); needsRender = true; }
+    }
+    if (needsRender) render();
+    if (playing) ensure();       // en pause et rien qui bouge : la boucle s'arrête (batterie)
+  }
+
+  // --------------------------------------------------------------- son
+  var actx = null;
+  function blip() {
+    if (!soundOn) return;
+    try {
+      if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; actx = new AC(); }
+      if (actx.state === "suspended") actx.resume();
+      var max = N * N * N * 0.3;
+      var f = 150 + 400 * Math.min(1, pop / (max || 1));
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = "sine";
+      o.frequency.setValueAtTime(f, actx.currentTime);
+      g.gain.setValueAtTime(0.0001, actx.currentTime);
+      g.gain.linearRampToValueAtTime(0.035, actx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.1);
+      o.connect(g); g.connect(actx.destination);
+      o.start(); o.stop(actx.currentTime + 0.12);
+    } catch (e) {}
+  }
+
+  // ------------------------------------------------------- doigt / souris
+  var down = null, dragging = false;
+
+  // Deux façons de désigner une cellule, dans cet ordre :
+  //  1. un cube vivant se trouve sous le doigt -> c'est lui (on l'enlève),
+  //     quel que soit son étage. On touche ce qu'on voit.
+  //  2. sinon, on pose sur le plan de l'étage éclairé.
+  // Sans la règle 1, enlever un cube obligeait à retrouver son étage au
+  // curseur — pénible, et invisible pour qui découvre le jeu.
+  function pickLive(px, py) {
+    var a = (px - ox) / scale, b = (oy - py) / scale;
+    var r = 0.5 / N, best = -1, bestD = -Infinity;
+    for (var k = 0; k < N; k++) for (var j = 0; j < N; j++) for (var i = 0; i < N; i++) {
+      var id = (k * N + j) * N + i;
+      if (!grid[id]) continue;
+      var c = { x: (i + 0.5) / N - 0.5, y: (j + 0.5) / N - 0.5, z: (k + 0.5) / N - 0.5 };
+      var dx = (c.x * ex.x + c.y * ex.y + c.z * ex.z) - a;
+      var dy = (c.x * ey.x + c.y * ey.y + c.z * ey.z) - b;
+      if (dx * dx + dy * dy > r * r) continue;
+      var d = c.x * ez.x + c.y * ez.y + c.z * ez.z;
+      if (d > bestD) { bestD = d; best = id; }       // le plus proche de la caméra
+    }
+    return best;
+  }
+
+  function pickLayer(px, py) {
+    // Plan horizontal de l'étage actif, résolu analytiquement : en
+    // projection orthographique un point écran correspond à une droite,
+    // on cherche où elle croise ce plan.
+    if (Math.abs(ez.y) < 0.12) return -1;          // cube vu par la tranche
+    var yPlane = (layer + 0.5) / N - 0.5;
+    var a = (px - ox) / scale, b = (oy - py) / scale;
+    var t = (yPlane - (a * ex.y + b * ey.y)) / ez.y;
+    var wx = a * ex.x + b * ey.x + t * ez.x;
+    var wz = a * ex.z + b * ey.z + t * ez.z;
+    var i = Math.floor((wx + 0.5) * N), k = Math.floor((wz + 0.5) * N);
+    if (i < 0 || i >= N || k < 0 || k >= N) return -1;
+    return (k * N + layer) * N + i;
+  }
+
+  function pickCell(px, py) {
+    var live = pickLive(px, py);
+    return live >= 0 ? live : pickLayer(px, py);
+  }
+
+  cv.addEventListener("pointerdown", function (e) {
+    cv.setPointerCapture(e.pointerId);
+    down = { x: e.clientX, y: e.clientY, t: Date.now() };
+    dragging = false;
+  });
+  cv.addEventListener("pointermove", function (e) {
+    if (!down) return;
+    var dx = e.clientX - down.x, dy = e.clientY - down.y;
+    if (!dragging && Math.abs(dx) + Math.abs(dy) < 8) return;
+    dragging = true;
+    yaw += dx * 0.009;
+    pitch += dy * 0.009;
+    if (pitch > 1.35) pitch = 1.35;
+    if (pitch < -1.35) pitch = -1.35;
+    down.x = e.clientX; down.y = e.clientY;
+    requestRender();
+  });
+  function endPointer(e) {
+    if (!down) return;
+    if (!dragging) {
+      var r = cv.getBoundingClientRect();
+      var id = pickCell(e.clientX - r.left, e.clientY - r.top);
+      if (id >= 0) {
+        grid[id] = grid[id] ? 0 : 1;
+        born.fill(0); died.fill(0);
+        countPop(); saveState(); requestRender();
+      }
+    }
+    down = null; dragging = false;
+  }
+  cv.addEventListener("pointerup", endPointer);
+  cv.addEventListener("pointercancel", function () { down = null; dragging = false; });
+
+  // iOS ignore user-scalable=no pour le pincement : on bloque à la main.
+  document.addEventListener("touchmove", function (e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  ["gesturestart", "gesturechange", "gestureend"].forEach(function (g) {
+    document.addEventListener(g, function (e) { e.preventDefault(); }, { passive: false });
+  });
+
+  // ----------------------------------------------------------- interface
+  var playBtn = document.getElementById("playBtn");
+  var sizeIn = document.getElementById("sizeIn");
+  var layerIn = document.getElementById("layerIn");
+  var speedIn = document.getElementById("speedIn");
+  var ruleBtn = document.getElementById("ruleBtn");
+  var soundBtn = document.getElementById("soundBtn");
+  var hint = document.getElementById("hint");
+
+  function syncUI() {
+    document.getElementById("sizeOut").textContent = N + "³";
+    layerIn.max = String(N);
+    layerIn.value = String(layer + 1);
+    document.getElementById("layerOut").textContent = String(layer + 1);
+    sizeIn.value = String(N);
+    speedIn.value = String(speed);
+    document.getElementById("speedOut").textContent = String(speed);
+    ruleBtn.textContent = RULES[ruleIdx].id;
+    document.getElementById("ruleOut").textContent = RULES[ruleIdx].id;
+    playBtn.textContent = TXT[lang][playing ? "pause" : "play"];
+    playBtn.setAttribute("aria-pressed", playing ? "true" : "false");
+    soundBtn.textContent = soundOn ? TXT[lang].soundOn : TXT[lang].soundOff;
+    soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
+    document.getElementById("verOut").textContent = TXT[lang].ver + VERSIONS[0].v;
+    hint.textContent = Math.abs(ez ? ez.y : 1) < 0.12 ? TXT[lang].hintFlat : TXT[lang].hint;
+  }
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll("[data-t]").forEach(function (el) {
+      var t = TXT[lang][el.dataset.t];
+      if (t) el.textContent = t;
+    });
+    document.getElementById("langBtn").textContent = lang === "fr" ? "EN" : "FR";
+    var list = document.getElementById("histList");
+    list.innerHTML = "";
+    VERSIONS.forEach(function (e) {
+      var li = document.createElement("li");
+      var b = document.createElement("b");
+      b.textContent = e.v;
+      li.appendChild(b);
+      li.appendChild(document.createTextNode(e[lang]));
+      list.appendChild(li);
+    });
+    syncUI();
+  }
+
+  playBtn.addEventListener("click", function () {
+    playing = !playing;
+    if (playing) { last = 0; acc = 0; ensure(); }
+    syncUI(); requestRender();
+  });
+  document.getElementById("stepBtn").addEventListener("click", function () {
+    step(); blip(); requestRender();
+  });
+  document.getElementById("randBtn").addEventListener("click", function () {
+    randomize(); requestRender();
+  });
+  document.getElementById("clearBtn").addEventListener("click", function () {
+    clearAll(); requestRender();
+  });
+  sizeIn.addEventListener("input", function () {
+    var n = parseInt(sizeIn.value, 10);
+    if (!(n >= 3 && n <= 10) || n === N) return;
+    alloc(n); randomize(); syncUI(); requestRender();
+  });
+  layerIn.addEventListener("input", function () {
+    layer = Math.max(0, Math.min(N - 1, parseInt(layerIn.value, 10) - 1));
+    document.getElementById("layerOut").textContent = String(layer + 1);
+    saveState(); requestRender();
+  });
+  speedIn.addEventListener("input", function () {
+    speed = parseInt(speedIn.value, 10) || 5;
+    document.getElementById("speedOut").textContent = String(speed);
+    saveState();
+  });
+  ruleBtn.addEventListener("click", function () {
+    ruleIdx = (ruleIdx + 1) % RULES.length;
+    saveState(); syncUI(); requestRender();
+  });
+  soundBtn.addEventListener("click", function () {
+    soundOn = !soundOn;
+    store.set("sound", soundOn ? "1" : "0");
+    if (soundOn) blip();
+    syncUI();
+  });
+  document.getElementById("langBtn").addEventListener("click", function () {
+    lang = lang === "fr" ? "en" : "fr";
+    store.set("lang", lang);
+    applyLang();
+  });
+  document.getElementById("histBtn").addEventListener("click", function () {
+    document.getElementById("hist").hidden = false;
+  });
+  document.getElementById("histClose").addEventListener("click", function () {
+    document.getElementById("hist").hidden = true;
+  });
+
+  // ----------------------------------------------------------- démarrage
+  var restored = loadState();
+  if (!restored) { alloc(N); randomize(); playing = true; }
+  basis();
+  applyLang();
+  window.addEventListener("resize", resize);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", resize);
+  resize();
+  if (playing) ensure();
+
+  // Poignée de lecture, pour vérifier depuis la console ou un test.
+  window.vie3d = {
+    get N() { return N; }, get gen() { return gen; }, get pop() { return pop; },
+    get grid() { return grid; }, get playing() { return playing; },
+    RULES: RULES, VERSIONS: VERSIONS,
+    step: step, randomize: randomize, clearAll: clearAll,
+    setSize: function (n) { alloc(n); randomize(); syncUI(); requestRender(); },
+    pickCell: pickCell, pickLive: pickLive, pickLayer: pickLayer
+  };
+})();
+</script>
+
+<script>
+  // Mise à jour automatique (copié de la page d'accueil du portfolio).
+  // Le paramètre anti-cache contourne le CDN devant GitHub Pages.
+  (function () {
+    var PAGE = "vie-3d";
+    var lastCheck = 0;
+    async function checkForUpdate() {
+      var now0 = Date.now();
+      if (now0 - lastCheck < 1500) return;
+      lastCheck = now0;
+      try {
+        var url = (location.pathname || "index.html") + "?_cb=" + now0;
+        var res = await fetch(url, { cache: "no-store" });
+        if (!res.ok) return;
+        var tag = res.headers.get("etag") || res.headers.get("last-modified");
+        if (!tag) return;
+        var key = "pm_pageVersion_" + PAGE;
+        var stored = localStorage.getItem(key);
+        if (stored === null) { localStorage.setItem(key, tag); return; }
+        if (tag !== stored) {
+          var now = Date.now();
+          var guard = "pm_lastUpdateReload_" + PAGE;
+          var lastReload = 0;
+          try { lastReload = Number(sessionStorage.getItem(guard)) || 0; } catch (e) {}
+          if (now - lastReload < 10000) return;
+          try {
+            localStorage.setItem(key, tag);
+            sessionStorage.setItem(guard, String(now));
+          } catch (e) {}
+          location.replace(location.pathname + "?_r=" + now);
+        }
+      } catch (e) {}
+    }
+    checkForUpdate();
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) checkForUpdate(); });
+    document.addEventListener("pointerdown", checkForUpdate, { passive: true });
+  })();
+</script>
+</body>
+</html>
