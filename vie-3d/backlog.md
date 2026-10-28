@@ -31,7 +31,10 @@ l'état.
 
 Fait :
 
-- Cube de 1³ à 10³, taille au curseur (change la taille = nouveau tirage).
+- Cube de 0³ à 10³, taille au curseur (change la taille = nouveau tirage).
+  Le côté 0 est le cas dégénéré assumé : un monde sans aucune case. On
+  voit la boîte vide, rien ne peut jamais y naître — la génération
+  n'avance même plus, et la boucle de rendu s'arrête (rien à calculer).
 - Structure en fil de fer : les 12 arêtes du cube, plus un quadrillage
   sur les trois faces qui tournent le dos à la caméra — jamais devant les
   cellules.
@@ -59,6 +62,17 @@ Fait :
   une case en diagonale par période). Poser un motif vide le cube, impose
   la règle 5766 et agrandit le cube si besoin ; le planeur est adossé au
   mur de départ pour avoir de la route devant lui.
+- **Galeries de cycles** (dans le panneau ◈ Motifs), chaque figure
+  dessinée en miniature avec la même projection que le grand cube, pour
+  qu'on choisisse en voyant plutôt qu'en lisant un nombre. Les miniatures
+  ne sont calculées qu'en approchant de l'écran, et la galerie du 4³ se
+  dévoile par paquets de 96 — sinon l'ouverture du panneau traînerait et
+  des centaines de canevas resteraient en mémoire pour rien.
+  - **Cube 3³, les 23 cycles non vides** : liste complète et démontrée.
+  - **Cube 4³, 784 cycles** : récolte, pas preuve (voir plus bas).
+  - Poser une figure force la taille du cube correspondante et la règle
+    5766 : ce sont des cycles **de ce cube-là**, leur équilibre dépend
+    des murs.
 - Sauvegarde locale du motif et des réglages (relue avec validation
   stricte `^[01]+$` et longueur attendue — une chaîne stockée n'est jamais
   interprétée).
@@ -124,9 +138,50 @@ ce jeu. Pour les trois plus petites tailles, on peut même tout énumérer.
   trouvé ». Seuls 396 états sur 134 millions sont sur un cycle, soit
   0,0003 % : presque tout est transitoire.
 
-Au-delà, c'est hors de portée : 4³ fait 2⁶⁴ états, soit environ 73 000 ans
-de calcul au rythme mesuré. À partir de là on ne peut que chercher, jamais
-prouver qu'on a tout trouvé.
+## Le cube 4³ : comment on a vu beaucoup plus
+
+4³ fait 2⁶⁴ états — l'énumération complète resterait hors de portée même
+en y passant des dizaines de milliers d'années. On ne peut donc que
+chercher. Mais on peut chercher **beaucoup** mieux qu'au hasard, et c'est
+ce qui a été fait, sur quatre leviers :
+
+1. **Un moteur une dizaine de fois plus rapide.** L'état entier d'un cube
+   4³ tient dans deux entiers 32 bits (quatre couches de 16 cases), et le
+   nombre de voisines ne se compte plus case par case : deux tables
+   précalculées (`inl`, `cross`, 64 Ko chacune) donnent d'un coup les
+   voisines dans la couche et dans la couche d'à côté. Une génération =
+   64 lectures de table. Mesuré : 621 millions de configurations balayées
+   en 107 s, là où le moteur naïf aurait demandé des heures.
+2. **Une borne démontrée, qui évite d'explorer pour rien.** Survivre
+   demande 5 voisines, naître en demande 6 : **toute configuration de 5
+   cellules ou moins meurt en un coup**, dans n'importe quelle taille de
+   cube. Ce n'est pas une observation, c'est une conséquence directe de la
+   règle. L'énumération exhaustive commence donc à 6 — et les 8 303 633
+   configurations de 0 à 5 cellules, testées quand même par acquit de
+   conscience, meurent bien toutes.
+3. **Les sous-espaces symétriques, énumérés en entier.** Les
+   configurations invariantes par un sous-groupe des 48 symétries du cube
+   forment un espace minuscule : 2^(nombre d'orbites) au lieu de 2⁶⁴. En
+   parcourant les 61 sous-groupes dont le quotient tient en 23 orbites, on
+   énumère **complètement** 17 889 747 configurations en 45 s. C'est là
+   que vivent la plupart des oscillateurs — ce levier à lui seul a fourni
+   plus de cent cycles que le hasard n'avait pas trouvés.
+4. **L'échantillonnage massif**, moitié soupes libres, moitié soupes
+   contraintes à être symétriques (bien plus fécondes) : 20 millions de
+   tirages en 69 s.
+
+Résultat : **784 cycles distincts** à symétrie près — 711 figés, 73 de
+période 2, et toujours aucune période ≥ 3 (un planeur, lui, a besoin de
+plus de place : il en faut 8³ pour le voir voler).
+
+Exhaustif vérifié au passage : toutes les configurations de 6 cellules
+(74 974 368) et de 7 cellules (621 216 192) ont été testées sans
+exception.
+
+**Ce catalogue n'est pas clos, et le dire est important** : la dernière
+nouveauté est apparue à la 19 943 420ᵉ soupe sur 20 millions. La courbe
+ne s'aplatit pas — chercher plus longtemps trouverait encore. Le 3³ est
+une preuve, le 4³ est une récolte.
 
 ## Comment les motifs ont été trouvés
 
@@ -149,5 +204,9 @@ la bonne : sous l'ancienne (naissance 6 ou 7), aucun planeur n'apparaît.
   préréglages.
 - Historique de la population en petite courbe sous le cube.
 - Rotation qui continue toute seule après un glissé rapide (inertie).
-- Galerie « les 24 du cube 3³ » : le catalogue complet et démontré,
-  posable en un geste.
+- Pousser la récolte du 4³ plus loin (la courbe monte encore) et, surtout,
+  trouver un critère pour **classer** les cycles autrement que par taille :
+  à partir de 400 vignettes, la galerie demande un fil conducteur.
+- Chercher un oscillateur de période ≥ 3 : aucun n'a été trouvé en 3³
+  (prouvé impossible) ni en 4³ (jamais vu). Question ouverte : à partir de
+  quelle taille de cube en existe-t-il ?

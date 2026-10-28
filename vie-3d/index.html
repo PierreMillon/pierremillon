@@ -50,7 +50,9 @@
   button:disabled { opacity: 0.35; }
 
   .stage { flex: 1 1 auto; position: relative; min-height: 0; }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* le canevas du cube, nommément : les vignettes de la galerie sont des
+     canevas elles aussi et doivent rester dans le flux */
+  #cv { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   .hud {
     position: absolute; top: 6px; left: 10px; right: 10px;
@@ -135,6 +137,20 @@
   }
   .patlist b { display: block; font-size: 12.5px; margin-bottom: 3px; }
   .patlist span { color: var(--soft); font-size: 11px; line-height: 1.45; }
+  .modal h3 {
+    margin: 22px 0 8px; font-size: 12px; letter-spacing: 0.1em;
+    text-transform: uppercase; font-weight: 600; color: var(--ink);
+  }
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .gallery button { padding: 6px 2px 5px; text-align: center; white-space: normal; min-width: 0; }
+  /* Taille de vignette FIXE : avec width:100% la résolution propre du
+     canevas remonte dans le calcul de la grille et fait exploser la
+     largeur des colonnes. */
+  .gallery canvas { display: block; width: 54px; height: 54px; margin: 0 auto; }
+  .more { margin-top: 8px; width: 100%; }
+  .gallery b { display: block; font-size: 12px; line-height: 1.2; margin-top: 2px; }
+  .gallery span { color: var(--soft); font-size: 9.5px; letter-spacing: 0.04em; }
+  input[type=range]:disabled { opacity: 0.3; }
   .modal p { font-size: 11.5px; line-height: 1.6; color: var(--soft); margin: 0 0 10px; }
 </style>
 </head>
@@ -170,7 +186,7 @@
   <div class="row">
     <div class="slider">
       <label for="sizeIn" data-t="size">Taille</label>
-      <input id="sizeIn" type="range" min="1" max="10" step="1" value="6">
+      <input id="sizeIn" type="range" min="0" max="10" step="1" value="6">
       <output id="sizeOut">6³</output>
     </div>
     <button id="ruleBtn" style="flex:0 0 auto">5766</button>
@@ -198,6 +214,12 @@
   <div class="scroll">
     <p data-t="patIntro"></p>
     <div class="patlist" id="patList"></div>
+    <h3 data-t="gal3Title"></h3>
+    <p data-t="gal3Intro"></p>
+    <div class="gallery" id="gal3"></div>
+    <h3 data-t="gal4Title"></h3>
+    <p data-t="gal4Intro"></p>
+    <div class="gallery" id="gal4"></div>
   </div>
   <button id="patClose" data-t="close">Fermer</button>
 </div>
@@ -253,7 +275,857 @@
     { k: "planeur", minN: 8, edge: true, c: [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[0,2,0],[0,2,1],[1,2,0],[1,2,1],[2,1,0],[2,1,1]] }
   ];
 
+  // La galerie du cube 3³ : la liste COMPLÈTE des cycles de la règle 5766
+  // dans un cube de 3 de côté. Les 2^27 = 134 217 728 états possibles ont
+  // été parcourus un par un hors ligne ; comme le monde est fini, toute
+  // trajectoire finit forcément par boucler, et il n'existe en tout que 24
+  // boucles — le cube vide, 16 figures figées et 7 qui battent en 2 temps.
+  // Aucune de période 3 ou plus. Les 23 non vides sont ici, une par ligne :
+  // p = période, m = les 27 cases lues dans l'ordre (k·3+j)·3+i.
+  // Les galeries, en hexadécimal pour tenir dans le fichier : un chiffre
+  // pour 4 cases, la case numéro c est allumée si le chiffre c>>2 porte le
+  // bit c&3. Les cases sont lues dans l'ordre (k·n + j)·n + i.
+  function cellsOf(m) {
+    return function (c) { return (parseInt(m.charAt(c >> 2), 16) >> (c & 3)) & 1; };
+  }
+  function popOf(m, cells) {
+    var bit = cellsOf(m), n = 0;
+    for (var c = 0; c < cells; c++) if (bit(c)) n++;
+    return n;
+  }
+
+  // Cube 3³ : la liste COMPLÈTE des cycles de la règle 5766. Les 2^27 =
+  // 134 217 728 états possibles ont été parcourus un par un hors ligne ;
+  // le monde étant fini, toute trajectoire finit forcément par boucler, et
+  // il n'existe en tout que 24 boucles — le cube vide, 16 figures figées
+  // et 7 qui battent en 2 temps. Aucune de période 3 ou plus. Voici les
+  // 23 non vides.
+  var CYCLES3 = [
+    {p:1,m:"b161000"},
+    {p:1,m:"b123000"},
+    {p:1,m:"9163000"},
+    {p:1,m:"a163000"},
+    {p:1,m:"0147140"},
+    {p:1,m:"aa45100"},
+    {p:1,m:"b163000"},
+    {p:1,m:"ab07000"},
+    {p:1,m:"8b47000"},
+    {p:1,m:"8347100"},
+    {p:1,m:"ba65100"},
+    {p:1,m:"aa65140"},
+    {p:1,m:"aaa5940"},
+    {p:1,m:"aacd140"},
+    {p:1,m:"aaa1bc0"},
+    {p:1,m:"0a75f20"},
+    {p:2,m:"2942100"},
+    {p:2,m:"21e5100"},
+    {p:2,m:"2847140"},
+    {p:2,m:"034d940"},
+    {p:2,m:"2a4d940"},
+    {p:2,m:"2a651a2"},
+    {p:2,m:"2aad940"}
+  ];
+
+  // Cube 4³ : 2^64 états, l'énumération complète est hors de portée. Ce
+  // catalogue est donc une RÉCOLTE, pas une preuve. Il a été obtenu hors
+  // ligne par un moteur ~10× plus rapide (état sur deux entiers 32 bits,
+  // voisines comptées par tables) sur trois fronts : toutes les
+  // configurations de 6 et 7 cellules sans exception (696 millions —
+  // en dessous de 6, c'est démontré, rien ne peut survivre) ; toutes les
+  // configurations invariantes par une symétrie du cube, énumérées en
+  // entier sous-groupe par sous-groupe ; puis des dizaines de millions de
+  // soupes au hasard.
+  var CYCLES4 = [
+    {p:1,m:"3300310000000000"},
+    {p:1,m:"3300130000000000"},
+    {p:1,m:"6600640000000000"},
+    {p:1,m:"6600460000000000"},
+    {p:1,m:"3300230000000000"},
+    {p:1,m:"4600660000000000"},
+    {p:1,m:"0660046000000000"},
+    {p:1,m:"0460066000000000"},
+    {p:1,m:"0000046006600000"},
+    {p:1,m:"2300330000000000"},
+    {p:1,m:"0200272002000000"},
+    {p:1,m:"3300330000000000"},
+    {p:1,m:"6600660000000000"},
+    {p:1,m:"0660066000000000"},
+    {p:1,m:"0000066006600000"},
+    {p:1,m:"0600606006000000"},
+    {p:1,m:"0000003003030030"},
+    {p:1,m:"0000002006660040"},
+    {p:1,m:"0000002200270022"},
+    {p:1,m:"0020066600200000"},
+    {p:1,m:"0000000027000720"},
+    {p:1,m:"00000400ee004000"},
+    {p:1,m:"0070027200000000"},
+    {p:1,m:"6600606006000000"},
+    {p:1,m:"0600606006600000"},
+    {p:1,m:"0300303003300000"},
+    {p:1,m:"00004a404a600400"},
+    {p:1,m:"000004a604a60000"},
+    {p:1,m:"0030034302300000"},
+    {p:1,m:"0064068600600000"},
+    {p:1,m:"04a404ac00400000"},
+    {p:1,m:"3520352000000000"},
+    {p:1,m:"000004a40ca40040"},
+    {p:1,m:"0000002200550066"},
+    {p:1,m:"00004c00c2c00c00"},
+    {p:1,m:"0000023005520260"},
+    {p:1,m:"0000060068604a40"},
+    {p:1,m:"0220055202520000"},
+    {p:1,m:"0000064068604600"},
+    {p:1,m:"0000003003430252"},
+    {p:1,m:"0000020065302520"},
+    {p:1,m:"00000c40c2c04c00"},
+    {p:1,m:"00000db00bd00000"},
+    {p:1,m:"6666600600000000"},
+    {p:1,m:"0660600606600000"},
+    {p:1,m:"0660006006000660"},
+    {p:1,m:"0600606006060060"},
+    {p:1,m:"00000f9009f00000"},
+    {p:1,m:"9f00f90000000000"},
+    {p:1,m:"f9009f0000000000"},
+    {p:1,m:"2200270000e40044"},
+    {p:1,m:"2520543023000000"},
+    {p:1,m:"0620615025200000"},
+    {p:1,m:"0660218406600000"},
+    {p:1,m:"22005500aa004400"},
+    {p:1,m:"2200550055002200"},
+    {p:1,m:"2520615006200000"},
+    {p:1,m:"04400ac005300220"},
+    {p:1,m:"0000006206150252"},
+    {p:1,m:"0000620069400660"},
+    {p:1,m:"0060024662400600"},
+    {p:1,m:"0000039c039c0000"},
+    {p:1,m:"004400ac00530022"},
+    {p:1,m:"0000258423e40000"},
+    {p:1,m:"000000cc00990033"},
+    {p:1,m:"22007100e8004400"},
+    {p:1,m:"000000004c324a52"},
+    {p:1,m:"00cc0088008800cc"},
+    {p:1,m:"0000033024520640"},
+    {p:1,m:"00df009b00000000"},
+    {p:1,m:"0000000062266446"},
+    {p:1,m:"00cc00c0004400cc"},
+    {p:1,m:"0660022000600660"},
+    {p:1,m:"cc00c06006600000"},
+    {p:1,m:"6600240004800cc0"},
+    {p:1,m:"0cc00c0000060066"},
+    {p:1,m:"0330021001200330"},
+    {p:1,m:"0000321332130000"},
+    {p:1,m:"0bd00bd000000000"},
+    {p:1,m:"3300300000600660"},
+    {p:1,m:"000006604a8408c0"},
+    {p:1,m:"0066030603300000"},
+    {p:1,m:"0000000023e42584"},
+    {p:1,m:"0000006604920660"},
+    {p:1,m:"0000260025520062"},
+    {p:1,m:"0400c860c2600400"},
+    {p:1,m:"4400ca0017002200"},
+    {p:1,m:"4400e80035002200"},
+    {p:1,m:"0cc00c8011003300"},
+    {p:1,m:"0000003361036600"},
+    {p:1,m:"00cc008800130033"},
+    {p:1,m:"042006a40c0c00c0"},
+    {p:1,m:"0000000025ac238c"},
+    {p:1,m:"00000000318435e4"},
+    {p:1,m:"22005300a800cc00"},
+    {p:1,m:"0030021304500660"},
+    {p:1,m:"04400a60c040cc00"},
+    {p:1,m:"c800c93005300000"},
+    {p:1,m:"0000cc00c0a40464"},
+    {p:1,m:"002002728820cc00"},
+    {p:1,m:"0066000664006600"},
+    {p:1,m:"00cc004cc000cc00"},
+    {p:1,m:"04800ca406060060"},
+    {p:1,m:"3300301600660000"},
+    {p:1,m:"0060ca26c8400000"},
+    {p:1,m:"0432ca5248000000"},
+    {p:1,m:"6600600002c00cc0"},
+    {p:1,m:"0cc008a003500220"},
+    {p:1,m:"04400ac025100320"},
+    {p:1,m:"21c435a402000000"},
+    {p:1,m:"00cc008c31003300"},
+    {p:1,m:"0660600660600600"},
+    {p:1,m:"6600606006060060"},
+    {p:1,m:"0c00c86006130030"},
+    {p:1,m:"33003200004c00cc"},
+    {p:1,m:"3300314004e40040"},
+    {p:1,m:"23003300008c00cc"},
+    {p:1,m:"0300343034300300"},
+    {p:1,m:"0600696069600000"},
+    {p:1,m:"0000066069840660"},
+    {p:1,m:"0330300303030030"},
+    {p:1,m:"0c40c0a44a600400"},
+    {p:1,m:"cc00aa0055002200"},
+    {p:1,m:"00300513e8204400"},
+    {p:1,m:"0260214664200600"},
+    {p:1,m:"02003160298404c0"},
+    {p:1,m:"0000178c178c0000"},
+    {p:1,m:"000079c079c00000"},
+    {p:1,m:"0620605225300200"},
+    {p:1,m:"00004a6069a40240"},
+    {p:1,m:"00c00c8cc080cc00"},
+    {p:1,m:"0064048627100120"},
+    {p:1,m:"044042a44a840440"},
+    {p:1,m:"00402a8c71c00200"},
+    {p:1,m:"0132314626400000"},
+    {p:1,m:"00134c134a600000"},
+    {p:1,m:"00004a134c530020"},
+    {p:1,m:"cc00c05300330000"},
+    {p:1,m:"0c40c80604260060"},
+    {p:1,m:"00400a64c0a0cc00"},
+    {p:1,m:"05e4319403000000"},
+    {p:1,m:"33003200008c00cc"},
+    {p:1,m:"4a404aa404a40000"},
+    {p:1,m:"2560695204200000"},
+    {p:1,m:"6200462004060066"},
+    {p:1,m:"0200354030460260"},
+    {p:1,m:"0300312003030033"},
+    {p:1,m:"00c0088c68406600"},
+    {p:1,m:"0000046460864e40"},
+    {p:1,m:"0246355621000000"},
+    {p:1,m:"0c860c9700220000"},
+    {p:1,m:"003304510aa00440"},
+    {p:1,m:"0ca04a9602600000"},
+    {p:1,m:"00738a03cc000000"},
+    {p:1,m:"0c800c8600170022"},
+    {p:1,m:"02204170e8204400"},
+    {p:1,m:"0cc008a007500220"},
+    {p:1,m:"04c0428cc8400c00"},
+    {p:1,m:"0033020360206600"},
+    {p:1,m:"00204a534c130000"},
+    {p:1,m:"020025d005960020"},
+    {p:1,m:"234025ac008c0000"},
+    {p:1,m:"0066040626206400"},
+    {p:1,m:"04e4c20c4c400000"},
+    {p:1,m:"0c400c8600170022"},
+    {p:1,m:"0062006631003300"},
+    {p:1,m:"000004e409920270"},
+    {p:1,m:"0066060622006600"},
+    {p:1,m:"0000354c358c0000"},
+    {p:1,m:"0cc0288077000200"},
+    {p:1,m:"00cc008421402720"},
+    {p:1,m:"0000238425ac0084"},
+    {p:1,m:"00002640318c0264"},
+    {p:1,m:"00000036039c06c0"},
+    {p:1,m:"cc00c04048600640"},
+    {p:1,m:"3300312000440066"},
+    {p:1,m:"00330055008400cc"},
+    {p:1,m:"066048124a600400"},
+    {p:1,m:"00000252c872c800"},
+    {p:1,m:"0066011632100300"},
+    {p:1,m:"3300310000cc00cc"},
+    {p:1,m:"33005500a800cc00"},
+    {p:1,m:"0220255224520220"},
+    {p:1,m:"0330305235200200"},
+    {p:1,m:"0330251048800cc0"},
+    {p:1,m:"6952695202000000"},
+    {p:1,m:"0020259625960000"},
+    {p:1,m:"0066024631003300"},
+    {p:1,m:"0660699606400000"},
+    {p:1,m:"066021846ac00400"},
+    {p:1,m:"04004a6060860660"},
+    {p:1,m:"072028304ac00840"},
+    {p:1,m:"0330203061206600"},
+    {p:1,m:"0400ca804aa40260"},
+    {p:1,m:"0000036069940ac0"},
+    {p:1,m:"00604a164aa00440"},
+    {p:1,m:"00cc04a802110033"},
+    {p:1,m:"0000641265530210"},
+    {p:1,m:"3300303002030033"},
+    {p:1,m:"006009d26d100200"},
+    {p:1,m:"004008a6c0a4cc00"},
+    {p:1,m:"0000046069962340"},
+    {p:1,m:"060025c021560220"},
+    {p:1,m:"0000024069a44aa4"},
+    {p:1,m:"06604860c040cc00"},
+    {p:1,m:"00000ac069a46240"},
+    {p:1,m:"0066040660606600"},
+    {p:1,m:"008c079e03500000"},
+    {p:1,m:"025206160c8400c0"},
+    {p:1,m:"0400686061520310"},
+    {p:1,m:"0660060404860066"},
+    {p:1,m:"27003820ca404800"},
+    {p:1,m:"004431ac35400200"},
+    {p:1,m:"0600692029c00640"},
+    {p:1,m:"0024079e06940000"},
+    {p:1,m:"0660245231100300"},
+    {p:1,m:"004002ac618c2600"},
+    {p:1,m:"3100354404ac0040"},
+    {p:1,m:"0000063248960cc0"},
+    {p:1,m:"0020025661062620"},
+    {p:1,m:"0032015235402600"},
+    {p:1,m:"c800c85206130020"},
+    {p:1,m:"04e4099803700000"},
+    {p:1,m:"0000046069522530"},
+    {p:1,m:"0073049900e60000"},
+    {p:1,m:"0030051368504600"},
+    {p:1,m:"0000002648974e20"},
+    {p:1,m:"006604060c240cc0"},
+    {p:1,m:"0220255225520220"},
+    {p:1,m:"0330300330030330"},
+    {p:1,m:"0660600660060660"},
+    {p:1,m:"6600606006060066"},
+    {p:1,m:"0600699009960060"},
+    {p:1,m:"0666600660006600"},
+    {p:1,m:"0660690660600600"},
+    {p:1,m:"33003060060c00cc"},
+    {p:1,m:"0000065261432530"},
+    {p:1,m:"04c00a8605160230"},
+    {p:1,m:"0e60489208a60040"},
+    {p:1,m:"0220259425860060"},
+    {p:1,m:"00000000ca53ca53"},
+    {p:1,m:"0040068621960660"},
+    {p:1,m:"0320305225520220"},
+    {p:1,m:"066029844aa00440"},
+    {p:1,m:"00004a964a960420"},
+    {p:1,m:"03003160298c04c0"},
+    {p:1,m:"0330219c068c0040"},
+    {p:1,m:"4c00a86051602300"},
+    {p:1,m:"3320150400ac008c"},
+    {p:1,m:"00130653c040cc00"},
+    {p:1,m:"00c0088c61842720"},
+    {p:1,m:"0620695029600600"},
+    {p:1,m:"0620605225520220"},
+    {p:1,m:"26007140028e0064"},
+    {p:1,m:"04c04a2c48a40440"},
+    {p:1,m:"006402ac6a804c00"},
+    {p:1,m:"0440486269120620"},
+    {p:1,m:"00120653e0424c00"},
+    {p:1,m:"000004204a964a96"},
+    {p:1,m:"0210461388920c40"},
+    {p:1,m:"0000024035963146"},
+    {p:1,m:"033005900c0c00cc"},
+    {p:1,m:"0630641331100300"},
+    {p:1,m:"4a8469ac02240000"},
+    {p:1,m:"00000c62c0950c62"},
+    {p:1,m:"00e4061c02530012"},
+    {p:1,m:"2600516029a40440"},
+    {p:1,m:"008c068c11603300"},
+    {p:1,m:"2330340311300300"},
+    {p:1,m:"0e40c060c0600e40"},
+    {p:1,m:"04c04a2c4a840440"},
+    {p:1,m:"0000066070072332"},
+    {p:1,m:"234078a44ac00000"},
+    {p:1,m:"0012035621840660"},
+    {p:1,m:"270070a00a8c00c0"},
+    {p:1,m:"cc00c02006530013"},
+    {p:1,m:"0660099900f60000"},
+    {p:1,m:"2600594015500320"},
+    {p:1,m:"0000067069030670"},
+    {p:1,m:"00330243c240cc00"},
+    {p:1,m:"00cc000cc00cccc0"},
+    {p:1,m:"006006920a960460"},
+    {p:1,m:"cc00a90030300330"},
+    {p:1,m:"c400ca4002530031"},
+    {p:1,m:"00c404a421842720"},
+    {p:1,m:"0400ca60c8110033"},
+    {p:1,m:"33003000218406e4"},
+    {p:1,m:"0330305235600200"},
+    {p:1,m:"cc00c0800ca60026"},
+    {p:1,m:"04608a03cc330000"},
+    {p:1,m:"00006900f9600960"},
+    {p:1,m:"00cc02a425403300"},
+    {p:1,m:"004400aa00990077"},
+    {p:1,m:"0600606060060666"},
+    {p:1,m:"00334813ca404800"},
+    {p:1,m:"06520a9504a60000"},
+    {p:1,m:"0400c86049520330"},
+    {p:1,m:"2540359601520000"},
+    {p:1,m:"0c0048c029802760"},
+    {p:1,m:"003206964a840440"},
+    {p:1,m:"0c404aa004510033"},
+    {p:1,m:"00220255c822cc00"},
+    {p:1,m:"0ca04a9706120000"},
+    {p:1,m:"2600358001ac0064"},
+    {p:1,m:"4400ea0240570022"},
+    {p:1,m:"4c00a86061500320"},
+    {p:1,m:"0066049502510032"},
+    {p:1,m:"00624816caa00840"},
+    {p:1,m:"004008a64a960620"},
+    {p:1,m:"04a6689646200000"},
+    {p:1,m:"6640299606600000"},
+    {p:1,m:"0220255024030272"},
+    {p:1,m:"0220055009920670"},
+    {p:1,m:"0000002025972596"},
+    {p:1,m:"0064069a06960060"},
+    {p:1,m:"04404aa468a40640"},
+    {p:1,m:"2330340302430032"},
+    {p:1,m:"0640486049120670"},
+    {p:1,m:"0620c051c8530420"},
+    {p:1,m:"0220251625960240"},
+    {p:1,m:"4aa4699604600000"},
+    {p:1,m:"044029a459a02600"},
+    {p:1,m:"4aa4699606200000"},
+    {p:1,m:"040069a069940260"},
+    {p:1,m:"066048164a860440"},
+    {p:1,m:"0640259421560220"},
+    {p:1,m:"0600616068160660"},
+    {p:1,m:"0660299069600600"},
+    {p:1,m:"046069a469a00400"},
+    {p:1,m:"064069964aa40000"},
+    {p:1,m:"0400ca6049160252"},
+    {p:1,m:"6520651000160066"},
+    {p:1,m:"0660251230030330"},
+    {p:1,m:"26005940a9604600"},
+    {p:1,m:"0000036078962560"},
+    {p:1,m:"0c00e0c069602520"},
+    {p:1,m:"0064048668064660"},
+    {p:1,m:"4e406084060e0064"},
+    {p:1,m:"0066049625020330"},
+    {p:1,m:"064069842aa40440"},
+    {p:1,m:"0264788671400200"},
+    {p:1,m:"00400a964a970420"},
+    {p:1,m:"0230055209940660"},
+    {p:1,m:"026049164a920440"},
+    {p:1,m:"0020254369530420"},
+    {p:1,m:"004006a8219c0760"},
+    {p:1,m:"0620605165130210"},
+    {p:1,m:"0620259603860060"},
+    {p:1,m:"008404ac8a064c60"},
+    {p:1,m:"0260251660520620"},
+    {p:1,m:"4600a96059202600"},
+    {p:1,m:"00004a4068930653"},
+    {p:1,m:"2100352041840ee0"},
+    {p:1,m:"00660a924aa00c40"},
+    {p:1,m:"04404aa4a8244640"},
+    {p:1,m:"0620691248960460"},
+    {p:1,m:"0460298661940620"},
+    {p:1,m:"0666600660606600"},
+    {p:1,m:"0660609669600600"},
+    {p:1,m:"6666600660006600"},
+    {p:1,m:"6600699009960060"},
+    {p:1,m:"6660600660060660"},
+    {p:1,m:"0066049669206600"},
+    {p:1,m:"03203494292c04c0"},
+    {p:1,m:"00c40886c8134630"},
+    {p:1,m:"0330344325520220"},
+    {p:1,m:"0600696069900660"},
+    {p:1,m:"00004a5269960660"},
+    {p:1,m:"0060069b069d0060"},
+    {p:1,m:"0660299605960020"},
+    {p:1,m:"00600d960b960060"},
+    {p:1,m:"0400c860a9126530"},
+    {p:1,m:"000069a469960260"},
+    {p:1,m:"4a60699606520000"},
+    {p:1,m:"0c40c2a44a2c04c0"},
+    {p:1,m:"044068a469840660"},
+    {p:1,m:"2600616060160662"},
+    {p:1,m:"0200615268960660"},
+    {p:1,m:"0000064069962596"},
+    {p:1,m:"0c40c284c22c0cc0"},
+    {p:1,m:"0660699248a40440"},
+    {p:1,m:"02204612489504a6"},
+    {p:1,m:"0260350c158c0260"},
+    {p:1,m:"06c4219a07060060"},
+    {p:1,m:"04e4290670602600"},
+    {p:1,m:"4a96ca9704200000"},
+    {p:1,m:"013025164a8608c0"},
+    {p:1,m:"79ac79ac00000000"},
+    {p:1,m:"025003960c9604a0"},
+    {p:1,m:"6c00694021520132"},
+    {p:1,m:"04004a60a1964e40"},
+    {p:1,m:"0cccc00cc00c0cc0"},
+    {p:1,m:"0660698661700200"},
+    {p:1,m:"0660099029900760"},
+    {p:1,m:"0660218625960240"},
+    {p:1,m:"006402aa69846600"},
+    {p:1,m:"0460ca03c0530620"},
+    {p:1,m:"27204194068e0024"},
+    {p:1,m:"00600a9649920660"},
+    {p:1,m:"0000002069976996"},
+    {p:1,m:"25003960c9604a00"},
+    {p:1,m:"0660c81365302100"},
+    {p:1,m:"240035c0111c0266"},
+    {p:1,m:"0000259669960260"},
+    {p:1,m:"0062061568924a40"},
+    {p:1,m:"4a40694270700300"},
+    {p:1,m:"00404a9e4a960420"},
+    {p:1,m:"23e4590c26c00000"},
+    {p:1,m:"624069a448a40440"},
+    {p:1,m:"0200695268960620"},
+    {p:1,m:"00a40c9665122120"},
+    {p:1,m:"0220615268124660"},
+    {p:1,m:"0022045525832530"},
+    {p:1,m:"26c0590c23e40000"},
+    {p:1,m:"640069a009940066"},
+    {p:1,m:"0000069629966640"},
+    {p:1,m:"4600a95069520420"},
+    {p:1,m:"0200695069960260"},
+    {p:1,m:"0cc4c0a2ca304200"},
+    {p:1,m:"0400ca60c9160252"},
+    {p:1,m:"00660a9249900660"},
+    {p:1,m:"0264699a4aa40000"},
+    {p:1,m:"02524916ca604800"},
+    {p:1,m:"4800caa009960660"},
+    {p:1,m:"0660489242a40cc0"},
+    {p:1,m:"0660042088114e72"},
+    {p:1,m:"0000063069870696"},
+    {p:1,m:"2600706030060372"},
+    {p:1,m:"0660619469520420"},
+    {p:1,m:"8c23ca1321003300"},
+    {p:1,m:"2520691248960460"},
+    {p:1,m:"0066069904990066"},
+    {p:1,m:"04c0682c69840660"},
+    {p:1,m:"0660618668a40640"},
+    {p:1,m:"0660699461520220"},
+    {p:1,m:"0660099209960660"},
+    {p:1,m:"2552259500550022"},
+    {p:1,m:"0c804aa421860370"},
+    {p:1,m:"00000660699669a4"},
+    {p:1,m:"060069c061960660"},
+    {p:1,m:"0060099669960620"},
+    {p:1,m:"0660699669520000"},
+    {p:1,m:"06a4689661520200"},
+    {p:1,m:"25206950c1a00e40"},
+    {p:1,m:"00600b9269860660"},
+    {p:1,m:"046069964a960040"},
+    {p:1,m:"0660699669a00400"},
+    {p:1,m:"4600a960a9504620"},
+    {p:1,m:"6ac0789a03640000"},
+    {p:1,m:"00000c62e1954a52"},
+    {p:1,m:"06606886c2a40c40"},
+    {p:1,m:"0664618668604600"},
+    {p:1,m:"04a44a2cc20c0cc0"},
+    {p:1,m:"0620699669a40400"},
+    {p:1,m:"0660218625960640"},
+    {p:1,m:"0060038669960660"},
+    {p:1,m:"26c0590c21840660"},
+    {p:1,m:"02202552211c06e4"},
+    {p:1,m:"00400a9669830670"},
+    {p:1,m:"065268934a860040"},
+    {p:1,m:"0130251661860660"},
+    {p:1,m:"06202b8648960460"},
+    {p:1,m:"0660299669a40400"},
+    {p:1,m:"0420c853c0950660"},
+    {p:1,m:"4600a96059a02640"},
+    {p:1,m:"0660219425960460"},
+    {p:1,m:"0640499669940460"},
+    {p:1,m:"0660611661160660"},
+    {p:1,m:"0330344334430330"},
+    {p:1,m:"0620499669940260"},
+    {p:1,m:"0660600660066666"},
+    {p:1,m:"6660600660060666"},
+    {p:1,m:"6600699009960066"},
+    {p:1,m:"0660699669900600"},
+    {p:1,m:"0f00f99009960060"},
+    {p:1,m:"0c60c09669030630"},
+    {p:1,m:"2660610660860664"},
+    {p:1,m:"07007990099e00e0"},
+    {p:1,m:"0640619669860260"},
+    {p:1,m:"69a4699606520000"},
+    {p:1,m:"0640699621960260"},
+    {p:1,m:"0cc0480c61962530"},
+    {p:1,m:"0660699099606600"},
+    {p:1,m:"04c4680e70162320"},
+    {p:1,m:"0660299605960260"},
+    {p:1,m:"0260699268960260"},
+    {p:1,m:"00ee009900990077"},
+    {p:1,m:"0660498669920260"},
+    {p:1,m:"02524996a9904600"},
+    {p:1,m:"0640698430960352"},
+    {p:1,m:"0440688670072332"},
+    {p:1,m:"6720891089106720"},
+    {p:1,m:"00330103e912ca60"},
+    {p:1,m:"0220615669940660"},
+    {p:1,m:"02326107e8864840"},
+    {p:1,m:"4662681660060660"},
+    {p:1,m:"0652619668860440"},
+    {p:1,m:"00006990699f0096"},
+    {p:1,m:"02006530a9034c72"},
+    {p:1,m:"2700599009950072"},
+    {p:1,m:"264059a0a9504620"},
+    {p:1,m:"00ec019aa910ce00"},
+    {p:1,m:"02106197689e0480"},
+    {p:1,m:"4ac0698430520330"},
+    {p:1,m:"6ac0598c31600300"},
+    {p:1,m:"2760308411842760"},
+    {p:1,m:"4c00a86069130652"},
+    {p:1,m:"0cc0c08469522530"},
+    {p:1,m:"4a60699625960000"},
+    {p:1,m:"04404a8629960750"},
+    {p:1,m:"240065c4301e0352"},
+    {p:1,m:"02602196590c26c0"},
+    {p:1,m:"0ca6c09546030230"},
+    {p:1,m:"077028924aa40c80"},
+    {p:1,m:"0032051669846ac0"},
+    {p:1,m:"0ee0491425520310"},
+    {p:1,m:"0660619634160320"},
+    {p:1,m:"4a40e1a459602600"},
+    {p:1,m:"00cc000c790c79c0"},
+    {p:1,m:"02606986e02c0cc0"},
+    {p:1,m:"0300303078516962"},
+    {p:1,m:"0222611768860cc0"},
+    {p:1,m:"0440ca06a9960660"},
+    {p:1,m:"06604a9408950073"},
+    {p:1,m:"0660299405960252"},
+    {p:1,m:"0cc0c00cc00ccccc"},
+    {p:1,m:"0320301669964c20"},
+    {p:1,m:"0000c88ce99e0330"},
+    {p:1,m:"06606896a9a04600"},
+    {p:1,m:"0274038a038a0274"},
+    {p:1,m:"00640a9a49960660"},
+    {p:1,m:"06606984682c04c4"},
+    {p:1,m:"0460489669960660"},
+    {p:1,m:"6d32d05135202100"},
+    {p:1,m:"cc33c05135203100"},
+    {p:1,m:"0660619469960460"},
+    {p:1,m:"0620689669940660"},
+    {p:1,m:"06c0299668134620"},
+    {p:1,m:"0660699469160460"},
+    {p:1,m:"00320107319a25e4"},
+    {p:1,m:"0660699459a02640"},
+    {p:1,m:"0260699661860660"},
+    {p:1,m:"0c40c08669962560"},
+    {p:1,m:"0670690370430330"},
+    {p:1,m:"033021074a960ca4"},
+    {p:1,m:"2530690348950462"},
+    {p:1,m:"06606896c20e0cc0"},
+    {p:1,m:"06606990299406e0"},
+    {p:1,m:"0530695261840ec0"},
+    {p:1,m:"0260689661960660"},
+    {p:1,m:"6a40598634160320"},
+    {p:1,m:"6ba4b8a4aa004400"},
+    {p:1,m:"0620699629960620"},
+    {p:1,m:"0720385069924a60"},
+    {p:1,m:"0660699670160320"},
+    {p:1,m:"0660698629960640"},
+    {p:1,m:"0240359e309a0660"},
+    {p:1,m:"4e7288034a120660"},
+    {p:1,m:"23006110c8970ca6"},
+    {p:1,m:"4a406994219a0264"},
+    {p:1,m:"0640699621850272"},
+    {p:1,m:"0ca6489525030330"},
+    {p:1,m:"0660699268960260"},
+    {p:1,m:"0620689669960640"},
+    {p:1,m:"02520596291c06e0"},
+    {p:1,m:"06606992c0960c60"},
+    {p:1,m:"0420c853c0950ca6"},
+    {p:1,m:"0660689629160660"},
+    {p:1,m:"0640699668930260"},
+    {p:1,m:"04602986e9134430"},
+    {p:1,m:"0696699699006600"},
+    {p:1,m:"00960f9699906600"},
+    {p:1,m:"0660609669960660"},
+    {p:1,m:"6666600660066660"},
+    {p:1,m:"0f00f99009960066"},
+    {p:1,m:"0660689669160660"},
+    {p:1,m:"04a64895a9126520"},
+    {p:1,m:"0c62c09569522520"},
+    {p:1,m:"0660699469960260"},
+    {p:1,m:"0660299469960660"},
+    {p:1,m:"6640490c259e0350"},
+    {p:1,m:"0464619a68950262"},
+    {p:1,m:"06e0690c690c06e0"},
+    {p:1,m:"4e40a09269070652"},
+    {p:1,m:"04c0680e69962560"},
+    {p:1,m:"4a60699621960260"},
+    {p:1,m:"0660699269860264"},
+    {p:1,m:"03603096390c6cc0"},
+    {p:1,m:"0660298669960660"},
+    {p:1,m:"0660699661960640"},
+    {p:1,m:"2560599669840640"},
+    {p:1,m:"6530a943c2920c40"},
+    {p:1,m:"0660499669960460"},
+    {p:1,m:"06c0690c29960652"},
+    {p:1,m:"0256219a690c4ac0"},
+    {p:1,m:"0266689461920466"},
+    {p:1,m:"6420e11689960ca0"},
+    {p:1,m:"06206897619e0640"},
+    {p:1,m:"0670298368964a40"},
+    {p:1,m:"27a0499ce0a44600"},
+    {p:1,m:"0664318a309c0760"},
+    {p:1,m:"6520e112488704a6"},
+    {p:1,m:"4e20c09648950632"},
+    {p:1,m:"0672c811c8110672"},
+    {p:1,m:"2660598621960252"},
+    {p:1,m:"06602992e00e4cc4"},
+    {p:1,m:"4c84e08e61160330"},
+    {p:1,m:"4a60699428960660"},
+    {p:1,m:"0462489369862360"},
+    {p:1,m:"0652699659902600"},
+    {p:1,m:"6710281348950ce0"},
+    {p:1,m:"0440688679972112"},
+    {p:1,m:"0764309a318c0660"},
+    {p:1,m:"0640699669960660"},
+    {p:1,m:"06526996690c06c0"},
+    {p:1,m:"4630a903a9034670"},
+    {p:1,m:"4a60699661960460"},
+    {p:1,m:"0260698669960652"},
+    {p:1,m:"06a4699a41960660"},
+    {p:1,m:"0324349e290c4ec0"},
+    {p:1,m:"0720389669960660"},
+    {p:1,m:"0ce6c0194a9604a4"},
+    {p:1,m:"0660609669950652"},
+    {p:1,m:"0560399651846e40"},
+    {p:1,m:"0652498769920660"},
+    {p:1,m:"06606916699c02a4"},
+    {p:1,m:"2560599659842640"},
+    {p:1,m:"0364309a59a46a40"},
+    {p:1,m:"06606893a1964e40"},
+    {p:1,m:"06a4699658122720"},
+    {p:1,m:"0660681669950652"},
+    {p:1,m:"0466699269860660"},
+    {p:1,m:"3333300330033333"},
+    {p:1,m:"6666600660066666"},
+    {p:1,m:"0660699669960660"},
+    {p:1,m:"0730388778830370"},
+    {p:1,m:"0630c996699c0360"},
+    {p:1,m:"31cc31888813cc13"},
+    {p:1,m:"00f6099999906f00"},
+    {p:1,m:"0f00f990099f00f0"},
+    {p:1,m:"0696699699906600"},
+    {p:1,m:"00960f9699066660"},
+    {p:1,m:"0f00f99609960660"},
+    {p:1,m:"27e4300c118827e4"},
+    {p:1,m:"07e0381c518a2664"},
+    {p:1,m:"2664700e199807e0"},
+    {p:1,m:"4a60a89669150652"},
+    {p:1,m:"33663006600c66cc"},
+    {p:1,m:"04a64995a9926520"},
+    {p:1,m:"00b6099db9906d00"},
+    {p:1,m:"06a46996a9034630"},
+    {p:1,m:"4a52a98758122720"},
+    {p:1,m:"6620609e499c0730"},
+    {p:1,m:"6730a80388970c86"},
+    {p:1,m:"25a4599a61860660"},
+    {p:1,m:"0664609a69962560"},
+    {p:1,m:"26a45986e1920c60"},
+    {p:1,m:"0660618669964a52"},
+    {p:1,m:"0660299269964aa4"},
+    {p:1,m:"0e70c18369960660"},
+    {p:1,m:"06606996691a04e4"},
+    {p:1,m:"0c60e19669830670"},
+    {p:1,m:"4ccce00c99807f00"},
+    {p:1,m:"06c0691e699a0264"},
+    {p:1,m:"06e0690c709a0356"},
+    {p:1,m:"0344319ed90cca40"},
+    {p:1,m:"4260e91cc19e0624"},
+    {p:1,m:"06e0691c69960660"},
+    {p:1,m:"4e40c19638962720"},
+    {p:1,m:"0612689779862160"},
+    {p:1,m:"0656619a59846a40"},
+    {p:1,m:"4c60e11689964e20"},
+    {p:1,m:"6ec0190c309e0316"},
+    {p:1,m:"04a6688769912530"},
+    {p:1,m:"06526893619c06a4"},
+    {p:1,m:"0652299669944a60"},
+    {p:1,m:"6530a903c2960ca4"},
+    {p:1,m:"0660299469966426"},
+    {p:1,m:"0660c11ce99e4224"},
+    {p:1,m:"06526987a9034630"},
+    {p:1,m:"4630a98769960620"},
+    {p:1,m:"0ca6c095a9436530"},
+    {p:1,m:"33c43986c8134630"},
+    {p:1,m:"06b4698b61960660"},
+    {p:1,m:"25207852a1954e52"},
+    {p:1,m:"06966987a9034630"},
+    {p:1,m:"4832ca8719862760"},
+    {p:1,m:"27309902ca874836"},
+    {p:1,m:"0364309a789a25a4"},
+    {p:1,m:"23c478a8309a0356"},
+    {p:1,m:"6530a943c2950ca6"},
+    {p:1,m:"0696609f99906f00"},
+    {p:1,m:"009f069f9900ff00"},
+    {p:1,m:"0696699699066660"},
+    {p:1,m:"06a66895a9166560"},
+    {p:1,m:"6d20d194298b04b6"},
+    {p:1,m:"25a4398668934a52"},
+    {p:1,m:"4a526996518a2664"},
+    {p:1,m:"0662689569952552"},
+    {p:1,m:"25605996e1854a72"},
+    {p:1,m:"06726891789e23a4"},
+    {p:1,m:"4e52a187781a25e4"},
+    {p:1,m:"25e4718aa8174e52"},
+    {p:1,m:"6696609f99906f00"},
+    {p:1,m:"2d60d196698b06b4"},
+    {p:1,m:"4a96ab8798036730"},
+    {p:1,m:"338c318c880bccb7"},
+    {p:1,m:"25627816b8854b72"},
+    {p:1,m:"25e67819b8964ba4"},
+    {p:1,m:"6796981ee1896976"},
+    {p:1,m:"69f6690990966f96"},
+    {p:2,m:"2220222000000000"},
+    {p:2,m:"0600060006000000"},
+    {p:2,m:"0000044006240440"},
+    {p:2,m:"00000040048404c4"},
+    {p:2,m:"000004400c840440"},
+    {p:2,m:"0000002006360020"},
+    {p:2,m:"000004004e400a00"},
+    {p:2,m:"000000c004a60440"},
+    {p:2,m:"0000022002530060"},
+    {p:2,m:"00000600e8600440"},
+    {p:2,m:"0000250025300600"},
+    {p:2,m:"0000022065202120"},
+    {p:2,m:"0060061702200000"},
+    {p:2,m:"00600e8600a40000"},
+    {p:2,m:"0620055203200000"},
+    {p:2,m:"0000064068a00e00"},
+    {p:2,m:"00000600e8600a40"},
+    {p:2,m:"2600155022200000"},
+    {p:2,m:"0000025202510062"},
+    {p:2,m:"000006ac04a40040"},
+    {p:2,m:"0250025302420000"},
+    {p:2,m:"0000070054302300"},
+    {p:2,m:"00404aa00aa40400"},
+    {p:2,m:"0030311001130300"},
+    {p:2,m:"0060642002460600"},
+    {p:2,m:"6600600000060066"},
+    {p:2,m:"0600066006600060"},
+    {p:2,m:"0600060660600060"},
+    {p:2,m:"4400470000e20022"},
+    {p:2,m:"2994299400000000"},
+    {p:2,m:"318c318c00000000"},
+    {p:2,m:"43c243c200000000"},
+    {p:2,m:"044003500ac00220"},
+    {p:2,m:"000000002c342a54"},
+    {p:2,m:"004026500c160220"},
+    {p:2,m:"022068500a160440"},
+    {p:2,m:"044001c663800220"},
+    {p:2,m:"0060451248a20600"},
+    {p:2,m:"0020c8a20c170400"},
+    {p:2,m:"2260318c06440000"},
+    {p:2,m:"0000465249960220"},
+    {p:2,m:"006002a46a940440"},
+    {p:2,m:"0060699009960600"},
+    {p:2,m:"04406a400c130033"},
+    {p:2,m:"066049864aa00040"},
+    {p:2,m:"0660090669600600"},
+    {p:2,m:"04404aa041960620"},
+    {p:2,m:"00624a1248524600"},
+    {p:2,m:"003049524a920c00"},
+    {p:2,m:"044029ac25040320"},
+    {p:2,m:"00c02a8c31540300"},
+    {p:2,m:"00e00c8c31300700"},
+    {p:2,m:"00620153ca804600"},
+    {p:2,m:"0460689249160620"},
+    {p:2,m:"0440699461960060"},
+    {p:2,m:"0060689669160600"},
+    {p:2,m:"0220699429960440"},
+    {p:2,m:"04606a8448a60640"},
+    {p:2,m:"0230345225430320"},
+    {p:2,m:"0220059661960660"},
+    {p:2,m:"4660610660860662"},
+    {p:2,m:"0252291668944a40"},
+    {p:2,m:"0060689669960260"},
+    {p:2,m:"0730700360070670"},
+    {p:2,m:"0440699469960260"},
+    {p:2,m:"0020799669970200"},
+    {p:2,m:"0220699249960660"},
+    {p:2,m:"0660488669960660"},
+    {p:2,m:"0274309269ac2a40"},
+    {p:2,m:"4760998099102e60"},
+    {p:2,m:"06606986690e06c0"},
+    {p:2,m:"2664381c518a07e0"},
+    {p:2,m:"02a62995a9946540"}
+  ];
+
   var VERSIONS = [
+    { v: "v4",
+      fr: "Les galeries, chaque figure dessinée en miniature. Celle du cube 3³ est complète et démontrée : les 134 217 728 états possibles ont été parcourus un par un, il n'existe que 24 cycles — le cube vide, 16 figures figées et 7 qui battent en deux temps, aucune de période 3 ou plus. Celle du cube 4³ en compte 784 : là, 2⁶⁴ états interdisent toute preuve, mais un moteur dix fois plus rapide a permis de tester sans exception toutes les configurations de 6 et 7 cellules, d'énumérer en entier toutes les configurations symétriques, et d'y ajouter 20 millions de soupes au hasard. Toutes se posent d'une touche. Et le curseur Taille descend jusqu'à 0 : un monde sans aucune case, où il ne peut jamais rien se passer — pas même une génération.",
+      en: "The galleries, every figure drawn as a thumbnail. The 3³ one is complete and proven: all 134,217,728 possible states were walked one by one, and there are exactly 24 cycles — the empty cube, 16 frozen figures and 7 that beat in two steps, none of period 3 or more. The 4³ one holds 784: there 2⁶⁴ states rule out any proof, but an engine ten times faster made it possible to test every configuration of 6 and 7 cells without exception, to enumerate every symmetric configuration in full, and to add 20 million random soups on top. All of them are one tap away. And the Size slider now goes down to 0: a world with no cell at all, where nothing can ever happen — not even a generation." },
     { v: "v3",
       fr: "Cubes minuscules : le curseur Taille descend jusqu'à 1. Et le son dit désormais ce qui CHANGE, plus ce qui est là — une voix claire pour les naissances, une voix grave pour les morts, chacune d'autant plus forte et haute qu'elles sont nombreuses. Conséquence : une nature morte, un cube figé ou un cube vide sont strictement muets.",
       en: "Tiny cubes: the Size slider now goes down to 1. And the sound now says what CHANGES rather than what is there — a bright voice for births, a low one for deaths, each louder and higher the more there are. As a result a still life, a frozen cube or an empty cube are strictly silent." },
@@ -279,10 +1151,18 @@
       pCage: "La Cage", pCageD: "Nature morte, 12 cellules. Une coquille creuse qui tient debout.",
       pCoque: "La Coque", pCoqueD: "Nature morte, 20 cellules. La plus grosse structure stable trouvée.",
       pPlaneur: "Le Planeur de Bays", pPlaneurD: "Planeur, période 4, 10 cellules. Il avance d'une case en diagonale toutes les 4 générations et traverse le cube avant de se défaire contre le mur. La figure qui a rendu la vie 3D célèbre.",
+      gal3Title: "La galerie du cube 3³ — complète",
+      gal3Intro: "Dans un cube de 3 de côté il n'y a que 2²⁷ = 134 217 728 états possibles. Je les ai tous parcourus, un par un. Le monde étant fini, toute trajectoire finit forcément par boucler — et il n'existe en tout que 24 boucles : le cube vide, 16 figures figées et 7 qui battent en deux temps. Aucune de période 3 ou plus. Cette liste est donc complète, ce n'est pas un échantillon. Les voici toutes, à poser d'une touche.",
+      gal4Title: "La galerie du cube 4³ — récoltée",
+      gal4Intro: "784 cycles, dont 711 figés et 73 qui battent en deux temps. Le cube de 4 de côté a 2⁶⁴ états : tout parcourir prendrait des dizaines de milliers d'années, alors ici on ne prouve plus, on récolte. D'abord ce qui reste démontrable : en dessous de 6 cellules rien ne peut survivre (il en faut 5 pour tenir, 6 pour naître), et toutes les configurations de 6 et de 7 cellules ont été testées sans exception — 696 millions. Ensuite toutes les configurations qui possèdent une symétrie du cube, énumérées en entier sous-groupe par sous-groupe : c'est là que vivent la plupart des oscillateurs. Enfin 20 millions de soupes au hasard. Honnêtement : la dernière nouveauté est tombée à la 19 943 420ᵉ soupe sur 20 millions — chercher plus longtemps en trouverait encore. Cette liste s'allonge, elle ne se ferme pas.",
+      galStill: "figée", galOsc: "période 2", galCells: " cellules",
+      galMore: "Afficher les %d suivantes",
       size: "Taille", layer: "Étage", speed: "Vitesse", ruleLbl: "Règle",
       gen: "Génération", pop: "Vivants", dead: "Colonie éteinte",
+      empty: "Cube de côté 0 — un monde sans aucune case",
       hint: "Tourne au doigt · touche un cube pour l'ôter, l'étage éclairé pour en poser",
       hintFlat: "Incline le cube pour pouvoir toucher l'étage",
+      hintEmpty: "Remonte le curseur Taille pour donner des cases à ce monde",
       ver: "Version ",
       intro: "Les cellules naissent et meurent selon le nombre de voisines — 26 voisines en volume, contre 8 à plat. Les règles sont notées survie-min/survie-max/naissance-min/naissance-max : 5766 est la vie 3D classique, 4555 fait des cristaux, 5655 des nuages. Astuce : ajoute la page à ton écran d'accueil, elle s'ouvre alors en plein écran."
     },
@@ -299,10 +1179,18 @@
       pCage: "The Cage", pCageD: "Still life, 12 cells. A hollow shell that holds itself up.",
       pCoque: "The Hull", pCoqueD: "Still life, 20 cells. The largest stable structure found.",
       pPlaneur: "Bays' Glider", pPlaneurD: "Glider, period 4, 10 cells. It moves one cell diagonally every 4 generations and crosses the cube before breaking up against the wall. The figure that made 3D life famous.",
+      gal3Title: "The 3³ cube gallery — complete",
+      gal3Intro: "A cube 3 across has only 2²⁷ = 134,217,728 possible states. I walked every one of them. The world being finite, every trajectory must eventually loop — and there are exactly 24 loops: the empty cube, 16 frozen figures and 7 that beat in two steps. None of period 3 or more. So this list is complete, not a sample. Here they all are, one tap away.",
+      gal4Title: "The 4³ cube gallery — harvested",
+      gal4Intro: "784 cycles, 711 of them frozen and 73 beating in two steps. The cube 4 across has 2⁶⁴ states: walking them all would take tens of thousands of years, so here we no longer prove, we harvest. First what can still be proven: below 6 cells nothing can survive (5 are needed to hold on, 6 to be born), and every configuration of 6 and of 7 cells was tested without exception — 696 million. Then every configuration carrying a symmetry of the cube, enumerated in full subgroup by subgroup: that is where most oscillators live. Finally 20 million random soups. Honestly: the last new find came at soup number 19,943,420 out of 20 million — searching longer would turn up more. This list keeps growing, it does not close.",
+      galStill: "frozen", galOsc: "period 2", galCells: " cells",
+      galMore: "Show the next %d",
       size: "Size", layer: "Layer", speed: "Speed", ruleLbl: "Rule",
       gen: "Generation", pop: "Alive", dead: "Colony extinct",
+      empty: "Cube of side 0 — a world with no cell at all",
       hint: "Drag to rotate · tap a cube to remove it, the lit layer to add one",
       hintFlat: "Tilt the cube to be able to tap the layer",
+      hintEmpty: "Raise the Size slider to give this world some cells",
       ver: "Version ",
       intro: "Cells are born and die depending on how many neighbours they have — 26 in a volume, against 8 on a flat grid. Rules read survive-min/survive-max/born-min/born-max: 5766 is classic 3D life, 4555 grows crystals, 5655 makes clouds. Tip: add the page to your home screen, it then opens full screen."
     }
@@ -330,7 +1218,7 @@
     grid = new Uint8Array(n * n * n);
     born = new Uint8Array(n * n * n);
     died = new Uint8Array(n * n * n);
-    if (layer >= n) layer = n - 1;
+    if (layer >= n) layer = n > 0 ? n - 1 : 0;
   }
   function I(i, j, k) { return (k * N + j) * N + i; }
 
@@ -360,6 +1248,7 @@
   // une cellule au bord a donc moins de voisines. C'est plus honnête
   // visuellement qu'un monde qui se reboucle sans qu'on le voie.
   function step() {
+    if (N < 1) return;        // cube de côté 0 : rien ne peut arriver, pas même une génération
     var r = RULES[ruleIdx];
     var next = new Uint8Array(N * N * N);
     born.fill(0); died.fill(0);
@@ -409,13 +1298,13 @@
 
   function loadState() {
     var n = parseInt(store.get("n"), 10);
-    if (!(n >= 1 && n <= 10)) n = 6;
+    if (!(n >= 0 && n <= 10)) n = 6;
     alloc(n);
     var r = parseInt(store.get("rule"), 10); if (r >= 0 && r < RULES.length) ruleIdx = r;
     var sp = parseInt(store.get("speed"), 10); if (sp >= 1 && sp <= 10) speed = sp;
     var ly = parseInt(store.get("layer"), 10); if (ly >= 0 && ly < n) layer = ly;
     var s = store.get("grid");
-    if (typeof s === "string" && s.length === n * n * n && /^[01]+$/.test(s)) {
+    if (typeof s === "string" && s.length === n * n * n && /^[01]*$/.test(s)) {
       for (var a = 0; a < s.length; a++) grid[a] = s.charCodeAt(a) === 49 ? 1 : 0;
       var g = parseInt(store.get("gen"), 10); if (g >= 0) gen = g;
       countPop();
@@ -518,7 +1407,7 @@
     for (f = 0; f < faces.length; f++) {
       var fa = faces[f];
       if (depth(fa.n) >= 0) continue;              // face tournée vers nous : on la saute
-      for (t = 0; t <= N; t++) {
+      for (t = 0; N > 0 && t <= N; t++) {           // N = 0 : pas de quadrillage, seules les arêtes restent
         var u = t / N;
         if (fa.fixed === "z") {
           a = corner(u, 0, fa.v); b = corner(u, 1, fa.v);
@@ -548,6 +1437,7 @@
   // L'étage actif : la cible des doigts, donc toujours visible, mais
   // discret pendant la lecture pour ne pas concurrencer les cellules.
   function drawLayer() {
+    if (N < 1) return;                             // cube de côté 0 : pas d'étage à viser
     var y = layer / N - 0.5, y2 = (layer + 1) / N - 0.5;
     var al = playing ? 0.1 : 0.3;
     for (var t = 0; t <= N; t++) {
@@ -563,6 +1453,7 @@
   }
 
   function drawCells() {
+    if (N < 1) return;                             // cube de côté 0 : rien à dessiner
     var cell = 1 / N;
     var shape = cellShape(cell * 0.44);          // 0.44 : un petit jeu entre cubes voisins
     var ghost = cellShape(cell * 0.2);
@@ -633,7 +1524,9 @@
     drawCells();
     document.getElementById("genOut").textContent = String(gen);
     document.getElementById("popOut").textContent = String(pop);
-    document.getElementById("deadMsg").hidden = pop !== 0;
+    var dm = document.getElementById("deadMsg");
+    dm.textContent = N < 1 ? TXT[lang].empty : TXT[lang].dead;
+    dm.hidden = pop !== 0;
   }
 
   // ------------------------------------------------------------- boucle
@@ -645,12 +1538,12 @@
     raf = 0;
     if (!last) last = ts;
     var dt = ts - last; last = ts;
-    if (playing) {
+    if (playing && N > 0) {
       acc += dt;
       if (acc >= interval()) { acc = 0; step(); sound(lastBorn, lastDied); needsRender = true; }
     }
     if (needsRender) render();
-    if (playing) ensure();       // en pause et rien qui bouge : la boucle s'arrête (batterie)
+    if (playing && N > 0) ensure();   // en pause, ou monde vide : la boucle s'arrête (batterie)
   }
 
   // --------------------------------------------------------------- son
@@ -714,6 +1607,7 @@
   }
 
   function pickLayer(px, py) {
+    if (N < 1) return -1;
     // Plan horizontal de l'étage actif, résolu analytiquement : en
     // projection orthographique un point écran correspond à une droite,
     // on cherche où elle croise ce plan.
@@ -783,7 +1677,8 @@
 
   function syncUI() {
     document.getElementById("sizeOut").textContent = N + "³";
-    layerIn.max = String(N);
+    layerIn.max = String(Math.max(1, N));
+    layerIn.disabled = N < 1;
     layerIn.value = String(layer + 1);
     document.getElementById("layerOut").textContent = String(layer + 1);
     sizeIn.value = String(N);
@@ -796,7 +1691,8 @@
     soundBtn.textContent = soundOn ? TXT[lang].soundOn : TXT[lang].soundOff;
     soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
     document.getElementById("verOut").textContent = TXT[lang].ver + VERSIONS[0].v;
-    hint.textContent = Math.abs(ez ? ez.y : 1) < 0.12 ? TXT[lang].hintFlat : TXT[lang].hint;
+    hint.textContent = N < 1 ? TXT[lang].hintEmpty
+      : (Math.abs(ez ? ez.y : 1) < 0.12 ? TXT[lang].hintFlat : TXT[lang].hint);
   }
 
   // Pose un motif au centre du cube — ou adossé au mur de départ pour le
@@ -821,6 +1717,135 @@
       if (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) grid[(k * N + j) * N + i] = 1;
     });
     gen = 0; countPop(); saveState(); syncUI(); requestRender();
+  }
+
+  // Pose un cycle de la galerie. Le cube est forcé à 3 de côté et la règle
+  // à 5766 : ces figures sont des cycles DU CUBE 3³ — elles doivent une
+  // partie de leur équilibre aux murs, et ne boucleraient pas ailleurs.
+  // Miniature d'un cycle : la même projection orthographique que le grand
+  // cube, mais sur son propre petit canevas et à angle fixe. Sans elle la
+  // galerie n'est qu'un mur de nombres — on choisit une figure parce qu'on
+  // la voit, pas parce qu'elle annonce « 12 cellules ».
+  var THUMB_YAW = 0.62, THUMB_PITCH = 0.46;
+  function drawThumb(cvs, m, n) {
+    var g = cvs.getContext("2d");
+    var S = cvs.width;
+    var cy2 = Math.cos(THUMB_YAW), sy2 = Math.sin(THUMB_YAW);
+    var cp = Math.cos(THUMB_PITCH), sp = Math.sin(THUMB_PITCH);
+    var bx = { x: cy2, y: 0, z: -sy2 };
+    var by = { x: sy2 * sp, y: cp, z: cy2 * sp };
+    var bz = { x: sy2 * cp, y: -sp, z: cy2 * cp };
+    var k = S * 0.56, cx = S / 2, cyy = S / 2;
+    var px = function (p) { return cx + k * (p.x * bx.x + p.y * bx.y + p.z * bx.z); };
+    var py = function (p) { return cyy - k * (p.x * by.x + p.y * by.y + p.z * by.z); };
+    var pd = function (p) { return p.x * bz.x + p.y * bz.y + p.z * bz.z; };
+
+    g.clearRect(0, 0, S, S);
+    g.lineJoin = "round";
+    g.strokeStyle = "rgba(" + GREEN + ",0.22)";
+    g.lineWidth = 1;
+    g.beginPath();
+    for (var a = 0; a < 2; a++) for (var b2 = 0; b2 < 2; b2++) {
+      var e = [
+        [{ x: a - 0.5, y: b2 - 0.5, z: -0.5 }, { x: a - 0.5, y: b2 - 0.5, z: 0.5 }],
+        [{ x: a - 0.5, y: -0.5, z: b2 - 0.5 }, { x: a - 0.5, y: 0.5, z: b2 - 0.5 }],
+        [{ x: -0.5, y: a - 0.5, z: b2 - 0.5 }, { x: 0.5, y: a - 0.5, z: b2 - 0.5 }]
+      ];
+      for (var t = 0; t < 3; t++) { g.moveTo(px(e[t][0]), py(e[t][0])); g.lineTo(px(e[t][1]), py(e[t][1])); }
+    }
+    g.stroke();
+
+    var half = (1 / n) * 0.44, corners = [], c2;
+    for (c2 = 0; c2 < 8; c2++) {
+      var q = { x: (c2 & 1 ? half : -half), y: (c2 & 2 ? half : -half), z: (c2 & 4 ? half : -half) };
+      corners.push({ x: k * (q.x * bx.x + q.y * bx.y + q.z * bx.z), y: -k * (q.x * by.x + q.y * by.y + q.z * by.z) });
+    }
+    var hull = hullOf(corners);
+    var bit = cellsOf(m), list = [], i, j, kk;
+    for (kk = 0; kk < n; kk++) for (j = 0; j < n; j++) for (i = 0; i < n; i++) {
+      if (!bit((kk * n + j) * n + i)) continue;
+      var p2 = { x: (i + 0.5) / n - 0.5, y: (j + 0.5) / n - 0.5, z: (kk + 0.5) / n - 0.5 };
+      list.push({ x: px(p2), y: py(p2), d: pd(p2) });
+    }
+    list.sort(function (u, v) { return u.d - v.d; });
+    for (c2 = 0; c2 < list.length; c2++) {
+      var o = list[c2], tt = (o.d + 0.87) / 1.74;
+      if (tt < 0) tt = 0; else if (tt > 1) tt = 1;
+      g.beginPath();
+      g.moveTo(o.x + hull[0].x, o.y + hull[0].y);
+      for (var h2 = 1; h2 < hull.length; h2++) g.lineTo(o.x + hull[h2].x, o.y + hull[h2].y);
+      g.closePath();
+      g.fillStyle = "rgba(" + GREEN + "," + (0.06 + 0.1 * tt) + ")";
+      g.fill();
+      g.strokeStyle = "rgba(" + GREEN + "," + (0.35 + 0.55 * tt) + ")";
+      g.stroke();
+    }
+  }
+
+  function placeCycle(cy, n) {
+    alloc(n);
+    ruleIdx = 0;
+    grid.fill(0); born.fill(0); died.fill(0);
+    var bit = cellsOf(cy.m);
+    for (var a = 0; a < n * n * n; a++) grid[a] = bit(a);
+    gen = 0; countPop(); saveState(); syncUI(); requestRender();
+  }
+
+  // Les miniatures ne sont dessinées qu'en approchant de l'écran : à
+  // l'ouverture de la galerie il y en a près de trois cents, les calculer
+  // toutes d'un coup ferait bégayer le défilement pour rien.
+  var thumbSeen = window.IntersectionObserver ? new IntersectionObserver(function (es) {
+    es.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      thumbSeen.unobserve(e.target);
+      e.target.dessine();
+    });
+  }, { rootMargin: "300px" }) : null;
+
+  // Les cycles du 4³ se comptent par centaines : on en pose un paquet,
+  // puis la suite à la demande. Tout construire d'un coup rendrait
+  // l'ouverture du panneau poussive et garderait des centaines de
+  // canevas en mémoire pour rien.
+  function buildGallery(boxId, list, n, paquet) {
+    var box = document.getElementById(boxId);
+    box.innerHTML = "";
+    var anciens = box.parentNode.querySelectorAll(".more");
+    for (var v = 0; v < anciens.length; v++) anciens[v].parentNode.removeChild(anciens[v]);
+
+    function vignette(cy) {
+      var cells = popOf(cy.m, n * n * n);
+      var nature = cy.p === 1 ? TXT[lang].galStill : TXT[lang].galOsc;
+      var b = document.createElement("button");
+      b.setAttribute("aria-label", cells + TXT[lang].galCells + ", " + nature);
+      var cvs = document.createElement("canvas");
+      cvs.width = cvs.height = 108;    // 54 px à l'écran, doublé pour les écrans fins
+      cvs.dessine = function () { drawThumb(cvs, cy.m, n); };
+      if (thumbSeen) thumbSeen.observe(cvs); else cvs.dessine();
+      var t = document.createElement("b"); t.textContent = String(cells);
+      var d = document.createElement("span"); d.textContent = nature;
+      b.appendChild(cvs); b.appendChild(t); b.appendChild(d);
+      b.addEventListener("click", function () {
+        placeCycle(cy, n);
+        document.getElementById("pat").hidden = true;
+      });
+      box.appendChild(b);
+    }
+
+    var montres = 0, suite = null;
+    function lot() {
+      var fin = paquet ? Math.min(list.length, montres + paquet) : list.length;
+      for (; montres < fin; montres++) vignette(list[montres]);
+      if (!suite) return;
+      if (montres >= list.length) { suite.parentNode.removeChild(suite); suite = null; return; }
+      suite.textContent = TXT[lang].galMore.replace("%d", String(list.length - montres));
+    }
+    if (paquet && list.length > paquet) {
+      suite = document.createElement("button");
+      suite.className = "more";
+      suite.addEventListener("click", lot);
+      box.parentNode.insertBefore(suite, box.nextSibling);
+    }
+    lot();
   }
 
   function buildPatterns() {
@@ -859,12 +1884,14 @@
       list.appendChild(li);
     });
     buildPatterns();
+    buildGallery("gal3", CYCLES3, 3, 0);
+    buildGallery("gal4", CYCLES4, 4, 96);
     syncUI();
   }
 
   playBtn.addEventListener("click", function () {
     playing = !playing;
-    if (playing) { last = 0; acc = 0; ensure(); }
+    if (playing && N > 0) { last = 0; acc = 0; ensure(); }
     syncUI(); requestRender();
   });
   document.getElementById("stepBtn").addEventListener("click", function () {
@@ -878,7 +1905,7 @@
   });
   sizeIn.addEventListener("input", function () {
     var n = parseInt(sizeIn.value, 10);
-    if (!(n >= 1 && n <= 10) || n === N) return;
+    if (!(n >= 0 && n <= 10) || n === N) return;
     alloc(n); randomize(); syncUI(); requestRender();
   });
   layerIn.addEventListener("input", function () {
@@ -938,6 +1965,7 @@
     setSize: function (n) { alloc(n); randomize(); syncUI(); requestRender(); },
     pickCell: pickCell, pickLive: pickLive, pickLayer: pickLayer,
     PATTERNS: PATTERNS, placePattern: placePattern,
+    CYCLES3: CYCLES3, CYCLES4: CYCLES4, placeCycle: placeCycle,
     get soundEvents() { return soundEvents; }, get lastBorn() { return lastBorn; }, get lastDied() { return lastDied; }
   };
 })();
