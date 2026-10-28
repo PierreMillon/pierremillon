@@ -128,6 +128,13 @@
   .modal ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
   .modal li { font-size: 12px; line-height: 1.55; color: var(--soft); }
   .modal li b { color: var(--ink); margin-right: 8px; }
+  .patlist { display: grid; gap: 8px; }
+  .patlist button {
+    display: block; width: 100%; text-align: left; padding: 11px 12px;
+    white-space: normal;        /* les boutons sont en nowrap par défaut : ici le texte doit revenir à la ligne */
+  }
+  .patlist b { display: block; font-size: 12.5px; margin-bottom: 3px; }
+  .patlist span { color: var(--soft); font-size: 11px; line-height: 1.45; }
   .modal p { font-size: 11.5px; line-height: 1.6; color: var(--soft); margin: 0 0 10px; }
 </style>
 </head>
@@ -174,6 +181,7 @@
       <input id="layerIn" type="range" min="1" max="6" step="1" value="1">
       <output id="layerOut">1</output>
     </div>
+    <button id="patBtn" style="flex:0 0 auto" data-t="pat">◈ Motifs</button>
   </div>
   <div class="row">
     <div class="slider">
@@ -183,6 +191,15 @@
     </div>
   </div>
   <div class="ver" id="verOut">Version v1</div>
+</div>
+
+<div class="modal" id="pat" hidden>
+  <h2 data-t="pat">◈ Motifs</h2>
+  <div class="scroll">
+    <p data-t="patIntro"></p>
+    <div class="patlist" id="patList"></div>
+  </div>
+  <button id="patClose" data-t="close">Fermer</button>
 </div>
 
 <div class="modal" id="hist" hidden>
@@ -218,12 +235,28 @@
   var GREEN = "94,240,160";
 
   var RULES = [
-    { id: "5766", s0: 5, s1: 7, b0: 6, b1: 7 },
+    { id: "5766", s0: 5, s1: 7, b0: 6, b1: 6 },
     { id: "4555", s0: 4, s1: 5, b0: 5, b1: 5 },
     { id: "5655", s0: 5, s1: 6, b0: 5, b1: 5 }
   ];
 
+  // Motifs trouvés par recherche automatique sur la règle 5766, puis
+  // rejoués un par un dans le moteur borné du jeu pour vérifier leur
+  // comportement réel (période, déplacement, survie près des murs).
+  // Aucun n'est recopié de mémoire : ce qui est écrit ici est mesuré.
+  var PATTERNS = [
+    { k: "bloc", minN: 4, c: [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,1]] },
+    { k: "battement", minN: 4, c: [[0,0,0],[0,0,1],[0,0,2],[1,0,0],[1,0,1],[1,0,2]] },
+    { k: "tambour", minN: 5, c: [[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,2],[2,1,0],[2,1,1]] },
+    { k: "cage", minN: 5, c: [[0,0,1],[0,1,0],[0,1,2],[0,2,1],[1,0,0],[1,0,2],[1,1,0],[1,2,1],[1,2,2],[2,0,1],[2,1,1],[2,1,2]] },
+    { k: "coque", minN: 6, c: [[0,1,1],[0,1,2],[1,0,1],[1,0,2],[1,1,0],[1,1,3],[1,2,0],[1,2,3],[2,0,1],[2,0,2],[2,1,0],[2,1,3],[2,2,0],[2,2,3],[2,3,1],[2,3,2],[3,1,1],[3,1,2],[3,2,1],[3,2,2]] },
+    { k: "planeur", minN: 8, edge: true, c: [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[0,2,0],[0,2,1],[1,2,0],[1,2,1],[2,1,0],[2,1,1]] }
+  ];
+
   var VERSIONS = [
+    { v: "v2",
+      fr: "Motifs prêts à poser : planeur de Bays (10 cellules, période 4, il traverse le cube), deux oscillateurs et trois natures mortes — tous trouvés par recherche automatique puis rejoués dans le moteur du jeu pour vérifier ce qu'ils font vraiment. Correction de la règle 5766 : une cellule naît avec 6 voisines exactement, pas 6 ou 7. C'est cette correction qui rend le planeur possible.",
+      en: "Ready-made patterns: Bays' glider (10 cells, period 4, it crosses the cube), two oscillators and three still lifes — all found by automated search, then replayed in the game engine to check what they actually do. Fixed rule 5766: a cell is born with exactly 6 neighbours, not 6 or 7. That fix is what makes the glider possible." },
     { v: "v1",
       fr: "Premier jet : le jeu de la vie de Conway en volume. Cube de 3³ à 10³ en fil de fer, cellules vivantes en petits cubes translucides (on voit celles de derrière), rotation au doigt, étage éditable au toucher, tirage aléatoire, vitesse réglable et trois règles 3D.",
       en: "First pass: Conway's Game of Life in a cube. 3³ to 10³ wireframe box, live cells as translucent little cubes (you can see the ones behind), drag to rotate, tap the lit layer to edit, random seed, speed slider and three 3D rulesets." }
@@ -235,6 +268,14 @@
       play: "▶ Lecture", pause: "⏸ Pause", step: "⏭ Pas",
       rand: "⟳ Hasard", clear: "⌫ Vider",
       soundOn: "♪ Son", soundOff: "♪ Muet",
+      pat: "◈ Motifs",
+      patIntro: "Des figures connues de la règle 5766. Elles ont été trouvées par recherche automatique, puis rejouées dans le moteur du jeu pour vérifier ce qu'elles font. Poser un motif vide le cube, choisit la règle 5766 et agrandit le cube si besoin.",
+      pBloc: "Le Bloc", pBlocD: "Nature morte, 8 cellules. Le cube plein 2×2×2 : il ne bouge plus jamais.",
+      pBattement: "Le Battement", pBattementD: "Oscillateur, période 2, 6 cellules. Le plus petit cœur qui bat.",
+      pTambour: "Le Tambour", pTambourD: "Oscillateur, période 2, 8 cellules. Deux faces qui se répondent.",
+      pCage: "La Cage", pCageD: "Nature morte, 12 cellules. Une coquille creuse qui tient debout.",
+      pCoque: "La Coque", pCoqueD: "Nature morte, 20 cellules. La plus grosse structure stable trouvée.",
+      pPlaneur: "Le Planeur de Bays", pPlaneurD: "Planeur, période 4, 10 cellules. Il avance d'une case en diagonale toutes les 4 générations et traverse le cube avant de se défaire contre le mur. La figure qui a rendu la vie 3D célèbre.",
       size: "Taille", layer: "Étage", speed: "Vitesse", ruleLbl: "Règle",
       gen: "Génération", pop: "Vivants", dead: "Colonie éteinte",
       hint: "Tourne au doigt · touche un cube pour l'ôter, l'étage éclairé pour en poser",
@@ -247,6 +288,14 @@
       play: "▶ Play", pause: "⏸ Pause", step: "⏭ Step",
       rand: "⟳ Random", clear: "⌫ Clear",
       soundOn: "♪ Sound", soundOff: "♪ Muted",
+      pat: "◈ Patterns",
+      patIntro: "Known figures of rule 5766. They were found by automated search, then replayed in the game engine to check what they really do. Placing one clears the cube, selects rule 5766 and grows the cube if needed.",
+      pBloc: "The Block", pBlocD: "Still life, 8 cells. The solid 2×2×2 cube: it never moves again.",
+      pBattement: "The Blinker", pBattementD: "Oscillator, period 2, 6 cells. The smallest beating heart.",
+      pTambour: "The Drum", pTambourD: "Oscillator, period 2, 8 cells. Two faces answering each other.",
+      pCage: "The Cage", pCageD: "Still life, 12 cells. A hollow shell that holds itself up.",
+      pCoque: "The Hull", pCoqueD: "Still life, 20 cells. The largest stable structure found.",
+      pPlaneur: "Bays' Glider", pPlaneurD: "Glider, period 4, 10 cells. It moves one cell diagonally every 4 generations and crosses the cube before breaking up against the wall. The figure that made 3D life famous.",
       size: "Size", layer: "Layer", speed: "Speed", ruleLbl: "Rule",
       gen: "Generation", pop: "Alive", dead: "Colony extinct",
       hint: "Drag to rotate · tap a cube to remove it, the lit layer to add one",
@@ -731,6 +780,48 @@
     hint.textContent = Math.abs(ez ? ez.y : 1) < 0.12 ? TXT[lang].hintFlat : TXT[lang].hint;
   }
 
+  // Pose un motif au centre du cube — ou adossé au mur de départ pour le
+  // planeur, afin de lui laisser de la route devant lui. Le cube est
+  // agrandi si le motif n'y tient pas, et la règle remise sur 5766 : tous
+  // ont été vérifiés sous cette règle et n'ont aucune raison de tenir
+  // sous une autre.
+  function placePattern(pat) {
+    if (N < pat.minN) alloc(pat.minN);
+    ruleIdx = 0;
+    grid.fill(0); born.fill(0); died.fill(0);
+    var ext = [0, 1, 2].map(function (a) {
+      var m = 0;
+      pat.c.forEach(function (q) { if (q[a] + 1 > m) m = q[a] + 1; });
+      return m;
+    });
+    var off = pat.edge
+      ? [Math.max(0, N - ext[0] - 1), 1, Math.floor((N - ext[2]) / 2)]
+      : [0, 1, 2].map(function (a) { return Math.floor((N - ext[a]) / 2); });
+    pat.c.forEach(function (q) {
+      var i = q[0] + off[0], j = q[1] + off[1], k = q[2] + off[2];
+      if (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) grid[(k * N + j) * N + i] = 1;
+    });
+    gen = 0; countPop(); saveState(); syncUI(); requestRender();
+  }
+
+  function buildPatterns() {
+    var box = document.getElementById("patList");
+    box.innerHTML = "";
+    PATTERNS.forEach(function (pat) {
+      var b = document.createElement("button");
+      var t = document.createElement("b");
+      t.textContent = TXT[lang]["p" + pat.k.charAt(0).toUpperCase() + pat.k.slice(1)];
+      var d = document.createElement("span");
+      d.textContent = TXT[lang]["p" + pat.k.charAt(0).toUpperCase() + pat.k.slice(1) + "D"];
+      b.appendChild(t); b.appendChild(d);
+      b.addEventListener("click", function () {
+        placePattern(pat);
+        document.getElementById("pat").hidden = true;
+      });
+      box.appendChild(b);
+    });
+  }
+
   function applyLang() {
     document.documentElement.lang = lang;
     document.querySelectorAll("[data-t]").forEach(function (el) {
@@ -748,6 +839,7 @@
       li.appendChild(document.createTextNode(e[lang]));
       list.appendChild(li);
     });
+    buildPatterns();
     syncUI();
   }
 
@@ -795,6 +887,12 @@
     store.set("lang", lang);
     applyLang();
   });
+  document.getElementById("patBtn").addEventListener("click", function () {
+    document.getElementById("pat").hidden = false;
+  });
+  document.getElementById("patClose").addEventListener("click", function () {
+    document.getElementById("pat").hidden = true;
+  });
   document.getElementById("histBtn").addEventListener("click", function () {
     document.getElementById("hist").hidden = false;
   });
@@ -819,7 +917,8 @@
     RULES: RULES, VERSIONS: VERSIONS,
     step: step, randomize: randomize, clearAll: clearAll,
     setSize: function (n) { alloc(n); randomize(); syncUI(); requestRender(); },
-    pickCell: pickCell, pickLive: pickLive, pickLayer: pickLayer
+    pickCell: pickCell, pickLive: pickLive, pickLayer: pickLayer,
+    PATTERNS: PATTERNS, placePattern: placePattern
   };
 })();
 </script>

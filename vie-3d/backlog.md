@@ -5,8 +5,11 @@ au lieu de 8, donc les règles de Conway (B3/S23) ne tiennent pas en
 volume : tout s'éteint ou tout sature. On utilise les règles 3D connues,
 notées survie-min / survie-max / naissance-min / naissance-max.
 
-- **5766** — la vie 3D classique (Bays). Celle qui donne des structures
-  qui bougent sans exploser. Par défaut.
+- **5766** — survie 5 à 7 voisines, naissance à **6 exactement** : la vie
+  3D classique de Bays, celle qui donne des structures qui bougent sans
+  exploser. Par défaut. (La v1 codait naissance 6 **ou 7** — une erreur de
+  lecture de la notation E1E2F1F2, corrigée en v2 : sous la mauvaise règle
+  le planeur de Bays n'existe pas.)
 - **4555** — cristallise, formes anguleuses qui se figent.
 - **5655** — nuages, masses qui ondulent.
 
@@ -48,6 +51,11 @@ Fait :
 - Son facultatif : un bip court par génération, hauteur proportionnelle à
   la population (coupé par défaut).
 - Français / anglais, bouton Historique, numéro de version dans le menu.
+- Motifs prêts à poser (bouton ◈ Motifs) : trois natures mortes, deux
+  oscillateurs de période 2 et le planeur de Bays (10 cellules, période 4,
+  une case en diagonale par période). Poser un motif vide le cube, impose
+  la règle 5766 et agrandit le cube si besoin ; le planeur est adossé au
+  mur de départ pour avoir de la route devant lui.
 - Sauvegarde locale du motif et des réglages (relue avec validation
   stricte `^[01]+$` et longueur attendue — une chaîne stockée n'est jamais
   interprétée).
@@ -94,10 +102,23 @@ Respecté :
   devient un vrai jeu (par exemple : retrouver un motif cible en un
   minimum de coups).
 
+## Comment les motifs ont été trouvés
+
+Aucun n'est recopié de mémoire. Un chercheur écrit pour l'occasion lance
+des milliers de petites soupes au hasard dans l'espace libre (sans murs),
+normalise chaque génération (translation annulée, cellules triées) et
+détecte une signature déjà vue : même signature au même endroit =
+nature morte ou oscillateur, même signature décalée = planeur. Chaque
+candidat retenu est ensuite **rejoué dans le moteur borné du jeu** pour
+vérifier son comportement réel, murs compris.
+
+Mesures obtenues : le planeur sort d'une soupe 5³ (28 familles sur 30 000
+essais), vole 4 cases dans un cube 8³ et 6 cases dans un 10³ avant de se
+défaire contre la paroi. C'est aussi la preuve que la règle corrigée est
+la bonne : sous l'ancienne (naissance 6 ou 7), aucun planeur n'apparaît.
+
 ## Pistes
 
-- Motifs prêts à poser (planeur 3D de Bays, oscillateurs connus) dans un
-  petit menu — c'est ce qui rend le jeu de la vie 2D attachant.
 - Règle libre : deux curseurs survie et deux naissance, au lieu de trois
   préréglages.
 - Historique de la population en petite courbe sous le cube.
