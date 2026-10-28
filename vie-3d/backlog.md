@@ -31,7 +31,7 @@ l'état.
 
 Fait :
 
-- Cube de 3³ à 10³, taille au curseur (change la taille = nouveau tirage).
+- Cube de 1³ à 10³, taille au curseur (change la taille = nouveau tirage).
 - Structure en fil de fer : les 12 arêtes du cube, plus un quadrillage
   sur les trois faces qui tournent le dos à la caméra — jamais devant les
   cellules.
@@ -48,8 +48,11 @@ Fait :
 - Naissances mises en évidence une génération, morts laissées en fantôme
   une génération — on voit ce qui vient de changer.
 - Compteurs génération / vivants, message « colonie éteinte ».
-- Son facultatif : un bip court par génération, hauteur proportionnelle à
-  la population (coupé par défaut).
+- Son facultatif, indexé sur ce qui CHANGE et non sur la population : une
+  voix claire pour les naissances, une grave pour les morts, chacune
+  d'autant plus forte et haute qu'elles sont nombreuses. Silence strict
+  quand rien ne bouge — nature morte, cube figé, cube vide (vérifié : 0
+  son émis sur 5 générations d'une nature morte). Coupé par défaut.
 - Français / anglais, bouton Historique, numéro de version dans le menu.
 - Motifs prêts à poser (bouton ◈ Motifs) : trois natures mortes, deux
   oscillateurs de période 2 et le planeur de Bays (10 cellules, période 4,
@@ -102,6 +105,29 @@ Respecté :
   devient un vrai jeu (par exemple : retrouver un motif cible en un
   minimum de coups).
 
+## Ce qui est démontré sur les petits cubes
+
+Le cube est **borné**, donc le nombre d'états est fini et toute partie
+finit forcément par boucler : il n'existe aucun comportement infini dans
+ce jeu. Pour les trois plus petites tailles, on peut même tout énumérer.
+
+- **1³** (2 états, tous testés) : désert absolu. Une cellule seule a zéro
+  voisine donc meurt, et il en faudrait 6 pour en faire naître une.
+- **2³** (256 états, tous testés) : 5 cellules ou moins → extinction ;
+  6 cellules → le cube se remplit à 8 et se fige ; 7 ou 8 → stable tel
+  quel. Deux formes stables en tout, aucun oscillateur.
+- **3³** (134 217 728 états, tous parcourus en 16,8 s) : **24 cycles
+  distincts** à symétrie près (les 48 rotations et reflets du cube) —
+  17 natures mortes (dont le cube vide ; la plus petite non vide fait
+  7 cellules) et 7 oscillateurs de période 2. **Aucune période ≥ 3
+  n'existe en 3³**, c'est prouvé par épuisement et pas seulement « pas
+  trouvé ». Seuls 396 états sur 134 millions sont sur un cycle, soit
+  0,0003 % : presque tout est transitoire.
+
+Au-delà, c'est hors de portée : 4³ fait 2⁶⁴ états, soit environ 73 000 ans
+de calcul au rythme mesuré. À partir de là on ne peut que chercher, jamais
+prouver qu'on a tout trouvé.
+
 ## Comment les motifs ont été trouvés
 
 Aucun n'est recopié de mémoire. Un chercheur écrit pour l'occasion lance
@@ -123,3 +149,5 @@ la bonne : sous l'ancienne (naissance 6 ou 7), aucun planeur n'apparaît.
   préréglages.
 - Historique de la population en petite courbe sous le cube.
 - Rotation qui continue toute seule après un glissé rapide (inertie).
+- Galerie « les 24 du cube 3³ » : le catalogue complet et démontré,
+  posable en un geste.

@@ -170,7 +170,7 @@
   <div class="row">
     <div class="slider">
       <label for="sizeIn" data-t="size">Taille</label>
-      <input id="sizeIn" type="range" min="3" max="10" step="1" value="6">
+      <input id="sizeIn" type="range" min="1" max="10" step="1" value="6">
       <output id="sizeOut">6³</output>
     </div>
     <button id="ruleBtn" style="flex:0 0 auto">5766</button>
@@ -254,6 +254,9 @@
   ];
 
   var VERSIONS = [
+    { v: "v3",
+      fr: "Cubes minuscules : le curseur Taille descend jusqu'à 1. Et le son dit désormais ce qui CHANGE, plus ce qui est là — une voix claire pour les naissances, une voix grave pour les morts, chacune d'autant plus forte et haute qu'elles sont nombreuses. Conséquence : une nature morte, un cube figé ou un cube vide sont strictement muets.",
+      en: "Tiny cubes: the Size slider now goes down to 1. And the sound now says what CHANGES rather than what is there — a bright voice for births, a low one for deaths, each louder and higher the more there are. As a result a still life, a frozen cube or an empty cube are strictly silent." },
     { v: "v2",
       fr: "Motifs prêts à poser : planeur de Bays (10 cellules, période 4, il traverse le cube), deux oscillateurs et trois natures mortes — tous trouvés par recherche automatique puis rejoués dans le moteur du jeu pour vérifier ce qu'ils font vraiment. Correction de la règle 5766 : une cellule naît avec 6 voisines exactement, pas 6 ou 7. C'est cette correction qui rend le planeur possible.",
       en: "Ready-made patterns: Bays' glider (10 cells, period 4, it crosses the cube), two oscillators and three still lifes — all found by automated search, then replayed in the game engine to check what they actually do. Fixed rule 5766: a cell is born with exactly 6 neighbours, not 6 or 7. That fix is what makes the glider possible." },
@@ -313,7 +316,7 @@
 
   var N = 6;
   var grid = null, born = null, died = null;
-  var gen = 0, pop = 0;
+  var gen = 0, pop = 0, lastBorn = 0, lastDied = 0;
   var playing = false;
   var speed = 5;
   var ruleIdx = 0;
@@ -360,7 +363,7 @@
     var r = RULES[ruleIdx];
     var next = new Uint8Array(N * N * N);
     born.fill(0); died.fill(0);
-    var p = 0;
+    var p = 0, nb = 0, nd = 0;
     for (var k = 0; k < N; k++) {
       for (var j = 0; j < N; j++) {
         for (var i = 0; i < N; i++) {
@@ -368,12 +371,13 @@
           var n = neighbours(i, j, k);
           var was = grid[id];
           var now = was ? (n >= r.s0 && n <= r.s1) : (n >= r.b0 && n <= r.b1);
-          if (now) { next[id] = 1; p++; if (!was) born[id] = 1; }
-          else if (was) died[id] = 1;
+          if (now) { next[id] = 1; p++; if (!was) { born[id] = 1; nb++; } }
+          else if (was) { died[id] = 1; nd++; }
         }
       }
     }
     grid = next; pop = p; gen++;
+    lastBorn = nb; lastDied = nd;
     saveState();
   }
 
@@ -405,7 +409,7 @@
 
   function loadState() {
     var n = parseInt(store.get("n"), 10);
-    if (!(n >= 3 && n <= 10)) n = 6;
+    if (!(n >= 1 && n <= 10)) n = 6;
     alloc(n);
     var r = parseInt(store.get("rule"), 10); if (r >= 0 && r < RULES.length) ruleIdx = r;
     var sp = parseInt(store.get("speed"), 10); if (sp >= 1 && sp <= 10) speed = sp;
@@ -643,29 +647,44 @@
     var dt = ts - last; last = ts;
     if (playing) {
       acc += dt;
-      if (acc >= interval()) { acc = 0; step(); blip(); needsRender = true; }
+      if (acc >= interval()) { acc = 0; step(); sound(lastBorn, lastDied); needsRender = true; }
     }
     if (needsRender) render();
     if (playing) ensure();       // en pause et rien qui bouge : la boucle s'arrête (batterie)
   }
 
   // --------------------------------------------------------------- son
-  var actx = null;
-  function blip() {
+  // Le son dit ce qui CHANGE, pas ce qui est là : une voix claire pour les
+  // naissances, une voix grave pour les morts, chacune d'autant plus forte
+  // et haute qu'elles sont nombreuses. Conséquence voulue : une nature
+  // morte, un cube figé ou un cube vide ne font strictement aucun bruit.
+  var actx = null, soundEvents = 0;
+  function voice(freq, dur, gain, type) {
+    var o = actx.createOscillator(), g = actx.createGain();
+    o.type = type;
+    o.frequency.setValueAtTime(freq, actx.currentTime);
+    g.gain.setValueAtTime(0.0001, actx.currentTime);
+    g.gain.linearRampToValueAtTime(gain, actx.currentTime + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur);
+    o.connect(g); g.connect(actx.destination);
+    o.start(); o.stop(actx.currentTime + dur + 0.02);
+  }
+  function sound(nb, nd) {
     if (!soundOn) return;
+    if (nb + nd === 0) return;              // rien n'a changé : silence
     try {
       if (!actx) { var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return; actx = new AC(); }
       if (actx.state === "suspended") actx.resume();
-      var max = N * N * N * 0.3;
-      var f = 150 + 400 * Math.min(1, pop / (max || 1));
-      var o = actx.createOscillator(), g = actx.createGain();
-      o.type = "sine";
-      o.frequency.setValueAtTime(f, actx.currentTime);
-      g.gain.setValueAtTime(0.0001, actx.currentTime);
-      g.gain.linearRampToValueAtTime(0.035, actx.currentTime + 0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + 0.1);
-      o.connect(g); g.connect(actx.destination);
-      o.start(); o.stop(actx.currentTime + 0.12);
+      var ref = Math.max(3, N * N * N * 0.08);
+      if (nb > 0) {
+        var rb = Math.min(1, nb / ref);
+        voice(520 + 340 * rb, 0.09, 0.012 + 0.04 * rb, "sine");
+      }
+      if (nd > 0) {
+        var rd = Math.min(1, nd / ref);
+        voice(170 - 50 * rd, 0.15, 0.012 + 0.04 * rd, "triangle");
+      }
+      soundEvents++;
     } catch (e) {}
   }
 
@@ -849,7 +868,7 @@
     syncUI(); requestRender();
   });
   document.getElementById("stepBtn").addEventListener("click", function () {
-    step(); blip(); requestRender();
+    step(); sound(lastBorn, lastDied); requestRender();
   });
   document.getElementById("randBtn").addEventListener("click", function () {
     randomize(); requestRender();
@@ -859,7 +878,7 @@
   });
   sizeIn.addEventListener("input", function () {
     var n = parseInt(sizeIn.value, 10);
-    if (!(n >= 3 && n <= 10) || n === N) return;
+    if (!(n >= 1 && n <= 10) || n === N) return;
     alloc(n); randomize(); syncUI(); requestRender();
   });
   layerIn.addEventListener("input", function () {
@@ -879,7 +898,7 @@
   soundBtn.addEventListener("click", function () {
     soundOn = !soundOn;
     store.set("sound", soundOn ? "1" : "0");
-    if (soundOn) blip();
+    if (soundOn) sound(1, 0);   // petit retour à l'activation
     syncUI();
   });
   document.getElementById("langBtn").addEventListener("click", function () {
@@ -918,7 +937,8 @@
     step: step, randomize: randomize, clearAll: clearAll,
     setSize: function (n) { alloc(n); randomize(); syncUI(); requestRender(); },
     pickCell: pickCell, pickLive: pickLive, pickLayer: pickLayer,
-    PATTERNS: PATTERNS, placePattern: placePattern
+    PATTERNS: PATTERNS, placePattern: placePattern,
+    get soundEvents() { return soundEvents; }, get lastBorn() { return lastBorn; }, get lastDied() { return lastDied; }
   };
 })();
 </script>
