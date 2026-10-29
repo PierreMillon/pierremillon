@@ -52,7 +52,10 @@ Fait :
   (1 s → 100 ms par génération).
 - Naissances mises en évidence une génération, morts laissées en fantôme
   une génération — on voit ce qui vient de changer.
-- Compteurs génération / vivants, message « colonie éteinte ».
+- Compteurs génération / vivants. Pas de message « colonie éteinte » :
+  quand tout meurt, le cube vide et le compteur Vivants à 0 le disent
+  déjà. La seule mention au centre est celle du cube de côté 0, sans
+  laquelle l'écran noir serait inexplicable.
 - Son facultatif, indexé sur ce qui CHANGE et non sur la population : une
   voix claire pour les naissances, une grave pour les morts, chacune
   d'autant plus forte et haute qu'elles sont nombreuses. Silence strict

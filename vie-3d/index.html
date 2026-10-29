@@ -65,12 +65,15 @@
     text-align: center; font-size: 10.5px; color: var(--soft);
     pointer-events: none; line-height: 1.5;
   }
-  .dead {
+  /* Seule mention qui reste au centre du cube : celle du monde de côté 0,
+     sans quoi l'écran noir serait inexplicable. Une colonie éteinte, elle,
+     se voit déjà — le cube est vide et le compteur Vivants dit 0. */
+  .note {
     position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
     color: var(--warn); font-size: 13px; letter-spacing: 0.08em;
     text-transform: uppercase; pointer-events: none; text-align: center;
   }
-  .dead[hidden] { display: none; }
+  .note[hidden] { display: none; }
 
   .panel {
     flex: 0 0 auto;
@@ -172,7 +175,7 @@
     <span><span data-t="pop">Vivants</span> <b id="popOut">0</b></span>
     <span><span data-t="ruleLbl">Règle</span> <b id="ruleOut">5766</b></span>
   </div>
-  <div class="dead" id="deadMsg" hidden data-t="dead">Colonie éteinte</div>
+  <div class="note" id="emptyMsg" hidden data-t="empty"></div>
   <div class="hint" id="hint" data-t="hint">Tourne au doigt · touche un cube pour l'ôter, l'étage éclairé pour en poser</div>
 </div>
 
@@ -1123,6 +1126,9 @@
   ];
 
   var VERSIONS = [
+    { v: "v6",
+      fr: "Plus de « colonie éteinte » : quand tout meurt, le cube vide et le compteur Vivants à 0 le disent déjà. Il ne reste qu'une mention au centre, celle du cube de côté 0, sans laquelle l'écran noir serait inexplicable.",
+      en: "No more “colony extinct”: when everything dies, the empty cube and the Alive counter at 0 already say it. The only line left in the middle is the one for the cube of side 0, without which the black screen would make no sense." },
     { v: "v5",
       fr: "Le cube de côté 0 ne montre plus rien du tout : pas de case, donc pas de boîte non plus. Un écran noir et la raison écrite dessus.",
       en: "The cube of side 0 now shows nothing at all: no cell, so no box either. A black screen and the reason written on it." },
@@ -1161,7 +1167,7 @@
       galStill: "figée", galOsc: "période 2", galCells: " cellules",
       galMore: "Afficher les %d suivantes",
       size: "Taille", layer: "Étage", speed: "Vitesse", ruleLbl: "Règle",
-      gen: "Génération", pop: "Vivants", dead: "Colonie éteinte",
+      gen: "Génération", pop: "Vivants",
       empty: "Cube de côté 0 — un monde sans aucune case",
       hint: "Tourne au doigt · touche un cube pour l'ôter, l'étage éclairé pour en poser",
       hintFlat: "Incline le cube pour pouvoir toucher l'étage",
@@ -1189,7 +1195,7 @@
       galStill: "frozen", galOsc: "period 2", galCells: " cells",
       galMore: "Show the next %d",
       size: "Size", layer: "Layer", speed: "Speed", ruleLbl: "Rule",
-      gen: "Generation", pop: "Alive", dead: "Colony extinct",
+      gen: "Generation", pop: "Alive",
       empty: "Cube of side 0 — a world with no cell at all",
       hint: "Drag to rotate · tap a cube to remove it, the lit layer to add one",
       hintFlat: "Tilt the cube to be able to tap the layer",
@@ -1528,9 +1534,7 @@
     drawCells();
     document.getElementById("genOut").textContent = String(gen);
     document.getElementById("popOut").textContent = String(pop);
-    var dm = document.getElementById("deadMsg");
-    dm.textContent = N < 1 ? TXT[lang].empty : TXT[lang].dead;
-    dm.hidden = pop !== 0;
+    document.getElementById("emptyMsg").hidden = N >= 1;
   }
 
   // ------------------------------------------------------------- boucle
