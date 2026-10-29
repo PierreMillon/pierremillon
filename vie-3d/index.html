@@ -105,7 +105,9 @@
     width: 18px; height: 18px; border-radius: 50%;
     background: #000; border: 2px solid var(--ink);
   }
-  .ver { font-size: 10.5px; color: var(--soft); text-align: center; }
+  /* Le numéro de version se tient en haut, à droite de la ligne d'état :
+     visible dès l'ouverture, sans manger une ligne du panneau. */
+  .hud .verHud { margin-left: auto; opacity: 0.6; }
 
   /* Petit téléphone (320 px) : l'en-tête à quatre boutons ne tient plus à
      la taille normale — on resserre plutôt que de laisser déborder. */
@@ -128,6 +130,9 @@
     display: flex; flex-direction: column; gap: 12px; z-index: 10;
   }
   .modal[hidden] { display: none; }
+  /* `hidden` ne suffit pas quand une règle d'auteur impose un display :
+     celle-ci l'emporte sur le display:none du navigateur. */
+  .row[hidden], .slider[hidden] { display: none; }
   .modal h2 { margin: 0; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
   .modal .scroll { flex: 1 1 auto; overflow-y: auto; -webkit-overflow-scrolling: touch; }
   .modal ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
@@ -174,6 +179,7 @@
     <span><span data-t="gen">Génération</span> <b id="genOut">0</b></span>
     <span><span data-t="pop">Vivants</span> <b id="popOut">0</b></span>
     <span><span data-t="ruleLbl">Règle</span> <b id="ruleOut">5766</b></span>
+    <span class="verHud"><b id="verOut">v1</b></span>
   </div>
   <div class="note" id="emptyMsg" hidden data-t="empty"></div>
   <div class="hint" id="hint" data-t="hint">Tourne au doigt · touche un cube pour l'ôter, l'étage éclairé pour en poser</div>
@@ -186,6 +192,12 @@
     <button id="randBtn" data-t="rand">⟳ Hasard</button>
     <button id="clearBtn" data-t="clear">⌫ Vider</button>
   </div>
+  <div class="row keys">
+    <button data-dim="1">1D</button>
+    <button data-dim="2">2D</button>
+    <button data-dim="3">3D</button>
+    <button data-dim="4">4D</button>
+  </div>
   <div class="row">
     <div class="slider">
       <label for="sizeIn" data-t="size">Taille</label>
@@ -195,12 +207,19 @@
     <button id="ruleBtn" style="flex:0 0 auto">5766</button>
   </div>
   <div class="row">
-    <div class="slider">
+    <div class="slider" id="layerBox">
       <label for="layerIn" data-t="layer">Étage</label>
       <input id="layerIn" type="range" min="1" max="6" step="1" value="1">
       <output id="layerOut">1</output>
     </div>
     <button id="patBtn" style="flex:0 0 auto" data-t="pat">◈ Motifs</button>
+  </div>
+  <div class="row" id="rowTranche" hidden>
+    <div class="slider">
+      <label for="trancheIn" data-t="tranche">Cube</label>
+      <input id="trancheIn" type="range" min="1" max="5" step="1" value="1">
+      <output id="trancheOut">1</output>
+    </div>
   </div>
   <div class="row">
     <div class="slider">
@@ -209,7 +228,6 @@
       <output id="speedOut">5</output>
     </div>
   </div>
-  <div class="ver" id="verOut">Version v1</div>
 </div>
 
 <div class="modal" id="pat" hidden>
@@ -259,11 +277,48 @@
 
   var GREEN = "94,240,160";
 
-  var RULES = [
-    { id: "5766", s0: 5, s1: 7, b0: 6, b1: 6 },
-    { id: "4555", s0: 4, s1: 5, b0: 5, b1: 5 },
-    { id: "5655", s0: 5, s1: 6, b0: 5, b1: 5 }
-  ];
+  // Une règle se note survie-min/survie-max/naissance-min/naissance-max.
+  // Les seuils ne sont pas transposables d'une dimension à l'autre : ils
+  // se lisent en proportion du nombre de voisines, qui passe de 2 à 8,
+  // 26 puis 80. Naître à 3 voisines sur 8 (Conway, 37 %) n'a rien à voir
+  // avec naître à 6 sur 26 (Bays, 23 %).
+  var RULESETS = {
+    1: [
+      { id: "1111", s0: 1, s1: 1, b0: 1, b1: 1 },   // ou exclusif : triangle de Sierpiński
+      { id: "0211", s0: 0, s1: 2, b0: 1, b1: 1 },   // triangle plein
+      { id: "1112", s0: 1, s1: 1, b0: 1, b1: 2 }    // éventail
+    ],
+    2: [
+      { id: "2333", s0: 2, s1: 3, b0: 3, b1: 3 },   // Conway
+      { id: "3434", s0: 3, s1: 4, b0: 3, b1: 4 },   // « 34 Life », mousse qui grouille
+      { id: "2336", s0: 2, s1: 3, b0: 3, b1: 6 }    // naissances faciles, colonie dense
+    ],
+    3: [
+      { id: "5766", s0: 5, s1: 7, b0: 6, b1: 6 },
+      { id: "4555", s0: 4, s1: 5, b0: 5, b1: 5 },
+      { id: "5655", s0: 5, s1: 6, b0: 5, b1: 5 }
+    ],
+    4: [
+      // Trouvées ici par balayage : 53 460 règles essayées, 594 qui ne
+      // remplissent pas l'espace, puis les 60 meilleures examinées sur
+      // 150 germes chacune. La première est la plus vivante — 39
+      // familles d'oscillateurs, 30 formes figées, 4 extinctions sur 150.
+      { id: "4·12/14·16", s0: 4, s1: 12, b0: 14, b1: 16 },
+      { id: "5·13/16·18", s0: 5, s1: 13, b0: 16, b1: 18 },
+      { id: "4·12/13", s0: 4, s1: 12, b0: 13, b1: 13 }
+    ]
+  };
+
+  // Le côté utile n'est pas le même selon la dimension : dix cases en
+  // ligne ne montrent rien, dix cases à la puissance quatre en font
+  // dix mille. Le curseur Taille s'adapte.
+  var TAILLES = {
+    1: { min: 0, max: 200, def: 121 },
+    2: { min: 0, max: 80, def: 40 },
+    3: { min: 0, max: 10, def: 6 },
+    4: { min: 0, max: 8, def: 5 }
+  };
+  var RULES = RULESETS[3];     // compatibilité : la 3D reste la dimension d'origine
 
   // Motifs trouvés par recherche automatique sur la règle 5766, puis
   // rejoués un par un dans le moteur borné du jeu pour vérifier leur
@@ -1129,6 +1184,9 @@
   ];
 
   var VERSIONS = [
+    { v: "v8",
+      fr: "Le jeu sort du cube : il se joue maintenant en 1, 2, 3 ou 4 dimensions. Une cellule a 3^d − 1 voisines — 2 sur une ligne, 8 à plat, 26 en volume, 80 en 4D — donc les règles changent avec la dimension et ne sont pas transposables. En 1D on voit la trace du temps qui descend (le triangle de Sierpiński sort d'une seule cellule allumée) ; en 2D c'est le jeu de Conway ; en 4D l'hypercube est montré en tranches, n cubes côte à côte qui tournent ensemble. La règle 4D n'était pas connue : elle a été trouvée en balayant 53 460 règles, dont 594 tiennent sans remplir l'espace, et la retenue produit 39 familles d'oscillateurs. Le numéro de version est remonté en haut de l'écran.",
+      en: "The game leaves the cube: it now plays in 1, 2, 3 or 4 dimensions. A cell has 3^d − 1 neighbours — 2 on a line, 8 on a grid, 26 in a volume, 80 in 4D — so the rules change with the dimension and do not carry over. In 1D you see time's trace running downward (the Sierpiński triangle grows from a single lit cell); in 2D it is Conway's game; in 4D the hypercube is shown as slices, n cubes side by side turning together. The 4D rule was not known: it was found by sweeping 53,460 rules, of which 594 hold without filling space, and the one kept produces 39 families of oscillators. The version number has moved to the top of the screen." },
     { v: "v7",
       fr: "Trois figures de plus, toutes de période supérieure à 2 — ce que le jeu n'avait encore jamais montré. Le Fuseau (période 3) et la Toupie (période 4) sont sortis d'une chasse de 8,6 millions de tirages au hasard dans un cube 10³ ; ils ont été rejoués dans deux moteurs écrits séparément, et en espace libre, pour s'assurer qu'ils battent vraiment et ne s'appuient pas sur les parois. Le Second Planeur de Bays (période 8, il avance de deux cases le long d'un axe) a été publié en 1990 et retrouvé ici une seule fois sur 1,2 million de soupes.",
       en: "Three more figures, all of period greater than 2 — something the game had never shown. The Spindle (period 3) and the Spinning Top (period 4) came out of a hunt through 8.6 million random seeds in a 10³ cube; they were replayed in two separately written engines, and in open space, to make sure they really beat and are not leaning on the walls. Bays' Second Glider (period 8, moving two cells along an axis) was published in 1990 and turned up here just once in 1.2 million soups." },
@@ -1181,6 +1239,10 @@
       hint: "Tourne au doigt · touche un cube pour l'ôter, l'étage éclairé pour en poser",
       hintFlat: "Incline le cube pour pouvoir toucher l'étage",
       hintEmpty: "Remonte le curseur Taille pour donner des cases à ce monde",
+      hint1: "Le temps descend : chaque ligne est une génération · touche la ligne du bas pour allumer une cellule",
+      hint2: "Touche une case pour l'allumer ou l'éteindre",
+      hint4: "Un hypercube, ce sont n cubes côte à côte · tourne au doigt, ils tournent ensemble",
+      tranche: "Cube",
       ver: "Version ",
       intro: "Les cellules naissent et meurent selon le nombre de voisines — 26 voisines en volume, contre 8 à plat. Les règles sont notées survie-min/survie-max/naissance-min/naissance-max : 5766 est la vie 3D classique, 4555 fait des cristaux, 5655 des nuages. Astuce : ajoute la page à ton écran d'accueil, elle s'ouvre alors en plein écran."
     },
@@ -1212,6 +1274,10 @@
       hint: "Drag to rotate · tap a cube to remove it, the lit layer to add one",
       hintFlat: "Tilt the cube to be able to tap the layer",
       hintEmpty: "Raise the Size slider to give this world some cells",
+      hint1: "Time runs downward: each line is one generation · tap the bottom line to light a cell",
+      hint2: "Tap a square to switch it on or off",
+      hint4: "A hypercube is n cubes side by side · drag to rotate, they all turn together",
+      tranche: "Cube",
       ver: "Version ",
       intro: "Cells are born and die depending on how many neighbours they have — 26 in a volume, against 8 on a flat grid. Rules read survive-min/survive-max/born-min/born-max: 5766 is classic 3D life, 4555 grows crystals, 5655 makes clouds. Tip: add the page to your home screen, it then opens full screen."
     }
@@ -1223,25 +1289,45 @@
     set: function (k, v) { try { localStorage.setItem("vie3d_" + k, v); } catch (e) {} }
   };
 
-  var N = 6;
+  var DIM = 3;                // nombre d'axes du monde : 1, 2, 3 ou 4
+  var N = 6;                  // côté, le même sur tous les axes
+  var vol = 0;                // N^DIM
   var grid = null, born = null, died = null;
+  var sommeA = null, sommeB = null, suivant = null;
+  var pasAxe = [];            // de combien l'indice bouge pour un pas le long de chaque axe
+  var coordAxe = null;        // coordonnée de chaque case sur chaque axe, précalculée
   var gen = 0, pop = 0, lastBorn = 0, lastDied = 0;
   var playing = false;
   var speed = 5;
   var ruleIdx = 0;
   var layer = 0;              // étage actif, sur l'axe vertical (Y)
+  var tranche = 0;            // en 4D : cube affiché en grand, sur le 4e axe (W)
+  var trace = [];             // en 1D : les générations passées, du plus ancien au plus récent
   var yaw = 0.62, pitch = 0.46;
   var lang = store.get("lang") === "en" ? "en" : "fr";
   var soundOn = store.get("sound") === "1";
 
-  function alloc(n) {
+  function alloc(n, dim) {
+    DIM = dim || DIM;
     N = n;
-    grid = new Uint8Array(n * n * n);
-    born = new Uint8Array(n * n * n);
-    died = new Uint8Array(n * n * n);
+    vol = Math.round(Math.pow(n, DIM));
+    grid = new Uint8Array(vol);
+    born = new Uint8Array(vol);
+    died = new Uint8Array(vol);
+    sommeA = new Uint8Array(vol);
+    sommeB = new Uint8Array(vol);
+    suivant = new Uint8Array(vol);
+    pasAxe = [];
+    for (var a = 0, s = 1; a < DIM; a++, s *= n) pasAxe.push(s);
+    coordAxe = new Uint8Array(vol * DIM);
+    for (var id = 0; id < vol; id++)
+      for (var b = 0; b < DIM; b++) coordAxe[id * DIM + b] = Math.floor(id / pasAxe[b]) % n;
     if (layer >= n) layer = n > 0 ? n - 1 : 0;
+    if (tranche >= n) tranche = n > 0 ? n - 1 : 0;
+    trace = [];
   }
   function I(i, j, k) { return (k * N + j) * N + i; }
+  function rulesNow() { return RULESETS[DIM]; }
 
   function countPop() {
     var p = 0;
@@ -1249,57 +1335,70 @@
     pop = p;
   }
 
-  function neighbours(i, j, k) {
-    var n = 0;
-    for (var dk = -1; dk <= 1; dk++) {
-      var kk = k + dk; if (kk < 0 || kk >= N) continue;
-      for (var dj = -1; dj <= 1; dj++) {
-        var jj = j + dj; if (jj < 0 || jj >= N) continue;
-        for (var di = -1; di <= 1; di++) {
-          if (di === 0 && dj === 0 && dk === 0) continue;
-          var ii = i + di; if (ii < 0 || ii >= N) continue;
-          if (grid[(kk * N + jj) * N + ii]) n++;
-        }
-      }
-    }
-    return n;
-  }
-
-  // Bords fermés (pas de tore) : le cube visible EST la limite du monde,
+  // Bords fermés (pas de tore) : le monde visible EST la limite du monde,
   // une cellule au bord a donc moins de voisines. C'est plus honnête
   // visuellement qu'un monde qui se reboucle sans qu'on le voie.
+  //
+  // Le voisinage est celui de Moore : toutes les cases du bloc de côté 3
+  // centré sur la cellule, elle-même exclue, soit 3^DIM − 1 voisines —
+  // 2 à plat sur une ligne, 8 en 2D, 26 en 3D, 80 en 4D.
+  //
+  // On ne les teste pas une à une. La somme sur un bloc de côté 3 est
+  // SÉPARABLE : on somme par triplets le long du premier axe, puis le
+  // résultat le long du deuxième, et ainsi de suite. Coût : 3 additions
+  // par axe et par case (12 en 4D) au lieu de 80 tests. C'est ce qui rend
+  // la 4D jouable sur un téléphone.
   function step() {
-    if (N < 1) return;        // cube de côté 0 : rien ne peut arriver, pas même une génération
-    var r = RULES[ruleIdx];
-    var next = new Uint8Array(N * N * N);
+    if (N < 1) return;        // côté 0 : rien ne peut arriver, pas même une génération
+    var r = rulesNow()[ruleIdx];
+    var src = grid, dst = sommeA, a, id, c, v, s;
+    for (a = 0; a < DIM; a++) {
+      s = pasAxe[a];
+      for (id = 0; id < vol; id++) {
+        c = coordAxe[id * DIM + a];
+        v = src[id];
+        if (c > 0) v += src[id - s];
+        if (c < N - 1) v += src[id + s];
+        dst[id] = v;
+      }
+      src = dst; dst = (dst === sommeA) ? sommeB : sommeA;
+    }
+    // src contient maintenant la somme du bloc entier, cellule comprise
     born.fill(0); died.fill(0);
     var p = 0, nb = 0, nd = 0;
-    for (var k = 0; k < N; k++) {
-      for (var j = 0; j < N; j++) {
-        for (var i = 0; i < N; i++) {
-          var id = (k * N + j) * N + i;
-          var n = neighbours(i, j, k);
-          var was = grid[id];
-          var now = was ? (n >= r.s0 && n <= r.s1) : (n >= r.b0 && n <= r.b1);
-          if (now) { next[id] = 1; p++; if (!was) { born[id] = 1; nb++; } }
-          else if (was) { died[id] = 1; nd++; }
-        }
-      }
+    for (id = 0; id < vol; id++) {
+      var was = grid[id];
+      var n = src[id] - was;
+      var now = was ? (n >= r.s0 && n <= r.s1) : (n >= r.b0 && n <= r.b1);
+      if (now) { suivant[id] = 1; p++; if (!was) { born[id] = 1; nb++; } }
+      else { suivant[id] = 0; if (was) { died[id] = 1; nd++; } }
     }
-    grid = next; pop = p; gen++;
+    var t = grid; grid = suivant; suivant = t;
+    if (DIM === 1) { trace.push(Uint8Array.prototype.slice.call(grid)); if (trace.length > 400) trace.shift(); }
+    pop = p; gen++;
     lastBorn = nb; lastDied = nd;
     saveState();
   }
 
   function randomize() {
-    for (var a = 0; a < grid.length; a++) grid[a] = Math.random() < 0.3 ? 1 : 0;
+    var d = DIM === 1 ? 0.18 : 0.3;
+    for (var a = 0; a < grid.length; a++) grid[a] = Math.random() < d ? 1 : 0;
     born.fill(0); died.fill(0);
-    gen = 0; countPop(); saveState();
+    gen = 0; trace = []; countPop(); saveState();
+  }
+
+  // Une ligne semée au hasard ne montre rien de la règle ; une seule
+  // cellule allumée au milieu donne tout de suite le dessin. C'est ainsi
+  // qu'on découvre la 1D, donc c'est ainsi qu'on y entre.
+  function graineUnique() {
+    grid.fill(0); born.fill(0); died.fill(0);
+    if (N > 0) grid[Math.floor(N / 2)] = 1;
+    gen = 0; trace = []; countPop(); saveState();
   }
 
   function clearAll() {
     grid.fill(0); born.fill(0); died.fill(0);
-    gen = 0; pop = 0; saveState();
+    gen = 0; pop = 0; trace = []; saveState();
   }
 
   // Sauvegarde locale : réglages + motif en cours, pour que fermer la page
@@ -1311,6 +1410,8 @@
     for (var a = 0; a < grid.length; a++) s += grid[a] ? "1" : "0";
     store.set("grid", s);
     store.set("n", String(N));
+    store.set("dim", String(DIM));
+    store.set("tranche", String(tranche));
     store.set("gen", String(gen));
     store.set("rule", String(ruleIdx));
     store.set("speed", String(speed));
@@ -1318,10 +1419,14 @@
   }
 
   function loadState() {
+    var d = parseInt(store.get("dim"), 10);
+    if (!(d >= 1 && d <= 4)) d = 3;
+    var lim = TAILLES[d];
     var n = parseInt(store.get("n"), 10);
-    if (!(n >= 0 && n <= 10)) n = 6;
-    alloc(n);
-    var r = parseInt(store.get("rule"), 10); if (r >= 0 && r < RULES.length) ruleIdx = r;
+    if (!(n >= lim.min && n <= lim.max)) n = lim.def;
+    alloc(n, d);
+    var tr = parseInt(store.get("tranche"), 10); if (tr >= 0 && tr < n) tranche = tr;
+    var r = parseInt(store.get("rule"), 10); if (r >= 0 && r < rulesNow().length) ruleIdx = r;
     var sp = parseInt(store.get("speed"), 10); if (sp >= 1 && sp <= 10) speed = sp;
     var ly = parseInt(store.get("layer"), 10); if (ly >= 0 && ly < n) layer = ly;
     var s = store.get("grid");
@@ -1474,14 +1579,19 @@
     line({ x: 0.5, y: y2, z: -0.5 }, { x: 0.5, y: y2, z: 0.5 }, hi, 1);
   }
 
+  // base : indice de la première case du cube à dessiner. Nul en 3D ; en
+  // 4D il vaut w·N³, ce qui permet de réutiliser tout le dessin 3D pour
+  // chaque tranche.
+  var base = 0;
+
   function drawCells() {
-    if (N < 1) return;                             // cube de côté 0 : rien à dessiner
+    if (N < 1) return;                             // côté 0 : rien à dessiner
     var cell = 1 / N;
     var shape = cellShape(cell * 0.44);          // 0.44 : un petit jeu entre cubes voisins
     var ghost = cellShape(cell * 0.2);
     var list = [], i, j, k, id;
     for (k = 0; k < N; k++) for (j = 0; j < N; j++) for (i = 0; i < N; i++) {
-      id = (k * N + j) * N + i;
+      id = base + (k * N + j) * N + i;
       var isGhost = !grid[id] && playing && died[id];
       if (!grid[id] && !isGhost) continue;
       var p = { x: (i + 0.5) * cell - 0.5, y: (j + 0.5) * cell - 0.5, z: (k + 0.5) * cell - 0.5 };
@@ -1535,15 +1645,167 @@
     }
   }
 
+  // =================================================== les autres dimensions
+  // Une ligne de cellules n'a rien à montrer en elle-même : ce qu'on
+  // regarde en 1D, c'est sa TRACE — chaque génération écrite sous la
+  // précédente, le temps qui descend. C'est la rémanence d'un
+  // oscilloscope, et c'est la seule lecture qui rende la 1D lisible.
+  var HAUT1D = 28;            // on laisse la ligne d'état respirer au-dessus
+  function geom1D() {
+    var cw = Math.min(14, W / Math.max(1, N));
+    var rh = Math.max(1, Math.min(cw, 9));
+    return { cw: cw, x0: (W - cw * N) / 2, rh: rh,
+             place: Math.max(1, Math.floor((H - HAUT1D) / rh)) };
+  }
+  function draw1D() {
+    if (N < 1) return;
+    var g = geom1D();
+    var lignes = trace.length ? trace : [grid];
+    var place = g.place;
+    var nb = Math.min(lignes.length, place);
+    // Tant que l'écran n'est pas plein, le dessin pousse vers le bas à
+    // partir du haut — on voit la figure se construire. Une fois plein,
+    // il défile : la génération en cours reste collée en bas.
+    var basY = lignes.length < place ? HAUT1D + nb * g.rh : H;
+    for (var r = 0; r < nb; r++) {
+      var ligne = lignes[lignes.length - 1 - r];
+      var y = basY - (r + 1) * g.rh;
+      var frais = 1 - r / Math.max(1, nb);              // la trace s'éteint en remontant
+      ctx.fillStyle = "rgba(" + GREEN + "," + (0.18 + 0.72 * frais * frais) + ")";
+      for (var i = 0; i < N; i++) if (ligne[i])
+        ctx.fillRect(g.x0 + i * g.cw, y, Math.max(1, g.cw - 1), Math.max(1, g.rh - 1));
+    }
+    // la génération en cours est cerclée : c'est elle qu'on touche
+    if (g.cw >= 5) {
+      ctx.strokeStyle = "rgba(" + GREEN + ",0.45)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(g.x0 - 1, basY - g.rh - 1, g.cw * N + 2, g.rh + 2);
+    }
+  }
+  // Ordonnée de la ligne vivante : en haut tant que l'écran se remplit,
+  // en bas ensuite. Le doigt doit viser au même endroit que l'œil.
+  function basLigne1D() {
+    var g = geom1D();
+    var nb = Math.min(Math.max(1, trace.length), g.place);
+    return trace.length < g.place ? HAUT1D + nb * g.rh : H;
+  }
+  function pick1D(px, py) {
+    var g = geom1D(), bas = basLigne1D();
+    if (py < bas - g.rh * 1.6 || py > bas + g.rh) return -1;
+    var i = Math.floor((px - g.x0) / g.cw);
+    return (i >= 0 && i < N) ? i : -1;
+  }
+
+  // 2D : la grille vue de face. Au-delà d'une certaine finesse le contour
+  // d'une case ne veut plus rien dire — on bascule alors sur un point
+  // plein, comme le ferait un écran à phosphore.
+  function geom2D() {
+    var cw = Math.min(W, H) / Math.max(1, N);
+    return { cw: cw, x0: (W - cw * N) / 2, y0: (H - cw * N) / 2 };
+  }
+  function draw2D() {
+    if (N < 1) return;
+    var g = geom2D(), i, j, id;
+    if (g.cw >= 7) {
+      ctx.strokeStyle = "rgba(" + GREEN + ",0.08)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (i = 0; i <= N; i++) {
+        ctx.moveTo(g.x0 + i * g.cw, g.y0); ctx.lineTo(g.x0 + i * g.cw, g.y0 + N * g.cw);
+        ctx.moveTo(g.x0, g.y0 + i * g.cw); ctx.lineTo(g.x0 + N * g.cw, g.y0 + i * g.cw);
+      }
+      ctx.stroke();
+    }
+    var trait = g.cw >= 8;
+    for (j = 0; j < N; j++) for (i = 0; i < N; i++) {
+      id = j * N + i;
+      var x = g.x0 + i * g.cw, y = g.y0 + j * g.cw, m = g.cw * 0.16;
+      if (!grid[id]) {
+        if (playing && died[id] && g.cw >= 5) {
+          ctx.strokeStyle = "rgba(" + GREEN + ",0.18)";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(x + g.cw * 0.35, y + g.cw * 0.35, g.cw * 0.3, g.cw * 0.3);
+        }
+        continue;
+      }
+      var neuf = playing && born[id];
+      if (trait) {
+        ctx.strokeStyle = "rgba(" + GREEN + "," + (neuf ? 1 : 0.75) + ")";
+        ctx.lineWidth = neuf ? 1.6 : 1.1;
+        ctx.strokeRect(x + m, y + m, g.cw - 2 * m, g.cw - 2 * m);
+        ctx.fillStyle = "rgba(" + GREEN + "," + (neuf ? 0.22 : 0.08) + ")";
+        ctx.fillRect(x + m, y + m, g.cw - 2 * m, g.cw - 2 * m);
+      } else {
+        ctx.fillStyle = "rgba(" + GREEN + "," + (neuf ? 1 : 0.8) + ")";
+        ctx.fillRect(x + m, y + m, Math.max(1, g.cw - 2 * m), Math.max(1, g.cw - 2 * m));
+      }
+    }
+  }
+  function pick2D(px, py) {
+    var g = geom2D();
+    var i = Math.floor((px - g.x0) / g.cw), j = Math.floor((py - g.y0) / g.cw);
+    if (i < 0 || i >= N || j < 0 || j >= N) return -1;
+    return j * N + i;
+  }
+
+  // 4D : un hypercube de côté n, ce sont n cubes de côté n posés côte à
+  // côte. On les dessine tous, avec la même rotation — tourner au doigt
+  // les tourne ensemble. Une cellule voit 26 voisines dans son cube, plus
+  // les 27 du bloc en face dans le cube précédent et les 27 du suivant :
+  // 26 + 27 + 27 = 80. L'activité se propage donc le long de la file, et
+  // c'est visible.
+  // On n'impose pas une grille carrée : on essaie tous les découpages et
+  // on garde celui qui donne les plus gros cubes dans l'écran tel qu'il
+  // est. Sur un téléphone tenu debout, cinq cubes se posent en 2 × 3,
+  // pas en 3 × 2.
+  function grille4D() {
+    var n = Math.max(1, N), cols = 1, meilleur = 0;
+    for (var c = 1; c <= n; c++) {
+      var r = Math.ceil(n / c), t = Math.min(W / c, H / r);
+      if (t > meilleur) { meilleur = t; cols = c; }
+    }
+    var rows = Math.ceil(n / cols);
+    return { cols: cols, rows: rows, tw: W / cols, th: H / rows };
+  }
+  function draw4D() {
+    if (N < 1) return;
+    var q = grille4D(), sc = Math.min(q.tw, q.th) * 0.60;
+    var sOx = ox, sOy = oy, sSc = scale, sBase = base;
+    for (var w = 0; w < N; w++) {
+      var c = w % q.cols, r = Math.floor(w / q.cols);
+      ox = (c + 0.5) * q.tw; oy = (r + 0.5) * q.th; scale = sc;
+      base = w * N * N * N;
+      drawBox();
+      if (w === tranche) drawLayer();
+      drawCells();
+    }
+    ox = sOx; oy = sOy; scale = sSc; base = sBase;
+  }
+  function pick4D(px, py) {
+    var q = grille4D();
+    var c = Math.floor(px / q.tw), r = Math.floor(py / q.th);
+    var w = r * q.cols + c;
+    if (c < 0 || c >= q.cols || w < 0 || w >= N) return -1;
+    var sOx = ox, sOy = oy, sSc = scale, sBase = base;
+    ox = (c + 0.5) * q.tw; oy = (r + 0.5) * q.th;
+    scale = Math.min(q.tw, q.th) * 0.60;
+    base = w * N * N * N;
+    var id = pickLive(px, py);
+    if (id < 0) id = pickLayer(px, py);
+    ox = sOx; oy = sOy; scale = sSc; base = sBase;
+    return id;
+  }
+
   function render() {
     needsRender = false;
     basis();
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, W, H);
     ctx.lineJoin = "round";
-    drawBox();
-    drawLayer();
-    drawCells();
+    if (DIM === 1) draw1D();
+    else if (DIM === 2) draw2D();
+    else if (DIM === 4) draw4D();
+    else { drawBox(); drawLayer(); drawCells(); }
     document.getElementById("genOut").textContent = String(gen);
     document.getElementById("popOut").textContent = String(pop);
     document.getElementById("emptyMsg").hidden = N >= 1;
@@ -1614,7 +1876,7 @@
     var a = (px - ox) / scale, b = (oy - py) / scale;
     var r = 0.5 / N, best = -1, bestD = -Infinity;
     for (var k = 0; k < N; k++) for (var j = 0; j < N; j++) for (var i = 0; i < N; i++) {
-      var id = (k * N + j) * N + i;
+      var id = base + (k * N + j) * N + i;
       if (!grid[id]) continue;
       var c = { x: (i + 0.5) / N - 0.5, y: (j + 0.5) / N - 0.5, z: (k + 0.5) / N - 0.5 };
       var dx = (c.x * ex.x + c.y * ex.y + c.z * ex.z) - a;
@@ -1639,10 +1901,13 @@
     var wz = a * ex.z + b * ey.z + t * ez.z;
     var i = Math.floor((wx + 0.5) * N), k = Math.floor((wz + 0.5) * N);
     if (i < 0 || i >= N || k < 0 || k >= N) return -1;
-    return (k * N + layer) * N + i;
+    return base + (k * N + layer) * N + i;
   }
 
   function pickCell(px, py) {
+    if (DIM === 1) return pick1D(px, py);
+    if (DIM === 2) return pick2D(px, py);
+    if (DIM === 4) return pick4D(px, py);
     var live = pickLive(px, py);
     return live >= 0 ? live : pickLayer(px, py);
   }
@@ -1657,6 +1922,7 @@
     var dx = e.clientX - down.x, dy = e.clientY - down.y;
     if (!dragging && Math.abs(dx) + Math.abs(dy) < 8) return;
     dragging = true;
+    if (DIM < 3) { down.x = e.clientX; down.y = e.clientY; return; }  // 1D et 2D : rien à tourner
     yaw += dx * 0.009;
     pitch += dy * 0.009;
     if (pitch > 1.35) pitch = 1.35;
@@ -1690,28 +1956,45 @@
   var playBtn = document.getElementById("playBtn");
   var sizeIn = document.getElementById("sizeIn");
   var layerIn = document.getElementById("layerIn");
+  var trancheIn = document.getElementById("trancheIn");
   var speedIn = document.getElementById("speedIn");
   var ruleBtn = document.getElementById("ruleBtn");
   var soundBtn = document.getElementById("soundBtn");
   var hint = document.getElementById("hint");
 
+  var EXPOSANT = { 1: "", 2: "²", 3: "³", 4: "⁴" };
+
   function syncUI() {
-    document.getElementById("sizeOut").textContent = N + "³";
+    var t = TAILLES[DIM];
+    sizeIn.min = String(t.min); sizeIn.max = String(t.max);
+    document.getElementById("sizeOut").textContent = N + EXPOSANT[DIM];
     layerIn.max = String(Math.max(1, N));
     layerIn.disabled = N < 1;
     layerIn.value = String(layer + 1);
     document.getElementById("layerOut").textContent = String(layer + 1);
+    document.getElementById("layerBox").hidden = DIM < 3;
+    document.getElementById("rowTranche").hidden = DIM !== 4;
+    trancheIn.max = String(Math.max(1, N));
+    trancheIn.disabled = N < 1;
+    trancheIn.value = String(tranche + 1);
+    document.getElementById("trancheOut").textContent = String(tranche + 1);
+    document.querySelectorAll("[data-dim]").forEach(function (b) {
+      b.setAttribute("aria-pressed", Number(b.dataset.dim) === DIM ? "true" : "false");
+    });
     sizeIn.value = String(N);
     speedIn.value = String(speed);
     document.getElementById("speedOut").textContent = String(speed);
-    ruleBtn.textContent = RULES[ruleIdx].id;
-    document.getElementById("ruleOut").textContent = RULES[ruleIdx].id;
+    ruleBtn.textContent = rulesNow()[ruleIdx].id;
+    document.getElementById("ruleOut").textContent = rulesNow()[ruleIdx].id;
     playBtn.textContent = TXT[lang][playing ? "pause" : "play"];
     playBtn.setAttribute("aria-pressed", playing ? "true" : "false");
     soundBtn.textContent = soundOn ? TXT[lang].soundOn : TXT[lang].soundOff;
     soundBtn.setAttribute("aria-pressed", soundOn ? "true" : "false");
-    document.getElementById("verOut").textContent = TXT[lang].ver + VERSIONS[0].v;
+    document.getElementById("verOut").textContent = VERSIONS[0].v;
     hint.textContent = N < 1 ? TXT[lang].hintEmpty
+      : DIM === 1 ? TXT[lang].hint1
+      : DIM === 2 ? TXT[lang].hint2
+      : DIM === 4 ? TXT[lang].hint4
       : (Math.abs(ez ? ez.y : 1) < 0.12 ? TXT[lang].hintFlat : TXT[lang].hint);
   }
 
@@ -1721,7 +2004,8 @@
   // ont été vérifiés sous cette règle et n'ont aucune raison de tenir
   // sous une autre.
   function placePattern(pat) {
-    if (N < pat.minN) alloc(pat.minN);
+    if (DIM !== 3) alloc(Math.max(pat.minN, TAILLES[3].def), 3);
+    else if (N < pat.minN) alloc(pat.minN);
     ruleIdx = 0;
     grid.fill(0); born.fill(0); died.fill(0);
     var ext = [0, 1, 2].map(function (a) {
@@ -1805,7 +2089,7 @@
   }
 
   function placeCycle(cy, n) {
-    alloc(n);
+    alloc(n, 3);
     ruleIdx = 0;
     grid.fill(0); born.fill(0); died.fill(0);
     var bit = cellsOf(cy.m);
@@ -1870,6 +2154,20 @@
     lot();
   }
 
+  // Changer de dimension change tout : le nombre de voisines, donc les
+  // règles, donc les tailles qui ont un sens. On repart d'un monde neuf
+  // plutôt que de traîner un état qui n'a plus de signification.
+  function setDim(d) {
+    if (d === DIM) return;
+    playing = false;
+    ruleIdx = 0;
+    layer = 0; tranche = 0;
+    var t = TAILLES[d];
+    alloc(t.def, d);
+    if (d === 1) graineUnique(); else randomize();
+    syncUI(); requestRender();
+  }
+
   function buildPatterns() {
     var box = document.getElementById("patList");
     box.innerHTML = "";
@@ -1926,9 +2224,20 @@
     clearAll(); requestRender();
   });
   sizeIn.addEventListener("input", function () {
+    var t = TAILLES[DIM];
     var n = parseInt(sizeIn.value, 10);
-    if (!(n >= 0 && n <= 10) || n === N) return;
-    alloc(n); randomize(); syncUI(); requestRender();
+    if (!(n >= t.min && n <= t.max) || n === N) return;
+    alloc(n);
+    if (DIM === 1) graineUnique(); else randomize();
+    syncUI(); requestRender();
+  });
+  trancheIn.addEventListener("input", function () {
+    tranche = Math.max(0, Math.min(N - 1, parseInt(trancheIn.value, 10) - 1));
+    document.getElementById("trancheOut").textContent = String(tranche + 1);
+    saveState(); requestRender();
+  });
+  document.querySelectorAll("[data-dim]").forEach(function (b) {
+    b.addEventListener("click", function () { setDim(Number(b.dataset.dim)); });
   });
   layerIn.addEventListener("input", function () {
     layer = Math.max(0, Math.min(N - 1, parseInt(layerIn.value, 10) - 1));
@@ -1941,7 +2250,7 @@
     saveState();
   });
   ruleBtn.addEventListener("click", function () {
-    ruleIdx = (ruleIdx + 1) % RULES.length;
+    ruleIdx = (ruleIdx + 1) % rulesNow().length;
     saveState(); syncUI(); requestRender();
   });
   soundBtn.addEventListener("click", function () {
@@ -1982,7 +2291,7 @@
   window.vie3d = {
     get N() { return N; }, get gen() { return gen; }, get pop() { return pop; },
     get grid() { return grid; }, get playing() { return playing; },
-    RULES: RULES, VERSIONS: VERSIONS,
+    RULES: RULES, RULESETS: RULESETS, get DIM() { return DIM; }, VERSIONS: VERSIONS,
     step: step, randomize: randomize, clearAll: clearAll,
     setSize: function (n) { alloc(n); randomize(); syncUI(); requestRender(); },
     pickCell: pickCell, pickLive: pickLive, pickLayer: pickLayer,

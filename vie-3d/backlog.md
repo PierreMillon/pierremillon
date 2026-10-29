@@ -1,6 +1,45 @@
 # Vie 3D — backlog
 
-Le jeu de la vie de Conway, mais dans un cube. Une cellule a 26 voisines
+Le jeu de la vie de Conway, **en 1, 2, 3 ou 4 dimensions** (le dossier
+garde son nom `vie-3d/` : l'adresse est sur le téléphone de Pierre, on ne
+la casse pas pour une question de propreté de nom).
+
+Une cellule a **3^d − 1 voisines** : le bloc de côté 3 centré sur elle,
+elle-même exclue. Soit 2 sur une ligne, 8 à plat, 26 en volume, 80 en 4D.
+Les seuils d'une règle ne sont donc pas transposables d'une dimension à
+l'autre — naître à 3 voisines sur 8 (Conway, 37 %) n'a rien à voir avec
+naître à 6 sur 26 (Bays, 23 %).
+
+| dimension | voisines | règles proposées | affichage |
+|---|---|---|---|
+| 1D | 2 | 1111 (Sierpiński), 0211, 1112 | trace espace × temps, le temps descend |
+| 2D | 8 | 2333 (Conway), 3434, 2336 | grille vue de face |
+| 3D | 26 | 5766 (Bays), 4555, 5655 | cube en fil de fer, rotation au doigt |
+| 4D | 80 | 4·12/14·16 et deux autres | n cubes côte à côte, même rotation |
+
+**La règle 4D n'existait pas** : elle a été cherchée. 53 460 règles
+balayées, 594 qui ne remplissent pas l'espace, puis les 60 meilleures
+examinées sur 150 germes chacune. La retenue, survie 4–12 / naissance
+14–16, donne 69 familles distinctes dont 30 figées et 39 oscillateurs,
+avec seulement 4 extinctions sur 150.
+
+**Pourquoi les tranches en 4D, et pourquoi c'est juste.** Les 80 voisines
+se répartissent en 26 dans le cube de la cellule, 27 dans le bloc en face
+du cube précédent et 27 dans celui du suivant : 26 + 27 + 27 = 80. Une
+cellule naît donc sous l'influence de trois cubes consécutifs, et on voit
+l'activité se propager le long de la file. Les deux autres
+représentations classiques — la projection du tesseract, le patron
+déplié en huit cubes (la croix du *Corpus Hypercubus* de Dalí) — sont
+plus belles mais ne permettent plus de viser une case au doigt.
+
+Le moteur ne teste pas les voisines une à une : la somme sur un bloc de
+côté 3 est **séparable**, donc 3 additions par axe et par case (12 en 4D
+au lieu de 80 tests). C'est ce qui rend la 4D jouable sur un téléphone.
+
+---
+
+Historiquement, et toujours le cœur du projet : le jeu de la vie dans un
+cube. Une cellule a 26 voisines
 au lieu de 8, donc les règles de Conway (B3/S23) ne tiennent pas en
 volume : tout s'éteint ou tout sature. On utilise les règles 3D connues,
 notées survie-min / survie-max / naissance-min / naissance-max.
