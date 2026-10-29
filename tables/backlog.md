@@ -44,6 +44,8 @@ Tri : priorité décroissante.
   seule grande grille (100 cases), compteurs d'erreurs partagés
 - [x] v8 — « tout » : grand triangle 2 × 2 à 20 × 20 (190 cases), forme A
   (angle droit en haut à droite) validée par Pierre sur une page de test
+- [x] v9 — Pavé disposé comme un téléphone ; compteur d'erreurs en haut,
+  ↻ retiré ; cases grisées (faciles) jamais demandées, réponse écrite
 
 ## À faire
 
