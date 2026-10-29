@@ -63,8 +63,12 @@ Fait :
   son émis sur 5 générations d'une nature morte). Coupé par défaut.
 - Français / anglais, bouton Historique, numéro de version dans le menu.
 - Motifs prêts à poser (bouton ◈ Motifs) : trois natures mortes, deux
-  oscillateurs de période 2 et le planeur de Bays (10 cellules, période 4,
-  une case en diagonale par période). Poser un motif vide le cube, impose
+  oscillateurs de période 2, le planeur de Bays (10 cellules, période 4,
+  une case en diagonale par période), et trois figures de période
+  supérieure à 2 trouvées par les chasses décrites plus bas — le Fuseau
+  (période 3, 22 cellules), la Toupie (période 4, 19 cellules) et le
+  second planeur de Bays (période 8, 22 cellules, deux cases le long
+  d'un axe par période). Poser un motif vide le cube, impose
   la règle 5766 et agrandit le cube si besoin ; le planeur est adossé au
   mur de départ pour avoir de la route devant lui.
 - **Galeries de cycles** (dans le panneau ◈ Motifs), chaque figure
@@ -202,6 +206,59 @@ Mesures obtenues : le planeur sort d'une soupe 5³ (28 familles sur 30 000
 essais), vole 4 cases dans un cube 8³ et 6 cases dans un 10³ avant de se
 défaire contre la paroi. C'est aussi la preuve que la règle corrigée est
 la bonne : sous l'ancienne (naissance 6 ou 7), aucun planeur n'apparaît.
+
+## Les chasses : ce qu'elles ont donné
+
+Trois recherches lancées en parallèle, chacune ~25 minutes.
+
+**Cube 10³ fermé — 8 592 057 soupes.** 1 814 690 finissent sur un cycle
+non vide. Périodes rencontrées : 1 687 198 de période 1, 127 487 de
+période 2, **2 de période 3, 3 de période 4**. Rien au-delà. Les cinq
+objets de période ≥ 3 représentent 0,0003 % des cycles atteints — c'est
+pour ça que les 332 000 soupes du premier essai n'en avaient trouvé
+aucun.
+
+**Espace libre — 1 173 507 soupes** (grande boîte, motif rejeté s'il
+touche le bord, translation normalisée pour reconnaître les objets qui
+avancent). 14 591 familles distinctes : 11 671 natures mortes, 2 871
+oscillateurs de période 2, 48 planeurs de période 4 et **un planeur de
+période 8 avançant de deux cases le long d'un axe**. Aucun oscillateur
+de période ≥ 3 — alors que le cube fermé en a livré deux. La différence
+vient de la forme des germes : des amas de 4³ à 8³ ici, des soupes
+remplissant tout le 10³ là-bas.
+
+**Espace libre, germes contraints symétriques — 1,1 million de soupes.**
+Beaucoup plus de familles par seconde, mais rien de période ≥ 3 non
+plus.
+
+### Vérification des trois objets
+
+Aucun n'est accepté sur la foi du chercheur qui l'a trouvé. Chacun a été
+rejoué dans **deux moteurs écrits séparément** (la convolution séparable
+du chercheur, et le comptage naïf des 26 voisines du jeu), **dans le
+cube où il est apparu puis isolé en espace libre** dans une boîte 32³.
+
+- **Le Fuseau** — période 3, 22 cellules, encombrement 4×4×6, d'un seul
+  tenant. Période 3 confirmée dans les deux moteurs et en espace libre.
+- **La Toupie** — période 4, 19 cellules, 4×4×4, d'un seul tenant. Idem.
+  Sous un cube de 6 de côté les parois la détruisent, ce qui confirme
+  qu'elle a besoin d'espace et qu'elle ne doit rien aux murs.
+- **Le second planeur de Bays** — période 8, 22 cellules, déplacement
+  (0,0,2). Correspond à la description de Bays (1990) : période 8, deux
+  unités parallèlement à un axe. Mesuré dans le jeu : z = 2, 4, 6 aux
+  générations 8, 16, 24, puis mort contre la paroi à la 32ᵉ.
+
+La distinction qui comptait : **un objet qui ne bat que parce qu'il
+s'appuie sur une paroi n'est pas un oscillateur, c'est un artefact.**
+Les deux premiers passent le test, ce sont de vrais oscillateurs.
+
+### Exhaustif 8 cellules
+
+4 426 165 368 configurations testées en 26,5 min : 1 250 576 267
+survivent au premier pas, 8 551 355 sont encore vivantes après treize,
+et **aucune ne mène à un cycle qui n'était pas déjà connu**. Le
+balayage à 9 cellules (27,5 milliards, ~2 h 45) a été interrompu par un
+redémarrage de la machine — à relancer.
 
 ## Pistes
 

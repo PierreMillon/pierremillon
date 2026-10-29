@@ -275,7 +275,10 @@
     { k: "tambour", minN: 5, c: [[0,1,0],[0,1,1],[1,0,0],[1,0,1],[1,1,0],[1,1,2],[2,1,0],[2,1,1]] },
     { k: "cage", minN: 5, c: [[0,0,1],[0,1,0],[0,1,2],[0,2,1],[1,0,0],[1,0,2],[1,1,0],[1,2,1],[1,2,2],[2,0,1],[2,1,1],[2,1,2]] },
     { k: "coque", minN: 6, c: [[0,1,1],[0,1,2],[1,0,1],[1,0,2],[1,1,0],[1,1,3],[1,2,0],[1,2,3],[2,0,1],[2,0,2],[2,1,0],[2,1,3],[2,2,0],[2,2,3],[2,3,1],[2,3,2],[3,1,1],[3,1,2],[3,2,1],[3,2,2]] },
-    { k: "planeur", minN: 8, edge: true, c: [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[0,2,0],[0,2,1],[1,2,0],[1,2,1],[2,1,0],[2,1,1]] }
+    { k: "planeur", minN: 8, edge: true, c: [[0,0,0],[0,0,1],[0,1,0],[0,1,1],[0,2,0],[0,2,1],[1,2,0],[1,2,1],[2,1,0],[2,1,1]] },
+    { k: "fuseau", minN: 6, c: [[1,1,0],[1,2,0],[1,1,1],[1,2,1],[1,1,2],[1,2,2],[1,1,3],[2,1,3],[1,2,3],[2,2,3],[1,0,4],[2,0,4],[0,1,4],[3,1,4],[0,2,4],[3,2,4],[1,3,4],[2,3,4],[1,1,5],[2,1,5],[1,2,5],[2,2,5]] },
+    { k: "toupie", minN: 6, c: [[1,1,0],[2,1,0],[3,1,0],[1,2,0],[3,2,0],[2,3,0],[2,0,1],[3,1,1],[0,2,1],[1,3,1],[3,3,1],[1,1,2],[3,1,2],[0,2,2],[3,2,2],[1,3,2],[2,3,2],[1,2,3],[2,2,3]] },
+    { k: "planeurHuit", minN: 10, edgeZ: true, c: [[1,0,0],[2,0,0],[1,1,0],[2,1,0],[1,3,0],[2,3,0],[1,4,0],[2,4,0],[1,0,1],[2,0,1],[0,2,1],[3,2,1],[1,3,1],[2,3,1],[1,4,1],[2,4,1],[1,0,2],[2,0,2],[1,1,2],[2,1,2],[1,2,2],[2,2,2]] }
   ];
 
   // La galerie du cube 3³ : la liste COMPLÈTE des cycles de la règle 5766
@@ -1126,6 +1129,9 @@
   ];
 
   var VERSIONS = [
+    { v: "v7",
+      fr: "Trois figures de plus, toutes de période supérieure à 2 — ce que le jeu n'avait encore jamais montré. Le Fuseau (période 3) et la Toupie (période 4) sont sortis d'une chasse de 8,6 millions de tirages au hasard dans un cube 10³ ; ils ont été rejoués dans deux moteurs écrits séparément, et en espace libre, pour s'assurer qu'ils battent vraiment et ne s'appuient pas sur les parois. Le Second Planeur de Bays (période 8, il avance de deux cases le long d'un axe) a été publié en 1990 et retrouvé ici une seule fois sur 1,2 million de soupes.",
+      en: "Three more figures, all of period greater than 2 — something the game had never shown. The Spindle (period 3) and the Spinning Top (period 4) came out of a hunt through 8.6 million random seeds in a 10³ cube; they were replayed in two separately written engines, and in open space, to make sure they really beat and are not leaning on the walls. Bays' Second Glider (period 8, moving two cells along an axis) was published in 1990 and turned up here just once in 1.2 million soups." },
     { v: "v6",
       fr: "Plus de « colonie éteinte » : quand tout meurt, le cube vide et le compteur Vivants à 0 le disent déjà. Il ne reste qu'une mention au centre, celle du cube de côté 0, sans laquelle l'écran noir serait inexplicable.",
       en: "No more “colony extinct”: when everything dies, the empty cube and the Alive counter at 0 already say it. The only line left in the middle is the one for the cube of side 0, without which the black screen would make no sense." },
@@ -1160,6 +1166,9 @@
       pCage: "La Cage", pCageD: "Nature morte, 12 cellules. Une coquille creuse qui tient debout.",
       pCoque: "La Coque", pCoqueD: "Nature morte, 20 cellules. La plus grosse structure stable trouvée.",
       pPlaneur: "Le Planeur de Bays", pPlaneurD: "Planeur, période 4, 10 cellules. Il avance d'une case en diagonale toutes les 4 générations et traverse le cube avant de se défaire contre le mur. La figure qui a rendu la vie 3D célèbre.",
+      pFuseau: "Le Fuseau", pFuseauD: "Oscillateur, période 3, 22 cellules. Trouvé ici même, par une chasse de 8,6 millions de tirages au hasard — deux seulement ont donné une période 3. Vérifié en espace libre : il bat tout seul, sans s'appuyer sur les murs.",
+      pToupie: "La Toupie", pToupieD: "Oscillateur, période 4, 19 cellules, d'un seul tenant. L'objet le plus rare sorti des chasses. Sous un cube de 6 de côté les parois le détruisent : il lui faut de la place pour tourner.",
+      pPlaneurHuit: "Le Second Planeur de Bays", pPlaneurHuitD: "Planeur, période 8, 22 cellules. Il avance de deux cases le long d'un axe — pas en diagonale — toutes les 8 générations. Publié par Carter Bays en 1990 ; retrouvé ici par recherche automatique, une seule fois sur 1,2 million de soupes.",
       gal3Title: "La galerie du cube 3³ — complète",
       gal3Intro: "Dans un cube de 3 de côté il n'y a que 2²⁷ = 134 217 728 états possibles. Je les ai tous parcourus, un par un. Le monde étant fini, toute trajectoire finit forcément par boucler — et il n'existe en tout que 24 boucles : le cube vide, 16 figures figées et 7 qui battent en deux temps. Aucune de période 3 ou plus. Cette liste est donc complète, ce n'est pas un échantillon. Les voici toutes, à poser d'une touche.",
       gal4Title: "La galerie du cube 4³ — récoltée",
@@ -1188,6 +1197,9 @@
       pCage: "The Cage", pCageD: "Still life, 12 cells. A hollow shell that holds itself up.",
       pCoque: "The Hull", pCoqueD: "Still life, 20 cells. The largest stable structure found.",
       pPlaneur: "Bays' Glider", pPlaneurD: "Glider, period 4, 10 cells. It moves one cell diagonally every 4 generations and crosses the cube before breaking up against the wall. The figure that made 3D life famous.",
+      pFuseau: "The Spindle", pFuseauD: "Oscillator, period 3, 22 cells. Found right here, by a hunt through 8.6 million random seeds — only two of them yielded a period 3. Checked in open space: it beats on its own, without leaning on the walls.",
+      pToupie: "The Spinning Top", pToupieD: "Oscillator, period 4, 19 cells, in one piece. The rarest object the hunts produced. In a cube of side 6 or less the walls destroy it: it needs room to turn.",
+      pPlaneurHuit: "Bays' Second Glider", pPlaneurHuitD: "Glider, period 8, 22 cells. It moves two cells along an axis — not diagonally — every 8 generations. Published by Carter Bays in 1990; rediscovered here by automated search, once in 1.2 million soups.",
       gal3Title: "The 3³ cube gallery — complete",
       gal3Intro: "A cube 3 across has only 2²⁷ = 134,217,728 possible states. I walked every one of them. The world being finite, every trajectory must eventually loop — and there are exactly 24 loops: the empty cube, 16 frozen figures and 7 that beat in two steps. None of period 3 or more. So this list is complete, not a sample. Here they all are, one tap away.",
       gal4Title: "The 4³ cube gallery — harvested",
@@ -1719,7 +1731,9 @@
     });
     var off = pat.edge
       ? [Math.max(0, N - ext[0] - 1), 1, Math.floor((N - ext[2]) / 2)]
-      : [0, 1, 2].map(function (a) { return Math.floor((N - ext[a]) / 2); });
+      : pat.edgeZ
+        ? [Math.floor((N - ext[0]) / 2), Math.floor((N - ext[1]) / 2), 0]
+        : [0, 1, 2].map(function (a) { return Math.floor((N - ext[a]) / 2); });
     pat.c.forEach(function (q) {
       var i = q[0] + off[0], j = q[1] + off[1], k = q[2] + off[2];
       if (i >= 0 && i < N && j >= 0 && j < N && k >= 0 && k < N) grid[(k * N + j) * N + i] = 1;
