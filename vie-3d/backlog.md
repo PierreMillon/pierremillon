@@ -32,9 +32,11 @@ l'état.
 Fait :
 
 - Cube de 0³ à 10³, taille au curseur (change la taille = nouveau tirage).
-  Le côté 0 est le cas dégénéré assumé : un monde sans aucune case. On
-  voit la boîte vide, rien ne peut jamais y naître — la génération
-  n'avance même plus, et la boucle de rendu s'arrête (rien à calculer).
+  Le côté 0 est le cas dégénéré assumé : un monde sans aucune case. Rien
+  n'est dessiné — pas même la boîte, puisqu'il n'y a pas de monde à
+  délimiter : un écran noir et la raison écrite dessus. Rien ne peut y
+  naître, la génération n'avance même plus et la boucle de rendu
+  s'arrête (rien à calculer).
 - Structure en fil de fer : les 12 arêtes du cube, plus un quadrillage
   sur les trois faces qui tournent le dos à la caméra — jamais devant les
   cellules.

@@ -1123,6 +1123,9 @@
   ];
 
   var VERSIONS = [
+    { v: "v5",
+      fr: "Le cube de côté 0 ne montre plus rien du tout : pas de case, donc pas de boîte non plus. Un écran noir et la raison écrite dessus.",
+      en: "The cube of side 0 now shows nothing at all: no cell, so no box either. A black screen and the reason written on it." },
     { v: "v4",
       fr: "Les galeries, chaque figure dessinée en miniature. Celle du cube 3³ est complète et démontrée : les 134 217 728 états possibles ont été parcourus un par un, il n'existe que 24 cycles — le cube vide, 16 figures figées et 7 qui battent en deux temps, aucune de période 3 ou plus. Celle du cube 4³ en compte 784 : là, 2⁶⁴ états interdisent toute preuve, mais un moteur dix fois plus rapide a permis de tester sans exception toutes les configurations de 6 et 7 cellules, d'énumérer en entier toutes les configurations symétriques, et d'y ajouter 20 millions de soupes au hasard. Toutes se posent d'une touche. Et le curseur Taille descend jusqu'à 0 : un monde sans aucune case, où il ne peut jamais rien se passer — pas même une génération.",
       en: "The galleries, every figure drawn as a thumbnail. The 3³ one is complete and proven: all 134,217,728 possible states were walked one by one, and there are exactly 24 cycles — the empty cube, 16 frozen figures and 7 that beat in two steps, none of period 3 or more. The 4³ one holds 784: there 2⁶⁴ states rule out any proof, but an engine ten times faster made it possible to test every configuration of 6 and 7 cells without exception, to enumerate every symmetric configuration in full, and to add 20 million random soups on top. All of them are one tap away. And the Size slider now goes down to 0: a world with no cell at all, where nothing can ever happen — not even a generation." },
@@ -1395,6 +1398,7 @@
   // trois faces qui tournent le dos à la caméra — la « boîte en papier
   // millimétré » qui donne l'échelle sans jamais masquer les cellules.
   function drawBox() {
+    if (N < 1) return;          // côté 0 : pas de monde, donc pas de boîte à montrer
     var faces = [
       { n: { x: 0, y: 0, z: -1 }, fixed: "z", v: 0 },
       { n: { x: 0, y: 0, z: 1 }, fixed: "z", v: 1 },
@@ -1407,7 +1411,7 @@
     for (f = 0; f < faces.length; f++) {
       var fa = faces[f];
       if (depth(fa.n) >= 0) continue;              // face tournée vers nous : on la saute
-      for (t = 0; N > 0 && t <= N; t++) {           // N = 0 : pas de quadrillage, seules les arêtes restent
+      for (t = 0; t <= N; t++) {
         var u = t / N;
         if (fa.fixed === "z") {
           a = corner(u, 0, fa.v); b = corner(u, 1, fa.v);
