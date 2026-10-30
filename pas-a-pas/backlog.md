@@ -6,6 +6,10 @@ Tri : priorité décroissante.
 
 ## Fait
 
+- [x] v108 — mode « à ta façon » (badges hors du chemin de l'explication),
+  badges a/a = 1 et facteurs premiers, fraction : 3/3 sort puis devient 1,
+  examen Fraction jouable, Recommencer (chapitre / tout), appui long sonore
+
 - [x] Page d'essai avec 3 démos à exemples fixes et bouton « étape suivante »
 - [x] Démo 1 : − devant une parenthèse (le −1 touche chaque terme)
 - [x] Démo 2 : termes opposés qui s'annulent
@@ -15,6 +19,13 @@ Tri : priorité décroissante.
 - [x] Badges cliquables (✦ 10, ✦ (−1)·(−1)) avec explication
 
 ## À faire
+
+- [ ] Badges cohérents partout : chaque chapitre réussi donne un badge qui
+  agit dans les chapitres à étapes (aujourd'hui : 10, Regrouper, x en
+  facteur, (−1)·(−1), a/a = 1, facteurs premiers). Reste : Distribuer,
+  Calcul (découper), (a+b)², Pascal, conjuguée — pour l'instant seulement
+  dans Fusion
+- [ ] Premiers dans Fraction : toucher directement 6 ou 9 pour le décomposer
 
 ### Décisions de Pierre (questions du 26/09)
 

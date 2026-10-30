@@ -1181,6 +1181,7 @@
        n'entoure que le terme ou la parenthèse */
     .rg-term { display: inline-flex; align-items: center; cursor: pointer; touch-action: none; }
     .rg-term .rg-sign { margin: 0 0.12em; }
+    .rg-mark { margin: 0 0.05em; }
     .rg-box {
       display: inline-flex; align-items: center; gap: 0.06em; padding: 0.08em 0.14em;
       border: 1px solid transparent; border-radius: 0.3em;
@@ -1525,8 +1526,9 @@
     }
     .exam-btn.on { color: var(--sign); border-color: var(--sign); }
     .exam-btn.passed { color: var(--accent); border-color: var(--accent); }
-    body.exam .pf-primes button.can,
-    body.exam .pf-primes button.dim {
+    /* Examen : on ne montre plus quels premiers divisent ; mais 0, 1, 4,
+       6… (pas premiers) restent grisés : ce n'est pas un indice */
+    body.exam .pf-primes button.can {
       color: var(--ink); background: transparent; border-color: var(--accent);
       box-shadow: none; opacity: 1; font-weight: 400;
     }
@@ -1564,6 +1566,8 @@
       <a class="menu-item" href="fiche.html" data-tr="Fiche des règles">Fiche des règles</a>
       <button class="menu-item" id="histBtn" data-tr="Historique">Historique</button>
       <button class="menu-item" id="badgeReset" data-tr="Effacer le badge">Effacer le badge</button>
+      <button class="menu-item" id="resetCh"></button>
+      <button class="menu-item" id="resetAll"></button>
       <button class="menu-item" id="langBtn" data-tr="English">English</button>
       <button class="menu-item" id="gameBtn"></button>
       <button class="menu-item" id="soundBtn"></button>
@@ -1712,6 +1716,12 @@
         </button>
         <button class="badge" id="badgeFac" aria-label="Badge x en facteur" hidden>
           <svg viewBox="0 0 20 20"><path d="M1.5 7.5 L6 12.5 M6 7.5 L1.5 12.5"/><path d="M11 3.5 Q7.5 10 11 16.5"/><path d="M17 3.5 Q20.5 10 17 16.5"/></svg>
+        </button>
+        <button class="badge" id="badgePF" aria-label="Badge facteurs premiers" hidden>
+          <svg viewBox="0 0 20 20"><circle cx="10" cy="4" r="2.3"/><path d="M8.6 5.9 L5 11.5 M11.4 5.9 L15 11.5"/><circle cx="4.5" cy="14" r="2.3"/><circle cx="15.5" cy="14" r="2.3"/></svg>
+        </button>
+        <button class="badge" id="badgeQ" aria-label="Badge a/a = 1" hidden>
+          <svg viewBox="0 0 20 20"><circle cx="6.5" cy="5" r="2.3"/><line x1="2.5" y1="10" x2="10.5" y2="10"/><circle cx="6.5" cy="15" r="2.3"/><path d="M14.5 7 L16.5 5.5 L16.5 15"/></svg>
         </button>
         <button class="badge" id="badgeMM" aria-label="Badge (−1)·(−1) = 1" hidden>
           <svg viewBox="0 0 20 20"><line x1="2" y1="10" x2="18" y2="10" stroke-opacity="0.45"/><path d="M16 10 A6 6 0 0 0 4 10"/><path d="M4 10 A6 6 0 0 0 16 10" stroke-dasharray="1.6 1.6"/><path d="M14.2 12.6 L16 10 L17.4 12.8"/></svg>
@@ -1890,12 +1900,26 @@
               note: "Le facteur 3 est présent <b>en haut et en bas</b>."
             },
             {
+              expr: [F([T("n3", "3")], [T("d3", "3")]), T("o1", "·", "op dot"), F(
+                [T("n2", "2"), T("o2", "·", "op dot"), T("nx", X)],
+                [T("d3b", "3")]
+              )],
+              note: "Les deux 3 sortent ensemble de la fraction : 3 sur 3, fois le reste."
+            },
+            {
               fx: { type: "meet", ids: ["n3", "d3"] },
+              expr: [T("one", "1", "", ["n3", "d3"]), T("o1", "·", "op dot"), F(
+                [T("n2", "2"), T("o2", "·", "op dot"), T("nx", X)],
+                [T("d3b", "3")]
+              )],
+              note: "3 sur 3 = 1 : une quantité non nulle divisée par elle-même vaut 1."
+            },
+            {
               expr: [F(
                 [T("n2", "2"), T("o2", "·", "op dot"), T("nx", X)],
                 [T("d3b", "3")]
               )],
-              note: "3 ÷ 3 = 1. Diviser le haut et le bas par le même facteur non nul ne change pas la valeur."
+              note: "Multiplier par 1 ne change rien : le 1 disparaît."
             },
             {
               expr: [F([T("n2", "2"), T("nx", X)], [T("d3b", "3")])],
@@ -2374,8 +2398,11 @@
               note: "Chaque nombre en <b>produit de facteurs</b> : " + (p * c) + " = " + p + " · " + c + " et " + (c * q) + " = " + c + " · " + q + "." },
             { expr: [F([T("n2", s(p)), T("o1", "·", "op dot"), T("n3", s(c)), T("o2", "·", "op dot"), T("nx", X)], [T("d3", s(c)), T("o3", "·", "op dot"), T("d3b", s(q))])],
               hl: ["n3", "d3"], note: "Le facteur " + c + " est présent <b>en haut et en bas</b>." },
-            { fx: { type: "meet", ids: ["n3", "d3"] }, expr: [F([T("n2", s(p)), T("o2", "·", "op dot"), T("nx", X)], [T("d3b", s(q))])],
-              note: c + " ÷ " + c + " = 1 : on divise le haut et le bas par le même facteur." },
+            { expr: [F([T("n3", s(c))], [T("d3", s(c))]), T("o1", "·", "op dot"), F([T("n2", s(p)), T("o2", "·", "op dot"), T("nx", X)], [T("d3b", s(q))])],
+              note: "Les deux " + c + " sortent ensemble de la fraction : " + c + " sur " + c + ", fois le reste." },
+            { fx: { type: "meet", ids: ["n3", "d3"] }, expr: [T("one", "1", "", ["n3", "d3"]), T("o1", "·", "op dot"), F([T("n2", s(p)), T("o2", "·", "op dot"), T("nx", X)], [T("d3b", s(q))])],
+              note: c + " sur " + c + " = 1 : une quantité non nulle divisée par elle-même vaut 1." },
+            { expr: [F([T("n2", s(p)), T("o2", "·", "op dot"), T("nx", X)], [T("d3b", s(q))])], note: "Multiplier par 1 ne change rien : le 1 disparaît." },
             { expr: [F([T("n2", s(p)), T("nx", X)], [T("d3b", s(q))])], note: "Résultat : <b>" + p + "<i>x</i> sur " + q + "</b>." }
           ];
         }
@@ -3628,6 +3655,7 @@
       function next() {
         quickSeq++;
         if (holdResolve) { var r = holdResolve; holdResolve = null; nextBtn.disabled = true; r(); return; }
+        if (reg && reg.free) { if (reg.done) exitFree(true); return; }
         if (DEMOS[demoIndex].custom) {
           // Singapour : la flèche lance la manche suivante, une fois le
           // résultat affiché
@@ -3693,6 +3721,8 @@
         // jamais de buzz — on essaie, on n'est pas puni
         bad: function () { bip(392, 0.16, "sine", 0, 0.06); bip(494, 0.22, "sine", 0.12, 0.05); },
         tick: function () { bip(1200, 0.03, "square", 0, 0.02); },
+        // Appui long : deux notes douces qui montent, « voici l'explication »
+        info: function () { bip(587, 0.1, "sine", 0, 0.07); bip(880, 0.16, "sine", 0.09, 0.06); },
         badge: function () { [523, 659, 784, 1047].forEach(function (f, i) { bip(f, 0.14, "square", i * 0.1, 0.05); }); }
       };
       document.addEventListener("pointerdown", function () {
@@ -3832,9 +3862,19 @@
             })(v);
           }
         });
+        // a/a donne 1, pas 0 (confusion avec a − a)
+        toks.forEach(function (t) {
+          if (t.t !== "1" || !t.from || t.from.length !== 2) return;
+          var src = prevToks.filter(function (p) { return t.from.indexOf(p.id) >= 0; });
+          if (src.length === 2 && src[0].t === src[1].t) tiers[0].push(function () { t.t = "0"; return function () { t.t = "1"; }; });
+        });
         // 2 et 3. Signes : d'abord ceux que l'étape vient de toucher
         toks.forEach(function (t) {
           var tier = changed(t) ? 1 : 2;
+          // Produit pris pour une somme : 6 = 2 + 3 au lieu de 2 · 3
+          if (t.t === "·" && /\bop\b/.test(t.k)) {
+            tiers[tier].push(function () { var o = t.k; t.t = "+"; t.k = "op"; return function () { t.t = "·"; t.k = o; }; });
+          }
           if ((t.t === "+" || t.t === "−") && /\bop\b/.test(t.k)) {
             tiers[tier].push(function () { var o = t.t; t.t = o === "+" ? "−" : "+"; return function () { t.t = o; }; });
           } else if (tier === 1 && /^\(?−\d/.test(t.t)) {
@@ -3903,6 +3943,7 @@
       }
 
       function prev() {
+        if (reg && reg.free) { exitFree(false); return; }
         closeChoice();
         if (DEMOS[demoIndex].custom === "pf") { pfUndo(); return; }
         if (DEMOS[demoIndex].custom === "fus") { fusStart(); return; }
@@ -3921,6 +3962,7 @@
       function selectDemo(i) {
         if (busy) return;
         quickSeq++;
+        if (reg) reg.free = false;
         gameRun = { demo: DEMOS[i].title, faults: 0, counted: false };
         hideHome();
         if (i !== demoIndex) renew(DEMOS[i]);
@@ -4846,6 +4888,14 @@
 
       function pfDivide(p, btn) {
         if (!pfState || pfState.ready || pfState.sel < 0) return;
+        // Ordre libre : si le nombre en cours ne se divise pas par p mais
+        // qu'un autre nombre encore à finir, oui, c'est lui qu'on divise
+        if (pfState.nodes[pfState.sel].v % p !== 0) {
+          pfState.nodes.forEach(function (c, k) {
+            var leaf = !pfState.nodes.some(function (o) { return o.parent === k; });
+            if (leaf && !c.ok && c.v % p === 0 && pfState.nodes[pfState.sel].v % p !== 0) pfState.sel = k;
+          });
+        }
         var i = pfState.sel, nd = pfState.nodes[i];
         examHit(nd.v % p === 0, "Premiers");
         if (nd.v % p !== 0) {
@@ -5761,12 +5811,17 @@
         { need: "Z", t: [[-2, "x"], [3, ""], [-1, "x"]] },
         { need: "Z", t: [[5, "x"], [-4, ""], [-2, "x"], [9, ""]] }
       ];
+      // Chaque terme a un contenant : "in" (dans la parenthèse (−1)·( … ),
+      // mode « à ta façon » des chapitres à étapes) ou "out". Les gestes ne
+      // se font qu'entre termes d'un même contenant.
       var reg = null, regUid = 0, regLast = -1;
+      function regActive() { return !!reg && (reg.free || DEMOS[demoIndex].custom === "reg"); }
+      function regCh() { return reg && reg.free ? DEMOS[demoIndex].title : "Regrouper"; }
       function regStart() {
         var pool = REG_EX.map(function (e, i) { return i; }).filter(function (i) { return sets[REG_EX[i].need] && i !== regLast; });
         var i = pool[Math.floor(Math.random() * pool.length)];
         regLast = i;
-        reg = { terms: REG_EX[i].t.map(function (t) { return { id: ++regUid, k: t[0], s: t[1] }; }), sel: null, mistake: false, done: false };
+        reg = { terms: REG_EX[i].t.map(function (t) { return { id: ++regUid, k: t[0], s: t[1], c: "out" }; }), sel: null, mistake: false, done: false };
         document.getElementById("regQ").textContent = LANG === "en" ? "Group, factor, compute." : "Regroupe, mets en facteur, calcule.";
         nextBtn.disabled = true;
         nextBtn.textContent = "→";
@@ -5784,30 +5839,43 @@
           : (en ? "Tap a term, then a similar one — or slide one onto the other." : "Touche un terme, puis un terme semblable — ou glisse l'un sur l'autre.");
       }
       function regSum(t) { return t.parts ? t.parts.reduce(function (a, p) { return a + p; }, 0) : t.k; }
+      function regCont(c) { return reg.terms.filter(function (t) { return t.c === c; }); }
+      function regHasBlock() { return reg.terms.some(function (t) { return t.c === "in"; }); }
       function regRender(appear) {
         var old = {};
         regRow.querySelectorAll(".rg-term").forEach(function (e) { old[e.dataset.id] = e.getBoundingClientRect(); });
         regRow.innerHTML = "";
+        var block = regHasBlock();
         reg.terms.forEach(function (t, i) {
+          var prev = reg.terms[i - 1], firstOfCont = !prev || prev.c !== t.c;
+          if (t.c === "in" && firstOfCont) {
+            var mk = document.createElement("span"); mk.className = "rg-mark"; mk.textContent = "(−1)·("; regRow.appendChild(mk);
+          }
+          // Signe : en tête d'un contenant, seulement s'il est négatif — sauf
+          // le premier terme après la parenthèse, qui garde toujours le sien
+          var forceSign = !firstOfCont || (t.c === "out" && block);
           var e = document.createElement("span");
           e.className = "rg-term" + (t.parts ? " group" : "") + (reg.sel && reg.sel.id === t.id && !reg.sel.coef ? " sel" : "");
           e.dataset.id = t.id;
           var html = "";
           if (t.parts) {
-            // Le groupe garde un + devant lui (sauf en tête)
-            if (i > 0) html += '<span class="rg-sign">+</span>';
+            if (forceSign) html += '<span class="rg-sign">+</span>';
             html += '<span class="rg-box">(' + t.parts.map(function (k, j) {
               return (j === 0 ? (k < 0 ? "−" : "") : (k < 0 ? " − " : " + ")) + Math.abs(k);
             }).join("") + ")" + (t.s ? "·<i>" + t.s + "</i>" : "") + "</span>";
           } else {
             var neg = t.k < 0;
-            if (i > 0 || neg) html += '<span class="rg-sign">' + (neg ? "−" : "+") + "</span>";
+            if (forceSign || neg) html += '<span class="rg-sign">' + (neg ? "−" : "+") + "</span>";
             var a = Math.abs(t.k), csel = reg.sel && reg.sel.id === t.id && reg.sel.coef ? " sel" : "";
             if (t.s) html += '<span class="rg-box"><span class="rg-coef' + csel + '">' + (a === 1 ? "" : a) + "</span><i>" + t.s + "</i></span>";
             else html += '<span class="rg-box"><span class="rg-coef' + csel + '">' + a + "</span></span>";
           }
           e.innerHTML = html;
           regRow.appendChild(e);
+          var nx = reg.terms[i + 1];
+          if (t.c === "in" && (!nx || nx.c !== "in")) {
+            var mk2 = document.createElement("span"); mk2.className = "rg-mark"; mk2.textContent = ")"; regRow.appendChild(mk2);
+          }
         });
         // Glissement fluide de chaque terme depuis son ancienne place
         regRow.querySelectorAll(".rg-term").forEach(function (e) {
@@ -5822,56 +5890,75 @@
         badgeChip.classList.toggle("ready", !!reg && reg.terms.some(function (t) { return t.parts; }));
         badgeReg.classList.toggle("ready", regCanGroup());
         badgeFac.classList.toggle("ready", regCanFactor());
+        badgeMM.classList.toggle("ready", !reg.done && regHasBlock());
       }
-      // Badge Regrouper : rapprocher, tout d'un coup — les x côte à côte à
-      // gauche, les nombres à droite (eux entre parenthèses : c'est déjà
-      // une somme à calculer). Les x ne sont PAS mis en facteur : c'est le
-      // badge « x en facteur ».
-      function regSplit() {
-        return { xs: reg.terms.filter(function (t) { return t.s; }), ns: reg.terms.filter(function (t) { return !t.s; }) };
+      // Badge Regrouper : rapprocher, tout d'un coup, dans chaque contenant —
+      // les x côte à côte à gauche, les nombres à droite (eux entre
+      // parenthèses : c'est déjà une somme à calculer). Les x ne sont PAS
+      // mis en facteur : c'est le badge « x en facteur ».
+      function regSplitList(list) {
+        return { xs: list.filter(function (t) { return t.s; }), ns: list.filter(function (t) { return !t.s; }) };
       }
+      function regSplit() { return regSplitList(reg.terms); }
+      function regEachCont(fn) { var ins = fn(regCont("in")), outs = fn(regCont("out")); reg.terms = ins.concat(outs); }
       function regCanGroup() {
         if (!reg || reg.done || !doneMap["Regrouper"]) return false;
-        var p = regSplit();
-        var ordered = reg.terms.every(function (t, i) { return i < p.xs.length ? t.s : !t.s; });
-        return !ordered || p.ns.length > 1;
+        return ["in", "out"].some(function (c) {
+          var list = regCont(c), p = regSplitList(list);
+          var ordered = list.every(function (t, i) { return i < p.xs.length ? t.s : !t.s; });
+          return !ordered || p.ns.length > 1;
+        });
       }
       function regMerge(list) {
         if (list.length < 2) return list;
         var parts = [];
         list.forEach(function (t) { parts = parts.concat(t.parts || [t.k]); });
-        return [{ id: ++regUid, parts: parts, s: list[0].s }];
+        return [{ id: ++regUid, parts: parts, s: list[0].s, c: list[0].c }];
       }
       // Badge x en facteur : les termes en x côte à côte → (a + b)·x
       function regCanFactor() {
         if (!reg || reg.done || !doneMap["x en facteur"]) return false;
-        var p = regSplit();
-        return p.xs.length > 1 && reg.terms.every(function (t, i) { return i < p.xs.length ? t.s : true; });
+        return ["in", "out"].some(function (c) {
+          var list = regCont(c), p = regSplitList(list);
+          return p.xs.length > 1 && list.every(function (t, i) { return i < p.xs.length ? t.s : true; });
+        });
       }
+      function regAfter() { regRender(); regHint(); regCheck(); }
       function regFactorAll() {
         if (!regCanFactor()) return false;
         reg.sel = null;
-        var p = regSplit();
-        reg.terms = regMerge(p.xs).concat(p.ns);
-        regRender();
-        regHint();
-        regCheck();
+        regEachCont(function (list) {
+          var p = regSplitList(list), ordered = list.every(function (t, i) { return i < p.xs.length ? t.s : true; });
+          return ordered ? regMerge(p.xs).concat(p.ns) : list;
+        });
+        regAfter();
         return true;
       }
       function regGroupAll() {
         if (!regCanGroup()) return false;
         reg.sel = null;
-        var p = regSplit();
-        reg.terms = p.xs.concat(regMerge(p.ns));
-        regRender();
-        regHint();
-        regCheck();
+        regEachCont(function (list) { var p = regSplitList(list); return p.xs.concat(regMerge(p.ns)); });
+        regAfter();
+        return true;
+      }
+      // Badge (−1)·(−1) : le −1 se distribue, chaque signe dans la
+      // parenthèse change d'un coup, et la parenthèse disparaît
+      function regDistribute() {
+        if (!reg || reg.done || !regHasBlock()) return false;
+        reg.sel = null;
+        var ins = regCont("in"), outs = regCont("out");
+        ins.forEach(function (t) {
+          if (t.parts) t.parts = t.parts.map(function (k) { return -k; }); else t.k = -t.k;
+          t.c = "out";
+        });
+        reg.terms = ins.concat(outs);
+        regAfter();
         return true;
       }
       function regFind(id) { for (var i = 0; i < reg.terms.length; i++) if (reg.terms[i].id === id) return i; return -1; }
       function regWrong(el) {
         reg.mistake = true;
-        examHit(false, "Regrouper");
+        examHit(false, regCh());
         SND.bad();
         if (el) el.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
       }
@@ -5879,14 +5966,22 @@
       function regPair(ia, ib) {
         var A = reg.terms[ia], B = reg.terms[ib];
         reg.sel = null;
-        if (A.s !== B.s) { regWrong(regRow.children[ib]); regRender(); return; }
-        // Les termes en x partent tout à gauche, les nombres tout à droite
+        if (A.s !== B.s || A.c !== B.c) { regWrong(regRow.querySelector('.rg-term[data-id="' + B.id + '"]')); regRender(); return; }
+        // Dans leur contenant, les termes en x partent tout à gauche, les
+        // nombres tout à droite
         function place(items) {
           items.forEach(function (it) { reg.terms.splice(regFind(it.id), 1); });
-          if (A.s) reg.terms.unshift.apply(reg.terms, items); else reg.terms.push.apply(reg.terms, items);
+          regEachCont(function (list) {
+            if (list.length && list[0].c !== A.c) return list;
+            if (!list.length && A.c === "in") return list;
+            return A.s ? items.concat(list) : list.concat(items);
+          });
+          if (!reg.terms.some(function (t) { return items.indexOf(t) >= 0; })) {
+            // contenant vidé par le retrait : on remet les éléments
+            reg.terms = A.c === "in" ? items.concat(reg.terms) : reg.terms.concat(items);
+          }
         }
         if (Math.abs(ia - ib) > 1) {
-          // Pas côte à côte : les deux se rejoignent, à leur place
           place([A, B]);
           SND.tick();
           regRender();
@@ -5895,7 +5990,7 @@
         // Côte à côte : on regroupe dans une parenthèse (en x : facteur commun)
         var first = Math.min(ia, ib), L = reg.terms[first], Rt = reg.terms[first + 1];
         var parts = (L.parts || [L.k]).concat(Rt.parts || [Rt.k]);
-        var g = { id: ++regUid, parts: parts, s: L.s };
+        var g = { id: ++regUid, parts: parts, s: L.s, c: L.c };
         reg.terms.splice(first, 2, g);
         place([g]);
         SND.meet();
@@ -5913,26 +6008,107 @@
         if (fromBadge) badgeFloat(badgeChip, LANG === "en" ? "Ten frame" : "Cadre de dix");
         ids.forEach(function (id) {
           var i = regFind(id), g = reg.terms[i], k = regSum(g);
-          if (k === 0) reg.terms.splice(i, 1); else reg.terms.splice(i, 1, { id: g.id, k: k, s: g.s });
+          if (k === 0) reg.terms.splice(i, 1); else reg.terms.splice(i, 1, { id: g.id, k: k, s: g.s, c: g.c });
         });
-        regRender();
-        regHint();
-        regCheck();
+        regAfter();
         return true;
       }
       function regCheck() {
         var t = reg.terms;
-        if (t.some(function (x) { return x.parts; })) return;
+        if (regHasBlock() || t.some(function (x) { return x.parts; })) return;
         var xs = t.filter(function (x) { return x.s; }), ns = t.filter(function (x) { return !x.s; });
         if (xs.length > 1 || ns.length > 1 || (xs.length && ns.length && t[0].s === "")) return;
         reg.done = true;
-        examHit(!reg.mistake, "Regrouper");
+        examHit(!reg.mistake, regCh());
         SND.ok();
-        document.getElementById("regMsg").textContent = "✓ " + regRow.textContent.replace(/\s+/g, " ").trim();
+        document.getElementById("regMsg").textContent = "✓ " + regRow.textContent.replace(/\s+/g, " ").trim() +
+          (reg.free ? (LANG === "en" ? " — arrow: another one" : " — la flèche : un autre") : "");
         nextBtn.disabled = false;
         nextBtn.animate([{ transform: "scale(1)" }, { transform: "scale(1.15)" }, { transform: "scale(1)" }], { duration: ms(600) });
-        quickNext("reg", regStart, 1600);
+        if (!reg.free) quickNext("reg", regStart, 1600);
       }
+
+      // ---------- « À ta façon » dans les chapitres à étapes ----------
+      // Un badge touché hors du chemin de l'explication : l'expression du
+      // moment devient manipulable (comme dans Regrouper), parenthèse
+      // (−1)·( … ) comprise. ← revient à l'explication.
+      function linSum(str) {
+        if (!str) return [];
+        var out = [], re = /([+-]?)(\d*)(x?)/g, pos = 0, m;
+        while (pos < str.length) {
+          re.lastIndex = pos;
+          m = re.exec(str);
+          if (!m || m.index !== pos || !m[0] || (!m[2] && !m[3]) || (pos > 0 && !m[1])) return null;
+          out.push({ k: (m[1] === "-" ? -1 : 1) * (m[2] ? Number(m[2]) : 1), s: m[3] });
+          pos += m[0].length;
+        }
+        return out;
+      }
+      function linParse(txt) {
+        txt = txt.replace(/\s+/g, "").replace(/(\d)\*x/g, "$1x");
+        var m = /^(\(-1\)\*|-)\(([^()]*)\)(.*)$/.exec(txt);
+        if (m) {
+          var ins = linSum(m[2]), outs = linSum(m[3]);
+          return ins && outs ? { ins: ins, outs: outs } : null;
+        }
+        var all = linSum(txt);
+        return all ? { ins: [], outs: all } : null;
+      }
+      function freeTerms() {
+        var d = DEMOS[demoIndex];
+        if (!d || d.custom || busy || (homeEl && !homeEl.hidden)) return null;
+        var st = d.steps[cur];
+        if (!st || !st.expr || st.summary) return null;
+        var p = linParse(exprText(st.expr));
+        if (!p) return null;
+        return p.ins.map(function (t) { return { id: ++regUid, k: t.k, s: t.s, c: "in" }; })
+          .concat(p.outs.map(function (t) { return { id: ++regUid, k: t.k, s: t.s, c: "out" }; }));
+      }
+      var FREE_ACT = { group: [function () { return regCanGroup(); }, function () { return regGroupAll(); }],
+                       factor: [function () { return regCanFactor(); }, function () { return regFactorAll(); }],
+                       dist: [function () { return regHasBlock() && doneMap["−×−"]; }, function () { return regDistribute(); }] };
+      // L'action est-elle possible sur l'expression du moment ? (sans rien changer)
+      function freeCan(action) {
+        if (regActive()) return false;
+        var terms = freeTerms();
+        if (!terms) return false;
+        var save = reg;
+        reg = { terms: terms, sel: null, mistake: false, done: false, free: true };
+        var ok = FREE_ACT[action][0]();
+        reg = save;
+        return !!ok;
+      }
+      function enterFree(action) {
+        if (!freeCan(action)) return false;
+        reg = { terms: freeTerms(), sel: null, mistake: false, done: false, free: true };
+        closeChoice();
+        stageWrap.hidden = true;
+        regEl.hidden = false;
+        document.getElementById("regQ").textContent = LANG === "en" ? "Your way — ← goes back to the explanation" : "À ta façon — ← revient à l'explication";
+        prevBtn.style.visibility = "";
+        nextBtn.disabled = true;
+        nextBtn.textContent = "→";
+        nextBtn.classList.remove("text");
+        regRender(true);
+        FREE_ACT[action][1]();
+        return true;
+      }
+      function exitFree(fresh) {
+        reg.free = false;
+        regEl.hidden = true;
+        stageWrap.hidden = false;
+        var d = DEMOS[demoIndex];
+        if (fresh) {
+          gameRun = { demo: d.title, faults: 0, counted: false };
+          renew(d); buildDots(d);
+          cur = 0;
+        }
+        build(d.steps[cur]);
+        refreshUi();
+        syncTop(true);
+        if (fresh) autoChoice(600);
+      }
+
       // Toucher / glisser
       (function () {
         var down = null;
@@ -6636,6 +6812,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v108", text: "Fractions : le facteur commun sort de la fraction (3/3 · le reste), devient 1, puis disparaît. Nouveau badge a/a = 1 (débloqué par Piège, à partir de ℚ) et badge facteurs premiers (débloqué par Premiers). Menu ☰ : « Recommencer » le chapitre ouvert, ou « Tout recommencer » (deux appuis pour confirmer). Premiers : en examen, 0, 1, 4, 6… restent grisés ; et l'ordre est libre (21 : 3 ou 7 d'abord, puis l'autre se divise aussi directement). Examen Fraction : il y a enfin des réponses à choisir (produit ou somme ? 1 ou 0 ?), et en examen un badge bien utilisé compte comme une bonne réponse. Appui long sur un badge : un petit son, et un toucher n'importe où ferme l'explication. " + "Chapitres à étapes : les badges marchent aussi hors du chemin de l'explication. Sur (−1)·(2x − 3 + x), Regrouper range d'abord dans la parenthèse : l'expression devient manipulable « à ta façon » (toucher, glisser, badges), le badge (−1)·(−1) distribue le −1 quand tu veux. ← revient à l'explication." },
         { v: "v107", text: "Les badges ne s'affichent plus là où ils ne servent à rien (Ensembles, Venn, Structures, Solutions, Premiers, Singapour, Calcul, Pascal, Fusion, Exp / ln) : seulement dans les chapitres à étapes et Regrouper. Dans ℕ, le badge (−1)·(−1) est caché (pas de −1 dans ℕ). Le numéro de version est écrit en bas du menu ☰." },
         { v: "v106", text: "Nouveau chapitre Exp / ln (dans ℝ), sur le thème du TD 3 : simplifier (ln(e²ˣ + eˣ) = x + ln(eˣ + 1), e^(3 ln x) = x³, log(5 × 10⁻³)…), résoudre (eˣ = −1, e²ˣ + eˣ − 2 = 0 avec X = eˣ…), limites (croissances comparées, x ln x en 0, (1 + 1/x)ˣ → e). Trois réponses, puis le geste qui y mène." },
         { v: "v105", text: "Bouton Examen sous le titre (le titre du chapitre prend toute la ligne). Structures, réduit à la définition du cours : un groupe = loi interne, associative, élément neutre, symétriques. Construire (la commutativité est un piège) et « (ℤ, −) est-il un groupe ? » oui / non, puis les propriétés ✓ / ✗ avec la façon dont on sort de la structure (3 − 5 = −2 ∉ ℕ ; l'inverse de 2 serait 1/2 ∉ ℤ…). Toucher la flèche annule le passage automatique à la question suivante (plus de question sautée)." },
@@ -6779,6 +6956,7 @@
       menuBtn.addEventListener("click", function (e) {
         e.stopPropagation();
         var open = menuPanel.hidden;
+        if (open) resetLabels();
         menuPanel.hidden = !open;
         menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
       });
@@ -6931,6 +7109,55 @@
         toast("✓ " + tr(title) + (after > before ? "  —  " + SYM_OF[UNIV[after - 1]] + (LANG === "en" ? " unlocked" : " ouvert") : ""));
         renderUniv();
       }
+      // Recommencer : un chapitre (celui ouvert) ou toute la progression.
+      // Un second appui confirme — rien ne s'efface par accident.
+      var resetCh = document.getElementById("resetCh"), resetAll = document.getElementById("resetAll"), resetArm = null;
+      function resetLabels() {
+        var en = LANG === "en", onCh = homeEl.hidden;
+        resetArm = null;
+        resetCh.hidden = !onCh;
+        resetCh.textContent = (en ? "Restart “" : "Recommencer « ") + tr(DEMOS[demoIndex].title) + (en ? "”" : " »");
+        resetAll.textContent = en ? "Restart everything" : "Tout recommencer";
+      }
+      function resetSave() {
+        try {
+          localStorage.setItem("pasapas_done", JSON.stringify(doneMap));
+          localStorage.setItem("pasapas_runs", JSON.stringify(runs));
+          localStorage.setItem("pasapas_examscore", JSON.stringify(examScores));
+        } catch (e) {}
+        computeSets(); applySets(); renderUniv(); refreshBadges();
+        if (homeEl.hidden) selectDemo(demoIndex);
+        else if (typeof renderHome === "function") renderHome();
+      }
+      function resetConfirm(btn, what, fn) {
+        if (resetArm !== what) {
+          resetArm = what;
+          btn.textContent = LANG === "en" ? "Sure? Tap again" : "Sûr ? Touche encore";
+          SND.tick();
+          return;
+        }
+        fn();
+        closeMenu();
+        resetLabels();
+        toast(LANG === "en" ? "Restarted" : "C'est reparti de zéro");
+      }
+      resetCh.addEventListener("click", function (e) {
+        e.stopPropagation();
+        resetConfirm(resetCh, "ch", function () {
+          var t = DEMOS[demoIndex].title;
+          delete doneMap[t]; delete runs[t]; delete examScores[t];
+          if (t === "Singapour") setBadge(false);
+          resetSave();
+        });
+      });
+      resetAll.addEventListener("click", function (e) {
+        e.stopPropagation();
+        resetConfirm(resetAll, "all", function () {
+          doneMap = {}; runs = {}; examScores = {};
+          setBadge(false);
+          resetSave();
+        });
+      });
       // Pouvoirs gagnés en réussissant un chapitre (utilisés dans Fusion)
       var POWERS = {
         "Premiers": { btn: "n → 2·3·…", fr: ["Décomposer en facteurs premiers", "Touche une bulle nombre puis ce pouvoir : 12 = 2²·3. Dans Fusion, deux bulles au nombre différent peuvent alors se mettre en facteur : 12·x + 18 = 6·(2·x + 3)."],
@@ -6960,7 +7187,9 @@
       // Badges : un appui dessus rappelle ce qu'ils veulent dire
       var BADGE_INFO = {
         dix: { btn: "10", fr: ["Cadre de dix", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12 : on complète d'abord la dizaine. Le cadre de dix s'affiche sous chaque addition ; la flèche lance la suite."],
-               en: ["Ten frame", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12: fill up the ten first. The ten frame shows under every addition; the arrow moves on."] }
+               en: ["Ten frame", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12: fill up the ten first. The ten frame shows under every addition; the arrow moves on."] },
+        q: { btn: "a/a = 1", fr: ["Quantité sur elle-même", "Une quantité divisée par elle-même vaut 1, si elle n'est pas nulle : 3/3 = 1. Quand l'icône luit, un appui fait le calcul d'un coup."],
+             en: ["A quantity over itself", "A quantity divided by itself is 1, if it is not zero: 3/3 = 1. When the icon glows, one tap does it at once."] }
       };
       // Appui court sur un badge : il agit, ou une étiquette dit pourquoi
       // il ne peut pas. Appui long : l'explication complète du badge.
@@ -6995,11 +7224,24 @@
         document.getElementById("puDesc").textContent = t[1];
         var ov = document.getElementById("powerOverlay");
         ov.hidden = false;
+        ov.classList.add("info");
+        SND.info();
         ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms(300) });
       }
+      // Explication d'un badge : un toucher n'importe où la ferme (le doigt
+      // encore posé de l'appui long ne compte pas : on attend un nouvel appui)
+      document.getElementById("powerOverlay").addEventListener("pointerdown", function (e) {
+        var ov = e.currentTarget;
+        if (!ov.classList.contains("info")) return;
+        e.preventDefault();
+        ov.hidden = true;
+        ov.classList.remove("info");
+      });
       var badgeMM = document.getElementById("badgeMM");
-      var badgeReg = document.getElementById("badgeReg"), badgeFac = document.getElementById("badgeFac");
+      var badgeReg = document.getElementById("badgeReg"), badgeFac = document.getElementById("badgeFac"), badgeQ = document.getElementById("badgeQ"), badgePF = document.getElementById("badgePF");
       badgeLongPress(badgeChip, function () { return BADGE_INFO.dix; });
+      badgeLongPress(badgeQ, function () { return BADGE_INFO.q; });
+      badgeLongPress(badgePF, function () { return POWERS["Premiers"]; });
       badgeLongPress(badgeMM, function () { return POWERS["−×−"]; });
       badgeLongPress(badgeReg, function () { return POWERS["Regrouper"]; });
       badgeLongPress(badgeFac, function () { return POWERS["x en facteur"]; });
@@ -7024,6 +7266,9 @@
         badgeMM.hidden = !doneMap["−×−"] || universe === "N";
         badgeReg.hidden = !doneMap["Regrouper"];
         badgeFac.hidden = !doneMap["x en facteur"];
+        // a/a = 1 : appris dans Piège ; seulement à partir de ℚ
+        badgeQ.hidden = !doneMap["Piège"] || universe === "N" || universe === "Z";
+        badgePF.hidden = !doneMap["Premiers"];
       }
       refreshBadges();
       // Badge 10 : quand l'étape suivante est une addition faite au cadre
@@ -7037,13 +7282,14 @@
       }
       badgeChip.addEventListener("click", function () {
         if (badgeLong) return;
-        if (DEMOS[demoIndex].custom === "reg") { if (!regCompute(true)) badgeNo(badgeChip, regWhyNot()); return; }
+        if (regActive()) { if (!regCompute(true)) badgeNo(badgeChip, regWhyNot()); return; }
         var k = dixTarget();
         if (k < 0 || busy) { badgeNo(badgeChip, LANG === "en" ? "No addition to do here" : "Pas d'addition à calculer ici"); return; }
         closeChoice();
         SND.badge();
         badgeFloat(badgeChip, LANG === "en" ? "Ten frame" : "Cadre de dix");
         skipBlocks = true;
+        badgeExam();
         go(k);
       });
       // Le badge agit : à une étape où des (−1) multiplient encore, un
@@ -7094,7 +7340,7 @@
       ];
       ACTS.forEach(function (A) {
         A.el.addEventListener("click", function () {
-          if (DEMOS[demoIndex].custom === "reg" && !badgeLong) {
+          if (regActive() && !badgeLong) {
             var en = LANG === "en";
             if (A.ch === "Regrouper") {
               if (regGroupAll()) { badgeFloat(A.el, tr(A.ch)); SND.badge(); }
@@ -7108,22 +7354,86 @@
           }
           var k = actTarget(A.test, A.ch);
           if (badgeLong) return;
+          if (k < 0 && !busy && enterFree(A.ch === "Regrouper" ? "group" : "factor")) { badgeFloat(A.el, tr(A.ch)); SND.badge(); return; }
           if (k < 0 || busy) { badgeNo(A.el, A.why()); return; }
           closeChoice();
           SND.badge();
           badgeFloat(A.el, tr(A.ch));
           A.el.animate([{ transform: "scale(1)" }, { transform: "scale(1.2)" }, { transform: "scale(1)" }], { duration: ms(400) });
+          badgeExam();
           go(k);
         });
       });
+      // En examen, un badge bien utilisé compte comme une bonne réponse
+      function badgeExam() { if (exam) examHit(true, DEMOS[demoIndex].title); }
+      // Badge facteurs premiers : l'étape suivante découpe un nombre en
+      // produit (6 → 2 · 3)
+      function pfTarget() {
+        var d = DEMOS[demoIndex];
+        if (!d || d.custom || badgePF.hidden || (homeEl && !homeEl.hidden)) return -1;
+        var st = d.steps[cur], nx = d.steps[cur + 1];
+        if (!st || !st.expr || st.summary || !nx || !nx.expr || nx.summary) return -1;
+        var txt = {}, cnt = {};
+        flatTokens(st.expr, []).forEach(function (t) { txt[t.id] = t.t; });
+        var split = false;
+        flatTokens(nx.expr, []).forEach(function (t) {
+          if (!t.from || t.from.length !== 1 || !/^\d+$/.test(txt[t.from[0]] || "")) return;
+          if (t.t === "·") split = true;
+          else if (/^\d+$/.test(t.t)) cnt[t.from[0]] = (cnt[t.from[0]] || 0) + 1;
+        });
+        return split && Object.keys(cnt).some(function (k) { return cnt[k] >= 2; }) ? cur + 1 : -1;
+      }
+      badgePF.addEventListener("click", function () {
+        var k = pfTarget();
+        if (badgeLong) return;
+        if (k < 0 || busy) { badgeNo(badgePF, LANG === "en" ? "No number to split here" : "Pas de nombre à décomposer ici"); return; }
+        closeChoice();
+        SND.badge();
+        badgeFloat(badgePF, LANG === "en" ? "Prime factors" : "Facteurs premiers");
+        badgeExam();
+        go(k);
+      });
+      // Badge a/a = 1 : l'étape suivante réunit deux quantités égales en 1
+      function qTarget() {
+        var d = DEMOS[demoIndex];
+        if (!d || d.custom || !doneMap["Piège"] || badgeQ.hidden || (homeEl && !homeEl.hidden)) return -1;
+        var st = d.steps[cur], nx = d.steps[cur + 1];
+        if (!st || !st.expr || !nx || !nx.expr || !nx.fx || nx.fx.type !== "meet" || nx.fx.blocks || nx.fx.ids.length !== 2) return -1;
+        var txt = {};
+        flatTokens(st.expr, []).forEach(function (t) { txt[t.id] = t.t; });
+        var a = txt[nx.fx.ids[0]], b = txt[nx.fx.ids[1]];
+        if (a === undefined || a !== b || a === "0") return -1;
+        var one = flatTokens(nx.expr, []).some(function (t) { return t.t === "1" && t.from && t.from.indexOf(nx.fx.ids[0]) >= 0; });
+        return one ? cur + 1 : -1;
+      }
+      badgeQ.addEventListener("click", function () {
+        var k = qTarget();
+        if (badgeLong) return;
+        if (k < 0 || busy) { badgeNo(badgeQ, LANG === "en" ? "No a/a here" : "Pas de a/a ici"); return; }
+        closeChoice();
+        SND.badge();
+        badgeFloat(badgeQ, "a/a = 1");
+        badgeExam();
+        go(k);
+      });
       function refreshMM() {
+        badgePF.classList.toggle("ready", pfTarget() >= 0);
+        badgeQ.classList.toggle("ready", qTarget() >= 0);
         badgeMM.classList.toggle("ready", mmTarget() >= 0);
         badgeChip.classList.toggle("ready", dixTarget() >= 0);
-        ACTS.forEach(function (A) { A.el.classList.toggle("ready", actTarget(A.test, A.ch) >= 0); });
+        ACTS.forEach(function (A) {
+          A.el.classList.toggle("ready", actTarget(A.test, A.ch) >= 0 || freeCan(A.ch === "Regrouper" ? "group" : "factor"));
+        });
       }
       badgeMM.addEventListener("click", function () {
         var k = mmTarget();
         if (badgeLong) return;
+        if (regActive()) {
+          if (regDistribute()) { badgeFloat(badgeMM, "(−1)·(−1) = 1"); SND.badge(); }
+          else badgeNo(badgeMM, LANG === "en" ? "No (−1) to work out here" : "Pas de (−1) à calculer ici");
+          return;
+        }
+        if (k < 0 && !busy && enterFree("dist")) { badgeFloat(badgeMM, "(−1)·(−1) = 1"); SND.badge(); return; }
         if (k < 0 || busy) { badgeNo(badgeMM, LANG === "en" ? "No (−1) to work out here" : "Pas de (−1) à calculer ici"); return; }
         closeChoice();
         SND.badge();
@@ -7131,6 +7441,7 @@
         stage.querySelectorAll(".tok").forEach(function (e) {
           if (/^\(−1\)$/.test(e.textContent.trim())) e.animate([{ transform: "rotate(0)" }, { transform: "rotate(180deg)" }, { transform: "rotate(360deg)" }], { duration: ms(600) });
         });
+        badgeExam();
         setTimeout(function () { go(k); }, ms(600));
       });
 
@@ -7144,6 +7455,7 @@
         document.getElementById("puDesc").textContent = t[1];
         var ov = document.getElementById("powerOverlay");
         ov.hidden = false;
+        ov.classList.remove("info");
         ov.animate([{ opacity: 0 }, { opacity: 1 }], { duration: ms(300) });
         document.getElementById("puBtn").animate([{ transform: "scale(0.5)" }, { transform: "scale(1.1)", offset: 0.7 }, { transform: "scale(1)" }], { duration: ms(600), easing: "ease-out" });
       }
