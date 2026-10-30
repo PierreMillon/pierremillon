@@ -4469,7 +4469,7 @@
       // (déjà un produit de premiers : 4 = 2 × 2…).
       var DIV_INFO = {
         0: "Interdit : on ne divise jamais par 0 dans ℕ, ℤ, ℚ, ℝ, ℂ. Possible seulement dans des ensembles prolongés : la droite projective ℝ ∪ {∞} ou la sphère de Riemann ℂ ∪ {∞}, où x ÷ 0 = ∞ pour x ≠ 0 (0 ÷ 0 reste indéfini).",
-        1: "Inutile : n ÷ 1 = n.",
+        1: "1 n'est pas premier : un premier a exactement deux diviseurs (1 et lui-même), 1 n'en a qu'un. Sinon la décomposition ne serait plus unique : 6 = 2·3 = 1·2·3 = 1·1·2·3… Et n ÷ 1 = n : ça n'avance pas.",
         2: "Se termine par un chiffre pair.",
         3: "Somme des chiffres dans la table de 3.",
         4: "Pas premier : 4 = 2 × 2.",
@@ -4485,7 +4485,7 @@
       };
       var DIV_INFO_EN = {
         0: "Forbidden: never divide by 0 in ℕ, ℤ, ℚ, ℝ, ℂ. Only possible in extended sets: the projective line ℝ ∪ {∞} or the Riemann sphere ℂ ∪ {∞}, where x ÷ 0 = ∞ for x ≠ 0 (0 ÷ 0 stays undefined).",
-        1: "Useless: n ÷ 1 = n.",
+        1: "1 is not prime: a prime has exactly two divisors (1 and itself), 1 has only one. Otherwise factorisation would not be unique: 6 = 2·3 = 1·2·3 = 1·1·2·3… And n ÷ 1 = n: no progress.",
         2: "Ends in an even digit.",
         3: "Digit sum in the 3 times table.",
         4: "Not prime: 4 = 2 × 2.",
@@ -4500,8 +4500,8 @@
         13: "Rest + 4 × last digit in the 13 times table."
       };
       var pfTip = document.getElementById("pfTip");
-      function pfShowTip(d, btn, html) {
-        if (exam) return;
+      function pfShowTip(d, btn, html, always) {
+        if (exam && !always) return;
         if (html) pfTip.innerHTML = html;
         else pfTip.textContent = (LANG === "en" ? DIV_INFO_EN : DIV_INFO)[d];
         pfTip.hidden = false;
@@ -4630,7 +4630,9 @@
           if (longDone) return;
           if (prime) pfDivide(d, b);
           else {
-            // Appui bref sur 0, 1, 4, 6… : il ne divise pas en premier
+            // Appui bref sur 0, 1, 4, 6… : il ne divise pas en premier.
+            // Pour 1, on dit pourquoi tout de suite (ce n'est pas un indice)
+            if (d === 1) pfShowTip(1, b, null, true);
             SND.bad();
             b.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) });
           }
@@ -6841,6 +6843,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v110", text: "Premiers : le 1 reste grisé (il n'est pas premier) ; un appui bref dit pourquoi : un seul diviseur, et 6 = 2·3 = 1·2·3 = 1·1·2·3… ne serait plus unique." },
         { v: "v109", text: "Le son d'une réponse est un coup sourd, comme frapper du bois à travers un chiffon : grave, sec, sans résonance (un coup si c'est juste, deux plus bas sinon)." },
         { v: "v108", text: "Fractions : le facteur commun sort de la fraction (3/3 · le reste), devient 1, puis disparaît. Nouveau badge a/a = 1 (débloqué par Piège, à partir de ℚ) et badge facteurs premiers (débloqué par Premiers). Menu ☰ : « Recommencer » le chapitre ouvert, ou « Tout recommencer » (deux appuis pour confirmer). Premiers : en examen, 0, 1, 4, 6… restent grisés ; et l'ordre est libre (21 : 3 ou 7 d'abord, puis l'autre se divise aussi directement). Examen Fraction : il y a enfin des réponses à choisir (produit ou somme ? 1 ou 0 ?), et en examen un badge bien utilisé compte comme une bonne réponse. Appui long sur un badge : un petit son, et un toucher n'importe où ferme l'explication. " + "Chapitres à étapes : les badges marchent aussi hors du chemin de l'explication. Sur (−1)·(2x − 3 + x), Regrouper range d'abord dans la parenthèse : l'expression devient manipulable « à ta façon » (toucher, glisser, badges), le badge (−1)·(−1) distribue le −1 quand tu veux. ← revient à l'explication." },
         { v: "v107", text: "Les badges ne s'affichent plus là où ils ne servent à rien (Ensembles, Venn, Structures, Solutions, Premiers, Singapour, Calcul, Pascal, Fusion, Exp / ln) : seulement dans les chapitres à étapes et Regrouper. Dans ℕ, le badge (−1)·(−1) est caché (pas de −1 dans ℕ). Le numéro de version est écrit en bas du menu ☰." },
