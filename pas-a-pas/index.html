@@ -3716,10 +3716,11 @@
       }
       var SND = {
         meet: function () { bip(330, 0.09, "sine", 0, 0.08); bip(495, 0.12, "sine", 0.08, 0.06); },
-        ok: function () { bip(660, 0.08); bip(990, 0.12, "square", 0.08); },
+        // Réponse : grave et sec — deux coups brefs (sol, ré)
+        ok: function () { bip(196, 0.045, "square", 0, 0.07); bip(294, 0.055, "square", 0.045, 0.06); },
         // Même une erreur sonne doux : deux notes rondes (tierce majeure),
         // jamais de buzz — on essaie, on n'est pas puni
-        bad: function () { bip(392, 0.16, "sine", 0, 0.06); bip(494, 0.22, "sine", 0.12, 0.05); },
+        bad: function () { bip(165, 0.06, "sine", 0, 0.09); bip(208, 0.07, "sine", 0.055, 0.08); },
         tick: function () { bip(1200, 0.03, "square", 0, 0.02); },
         // Appui long : deux notes douces qui montent, « voici l'explication »
         info: function () { bip(587, 0.1, "sine", 0, 0.07); bip(880, 0.16, "sine", 0.09, 0.06); },
@@ -6812,6 +6813,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v109", text: "Le son d'une réponse est beaucoup plus grave et plus sec : deux coups brefs." },
         { v: "v108", text: "Fractions : le facteur commun sort de la fraction (3/3 · le reste), devient 1, puis disparaît. Nouveau badge a/a = 1 (débloqué par Piège, à partir de ℚ) et badge facteurs premiers (débloqué par Premiers). Menu ☰ : « Recommencer » le chapitre ouvert, ou « Tout recommencer » (deux appuis pour confirmer). Premiers : en examen, 0, 1, 4, 6… restent grisés ; et l'ordre est libre (21 : 3 ou 7 d'abord, puis l'autre se divise aussi directement). Examen Fraction : il y a enfin des réponses à choisir (produit ou somme ? 1 ou 0 ?), et en examen un badge bien utilisé compte comme une bonne réponse. Appui long sur un badge : un petit son, et un toucher n'importe où ferme l'explication. " + "Chapitres à étapes : les badges marchent aussi hors du chemin de l'explication. Sur (−1)·(2x − 3 + x), Regrouper range d'abord dans la parenthèse : l'expression devient manipulable « à ta façon » (toucher, glisser, badges), le badge (−1)·(−1) distribue le −1 quand tu veux. ← revient à l'explication." },
         { v: "v107", text: "Les badges ne s'affichent plus là où ils ne servent à rien (Ensembles, Venn, Structures, Solutions, Premiers, Singapour, Calcul, Pascal, Fusion, Exp / ln) : seulement dans les chapitres à étapes et Regrouper. Dans ℕ, le badge (−1)·(−1) est caché (pas de −1 dans ℕ). Le numéro de version est écrit en bas du menu ☰." },
         { v: "v106", text: "Nouveau chapitre Exp / ln (dans ℝ), sur le thème du TD 3 : simplifier (ln(e²ˣ + eˣ) = x + ln(eˣ + 1), e^(3 ln x) = x³, log(5 × 10⁻³)…), résoudre (eˣ = −1, e²ˣ + eˣ − 2 = 0 avec X = eˣ…), limites (croissances comparées, x ln x en 0, (1 + 1/x)ˣ → e). Trois réponses, puis le geste qui y mène." },
