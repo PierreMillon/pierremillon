@@ -55,6 +55,7 @@ Tri : priorité décroissante.
 - [x] v13 — Traits des doublons aussi vers les cases grisées
 - [x] v14 — Loupe sous le doigt : appuyer, glisser, relâcher sur la case ;
   la case visée grossit et monte au-dessus du doigt, ses voisines un peu
+- [x] v15 — Sons légers de la loupe : zoom, case traversée, dézoom
 
 ## À faire
 
