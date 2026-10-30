@@ -62,6 +62,7 @@ Tri : priorité décroissante.
 - [x] v18 — Note ♪ à côté du titre quand on « joue » de la loupe (glissé
   rapide 1 s ou plus), avec effet et petit son ; gardée en local ;
   retoucher la partie en cours passe à une autre question
+- [x] v19 — Menu en ☰ seul ; « erreurs courantes » à la fin des parties
 
 ## À faire
 
