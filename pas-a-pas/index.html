@@ -3633,6 +3633,9 @@
           if (playing() && to >= lastExpr && gameRun.demo === demo.title && !gameRun.counted) {
             gameRun.counted = true;
             if (gameRun.faults === 0) progressDemo(demo.title);
+            // Examen : un point par exercice mené jusqu'au résultat sans
+            // faute — pas par réponse
+            if (exam && gameRun.faults === 0) examHit(true, demo.title);
           }
           // Mode jeu : la question suivante vient seule, sans passer par la
           // flèche — après une réponse comme après une étape sans question
@@ -3676,6 +3679,8 @@
           return;
         }
         var last = DEMOS[demoIndex].steps.length - 1;
+        // Examen : la flèche ne saute pas une question posée
+        if (exam && choiceEl) { choiceEl.animate([{ transform: "translateX(-5px)" }, { transform: "translateX(5px)" }, { transform: "none" }], { duration: ms(260) }); return; }
         if (playing() && cur < last && !busy && !choiceEl && gameChoice(cur + 1)) return;
         if (cur === last) {
           if (busy) return;
@@ -3945,7 +3950,9 @@
           b.appendChild(e);
           b.addEventListener("click", function () {
             if (!choiceEl) return;
-            examHit(o.ok, DEMOS[demoIndex].title);
+            // Une faute remet le compteur d'examen à 0 ; une bonne réponse
+            // ne compte qu'à la fin de l'exercice
+            if (!o.ok) examHit(false, DEMOS[demoIndex].title);
             if (o.ok) {
               SND.ok();
               b.classList.add("good");
@@ -6843,6 +6850,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v111", text: "Examen des chapitres à étapes : un point par exercice mené jusqu'au résultat sans faute (plus par réponse). Une faute remet à 0. La flèche ne saute plus une question posée ; les badges sont permis mais ne donnent pas de point." },
         { v: "v110", text: "Premiers : le 1 reste grisé (il n'est pas premier) ; un appui bref dit pourquoi : un seul diviseur, et 6 = 2·3 = 1·2·3 = 1·1·2·3… ne serait plus unique." },
         { v: "v109", text: "Le son d'une réponse est un coup sourd, comme frapper du bois à travers un chiffon : grave, sec, sans résonance (un coup si c'est juste, deux plus bas sinon)." },
         { v: "v108", text: "Fractions : le facteur commun sort de la fraction (3/3 · le reste), devient 1, puis disparaît. Nouveau badge a/a = 1 (débloqué par Piège, à partir de ℚ) et badge facteurs premiers (débloqué par Premiers). Menu ☰ : « Recommencer » le chapitre ouvert, ou « Tout recommencer » (deux appuis pour confirmer). Premiers : en examen, 0, 1, 4, 6… restent grisés ; et l'ordre est libre (21 : 3 ou 7 d'abord, puis l'autre se divise aussi directement). Examen Fraction : il y a enfin des réponses à choisir (produit ou somme ? 1 ou 0 ?), et en examen un badge bien utilisé compte comme une bonne réponse. Appui long sur un badge : un petit son, et un toucher n'importe où ferme l'explication. " + "Chapitres à étapes : les badges marchent aussi hors du chemin de l'explication. Sur (−1)·(2x − 3 + x), Regrouper range d'abord dans la parenthèse : l'expression devient manipulable « à ta façon » (toucher, glisser, badges), le badge (−1)·(−1) distribue le −1 quand tu veux. ← revient à l'explication." },
@@ -7397,8 +7405,9 @@
           go(k);
         });
       });
-      // En examen, un badge bien utilisé compte comme une bonne réponse
-      function badgeExam() { if (exam) examHit(true, DEMOS[demoIndex].title); }
+      // En examen, un badge est permis (ce n'est pas une faute) mais ne
+      // donne pas de point : le point vient à la fin de l'exercice
+      function badgeExam() {}
       // Badge facteurs premiers : l'étape suivante découpe un nombre en
       // produit (6 → 2 · 3)
       function pfTarget() {
