@@ -46,6 +46,8 @@ Tri : priorité décroissante.
   (angle droit en haut à droite) validée par Pierre sur une page de test
 - [x] v9 — Pavé disposé comme un téléphone ; compteur d'erreurs en haut,
   ↻ retiré ; cases grisées (faciles) jamais demandées, réponse écrite
+- [x] v10 — Grille et pavé au plus grand, marges minimales ; son de
+  victoire à chaque grille finie ; bouton « Suivant » (partie d'après)
 
 ## À faire
 
