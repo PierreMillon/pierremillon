@@ -712,12 +712,15 @@
       background: rgba(255, 209, 102, 0.12);
     }
 
+    /* Deux lignes : les badges sur toute la largeur, les flèches dessous
+       (plus de place pour les badges, qui passent à la ligne si besoin) */
     .controls {
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
+      row-gap: 0.35rem;
       flex: none;
-      height: 3.6rem;
       margin-top: 0.4rem;
     }
 
@@ -756,17 +759,18 @@
       .magic { min-height: 0; font-size: 0.75rem; }
       .stage, .stage-wrap.split .stage { min-height: 80px; padding: 0.8rem 0.5rem; }
       .expr, .ghost { font-size: clamp(1.3rem, 5vh, 2rem); }
-      .controls { height: 2.8rem; }
+      .controls { row-gap: 0.2rem; }
       .arrow-btn { width: 2.6rem; height: 2.6rem; }
     }
 
     .badge-shelf {
+      order: -1;
+      flex: 0 0 100%;
       display: flex;
+      flex-wrap: wrap;
       justify-content: center;
-      gap: 0.5rem;
-      flex: 1;
-      min-width: 0;
-      overflow: hidden;
+      gap: 0.4rem 0.5rem;
+      min-height: 1.9rem;
     }
     .badge-shelf:not(:has(.badge:not([hidden]))) { visibility: hidden; }
 
@@ -6850,6 +6854,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v112", text: "La maison ⌂ ramène dans l'ensemble du chapitre qu'on quitte (depuis Fraction → ℚ), plus dans ℕ. " + "Les badges ont leur propre ligne, au-dessus des flèches : tous restent visibles. Le badge a/a = 1 se débloque aussi avec Fraction." },
         { v: "v111", text: "Examen des chapitres à étapes : un point par exercice mené jusqu'au résultat sans faute (plus par réponse). Une faute remet à 0. La flèche ne saute plus une question posée ; les badges sont permis mais ne donnent pas de point." },
         { v: "v110", text: "Premiers : le 1 reste grisé (il n'est pas premier) ; un appui bref dit pourquoi : un seul diviseur, et 6 = 2·3 = 1·2·3 = 1·1·2·3… ne serait plus unique." },
         { v: "v109", text: "Le son d'une réponse est un coup sourd, comme frapper du bois à travers un chiffon : grave, sec, sans résonance (un coup si c'est juste, deux plus bas sinon)." },
@@ -7308,7 +7313,8 @@
         badgeReg.hidden = !doneMap["Regrouper"];
         badgeFac.hidden = !doneMap["x en facteur"];
         // a/a = 1 : appris dans Piège ; seulement à partir de ℚ
-        badgeQ.hidden = !doneMap["Piège"] || universe === "N" || universe === "Z";
+        // (appris dans Fraction comme dans Piège : 3/3 = 1)
+        badgeQ.hidden = !(doneMap["Piège"] || doneMap["Fraction"]) || universe === "N" || universe === "Z";
         badgePF.hidden = !doneMap["Premiers"];
       }
       refreshBadges();
@@ -7438,7 +7444,7 @@
       // Badge a/a = 1 : l'étape suivante réunit deux quantités égales en 1
       function qTarget() {
         var d = DEMOS[demoIndex];
-        if (!d || d.custom || !doneMap["Piège"] || badgeQ.hidden || (homeEl && !homeEl.hidden)) return -1;
+        if (!d || d.custom || badgeQ.hidden || (homeEl && !homeEl.hidden)) return -1;
         var st = d.steps[cur], nx = d.steps[cur + 1];
         if (!st || !st.expr || !nx || !nx.expr || !nx.fx || nx.fx.type !== "meet" || nx.fx.blocks || nx.fx.ids.length !== 2) return -1;
         var txt = {};
@@ -7522,7 +7528,7 @@
       // ---------- Accueil ----------
       var homeEl = document.getElementById("home");
       var homeMap = document.getElementById("homeMap");
-      var homeSel = "N";
+      var homeSel = UNIV.indexOf(universe) >= 0 && unlocked(universe) ? universe : "N";
       // Anneaux du plus grand au plus petit. Au-delà de ℂ, la construction
       // de Cayley–Dickson double la dimension à chaque fois (4, 8, 16, 32) et
       // perd une propriété à chaque étape — en teaser, verrouillés.
@@ -7639,6 +7645,9 @@
         homeEl.hidden = false;
         document.getElementById("title").textContent = "Pas à Pas";
         try { localStorage.setItem("pasapas_demo", ""); } catch (e) {}
+        // On revient sur l'ensemble du chapitre qu'on quitte (dans ℚ → ℚ)
+        var from = DEMOS[demoIndex] && SET_OF[DEMOS[demoIndex].title];
+        if (from && UNIV.indexOf(from) >= 0) homeSel = from;
         renderHome();
       }
       function hideHome() {
