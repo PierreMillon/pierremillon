@@ -57,6 +57,8 @@ Tri : priorité décroissante.
   la case visée grossit et monte au-dessus du doigt, ses voisines un peu
 - [x] v15 — Sons légers de la loupe : zoom, case traversée, dézoom
 - [x] v16 — Sons de la loupe plus graves, « tic » plus sec
+- [x] v17 — Son à chaque touche du pavé ; bonne réponse affichée 0,5 s
+  avant la question suivante
 
 ## À faire
 
