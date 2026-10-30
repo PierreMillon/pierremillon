@@ -50,6 +50,8 @@ Tri : priorité décroissante.
   victoire à chaque grille finie ; bouton « Suivant » (partie d'après)
 - [x] v11 — Cases toujours carrées, la grille d'abord ; le pavé prend la
   place restante
+- [x] v12 — Marges latérales minimales (2 px), compteur d'erreurs à côté
+  de ←, grille plus grande ; numéro de version → Historique
 
 ## À faire
 

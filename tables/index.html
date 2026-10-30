@@ -69,7 +69,8 @@
       align-items: center;
       gap: 0.8rem;
     }
-    header .back { justify-self: start; font-size: 1.3rem; letter-spacing: 0; padding: 0.2rem 0.4rem 0.2rem 0; }
+    header .left { justify-self: start; display: flex; align-items: center; gap: 0.4rem; }
+    header .back { font-size: 1.3rem; letter-spacing: 0; padding: 0.2rem 0.4rem 0.2rem 0; }
     header .link-btn { justify-self: end; }
     .back, .link-btn {
       font-family: inherit;
@@ -162,7 +163,7 @@
       justify-content: center;
       gap: 0.35rem;
       /* Marges minimales : grille et pavé prennent toute la place */
-      padding: 0.15rem 6px 0.4rem;
+      padding: 0.15rem 2px 0.3rem;
     }
 
     .tgrid {
@@ -279,13 +280,9 @@
     .key:active { background: var(--accent-soft); }
     .key.blank { visibility: hidden; }
 
-    /* Compteur d'erreurs en haut, sous les parties (demande de Pierre) */
-    .bottombar {
-      display: flex;
-      justify-content: center;
-      gap: 0.35rem;
-      padding: 0.3rem 16px 0;
-    }
+    /* Compteur d'erreurs tout en haut, à côté de la flèche de retour :
+       une ligne de moins, la grille gagne cette hauteur */
+    .bottombar { display: flex; }
     .bchip {
       flex: 0 0 auto;
       min-width: 2.4rem;
@@ -379,7 +376,8 @@
     .menu-item:active { background: var(--accent-soft); }
     .menu-item.danger { color: var(--ink-soft); }
     .menu-item.armed { color: var(--accent); }
-    .overlay p.version { margin-top: -0.6rem; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--accent); }
+    /* Numéro de version : un appui ouvre l'Historique */
+    .overlay .version { margin-top: -0.6rem; font-family: inherit; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--accent); background: none; border: none; padding: 0.3rem 0.6rem; text-decoration: underline; text-underline-offset: 0.25em; cursor: pointer; }
     .counter { font-variant-numeric: tabular-nums; }
     .counter b { color: var(--bad); font-weight: 500; }
     .hist-list {
@@ -407,13 +405,15 @@
 <body>
   <div class="topbar col">
     <header>
-      <a class="back" href="../" aria-label="Portfolio">←</a>
+      <div class="left">
+        <a class="back" href="../" aria-label="Portfolio">←</a>
+        <span class="bottombar" id="bottomBar"></span>
+      </div>
       <h1 id="title">Tables</h1>
       <button class="link-btn" id="menuBtn" aria-label="Menu">☰ Menu</button>
     </header>
   </div>
   <div class="parts col" id="parts"></div>
-  <div class="bottombar col" id="bottomBar"></div>
 
   <div class="readout col" aria-live="polite">
     <div class="task" id="task"></div>
@@ -436,7 +436,7 @@
 
   <div class="overlay" id="menuOverlay" hidden>
     <div class="big">Menu</div>
-    <p class="version" id="mVersion"></p>
+    <button class="version" id="mVersion"></button>
     <div class="menu-list">
       <button class="menu-item" id="mLang"></button>
       <button class="menu-item" id="mHist"></button>
@@ -1000,7 +1000,8 @@
           bt.addEventListener("click", fn);
           bar.appendChild(bt);
         }
-        chip(t("errs", { n: partErrKeys(S.part).length }), "errs", S.err, toggleErrors);
+        var ne = partErrKeys(S.part).length;
+        chip("✗ " + ne, "errs", S.err, toggleErrors, t("errs", { n: ne }));
       }
 
       function renderSplit() {
@@ -1098,12 +1099,12 @@
         var h = stageEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
         var gap = parseFloat(cs.rowGap) || 0, g = sh.cols > 12 ? 1 : 2;
         // Cases toujours carrées (demande de Pierre), la grille passe en
-        // premier : le pavé prend ce qui reste, entre 34 et 64 px par touche
+        // premier : le pavé prend ce qui reste, entre 28 et 64 px par touche
         var kg = parseFloat(getComputedStyle(keypad).rowGap) || 0;
-        var KEY_MIN = 34, KEY_MAX = 64;
+        var KEY_MIN = 28, KEY_MAX = 64;
         var kpMin = 4 * KEY_MIN + 3 * kg + gap;
         var hk = sh.head ? 0.62 : 0; // en-têtes : 62 % d'une case
-        var cw = (w - g * sh.cols) / (sh.cols + hk);
+        var cw = (w - g * (sh.cols + (sh.head ? 1 : 0))) / (sh.cols + hk);
         var ch = (h - kpMin - g * sh.rows) / (sh.rows + hk);
         var unit = Math.floor(Math.max(12, Math.min(cw, ch))), colw = unit, rowh = unit;
         var head = Math.floor(unit * hk);
@@ -1255,6 +1256,10 @@
         applyStatic();
         render();
       });
+      document.getElementById("mVersion").addEventListener("click", function () {
+        menuOverlay.hidden = true;
+        histOverlay.hidden = false;
+      });
       document.getElementById("mHist").addEventListener("click", function () {
         menuOverlay.hidden = true;
         histOverlay.hidden = false;
@@ -1300,6 +1305,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v12", text: "Marges sur les côtés réduites au minimum (2 px) et compteur d'erreurs (✗ n) monté à côté de la flèche de retour : la grille gagne en largeur et en hauteur, le pavé s'ajuste en dessous. Toucher le numéro de version dans le menu ouvre l'Historique." },
         { v: "v11", text: "Cases de la grille toujours carrées, aussi grandes que possible ; le pavé de chiffres prend la place qui reste en dessous." },
         { v: "v10", text: "Grille et pavé de chiffres agrandis au maximum, marges réduites au minimum (en-têtes plus étroits que les cases). Son de victoire à chaque grille finie, plus brillant sans faute. Bouton « Suivant » à côté de « Encore » pour passer à la partie d'après." },
         { v: "v9", text: "Pavé de chiffres disposé comme un clavier de téléphone (1 2 3 / 4 5 6 / 7 8 9 / 0). Le compteur d'erreurs passe en haut, sous les parties ; le bouton ↻ est retiré (« Encore » relance la grille à la fin). Cases grisées (tables de 2, 5, 10, 20, carrés de la diagonale…) : réponse déjà écrite, plus aucune question dessus." },
