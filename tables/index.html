@@ -327,8 +327,9 @@
     }
     .bchip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
     /* « Erreurs courantes » : à la fin des parties, sur deux lignes */
-    .chip.errs { white-space: normal; line-height: 1.05; font-size: clamp(0.5rem, 2.4vw, 0.62rem); padding: 0.1rem 0.1rem; color: var(--bad); border-color: rgba(255, 157, 138, 0.35); }
-    .chip.errs[aria-pressed="true"] { color: var(--bad); border-color: var(--bad); background: rgba(255, 157, 138, 0.14); }
+    /* Doré plutôt qu'orange (demande de Pierre) */
+    .chip.errs { white-space: normal; line-height: 1.05; font-size: clamp(0.5rem, 2.4vw, 0.62rem); padding: 0.1rem 0.1rem; color: #e3c46c; border-color: rgba(227, 196, 108, 0.4); }
+    .chip.errs[aria-pressed="true"] { color: #f2d98a; border-color: #e3c46c; background: rgba(227, 196, 108, 0.16); }
     .bchip.errs[aria-pressed="true"] { color: var(--bad); border-color: var(--bad); background: rgba(255, 157, 138, 0.12); }
     .bchip.restart { font-size: 1.15rem; padding: 0 0.5rem; color: var(--accent); border-color: var(--accent); }
 
@@ -386,12 +387,20 @@
     .win.show .big { animation: pop 0.5s cubic-bezier(.3, 1.6, .5, 1) both; }
     /* Note de musique gagnée en jouant de la loupe (voir musician) */
     h1 { position: relative; }
-    .note {
+    /* Jusqu'à trois notes à la suite, une par partie de tables (2–9,
+       12–19, tout), toujours dans cet ordre */
+    .notes {
       position: absolute;
       left: 100%;
       top: -0.1em;
       margin-left: 0.15em;
+      display: flex;
+      gap: 0.05em;
       font-size: 0.6em;
+      white-space: nowrap;
+    }
+    .note {
+      display: inline-block;
       color: var(--accent);
       text-shadow: 0 0 10px rgba(109, 255, 176, 0.7);
     }
@@ -456,7 +465,7 @@
       <div class="left">
         <a class="back" href="../" aria-label="Portfolio">←</a>
       </div>
-      <h1 id="title">Tables<span class="note" id="note" hidden aria-label="Musicien">♪</span></h1>
+      <h1 id="title">Tables<span class="notes" id="notes"><span class="note" data-part="t9" hidden aria-label="Musicien 2–9">♪</span><span class="note" data-part="t20" hidden aria-label="Musicien 12–19">♫</span><span class="note" data-part="all" hidden aria-label="Musicien tout">♬</span></span></h1>
       <button class="link-btn menu-icon" id="menuBtn" aria-label="Menu">☰</button>
     </header>
   </div>
@@ -489,7 +498,6 @@
       <button class="menu-item" id="mHist"></button>
       <button class="menu-item danger" id="mErase"></button>
     </div>
-    <p class="counter" id="mCounter"></p>
     <button class="btn" id="menuClose"></button>
   </div>
 
@@ -525,7 +533,7 @@
           cheers: ["Bravo !", "Parfait !", "Impeccable !", "Superbe !"],
           langItem: "Language : English", hist: "Historique", erase: "Réinitialiser la progression",
           eraseSure: "Appuie encore pour tout effacer", erased: "Progression effacée",
-          close: "Fermer", total: "Erreurs comptées depuis le début : {n}",
+          close: "Fermer",
           install: "Astuce : « Partager → Sur l'écran d'accueil » pour l'avoir comme une appli, utilisable hors ligne."
         },
         en: {
@@ -538,7 +546,7 @@
           cheers: ["Well done!", "Perfect!", "Flawless!", "Superb!"],
           langItem: "Langue : français", hist: "History", erase: "Reset progress",
           eraseSure: "Tap again to erase everything", erased: "Progress erased",
-          close: "Close", total: "Mistakes counted since the start: {n}",
+          close: "Close",
           install: "Tip: “Share → Add to Home Screen” to use it like an app, offline too."
         }
       };
@@ -1301,18 +1309,33 @@
       // ---------- Musicien (demande de Pierre) ----------
       // Glisser vite sur la grille fait une petite mélodie de « tic ». Règle
       // de Pierre : 5 secondes de glissé rapide, cumulées, sur les 10
-      // dernières secondes → c'est qu'on joue : une note ♪ apparaît à côté
-      // du titre, avec un petit effet et un arpège. Une seule fois : elle
-      // reste ensuite (gardée en local) et ne rejoue plus jamais le son.
-      // « Rapide » : deux cases traversées à moins de 250 ms d'écart ; le
-      // temps entre elles compte comme du temps de jeu.
+      // dernières secondes → c'est qu'on joue. Une note par partie de
+      // tables (2–9 ♪, 12–19 ♫, tout ♬), chacune avec son arpège, comme
+      // des choses à débloquer ; elles s'affichent à la suite du titre.
+      // Chaque note n'arrive qu'une fois : elle reste (gardée en local) et
+      // ne rejoue plus jamais son son. « Rapide » : deux cases traversées
+      // à moins de 250 ms d'écart ; le temps entre elles compte.
       var MUS_NEED = 5000, MUS_WINDOW = 10000, MUS_GAP = 250;
-      var mus = { last: 0, segs: [] };
-      var noteEl = document.getElementById("note");
-      var isMusician = load("musician") === "1";
-      if (isMusician) noteEl.hidden = false;
+      var MUS_PARTS = ["t9", "t20", "all"];
+      // Trois arpèges : do majeur 7/9 (clair), la mineur 9 (doux), ré
+      // majeur montant jusqu'au la aigu (éclatant, pour le grand triangle)
+      var ARPS = {
+        t9: [[262, 330, 392, 494, 587], 523],
+        t20: [[220, 262, 330, 392, 494], 440],
+        all: [[294, 370, 440, 554, 659], 880]
+      };
+      var mus = { last: 0, segs: [], part: null };
+      var earned = {};
+      // Ancienne note unique (avant v21) : comptée pour 2–9
+      if (load("musician") === "1") save("music-t9", "1");
+      MUS_PARTS.forEach(function (p) { earned[p] = load("music-" + p) === "1"; });
+      function noteOf(p) { return document.querySelector('.note[data-part="' + p + '"]'); }
+      MUS_PARTS.forEach(function (p) { if (earned[p]) noteOf(p).hidden = false; });
       function musicTick() {
-        if (isMusician) return;
+        var p = S.part;
+        if (MUS_PARTS.indexOf(p) < 0 || earned[p]) return;
+        // Changer de partie remet le compte à zéro
+        if (mus.part !== p) { mus.part = p; mus.segs = []; }
         var now = Date.now(), dt = now - mus.last;
         mus.last = now;
         if (dt > MUS_GAP) return;
@@ -1320,27 +1343,39 @@
         mus.segs = mus.segs.filter(function (sg) { return now - sg[0] <= MUS_WINDOW; });
         var tot = 0;
         mus.segs.forEach(function (sg) { tot += sg[1]; });
-        if (tot >= MUS_NEED) musician();
+        if (tot >= MUS_NEED) musician(p);
       }
-      function musician() {
-        isMusician = true;
-        save("musician", "1");
-        noteEl.hidden = false;
-        noteEl.classList.remove("born");
-        void noteEl.offsetWidth;
-        noteEl.classList.add("born");
+      function resetMusic() {
+        save("musician", "0");
+        MUS_PARTS.forEach(function (p) {
+          earned[p] = false;
+          save("music-" + p, "0");
+          var el = noteOf(p);
+          el.hidden = true;
+          el.classList.remove("born");
+        });
+        mus.segs = [];
+      }
+      function musician(p) {
+        earned[p] = true;
+        mus.segs = [];
+        save("music-" + p, "1");
+        var el = noteOf(p);
+        el.hidden = false;
+        el.classList.remove("born");
+        void el.offsetWidth;
+        el.classList.add("born");
         buzz(20);
         try {
           unlockAudio();
           if (!actx) return;
-          var w = actx.currentTime + 0.03;
-          // Petit arpège joli : do – mi – sol – si – ré (accord de do
-          // majeur 7/9) égrené, chaque note laissée sonner pour former
-          // l'accord, puis le do aigu en haut
-          [262, 330, 392, 494, 587].forEach(function (f, i) {
+          var w = actx.currentTime + 0.03, arp = ARPS[p];
+          // L'arpège égrené, chaque note laissée sonner pour former
+          // l'accord, puis une note tenue en haut
+          arp[0].forEach(function (f, i) {
             tone(f, f, 0.075, 2.2 - i * 0.15, w + i * 0.11, 0.015);
           });
-          tone(523, 523, 0.05, 1.8, w + 0.62, 0.04);
+          tone(arp[1], arp[1], 0.05, 1.8, w + 0.62, 0.04);
         } catch (e) {}
       }
 
@@ -1437,11 +1472,6 @@
       // ---------- Menu ☰ ----------
 
       var eraseArmed = 0;
-      function totalErrors() {
-        var n = 0;
-        Object.keys(S.cellErr).forEach(function (k) { n += S.cellErr[k]; });
-        return n;
-      }
       function refreshMenu() {
         // Numéro de version toujours visible dans le menu (règle de Pierre,
         // pour tous les programmes) ; le détail est dans l'Historique
@@ -1452,14 +1482,6 @@
         er.textContent = eraseArmed ? t("eraseSure") : t("erase");
         er.className = "menu-item danger" + (eraseArmed ? " armed" : "");
         document.getElementById("menuClose").textContent = t("close");
-        var c = document.getElementById("mCounter");
-        c.textContent = "";
-        var parts = t("total", { n: "\u0000" }).split("\u0000");
-        c.appendChild(document.createTextNode(parts[0]));
-        var bEl = document.createElement("b");
-        bEl.textContent = totalErrors();
-        c.appendChild(bEl);
-        c.appendChild(document.createTextNode(parts[1] || ""));
       }
       document.getElementById("menuBtn").addEventListener("click", function () {
         eraseArmed = 0;
@@ -1499,6 +1521,8 @@
         S.part = part;
         S.mode = mode;
         saveState();
+        // Les notes de musicien aussi (demande de Pierre)
+        resetMusic();
         refreshMenu();
         document.getElementById("mErase").textContent = t("erased");
         enter();
@@ -1525,6 +1549,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v21", text: "Trois notes à gagner au lieu d'une : une par partie de tables (2–9 ♪, 12–19 ♫, tout ♬), chacune avec son propre arpège (do majeur, la mineur, ré majeur). Même règle : 5 secondes de glissé rapide sur 10 secondes, dans la partie. Elles s'affichent à la suite du titre ; une note déjà gagnée avant reste comptée pour 2–9. « Réinitialiser la progression » efface aussi les notes. Bouton « erreurs courantes » en doré. Compteur « erreurs comptées depuis le début » retiré du menu." },
         { v: "v20", text: "Note ♪ du musicien plus dure à gagner : 5 secondes de glissé rapide cumulées sur 10 secondes. Elle n'arrive qu'une fois, avec un petit arpège (do – mi – sol – si – ré) ; ensuite elle reste, sans rejouer le son." },
         { v: "v19", text: "Menu : seulement les trois barres ☰. Le bouton des erreurs quitte le haut à gauche et devient « erreurs courantes », à la fin des boutons des parties : il fait refaire seulement les cases ratées de la partie en cours." },
         { v: "v18", text: "Clin d'œil : glisser vite sur la grille pendant une seconde ou deux (la loupe « joue » une mélodie de tics) fait apparaître une note ♪ à côté du titre, avec un petit effet et une petite phrase musicale. Elle reste ensuite. Retoucher le bouton de la partie en cours passe à une autre question." },

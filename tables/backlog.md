@@ -65,6 +65,9 @@ Tri : priorité décroissante.
 - [x] v19 — Menu en ☰ seul ; « erreurs courantes » à la fin des parties
 - [x] v20 — Note ♪ : 5 s de glissé rapide cumulées sur 10 s, une seule
   fois, avec un arpège
+- [x] v21 — Trois notes musicien (2–9 ♪, 12–19 ♫, tout ♬), un arpège
+  chacune, affichées à la suite du titre ; effacées par « Réinitialiser » ;
+  « erreurs courantes » en doré ; compteur d'erreurs total retiré du menu
 
 ## À faire
 
