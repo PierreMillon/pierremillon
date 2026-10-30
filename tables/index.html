@@ -72,6 +72,8 @@
     header .left { justify-self: start; display: flex; align-items: center; gap: 0.4rem; }
     header .back { font-size: 1.3rem; letter-spacing: 0; padding: 0.2rem 0.4rem 0.2rem 0; }
     header .link-btn { justify-self: end; }
+    /* Menu : seulement les trois barres (demande de Pierre) */
+    header .menu-icon { font-size: 1.4rem; letter-spacing: 0; padding: 0.2rem 0 0.2rem 0.4rem; }
     .back, .link-btn {
       font-family: inherit;
       color: var(--ink-soft);
@@ -96,23 +98,24 @@
        Sans « × » ni trait de séparation (demande de Pierre) */
     .parts {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      align-items: center;
-      gap: 0.35rem;
-      padding: 0 16px;
+      /* Six parties, puis « erreurs courantes », un peu plus large */
+      grid-template-columns: repeat(6, minmax(0, 1fr)) minmax(0, 1.55fr);
+      align-items: stretch;
+      gap: 0.25rem;
+      padding: 0 8px;
       margin-top: 0.4rem;
     }
     .chip {
       min-width: 0;
       white-space: nowrap;
       font-family: inherit;
-      font-size: 0.7rem;
-      letter-spacing: 0.04em;
+      font-size: clamp(0.58rem, 2.9vw, 0.72rem);
+      letter-spacing: 0;
       color: var(--ink-soft);
       background: transparent;
       border: 1px solid var(--hairline);
       border-radius: 999px;
-      padding: 0.4rem 0.2rem;
+      padding: 0.4rem 0;
       cursor: pointer;
       transition: border-color 0.25s ease, color 0.25s ease;
     }
@@ -323,6 +326,9 @@
       cursor: pointer;
     }
     .bchip[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+    /* « Erreurs courantes » : à la fin des parties, sur deux lignes */
+    .chip.errs { white-space: normal; line-height: 1.05; font-size: clamp(0.5rem, 2.4vw, 0.62rem); padding: 0.1rem 0.1rem; color: var(--bad); border-color: rgba(255, 157, 138, 0.35); }
+    .chip.errs[aria-pressed="true"] { color: var(--bad); border-color: var(--bad); background: rgba(255, 157, 138, 0.14); }
     .bchip.errs[aria-pressed="true"] { color: var(--bad); border-color: var(--bad); background: rgba(255, 157, 138, 0.12); }
     .bchip.restart { font-size: 1.15rem; padding: 0 0.5rem; color: var(--accent); border-color: var(--accent); }
 
@@ -449,10 +455,9 @@
     <header>
       <div class="left">
         <a class="back" href="../" aria-label="Portfolio">←</a>
-        <span class="bottombar" id="bottomBar"></span>
       </div>
       <h1 id="title">Tables<span class="note" id="note" hidden aria-label="Musicien">♪</span></h1>
-      <button class="link-btn" id="menuBtn" aria-label="Menu">☰ Menu</button>
+      <button class="link-btn menu-icon" id="menuBtn" aria-label="Menu">☰</button>
     </header>
   </div>
   <div class="parts col" id="parts"></div>
@@ -512,7 +517,7 @@
       var TXT = {
         fr: {
           parts: { t9: "2–9", t20: "12–19", all: "tout", sq: "x²", cu: "x³", p2: "2ⁿ" },
-          errs: "Erreurs {n}", restart: "Recommencer la grille",
+          errs: "Erreurs {n}", errsChip: "erreurs courantes", restart: "Recommencer la grille",
           full: "Grille pleine",
           noErr: "Aucune erreur dans cette partie", clean: "Sans aucune erreur.",
           dirty: "{e} erreur(s) : elles sont comptées dans les cases.",
@@ -525,7 +530,7 @@
         },
         en: {
           parts: { t9: "2–9", t20: "12–19", all: "all", sq: "x²", cu: "x³", p2: "2ⁿ" },
-          errs: "Mistakes {n}", restart: "Restart the grid",
+          errs: "Mistakes {n}", errsChip: "current mistakes", restart: "Restart the grid",
           full: "Grid complete",
           noErr: "No mistakes in this part", clean: "Without a single mistake.",
           dirty: "{e} mistake(s): they are counted in the cells.",
@@ -1076,23 +1081,18 @@
           bt.addEventListener("click", function () { setPart(p); });
           box.appendChild(bt);
         });
+        // À la fin des parties : « erreurs courantes » = refaire seulement
+        // les cases ratées de la partie en cours (demande de Pierre)
+        var ne = partErrKeys(S.part).length;
+        var eb = document.createElement("button");
+        eb.className = "chip errs";
+        eb.textContent = t("errsChip");
+        eb.setAttribute("aria-pressed", S.err ? "true" : "false");
+        eb.setAttribute("aria-label", t("errs", { n: ne }));
+        eb.addEventListener("click", toggleErrors);
+        box.appendChild(eb);
       }
 
-      function renderBottom() {
-        var bar = document.getElementById("bottomBar");
-        bar.textContent = "";
-        function chip(label, cls, pressed, fn, aria) {
-          var bt = document.createElement("button");
-          bt.className = "bchip" + (cls ? " " + cls : "");
-          bt.textContent = label;
-          if (pressed !== null) bt.setAttribute("aria-pressed", pressed ? "true" : "false");
-          if (aria) bt.setAttribute("aria-label", aria);
-          bt.addEventListener("click", fn);
-          bar.appendChild(bt);
-        }
-        var ne = partErrKeys(S.part).length;
-        chip("✗ " + ne, "errs", S.err, toggleErrors, t("errs", { n: ne }));
-      }
 
       function renderSplit() {
         var sp = document.getElementById("split");
@@ -1263,7 +1263,6 @@
 
       function render() {
         renderParts();
-        renderBottom();
         renderGrid();
         keypad.classList.toggle("ghost", dir !== "write" || target === null);
         // Épuré : seulement le nombre à trouver, ou le calcul à écrire
@@ -1516,6 +1515,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v19", text: "Menu : seulement les trois barres ☰. Le bouton des erreurs quitte le haut à gauche et devient « erreurs courantes », à la fin des boutons des parties : il fait refaire seulement les cases ratées de la partie en cours." },
         { v: "v18", text: "Clin d'œil : glisser vite sur la grille pendant une seconde ou deux (la loupe « joue » une mélodie de tics) fait apparaître une note ♪ à côté du titre, avec un petit effet et une petite phrase musicale. Elle reste ensuite. Retoucher le bouton de la partie en cours passe à une autre question." },
         { v: "v17", text: "Petit « toc » sourd à chaque touche du pavé de chiffres. Une bonne réponse reste affichée une demi-seconde (le nombre s'allume) avant la question suivante." },
         { v: "v16", text: "Sons de la loupe une octave plus graves ; le « tic » de chaque case traversée est plus sec (très court, sans glissement)." },
