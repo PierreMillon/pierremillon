@@ -378,6 +378,26 @@
     .win-btns { display: flex; gap: 0.6rem; justify-content: center; }
     .win .big { font-size: 1.6rem; color: var(--accent); }
     .win.show .big { animation: pop 0.5s cubic-bezier(.3, 1.6, .5, 1) both; }
+    /* Note de musique gagnée en jouant de la loupe (voir musician) */
+    h1 { position: relative; }
+    .note {
+      position: absolute;
+      left: 100%;
+      top: -0.1em;
+      margin-left: 0.15em;
+      font-size: 0.6em;
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(109, 255, 176, 0.7);
+    }
+    .note[hidden] { display: none; }
+    .note.born { animation: noteBorn 1.1s cubic-bezier(.25, 1.6, .45, 1) both; }
+    @keyframes noteBorn {
+      0% { transform: translateY(0.8em) scale(0) rotate(-40deg); opacity: 0; text-shadow: 0 0 0 transparent; }
+      45% { transform: translateY(-0.35em) scale(1.7) rotate(14deg); opacity: 1; text-shadow: 0 0 22px rgba(109, 255, 176, 1); }
+      70% { transform: translateY(0.05em) scale(0.9) rotate(-6deg); }
+      100% { transform: none; opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) { .note.born { animation: none; } }
     @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
     .menu-list { width: 100%; max-width: 20rem; display: flex; flex-direction: column; }
@@ -431,7 +451,7 @@
         <a class="back" href="../" aria-label="Portfolio">←</a>
         <span class="bottombar" id="bottomBar"></span>
       </div>
-      <h1 id="title">Tables</h1>
+      <h1 id="title">Tables<span class="note" id="note" hidden aria-label="Musicien">♪</span></h1>
       <button class="link-btn" id="menuBtn" aria-label="Menu">☰ Menu</button>
     </header>
   </div>
@@ -906,6 +926,13 @@
         render();
       }
       // Revenir sur une grille déjà pleine : elle repart de zéro
+      function skipQuestion() {
+        if (pending || target === null || !winEl.hidden) return;
+        var before = targetKey;
+        for (var i = 0; i < 12 && targetKey === before && remainingKeys().length > 1; i++) pickTarget();
+        caption = null;
+        render();
+      }
       function enter() {
         clearTimeout(pendT);
         pending = false;
@@ -917,7 +944,9 @@
       }
 
       function setPart(p) {
-        if (S.part === p) return;
+        // Retoucher la partie en cours : on passe à une autre question
+        // (demande de Pierre : on a le choix), sans compter d'erreur
+        if (S.part === p) { skipQuestion(); return; }
         S.part = p;
         S.err = false;
         saveState();
@@ -1270,6 +1299,42 @@
       // dézoome et la réponse est validée. Un appui précis marche toujours.
       // Les positions des cases sont relevées au posé du doigt, avant tout
       // zoom, pour que la case visée ne dépende pas des cases grossies.
+      // ---------- Musicien (demande de Pierre) ----------
+      // Glisser vite sur la grille fait une petite mélodie de « tic ». Si
+      // ça dure une seconde ou plus (au moins ~8 cases par seconde, sans
+      // pause), c'est qu'on joue : une note ♪ apparaît à côté du titre,
+      // avec un petit effet et un petit son. Elle reste (gardée en local).
+      var mus = { start: 0, last: 0, n: 0 };
+      var noteEl = document.getElementById("note");
+      if (load("musician") === "1") noteEl.hidden = false;
+      function musicTick() {
+        var now = Date.now();
+        if (now - mus.last > 250) { mus.start = now; mus.n = 0; }
+        mus.last = now;
+        mus.n++;
+        var dur = now - mus.start;
+        if (dur >= 1100 && mus.n / (dur / 1000) >= 8) {
+          mus.start = now; mus.n = 0;
+          musician();
+        }
+      }
+      function musician() {
+        save("musician", "1");
+        noteEl.hidden = false;
+        noteEl.classList.remove("born");
+        void noteEl.offsetWidth;
+        noteEl.classList.add("born");
+        buzz(20);
+        try {
+          unlockAudio();
+          if (!actx) return;
+          var w = actx.currentTime + 0.03;
+          // Petite phrase montante, puis la note tenue
+          [262, 330, 392, 523].forEach(function (f, i) { tone(f, f, 0.08, 0.35, w + i * 0.08, 0.01); });
+          tone(659, 659, 0.07, 1.2, w + 0.34, 0.03);
+        } catch (e) {}
+      }
+
       var mag = null;
       var LENS = 1.8, NEAR = 0.3;
       function magMove(x, y) {
@@ -1287,6 +1352,7 @@
             best.el.classList.add("lens");
             buzz(4);
             lensSound(mag.any ? "tick" : "in");
+            if (mag.any) musicTick();
             mag.any = true;
           }
           mag.cur = best;
@@ -1450,6 +1516,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v18", text: "Clin d'œil : glisser vite sur la grille pendant une seconde ou deux (la loupe « joue » une mélodie de tics) fait apparaître une note ♪ à côté du titre, avec un petit effet et une petite phrase musicale. Elle reste ensuite. Retoucher le bouton de la partie en cours passe à une autre question." },
         { v: "v17", text: "Petit « toc » sourd à chaque touche du pavé de chiffres. Une bonne réponse reste affichée une demi-seconde (le nombre s'allume) avant la question suivante." },
         { v: "v16", text: "Sons de la loupe une octave plus graves ; le « tic » de chaque case traversée est plus sec (très court, sans glissement)." },
         { v: "v15", text: "Sons de la loupe, très légers : une petite bulle qui monte au zoom, un « tic » doux à chaque case traversée en glissant, la bulle qui redescend au dézoom." },

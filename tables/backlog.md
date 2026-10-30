@@ -59,6 +59,9 @@ Tri : priorité décroissante.
 - [x] v16 — Sons de la loupe plus graves, « tic » plus sec
 - [x] v17 — Son à chaque touche du pavé ; bonne réponse affichée 0,5 s
   avant la question suivante
+- [x] v18 — Note ♪ à côté du titre quand on « joue » de la loupe (glissé
+  rapide 1 s ou plus), avec effet et petit son ; gardée en local ;
+  retoucher la partie en cours passe à une autre question
 
 ## À faire
 
