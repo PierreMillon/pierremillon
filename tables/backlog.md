@@ -53,6 +53,8 @@ Tri : priorité décroissante.
 - [x] v12 — Marges latérales minimales (2 px), compteur d'erreurs à côté
   de ←, grille plus grande ; numéro de version → Historique
 - [x] v13 — Traits des doublons aussi vers les cases grisées
+- [x] v14 — Loupe sous le doigt : appuyer, glisser, relâcher sur la case ;
+  la case visée grossit et monte au-dessus du doigt, ses voisines un peu
 
 ## À faire
 

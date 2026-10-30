@@ -173,6 +173,27 @@
       grid-auto-rows: var(--cell);
       gap: 2px;
     }
+    /* Loupe sous le doigt (voir magMove) : la grille gère elle-même le
+       glissé, la case zoome et dézoome avec un léger rebond */
+    .tgrid { touch-action: none; }
+    .tcell {
+      transition: transform 0.16s cubic-bezier(.3, 1.45, .5, 1), box-shadow 0.16s ease;
+      will-change: transform;
+    }
+    .tcell.lens {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px var(--accent), 0 6px 16px rgba(0, 0, 0, 0.7);
+      background: #0c2a1b;
+    }
+    /* Case vide sous la loupe : ses coordonnées (4 × 9), pour savoir où
+       est le doigt — jamais le résultat */
+    .tcell.lens:not(.done):not(.easy):not(.known)::after {
+      content: attr(data-expr);
+      font-size: calc(var(--cell) * 0.3);
+      color: var(--accent);
+      white-space: nowrap;
+    }
+    @media (prefers-reduced-motion: reduce) { .tcell { transition: none; } }
     .tcell {
       position: relative;
       z-index: 1;
@@ -1014,6 +1035,7 @@
       function playCell(cell, k) {
         var d = cur().done[S.mode];
         cell.dataset.key = k;
+        if (!isPow(k)) cell.dataset.expr = exprK(k).replace(/ /g, "");
         if (easyK(k)) {
           cell.appendChild(document.createTextNode(valK(k)));
           cell.disabled = true;
@@ -1034,7 +1056,9 @@
         }
         if (dir !== "find" && target === k) cell.className += " target";
         if (flash === k) cell.className += " bad";
-        cell.addEventListener("click", function () { tapCell(k); });
+        // Au clavier seulement (Entrée / espace) : au doigt et à la souris,
+        // c'est la loupe qui valide, au moment où on relâche
+        cell.addEventListener("click", function (e) { if (e.detail === 0) tapCell(k); });
       }
 
       function gridShape() {
@@ -1198,12 +1222,83 @@
         else if (e.key === "Backspace") typeKey("⌫");
       });
 
+      // ---------- Loupe (demande de Pierre) ----------
+      // Quand il faut toucher une case : on pose le doigt, la case dessous
+      // grossit (et ses voisines un peu, comme sous une loupe) ; on glisse,
+      // la loupe suit de case en case ; on relâche sur la bonne case, elle
+      // dézoome et la réponse est validée. Un appui précis marche toujours.
+      // Les positions des cases sont relevées au posé du doigt, avant tout
+      // zoom, pour que la case visée ne dépende pas des cases grossies.
+      var mag = null;
+      var LENS = 1.8, NEAR = 0.3;
+      function magMove(x, y) {
+        var best = null, bd = Infinity, u = mag.unit;
+        mag.cells.forEach(function (c) {
+          var d = Math.hypot(c.cx - x, c.cy - y);
+          c.d = d;
+          if (d < bd) { bd = d; best = c; }
+        });
+        // Trop loin de toute case : pas de case visée
+        if (bd > u * 1.1) best = null;
+        if (best !== mag.cur) {
+          if (mag.cur) mag.cur.el.classList.remove("lens");
+          if (best) { best.el.classList.add("lens"); buzz(4); }
+          mag.cur = best;
+        }
+        mag.cells.forEach(function (c) {
+          var sc = c === best ? LENS : 1 + NEAR * Math.max(0, 1 - c.d / (2.2 * u));
+          if (sc <= 1.001) {
+            if (c.on) { c.el.style.transform = ""; c.el.style.zIndex = ""; c.on = false; }
+            return;
+          }
+          // La case visée monte un peu au-dessus du doigt pour rester visible
+          var lift = c === best ? -(LENS - 1) * u * 0.55 : 0;
+          c.el.style.transform = "translateY(" + lift.toFixed(1) + "px) scale(" + sc.toFixed(3) + ")";
+          c.el.style.zIndex = c === best ? 6 : 3;
+          c.on = true;
+        });
+      }
+      function magEnd() {
+        if (!mag) return;
+        mag.cells.forEach(function (c) {
+          c.el.classList.remove("lens");
+          if (c.on) { c.el.style.transform = ""; c.el.style.zIndex = ""; }
+        });
+        mag = null;
+      }
+      tgrid.addEventListener("pointerdown", function (e) {
+        if (dir !== "find" || target === null || !winEl.hidden || mag) return;
+        e.preventDefault();
+        try { tgrid.setPointerCapture(e.pointerId); } catch (er) {}
+        var unit = parseFloat(tgrid.style.getPropertyValue("--cell")) || 30;
+        mag = {
+          id: e.pointerId, unit: unit, cur: null,
+          cells: [].slice.call(tgrid.querySelectorAll(".tcell[data-key]")).map(function (el) {
+            var b = el.getBoundingClientRect();
+            return { el: el, k: el.dataset.key, cx: b.left + b.width / 2, cy: b.top + b.height / 2, d: 0, on: false };
+          })
+        };
+        magMove(e.clientX, e.clientY);
+      });
+      tgrid.addEventListener("pointermove", function (e) {
+        if (mag && e.pointerId === mag.id) magMove(e.clientX, e.clientY);
+      });
+      tgrid.addEventListener("pointerup", function (e) {
+        if (!mag || e.pointerId !== mag.id) return;
+        var c = mag.cur;
+        magEnd();
+        if (c && !c.el.disabled) tapCell(c.k);
+      });
+      tgrid.addEventListener("pointercancel", magEnd);
+
       // Glisser l'écran de droite à gauche : partie suivante ; de gauche à
       // droite : partie précédente. Le défilement de la page reste bloqué
       // (touchmove), on ne regarde que le départ et l'arrivée du doigt
       var swX = null, swY = 0;
       document.addEventListener("touchstart", function (e) {
-        if (e.touches.length !== 1 || !winEl.hidden || !menuOverlay.hidden || !histOverlay.hidden) { swX = null; return; }
+        // Un glissé sur la grille sert à la loupe, pas à changer de partie
+        if (e.touches.length !== 1 || !winEl.hidden || !menuOverlay.hidden || !histOverlay.hidden ||
+            (e.target.closest && e.target.closest("#tgrid"))) { swX = null; return; }
         swX = e.touches[0].clientX;
         swY = e.touches[0].clientY;
       }, { passive: true });
@@ -1307,6 +1402,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v14", text: "Loupe sous le doigt : quand il faut toucher une case, la case sous le doigt grossit (ses voisines un peu), et la loupe suit quand on glisse ; on relâche sur la bonne case, elle dézoome et la réponse est validée. Une case vide sous la loupe montre ses coordonnées (4×9). Un appui précis marche toujours." },
         { v: "v13", text: "Grille 2–9 : les traits qui relient deux cases au même résultat (3 × 8 et 4 × 6 = 24…) relient aussi les cases grisées, qui montrent déjà leur réponse." },
         { v: "v12", text: "Marges sur les côtés réduites au minimum (2 px) et compteur d'erreurs (✗ n) monté à côté de la flèche de retour : la grille gagne en largeur et en hauteur, le pavé s'ajuste en dessous. Toucher le numéro de version dans le menu ouvre l'Historique." },
         { v: "v11", text: "Cases de la grille toujours carrées, aussi grandes que possible ; le pavé de chiffres prend la place qui reste en dessous." },
