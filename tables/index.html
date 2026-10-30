@@ -136,6 +136,7 @@
       letter-spacing: 0.06em;
       white-space: nowrap;
     }
+    .task .tnum.ok { color: #f2fff8; text-shadow: 0 0 14px rgba(109, 255, 176, 0.9); }
     .task .tnum {
       font-size: 1.8rem;
       color: var(--accent);
@@ -680,6 +681,8 @@
       // Sens de la question en cours : « find » (toucher la case) ou
       // « write » (taper le résultat de la case allumée), tiré au hasard
       var dir = "find", lastDirs = [], input = "";
+      // Bonne réponse affichée une demi-seconde avant la question suivante
+      var pending = false, pendT = 0;
 
       function cur() { return S.prog[S.part + (S.err ? "e" : "")]; }
       function scopeKeys() { return S.err ? S.errKeys[S.part] : PART_KEYS[S.part]; }
@@ -904,6 +907,8 @@
       }
       // Revenir sur une grille déjà pleine : elle repart de zéro
       function enter() {
+        clearTimeout(pendT);
+        pending = false;
         winEl.hidden = true;
         caption = null;
         if (!remainingKeys().length) resetCurrent();
@@ -939,9 +944,17 @@
         drop();
         buzz(8);
         saveState();
-        pickTarget();
+        // La bonne réponse reste affichée une demi-seconde (demande de
+        // Pierre), puis la question suivante arrive
+        pending = true;
         render();
-        if (target === null) gridDone();
+        clearTimeout(pendT);
+        pendT = setTimeout(function () {
+          pending = false;
+          pickTarget();
+          render();
+          if (target === null) gridDone();
+        }, 500);
       }
       function wrong(k) {
         cur().errors[S.mode]++;
@@ -964,7 +977,7 @@
       }
 
       function tapCell(k) {
-        if (dir !== "find" || target === null || cur().done[S.mode][k] || !winEl.hidden) return;
+        if (dir !== "find" || target === null || cur().done[S.mode][k] || !winEl.hidden || pending) return;
         if (scopeKeys().indexOf(k) < 0) return;
         // Un même produit peut avoir plusieurs cases (12 = 2 × 6 = 3 × 4) :
         // n'importe laquelle est juste
@@ -973,8 +986,18 @@
       }
       // Pas de touche « OK » (demande de Pierre) : dès qu'on a tapé autant
       // de chiffres que la réponse en a, elle est validée
+      // Petit son à chaque touche du pavé : un « toc » sourd et bref
+      function keySound() {
+        try {
+          unlockAudio();
+          if (!actx) return;
+          var f = 260 * (0.97 + Math.random() * 0.06);
+          tone(f, f * 0.9, 0.07, 0.05, actx.currentTime + 0.005, 0.002, 0.02);
+        } catch (e) {}
+      }
       function typeKey(key) {
-        if (dir !== "write" || target === null || !winEl.hidden) return;
+        if (dir !== "write" || target === null || !winEl.hidden || pending) return;
+        keySound();
         if (key === "⌫") { input = input.slice(0, -1); render(); return; }
         input += key;
         var want = String(valK(target));
@@ -1071,7 +1094,7 @@
           eb.textContent = S.cellErr[k];
           cell.appendChild(eb);
         }
-        if (dir !== "find" && target === k) cell.className += " target";
+        if (dir !== "find" && target === k && !pending) cell.className += " target";
         if (flash === k) cell.className += " bad";
         // Au clavier seulement (Entrée / espace) : au doigt et à la souris,
         // c'est la loupe qui valide, au moment où on relâche
@@ -1225,10 +1248,11 @@
           var num = document.createElement("span");
           num.className = "tnum";
           num.textContent = dir === "find" ? String(target) : input || "?";
+          if (pending) num.className += " ok";
           task.appendChild(num);
         }
         renderSplit();
-        blink(dir !== "find" && target !== null);
+        blink(dir !== "find" && target !== null && !pending);
         sizeGrid();
         drawDupLines();
       }
@@ -1290,7 +1314,7 @@
         mag = null;
       }
       tgrid.addEventListener("pointerdown", function (e) {
-        if (dir !== "find" || target === null || !winEl.hidden || mag) return;
+        if (dir !== "find" || target === null || !winEl.hidden || mag || pending) return;
         e.preventDefault();
         try { tgrid.setPointerCapture(e.pointerId); } catch (er) {}
         unlockAudio();
@@ -1426,6 +1450,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v17", text: "Petit « toc » sourd à chaque touche du pavé de chiffres. Une bonne réponse reste affichée une demi-seconde (le nombre s'allume) avant la question suivante." },
         { v: "v16", text: "Sons de la loupe une octave plus graves ; le « tic » de chaque case traversée est plus sec (très court, sans glissement)." },
         { v: "v15", text: "Sons de la loupe, très légers : une petite bulle qui monte au zoom, un « tic » doux à chaque case traversée en glissant, la bulle qui redescend au dézoom." },
         { v: "v14", text: "Loupe sous le doigt : quand il faut toucher une case, la case sous le doigt grossit (ses voisines un peu), et la loupe suit quand on glisse ; on relâche sur la bonne case, elle dézoome et la réponse est validée. Une case vide sous la loupe montre ses coordonnées (4×9). Un appui précis marche toujours." },
