@@ -410,7 +410,8 @@
     .menu-item:active { background: var(--accent-soft); }
     .menu-item.danger { color: var(--ink-soft); }
     .menu-item.armed { color: var(--accent); }
-    .overlay p.version { margin-top: -0.6rem; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--accent); }
+    /* Numéro de version : un appui ouvre l'Historique */
+    .overlay .version { margin-top: -0.6rem; font-family: inherit; font-size: 0.75rem; letter-spacing: 0.18em; color: var(--accent); background: none; border: none; padding: 0.3rem 0.6rem; text-decoration: underline; text-underline-offset: 0.25em; cursor: pointer; }
     .counter { font-variant-numeric: tabular-nums; }
     .counter b { color: var(--accent); font-weight: 500; }
 
@@ -654,7 +655,7 @@
   <!-- Menu ☰ : tout ce qui n'est pas le boulier lui-même -->
   <div class="overlay" id="menuOverlay" hidden>
     <div class="big">Menu</div>
-    <p class="version" id="mVersion"></p>
+    <button class="version" id="mVersion"></button>
     <div class="menu-list">
       <button class="menu-item" id="mSandbox"></button>
       <button class="menu-item" id="mLang"></button>
@@ -2616,6 +2617,10 @@
         menuOverlay.hidden = true;
         setMode(mode === "ops" ? "free" : "ops");
       });
+      document.getElementById("mVersion").addEventListener("click", function () {
+        menuOverlay.hidden = true;
+        histOverlay.hidden = false;
+      });
       document.getElementById("mHist").addEventListener("click", function () {
         menuOverlay.hidden = true;
         histOverlay.hidden = false;
@@ -2700,6 +2705,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v33", text: "Toucher le numéro de version dans le menu ☰ ouvre l'Historique." },
         { v: "v32", text: "Numéro de version affiché dans le menu ☰ (le détail de chaque version reste dans l'Historique)." },
         { v: "v31", text: "Tables : répétition espacée — une case réussie deux fois plus vite que ta moyenne est grisée avec sa réponse, et revient au bout de 2 parties, puis 4, 8… (une erreur ou une réponse lente la remet en jeu). Table de 5 un peu effacée, comme celle de 2." },
         { v: "v30", text: "Une fois les tables réussies, trois parties au choix : toute la table (les erreurs restent comptées), mes erreurs (seulement les tables déjà ratées), et carrés de 11 à 20 (11² … 20², trouver la case ou écrire le résultat)." },

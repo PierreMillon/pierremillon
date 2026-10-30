@@ -184,6 +184,7 @@ Tri : priorité décroissante.
   opacité légère, comme celle de 2
 
 - [x] v32 — Numéro de version affiché dans le menu ☰
+- [x] v33 — Toucher le numéro de version ouvre l'Historique
 
 ## À faire
 

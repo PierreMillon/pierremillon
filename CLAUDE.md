@@ -36,7 +36,8 @@ Un nouveau projet (jeu ou page d'essai) :
 - **affiche son numéro de version dans le menu** (ex. « Version v6 »,
   tiré de la première entrée de l'Historique) : chaque version a un numéro
   et un commentaire qui permettent de retracer l'historique. Règle valable
-  pour tous les programmes de Pierre, dès le premier commit
+  pour tous les programmes de Pierre, dès le premier commit. Toucher ce
+  numéro ouvre l'Historique
 - **désactive systématiquement le zoom tactile et la loupe iOS** (déjà
   demandé pour le jeu d'avion, à refaire à chaque fois) :
   - `<meta name="viewport" content="... user-scalable=no, maximum-scale=1">`
