@@ -267,8 +267,9 @@
     .keypad.ghost { visibility: hidden; }
     .key {
       font-family: inherit;
-      height: clamp(2.4rem, 6.5vh, 3.6rem);
-      font-size: clamp(1.15rem, 3.2vh, 1.6rem);
+      /* Hauteur donnée par sizeGrid : ce qui reste sous la grille */
+      height: var(--keyh, 2.4rem);
+      font-size: calc(var(--keyh, 2.4rem) * 0.45);
       color: var(--ink);
       background: transparent;
       border: 1px solid var(--ink-soft);
@@ -1096,13 +1097,19 @@
         var w = stageEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
         var h = stageEl.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
         var gap = parseFloat(cs.rowGap) || 0, g = sh.cols > 12 ? 1 : 2;
-        var kp = keypad.offsetHeight + gap;
+        // Cases toujours carrées (demande de Pierre), la grille passe en
+        // premier : le pavé prend ce qui reste, entre 34 et 64 px par touche
+        var kg = parseFloat(getComputedStyle(keypad).rowGap) || 0;
+        var KEY_MIN = 34, KEY_MAX = 64;
+        var kpMin = 4 * KEY_MIN + 3 * kg + gap;
         var hk = sh.head ? 0.62 : 0; // en-têtes : 62 % d'une case
         var cw = (w - g * sh.cols) / (sh.cols + hk);
-        var ch = (h - kp - g * sh.rows) / (sh.rows + hk);
-        var colw = Math.floor(Math.max(12, Math.min(cw, ch * 1.6)));
-        var rowh = Math.floor(Math.max(12, Math.min(ch, cw * 1.25)));
-        var unit = Math.min(colw, rowh), head = Math.floor(unit * hk);
+        var ch = (h - kpMin - g * sh.rows) / (sh.rows + hk);
+        var unit = Math.floor(Math.max(12, Math.min(cw, ch))), colw = unit, rowh = unit;
+        var head = Math.floor(unit * hk);
+        var gridH = sh.rows * (unit + g) + (sh.head ? Math.max(head, 12) : 0);
+        var keyh = Math.floor((h - gridH - gap - 3 * kg) / 4);
+        keypad.style.setProperty("--keyh", Math.max(26, Math.min(KEY_MAX, keyh)) + "px");
         // Petites cases (grand triangle 20 × 20 sur téléphone) : chiffres
         // réduits, compteur d'erreurs en simple point rouge
         tgrid.classList.toggle("tiny", unit < 26);
@@ -1293,6 +1300,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v11", text: "Cases de la grille toujours carrées, aussi grandes que possible ; le pavé de chiffres prend la place qui reste en dessous." },
         { v: "v10", text: "Grille et pavé de chiffres agrandis au maximum, marges réduites au minimum (en-têtes plus étroits que les cases). Son de victoire à chaque grille finie, plus brillant sans faute. Bouton « Suivant » à côté de « Encore » pour passer à la partie d'après." },
         { v: "v9", text: "Pavé de chiffres disposé comme un clavier de téléphone (1 2 3 / 4 5 6 / 7 8 9 / 0). Le compteur d'erreurs passe en haut, sous les parties ; le bouton ↻ est retiré (« Encore » relance la grille à la fin). Cases grisées (tables de 2, 5, 10, 20, carrés de la diagonale…) : réponse déjà écrite, plus aucune question dessus." },
         { v: "v8", text: "La partie « tout » devient un grand triangle de 2 × 2 à 20 × 20 (190 cases), angle droit en haut à droite comme la grille 2–9 (forme A choisie sur la page de test). Petites cases : chiffres réduits, erreurs en point rouge. Tables de 10, 20 un peu effacées, comme 2 et 5." },
