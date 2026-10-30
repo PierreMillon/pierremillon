@@ -1299,25 +1299,31 @@
       // Les positions des cases sont relevées au posé du doigt, avant tout
       // zoom, pour que la case visée ne dépende pas des cases grossies.
       // ---------- Musicien (demande de Pierre) ----------
-      // Glisser vite sur la grille fait une petite mélodie de « tic ». Si
-      // ça dure une seconde ou plus (au moins ~8 cases par seconde, sans
-      // pause), c'est qu'on joue : une note ♪ apparaît à côté du titre,
-      // avec un petit effet et un petit son. Elle reste (gardée en local).
-      var mus = { start: 0, last: 0, n: 0 };
+      // Glisser vite sur la grille fait une petite mélodie de « tic ». Règle
+      // de Pierre : 5 secondes de glissé rapide, cumulées, sur les 10
+      // dernières secondes → c'est qu'on joue : une note ♪ apparaît à côté
+      // du titre, avec un petit effet et un arpège. Une seule fois : elle
+      // reste ensuite (gardée en local) et ne rejoue plus jamais le son.
+      // « Rapide » : deux cases traversées à moins de 250 ms d'écart ; le
+      // temps entre elles compte comme du temps de jeu.
+      var MUS_NEED = 5000, MUS_WINDOW = 10000, MUS_GAP = 250;
+      var mus = { last: 0, segs: [] };
       var noteEl = document.getElementById("note");
-      if (load("musician") === "1") noteEl.hidden = false;
+      var isMusician = load("musician") === "1";
+      if (isMusician) noteEl.hidden = false;
       function musicTick() {
-        var now = Date.now();
-        if (now - mus.last > 250) { mus.start = now; mus.n = 0; }
+        if (isMusician) return;
+        var now = Date.now(), dt = now - mus.last;
         mus.last = now;
-        mus.n++;
-        var dur = now - mus.start;
-        if (dur >= 1100 && mus.n / (dur / 1000) >= 8) {
-          mus.start = now; mus.n = 0;
-          musician();
-        }
+        if (dt > MUS_GAP) return;
+        mus.segs.push([now, dt]);
+        mus.segs = mus.segs.filter(function (sg) { return now - sg[0] <= MUS_WINDOW; });
+        var tot = 0;
+        mus.segs.forEach(function (sg) { tot += sg[1]; });
+        if (tot >= MUS_NEED) musician();
       }
       function musician() {
+        isMusician = true;
         save("musician", "1");
         noteEl.hidden = false;
         noteEl.classList.remove("born");
@@ -1328,9 +1334,13 @@
           unlockAudio();
           if (!actx) return;
           var w = actx.currentTime + 0.03;
-          // Petite phrase montante, puis la note tenue
-          [262, 330, 392, 523].forEach(function (f, i) { tone(f, f, 0.08, 0.35, w + i * 0.08, 0.01); });
-          tone(659, 659, 0.07, 1.2, w + 0.34, 0.03);
+          // Petit arpège joli : do – mi – sol – si – ré (accord de do
+          // majeur 7/9) égrené, chaque note laissée sonner pour former
+          // l'accord, puis le do aigu en haut
+          [262, 330, 392, 494, 587].forEach(function (f, i) {
+            tone(f, f, 0.075, 2.2 - i * 0.15, w + i * 0.11, 0.015);
+          });
+          tone(523, 523, 0.05, 1.8, w + 0.62, 0.04);
         } catch (e) {}
       }
 
@@ -1515,6 +1525,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v20", text: "Note ♪ du musicien plus dure à gagner : 5 secondes de glissé rapide cumulées sur 10 secondes. Elle n'arrive qu'une fois, avec un petit arpège (do – mi – sol – si – ré) ; ensuite elle reste, sans rejouer le son." },
         { v: "v19", text: "Menu : seulement les trois barres ☰. Le bouton des erreurs quitte le haut à gauche et devient « erreurs courantes », à la fin des boutons des parties : il fait refaire seulement les cases ratées de la partie en cours." },
         { v: "v18", text: "Clin d'œil : glisser vite sur la grille pendant une seconde ou deux (la loupe « joue » une mélodie de tics) fait apparaître une note ♪ à côté du titre, avec un petit effet et une petite phrase musicale. Elle reste ensuite. Retoucher le bouton de la partie en cours passe à une autre question." },
         { v: "v17", text: "Petit « toc » sourd à chaque touche du pavé de chiffres. Une bonne réponse reste affichée une demi-seconde (le nombre s'allume) avant la question suivante." },

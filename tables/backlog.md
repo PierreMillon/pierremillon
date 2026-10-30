@@ -63,6 +63,8 @@ Tri : priorité décroissante.
   rapide 1 s ou plus), avec effet et petit son ; gardée en local ;
   retoucher la partie en cours passe à une autre question
 - [x] v19 — Menu en ☰ seul ; « erreurs courantes » à la fin des parties
+- [x] v20 — Note ♪ : 5 s de glissé rapide cumulées sur 10 s, une seule
+  fois, avec un arpège
 
 ## À faire
 
