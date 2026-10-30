@@ -1137,7 +1137,9 @@
         svg.setAttribute("class", "tdup");
         var d = cur().done[S.mode];
         DUPS.forEach(function (group) {
-          var filled = group.filter(function (k) { return d[k]; });
+          // Une case grisée (facile ou déjà sue) montre déjà son résultat :
+          // elle compte comme remplie (demande de Pierre : 6 × 4 relié à 3 × 8)
+          var filled = group.filter(function (k) { return d[k] || easyK(k) || known(k); });
           for (var i = 0; i + 1 < filled.length; i++) {
             var p = tgrid.querySelector('[data-key="' + filled[i] + '"]');
             var q = tgrid.querySelector('[data-key="' + filled[i + 1] + '"]');
@@ -1305,6 +1307,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v13", text: "Grille 2–9 : les traits qui relient deux cases au même résultat (3 × 8 et 4 × 6 = 24…) relient aussi les cases grisées, qui montrent déjà leur réponse." },
         { v: "v12", text: "Marges sur les côtés réduites au minimum (2 px) et compteur d'erreurs (✗ n) monté à côté de la flèche de retour : la grille gagne en largeur et en hauteur, le pavé s'ajuste en dessous. Toucher le numéro de version dans le menu ouvre l'Historique." },
         { v: "v11", text: "Cases de la grille toujours carrées, aussi grandes que possible ; le pavé de chiffres prend la place qui reste en dessous." },
         { v: "v10", text: "Grille et pavé de chiffres agrandis au maximum, marges réduites au minimum (en-têtes plus étroits que les cases). Son de victoire à chaque grille finie, plus brillant sans faute. Bouton « Suivant » à côté de « Encore » pour passer à la partie d'après." },

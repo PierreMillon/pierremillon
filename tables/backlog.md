@@ -52,6 +52,7 @@ Tri : priorité décroissante.
   place restante
 - [x] v12 — Marges latérales minimales (2 px), compteur d'erreurs à côté
   de ←, grille plus grande ; numéro de version → Historique
+- [x] v13 — Traits des doublons aussi vers les cases grisées
 
 ## À faire
 
