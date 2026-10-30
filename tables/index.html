@@ -828,11 +828,13 @@
         try {
           if (!actx || actx.state !== "running") return;
           var w = actx.currentTime + 0.005, f;
-          if (kind === "in") tone(420, 760, 0.07, 0.16, w, 0.01, 0.07);
-          else if (kind === "out") tone(700, 400, 0.05, 0.16, w, 0.01, 0.08);
+          // v16 : tout une octave plus grave, « tic » plus sec (très court,
+          // attaque immédiate, sans glissement)
+          if (kind === "in") tone(210, 380, 0.08, 0.16, w, 0.01, 0.07);
+          else if (kind === "out") tone(350, 200, 0.06, 0.16, w, 0.01, 0.08);
           else {
-            f = 880 * (0.94 + Math.random() * 0.12);
-            tone(f, f * 1.12, 0.035, 0.07, w, 0.004, 0.03);
+            f = 440 * (0.95 + Math.random() * 0.1);
+            tone(f, f * 0.97, 0.05, 0.03, w, 0.002, 0.01);
           }
         } catch (e) {}
       }
@@ -1424,6 +1426,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v16", text: "Sons de la loupe une octave plus graves ; le « tic » de chaque case traversée est plus sec (très court, sans glissement)." },
         { v: "v15", text: "Sons de la loupe, très légers : une petite bulle qui monte au zoom, un « tic » doux à chaque case traversée en glissant, la bulle qui redescend au dézoom." },
         { v: "v14", text: "Loupe sous le doigt : quand il faut toucher une case, la case sous le doigt grossit (ses voisines un peu), et la loupe suit quand on glisse ; on relâche sur la bonne case, elle dézoome et la réponse est validée. Une case vide sous la loupe montre ses coordonnées (4×9). Un appui précis marche toujours." },
         { v: "v13", text: "Grille 2–9 : les traits qui relient deux cases au même résultat (3 × 8 et 4 × 6 = 24…) relient aussi les cases grisées, qui montrent déjà leur réponse." },
