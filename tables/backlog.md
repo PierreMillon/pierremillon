@@ -48,6 +48,8 @@ Tri : priorité décroissante.
   ↻ retiré ; cases grisées (faciles) jamais demandées, réponse écrite
 - [x] v10 — Grille et pavé au plus grand, marges minimales ; son de
   victoire à chaque grille finie ; bouton « Suivant » (partie d'après)
+- [x] v11 — Cases toujours carrées, la grille d'abord ; le pavé prend la
+  place restante
 
 ## À faire
 
