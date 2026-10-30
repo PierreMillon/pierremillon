@@ -123,6 +123,7 @@
     }
 
     .menu-item:last-child { border-bottom: none; }
+    .menu-version { color: var(--ink-soft); font-size: 0.7rem; cursor: default; }
 
     /* Barre des ensembles, toujours visible : ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ */
     .univ {
@@ -1567,6 +1568,7 @@
       <button class="menu-item" id="gameBtn"></button>
       <button class="menu-item" id="soundBtn"></button>
       <button class="menu-item" id="profBtn"></button>
+      <div class="menu-item menu-version" id="menuVersion"></div>
     </div>
 
     <div class="overlay" id="histOverlay" hidden>
@@ -3953,7 +3955,9 @@
         // Premiers : ni ensembles ni badges, ils n'y servent à rien
         var bare = custom === "pf";
         document.getElementById("univ").hidden = bare || !homeEl.hidden;
-        document.getElementById("badgeShelf").style.visibility = bare ? "hidden" : "";
+        // Les badges ne servent qu'aux chapitres de calcul (à étapes, et
+        // Regrouper) : ailleurs (Ensembles, Venn, Structures…) on les cache
+        document.getElementById("badgeShelf").style.visibility = custom && custom !== "reg" ? "hidden" : "";
         if (custom === "sg") { sgStart(); return; }
         if (custom === "pf") { pfStart(); return; }
         if (custom === "venn") { vennStart(); return; }
@@ -6630,7 +6634,9 @@
 
       // ---------- Historique ----------
 
+      // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v107", text: "Les badges ne s'affichent plus là où ils ne servent à rien (Ensembles, Venn, Structures, Solutions, Premiers, Singapour, Calcul, Pascal, Fusion, Exp / ln) : seulement dans les chapitres à étapes et Regrouper. Dans ℕ, le badge (−1)·(−1) est caché (pas de −1 dans ℕ). Le numéro de version est écrit en bas du menu ☰." },
         { v: "v106", text: "Nouveau chapitre Exp / ln (dans ℝ), sur le thème du TD 3 : simplifier (ln(e²ˣ + eˣ) = x + ln(eˣ + 1), e^(3 ln x) = x³, log(5 × 10⁻³)…), résoudre (eˣ = −1, e²ˣ + eˣ − 2 = 0 avec X = eˣ…), limites (croissances comparées, x ln x en 0, (1 + 1/x)ˣ → e). Trois réponses, puis le geste qui y mène." },
         { v: "v105", text: "Bouton Examen sous le titre (le titre du chapitre prend toute la ligne). Structures, réduit à la définition du cours : un groupe = loi interne, associative, élément neutre, symétriques. Construire (la commutativité est un piège) et « (ℤ, −) est-il un groupe ? » oui / non, puis les propriétés ✓ / ✗ avec la façon dont on sort de la structure (3 − 5 = −2 ∉ ℕ ; l'inverse de 2 serait 1/2 ∉ ℤ…). Toucher la flèche annule le passage automatique à la question suivante (plus de question sautée)." },
         { v: "v104", text: "Deux badges bien distincts. Regrouper rapproche : les x côte à côte à gauche, les nombres à droite (entre parenthèses, c'est une somme à calculer). x en facteur fait (3 + 1)·x — il faut avoir réussi son chapitre. Dans Regrouper : Regrouper, puis x en facteur, puis le badge 10." },
@@ -6744,6 +6750,7 @@
       var histList = document.getElementById("histList");
       var histClose = document.getElementById("histClose");
 
+      document.getElementById("menuVersion").textContent = "Version " + VERSIONS[0].v;
       VERSIONS.forEach(function (entry) {
         var li = document.createElement("li");
         var b = document.createElement("b");
@@ -6866,6 +6873,7 @@
       }
       function available(d) { return sets[setOf(d)] || !!variantKey(d); }
       function applySets() {
+        if (typeof badgeMM !== "undefined" && badgeMM) refreshBadges();
         var cur0 = DEMOS[demoIndex], before = cur0.steps;
         DEMOS.forEach(function (d) {
           if (!d.variants && !d.alts) return;
@@ -7012,7 +7020,8 @@
         setTimeout(function () { f.remove(); }, 1800);
       }
       function refreshBadges() {
-        badgeMM.hidden = !doneMap["−×−"];
+        // Pas de −1 dans ℕ : le badge (−1)·(−1) n'y a pas de sens
+        badgeMM.hidden = !doneMap["−×−"] || universe === "N";
         badgeReg.hidden = !doneMap["Regrouper"];
         badgeFac.hidden = !doneMap["x en facteur"];
       }
