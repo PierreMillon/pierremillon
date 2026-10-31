@@ -14,6 +14,10 @@ partie technique de la charte s'applique.
   sans pied ni socle
 - [x] v1 — 50 icônes en grille, aperçu en grand et à la taille d'un badge
 
+## Choix
+
+- n° 57 retenu par Pierre → badge balance de Pas à Pas (v120)
+
 ## Conformité à la charte (../REGLES-JEUX.md)
 
 - Fait : écran figé (pas de défilement, zoom et loupe bloqués), mise à jour
