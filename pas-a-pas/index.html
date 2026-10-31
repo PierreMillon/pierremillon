@@ -444,6 +444,13 @@
     }
 
     .tok.sign-hl { color: var(--sign); }
+    /* Même opération des deux côtés (balance) : un halo lumineux, gardé
+       en examen — c'est l'opération elle-même, pas un indice */
+    .tok.bal {
+      color: var(--accent);
+      text-shadow: 0 0 6px var(--accent), 0 0 14px rgba(255, 209, 102, 0.45);
+      background: none;
+    }
 
     .frac {
       display: inline-flex;
@@ -622,6 +629,7 @@
     }
 
     .choice .expr { font-size: clamp(1.1rem, 5vw, 1.6rem); }
+    .choice .frac { font-size: 0.8em; }
     .choice.good { border-color: var(--accent); background: var(--accent-soft); }
     .choice.bad { border-color: #ff8a7a; color: #ff8a7a; }
 
@@ -1730,6 +1738,9 @@
         <button class="badge" id="badgeSq" aria-label="Badge carré" hidden>
           <svg viewBox="0 0 20 20"><path d="M5 4 Q2 10 5 16"/><path d="M11 4 Q14 10 11 16"/><path d="M6.5 10 L9.5 10 M8 8.5 L8 11.5"/><path d="M14.5 3.5 Q17.5 2.5 17.5 4.5 Q17.5 6 14.5 8 L18 8"/></svg>
         </button>
+        <button class="badge" id="badgeBal" aria-label="Badge balance" hidden>
+          <svg viewBox="0 0 20 20"><path d="M10 3 L10 17 M6 17 L14 17"/><path d="M3 6 L17 6"/><path d="M4.5 6 L2 11 L7 11 Z"/><path d="M15.5 6 L13 11 L18 11 Z"/></svg>
+        </button>
         <button class="badge" id="badgeQ" aria-label="Badge a/a = 1" hidden>
           <svg viewBox="0 0 20 20"><circle cx="10" cy="5" r="2.4"/><line x1="5" y1="10" x2="15" y2="10"/><circle cx="10" cy="15" r="2.4"/></svg>
         </button>
@@ -1756,6 +1767,33 @@
       function V(top, bottom, eq) { return { cancel: true, top: top, bottom: bottom, eq: eq || null }; }
 
       var X = "<i>x</i>";
+      // Fin d'une équation a·x = r : on multiplie les deux côtés par
+      // l'inverse 1/a (pas de barre de fraction sous x), on écrit r = a·x
+      // pour voir le même a de chaque côté, puis 1/a · a = 1 et 1·x = x.
+      function eqInverse(a, r, x) {
+        var A = String(a), inv = function (i, q) { return F([T(i, "1")], [T(q, A)]); };
+        var right = x === 1 ? [T("ra", A, "", ["r4"])] : [T("ra", A, "", ["r4"]), T("dm", "·", "op dot", ["r4"]), T("rx", String(x), "", ["r4"])];
+        var steps = [
+          { expr: [inv("i1", "q1"), T("d1", "·", "op dot"), T("ak", A, "", ["a"]), T("dx", "·", "op dot", ["a"]), T("xv", X, "", ["a"]), T("eq", "=", "op"),
+                   inv("i2", "q2"), T("d2", "·", "op dot"), T("r4", String(r))],
+            hl: ["i1", "q1", "i2", "q2", "d1", "d2"], bal: true,
+            note: "On multiplie <b>les deux côtés</b> par l'inverse de " + A + " : 1/" + A + "." }
+        ];
+        if (x !== 1) steps.push({
+          expr: [inv("i1", "q1"), T("d1", "·", "op dot"), T("ak", A), T("dx", "·", "op dot"), T("xv", X), T("eq", "=", "op"),
+                 inv("i2", "q2"), T("d2", "·", "op dot")].concat(right),
+          note: r + " = " + A + " · " + x + " : le même " + A + " apparaît des deux côtés." });
+        var oneR = x === 1 ? [T("o2", "1", "", ["i2", "q2", "d2", "ra"])] : [T("o2", "1", "", ["i2", "q2", "d2", "ra"]), T("dm", "·", "op dot"), T("rx", String(x))];
+        steps.push({
+          fx: { type: "meet", ids: ["q1", "ak"] },
+          expr: [T("o1", "1", "", ["i1", "q1", "d1", "ak"]), T("dx", "·", "op dot"), T("xv", X), T("eq", "=", "op")].concat(oneR),
+          note: "1/" + A + " · " + A + " = 1, des deux côtés." });
+        steps.push({
+          top: true,
+          expr: [T("xx", X, "", ["o1", "dx", "xv"]), T("eq", "=", "op"), T("r2", String(x), "", x === 1 ? ["o2"] : ["o2", "dm", "rx"])],
+          note: "1 · <i>x</i> = <i>x</i> : <b><i>x</i> = " + x + "</b>." });
+        return steps;
+      }
       var A = "<i>a</i>", B = "<i>b</i>", I = "<i>i</i>";
 
       var DEMOS = [
@@ -2193,7 +2231,7 @@
             },
             {
               expr: [T("a", "2" + X), T("p", "+", "op"), T("b", "3"), T("m1", "−", "op"), T("b1", "3"), T("eq", "=", "op"), T("c", "7"), T("m2", "−", "op"), T("b2", "3")],
-              hl: ["m1", "b1", "m2", "b2"],
+              hl: ["m1", "b1", "m2", "b2"], bal: true,
               note: "Rien ne « passe » de l'autre côté : on retire 3 <b>des deux côtés</b>, l'égalité reste vraie."
             },
             {
@@ -2204,19 +2242,9 @@
               top: true,
               fx: { type: "meet", ids: ["c", "m2", "b2"] },
               expr: [T("a", "2" + X), T("eq", "=", "op"), T("r4", "4", "", ["c", "m2", "b2"])],
-              magic: "« On passe le 2 de l'autre côté en divisant. »"
-            },
-            {
-              expr: [F([T("a", "2" + X)], [T("q1", "2")]), T("eq", "=", "op"), F([T("r4", "4")], [T("q2", "2")])],
-              hl: ["q1", "q2"],
-              note: "Même geste : on divise <b>les deux côtés</b> par 2."
-            },
-            {
-              top: true,
-              fx: { type: "meet", ids: ["r4", "q2"] },
-              expr: [T("xx", X, "", ["a", "q1"]), T("eq", "=", "op"), T("r2", "2", "", ["r4", "q2"])]
+              magic: "« On multiplie les deux côtés par l'inverse de 2. »"
             }
-          ]
+          ].concat(eqInverse(2, 4, 2))
         }
       ];
 
@@ -2231,7 +2259,7 @@
         "« On change les signes à l'intérieur de la parenthèse. »": "“Change the signs inside the brackets.”",
         "« On regroupe et on calcule. »": "“Group and compute.”",
         "« On passe le 3 de l'autre côté en changeant son signe. »": "“Move the 3 to the other side and flip its sign.”",
-        "« On passe le 2 de l'autre côté en divisant. »": "“Move the 2 to the other side by dividing.”",
+        "« On multiplie les deux côtés par l'inverse de 2. »": "“Multiply both sides by the inverse of 2.”",
         "« (a + b)² = a² + 2ab + b² »": "“(a + b)² = a² + 2ab + b²”",
         "départ": "start", "résultat": "result", "sauter des étapes": "skip steps", "pas à pas": "step by step",
         "Historique": "History", "Fiche des règles": "Rules sheet", "est premier": "is prime", "Construire": "Build", "Voir la solution": "Show solution", "Règles": "Rules", "Effacer le badge": "Clear badge", "Fermer": "Close", "English": "Français"
@@ -2450,18 +2478,16 @@
         // a·x + b = c
         function equation(a, b, c) {
           var r = c - b, x = r / a;
-          var m1 = "« On passe le " + b + " de l'autre côté en changeant son signe. »", m2 = "« On passe le " + a + " de l'autre côté en divisant. »";
+          var m1 = "« On passe le " + b + " de l'autre côté en changeant son signe. »", m2 = "« On multiplie les deux côtés par l'inverse de " + a + ". »";
           EN[m1] = "“Move the " + b + " to the other side and flip its sign.”";
-          EN[m2] = "“Move the " + a + " to the other side by dividing.”";
+          EN[m2] = "“Multiply both sides by the inverse of " + a + ".”";
           return [
             { top: true, expr: [T("a", a + X), T("p", "+", "op"), T("b", s(b)), T("eq", "=", "op"), T("c", s(c))], magic: m1 },
-            { expr: [T("a", a + X), T("p", "+", "op"), T("b", s(b)), T("m1", "−", "op"), T("b1", s(b)), T("eq", "=", "op"), T("c", s(c)), T("m2", "−", "op"), T("b2", s(b))], hl: ["m1", "b1", "m2", "b2"],
+            { expr: [T("a", a + X), T("p", "+", "op"), T("b", s(b)), T("m1", "−", "op"), T("b1", s(b)), T("eq", "=", "op"), T("c", s(c)), T("m2", "−", "op"), T("b2", s(b))], hl: ["m1", "b1", "m2", "b2"], bal: true,
               note: "On retire " + b + " <b>des deux côtés</b>, l'égalité reste vraie." },
             { expr: [T("a", a + X), T("p", "+", "op"), T("z", "0", "", ["b", "m1", "b1"]), T("eq", "=", "op"), T("c", s(c)), T("m2", "−", "op"), T("b2", s(b))], hl: ["z"] },
             { top: true, fx: { type: "meet", ids: ["c", "m2", "b2"] }, expr: [T("a", a + X), T("eq", "=", "op"), T("r4", s(r), "", ["c", "m2", "b2"])], magic: m2 },
-            { expr: [F([T("a", a + X)], [T("q1", s(a))]), T("eq", "=", "op"), F([T("r4", s(r))], [T("q2", s(a))])], hl: ["q1", "q2"], note: "On divise <b>les deux côtés</b> par " + a + "." },
-            { top: true, fx: { type: "meet", ids: ["r4", "q2"] }, expr: [T("xx", X, "", ["a", "q1"]), T("eq", "=", "op"), T("r2", s(x), "", ["r4", "q2"])] }
-          ];
+          ].concat(eqInverse(a, r, x));
         }
 
         // k·(A + B) → k copies → kA + kB (formes)
@@ -2835,7 +2861,7 @@
         el.className = "tok " + tok.k;
         el.dataset.id = tok.id;
         if (tok.from) el.dataset.from = tok.from.join(",");
-        if (step.hl && step.hl.indexOf(tok.id) >= 0 && !exam) el.classList.add("hl");
+        if (step.hl && step.hl.indexOf(tok.id) >= 0) el.classList.add(step.bal ? "bal" : exam ? "_" : "hl");
         if (step.signs && step.signs.indexOf(tok.id) >= 0) el.classList.add("sign-hl");
         var inner = document.createElement("span");
         inner.className = "in";
@@ -3724,17 +3750,17 @@
           var o = actx.createOscillator(), g = actx.createGain();
           o.type = "sine";
           o.frequency.setValueAtTime(freq, t0);
-          o.frequency.exponentialRampToValueAtTime(freq * 0.6, t0 + 0.05);
+          o.frequency.exponentialRampToValueAtTime(freq * 0.7, t0 + 0.03);
           g.gain.setValueAtTime(0.0001, t0);
-          g.gain.exponentialRampToValueAtTime(v, t0 + 0.003);
-          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.07);
+          g.gain.exponentialRampToValueAtTime(v, t0 + 0.002);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.035);
           o.connect(g).connect(actx.destination);
-          o.start(t0); o.stop(t0 + 0.08);
-          var len = Math.floor(actx.sampleRate * 0.03), buf = actx.createBuffer(1, len, actx.sampleRate), ch = buf.getChannelData(0);
+          o.start(t0); o.stop(t0 + 0.04);
+          var len = Math.floor(actx.sampleRate * 0.012), buf = actx.createBuffer(1, len, actx.sampleRate), ch = buf.getChannelData(0);
           for (var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
           var n = actx.createBufferSource(), f = actx.createBiquadFilter(), gn = actx.createGain();
           n.buffer = buf;
-          f.type = "lowpass"; f.frequency.value = 700; f.Q.value = 0.7;
+          f.type = "lowpass"; f.frequency.value = 500; f.Q.value = 0.7;
           gn.gain.value = v * 0.5;
           n.connect(f).connect(gn).connect(actx.destination);
           n.start(t0);
@@ -3760,10 +3786,10 @@
       var SND = {
         meet: function () { bip(330, 0.09, "sine", 0, 0.08); bip(495, 0.12, "sine", 0.08, 0.06); },
         // Réponse : grave et sec — deux coups brefs (sol, ré)
-        ok: function () { knock(190, 0, 0.3); },
+        ok: function () { knock(170, 0, 0.14); },
         // Même une erreur sonne doux : deux notes rondes (tierce majeure),
         // jamais de buzz — on essaie, on n'est pas puni
-        bad: function () { knock(150, 0, 0.22); knock(130, 0.09, 0.18); },
+        bad: function () { knock(130, 0, 0.12); },
         tick: function () { bip(1200, 0.03, "square", 0, 0.02); },
         // Appui long : deux notes douces qui montent, « voici l'explication »
         info: function () { bip(587, 0.1, "sine", 0, 0.07); bip(880, 0.16, "sine", 0.09, 0.06); },
@@ -4000,12 +4026,18 @@
         });
         stageWrap.appendChild(choiceEl);
         choiceEl.querySelectorAll(".expr").forEach(function (e) { fitOneLine(e, e.parentNode); });
+        // Les réponses ne recouvrent jamais l'expression : elle remonte
+        // au-dessus d'elles (place réservée en bas de la scène)
+        var sr = stage.getBoundingClientRect(), cr = choiceEl.getBoundingClientRect();
+        var over = sr.bottom - cr.top;
+        if (over > 0) stage.style.paddingBottom = (over + 8) + "px";
         choiceEl.animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: ms(300) });
         return true;
       }
 
       function closeChoice() {
         if (choiceEl) { choiceEl.remove(); choiceEl = null; }
+        stage.style.paddingBottom = "";
       }
 
       function prev() {
@@ -6880,6 +6912,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v114", text: "Mode jeu / examen : les réponses ne recouvrent plus l'expression (elle remonte au-dessus). Équation : la même opération des deux côtés brille d'un halo (balance), même en examen. Nouveau badge balance ⚖ (débloqué par Équation) : il pose l'opération inverse des deux côtés. " + "Réponse : un seul coup de bois, très sec, sans écho, sourd et doux (juste ou faux, un seul coup ; plus grave si faux). Équation : plus de barre de fraction sous x. On multiplie les deux côtés par l'inverse (1/3 · 3x = 1/3 · 12), on décompose 12 = 3 · 4 (badge facteurs premiers ou toucher le 12), puis 1/3 · 3 = 1 (badge a/a) et 1 · x = x." },
         { v: "v113", text: "Mode jeu / examen, Équation : la division a enfin ses questions (diviser un seul côté ? 4/2 = 8 ?) — aucune étape ne passe sans réponse. Le badge x en facteur ne s'allume plus à tort sur 2x/2. Icônes : (−1)·(−1) = deux demi-tours fléchés ; a/a = juste un rond sur un rond. " + "Fraction : toucher directement le 6 ou le 9 le décompose en facteurs premiers (avec le badge facteurs premiers). Nouveaux badges : Distribuer (recopie d'un coup chaque terme, ex. dans Double) et (a+b)² (une parenthèse au carré → le résultat développé, aussi pour (a−b)²)." },
         { v: "v112", text: "La maison ⌂ ramène dans l'ensemble du chapitre qu'on quitte (depuis Fraction → ℚ), plus dans ℕ. " + "Les badges ont leur propre ligne, au-dessus des flèches : tous restent visibles. Le badge a/a = 1 se débloque aussi avec Fraction." },
         { v: "v111", text: "Examen des chapitres à étapes : un point par exercice mené jusqu'au résultat sans faute (plus par réponse). Une faute remet à 0. La flèche ne saute plus une question posée ; les badges sont permis mais ne donnent pas de point." },
@@ -7261,6 +7294,8 @@
       var BADGE_INFO = {
         dix: { btn: "10", fr: ["Cadre de dix", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12 : on complète d'abord la dizaine. Le cadre de dix s'affiche sous chaque addition ; la flèche lance la suite."],
                en: ["Ten frame", "7 + 5 = 5 + 2 + 5 = 10 + 2 = 12: fill up the ten first. The ten frame shows under every addition; the arrow moves on."] },
+        bal: { btn: "⚖", fr: ["Balance", "Une égalité est une balance : la même opération des deux côtés la garde juste. Pour isoler x, on applique l'opération inverse (− 3 pour défaire + 3, · 1/2 pour défaire 2·). C'est le sens d'al-jabr (« remettre en place ») et al-muqābala (« mettre face à face ») d'al-Khwarizmi."],
+               en: ["Balance", "An equation is a balance: the same operation on both sides keeps it true. To isolate x, apply the inverse operation (− 3 undoes + 3, · 1/2 undoes 2·). That is al-Khwarizmi's al-jabr (“restoring”) and al-muqābala (“balancing”)."] },
         q: { btn: "a/a = 1", fr: ["Quantité sur elle-même", "Une quantité divisée par elle-même vaut 1, si elle n'est pas nulle : 3/3 = 1. Quand l'icône luit, un appui fait le calcul d'un coup."],
              en: ["A quantity over itself", "A quantity divided by itself is 1, if it is not zero: 3/3 = 1. When the icon glows, one tap does it at once."] }
       };
@@ -7312,12 +7347,13 @@
       });
       var badgeMM = document.getElementById("badgeMM");
       var badgeReg = document.getElementById("badgeReg"), badgeFac = document.getElementById("badgeFac"), badgeQ = document.getElementById("badgeQ"), badgePF = document.getElementById("badgePF"),
-          badgeDist = document.getElementById("badgeDist"), badgeSq = document.getElementById("badgeSq");
+          badgeDist = document.getElementById("badgeDist"), badgeSq = document.getElementById("badgeSq"), badgeBal = document.getElementById("badgeBal");
       badgeLongPress(badgeChip, function () { return BADGE_INFO.dix; });
       badgeLongPress(badgeQ, function () { return BADGE_INFO.q; });
       badgeLongPress(badgePF, function () { return POWERS["Premiers"]; });
       badgeLongPress(badgeDist, function () { return POWERS["Distribuer"]; });
       badgeLongPress(badgeSq, function () { return POWERS["(a+b)²"]; });
+      badgeLongPress(badgeBal, function () { return BADGE_INFO.bal; });
       badgeLongPress(badgeMM, function () { return POWERS["−×−"]; });
       badgeLongPress(badgeReg, function () { return POWERS["Regrouper"]; });
       badgeLongPress(badgeFac, function () { return POWERS["x en facteur"]; });
@@ -7347,6 +7383,7 @@
         badgeQ.hidden = !(doneMap["Piège"] || doneMap["Fraction"]) || universe === "N" || universe === "Z";
         badgePF.hidden = !doneMap["Premiers"];
         badgeDist.hidden = !doneMap["Distribuer"];
+        badgeBal.hidden = !doneMap["Équation"];
         badgeSq.hidden = !doneMap["(a+b)²"];
       }
       refreshBadges();
@@ -7496,6 +7533,23 @@
         badgeExam();
         go(k);
       });
+      // Badge balance : la même opération des deux côtés (l'inverse, pour
+      // isoler x) — saute à l'étape où elle est posée
+      function balTarget() {
+        var d = DEMOS[demoIndex];
+        if (!d || d.custom || badgeBal.hidden || (homeEl && !homeEl.hidden)) return -1;
+        var nx = d.steps[cur + 1];
+        return nx && nx.bal ? cur + 1 : -1;
+      }
+      badgeBal.addEventListener("click", function () {
+        var k = balTarget();
+        if (badgeLong) return;
+        if (k < 0 || busy) { badgeNo(badgeBal, LANG === "en" ? "Nothing to do on both sides here" : "Rien à faire des deux côtés ici"); return; }
+        closeChoice();
+        SND.badge();
+        badgeFloat(badgeBal, LANG === "en" ? "Both sides" : "Des deux côtés");
+        go(k);
+      });
       // Badge (a+b)² : une parenthèse au carré → directement le résultat
       // développé (la dernière étape du calcul)
       function sqTarget() {
@@ -7545,6 +7599,7 @@
       function refreshMM() {
         badgePF.classList.toggle("ready", pfTarget() >= 0);
         badgeSq.classList.toggle("ready", sqTarget() >= 0);
+        badgeBal.classList.toggle("ready", balTarget() >= 0);
         badgeQ.classList.toggle("ready", qTarget() >= 0);
         badgeMM.classList.toggle("ready", mmTarget() >= 0);
         badgeChip.classList.toggle("ready", dixTarget() >= 0);
