@@ -1,6 +1,6 @@
 # Balances — backlog
 
-Planche d'essai : 50 propositions d'icône « balance » pour le badge
+Planche d'essai : 100 propositions d'icône « balance » pour le badge
 d'équation de Pas à Pas. Pierre choisit un numéro, l'icône retenue passe
 dans `../pas-a-pas/index.html`.
 
@@ -9,6 +9,8 @@ partie technique de la charte s'applique.
 
 ## Fait
 
+- [x] v2 — 100 variations : deux plateaux reliés par une barre + poignée,
+  sans pied ni socle
 - [x] v1 — 50 icônes en grille, aperçu en grand et à la taille d'un badge
 
 ## Conformité à la charte (../REGLES-JEUX.md)
