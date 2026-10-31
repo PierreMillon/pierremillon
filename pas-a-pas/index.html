@@ -1745,7 +1745,7 @@
           <svg viewBox="0 0 20 20"><circle cx="10" cy="5" r="2.4"/><line x1="5" y1="10" x2="15" y2="10"/><circle cx="10" cy="15" r="2.4"/></svg>
         </button>
         <button class="badge" id="badgeMM" aria-label="Badge (−1)·(−1) = 1" hidden>
-          <svg viewBox="0 0 20 20"><path d="M16 9 A6 6 0 0 0 4 9"/><path d="M2.4 6.6 L4 9 L6.2 7"/><path d="M4 11 A6 6 0 0 0 16 11"/><path d="M17.6 13.4 L16 11 L13.8 13"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M16 10 A6 6 0 0 0 4 10"/><path d="M1.8 7.6 L4 10 L6.2 7.6"/><path d="M4 10 A6 6 0 0 0 16 10"/><path d="M13.8 12.4 L16 10 L18.2 12.4"/></svg>
         </button>
       </div>
       <button class="arrow-btn" id="nextBtn" aria-label="Suivant">→</button>
@@ -6912,6 +6912,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v115", text: "Icône (−1)·(−1) : un cercle parfait fait de deux demi-tours ; la pointe de gauche descend à la verticale, celle de droite monte à la verticale." },
         { v: "v114", text: "Mode jeu / examen : les réponses ne recouvrent plus l'expression (elle remonte au-dessus). Équation : la même opération des deux côtés brille d'un halo (balance), même en examen. Nouveau badge balance ⚖ (débloqué par Équation) : il pose l'opération inverse des deux côtés. " + "Réponse : un seul coup de bois, très sec, sans écho, sourd et doux (juste ou faux, un seul coup ; plus grave si faux). Équation : plus de barre de fraction sous x. On multiplie les deux côtés par l'inverse (1/3 · 3x = 1/3 · 12), on décompose 12 = 3 · 4 (badge facteurs premiers ou toucher le 12), puis 1/3 · 3 = 1 (badge a/a) et 1 · x = x." },
         { v: "v113", text: "Mode jeu / examen, Équation : la division a enfin ses questions (diviser un seul côté ? 4/2 = 8 ?) — aucune étape ne passe sans réponse. Le badge x en facteur ne s'allume plus à tort sur 2x/2. Icônes : (−1)·(−1) = deux demi-tours fléchés ; a/a = juste un rond sur un rond. " + "Fraction : toucher directement le 6 ou le 9 le décompose en facteurs premiers (avec le badge facteurs premiers). Nouveaux badges : Distribuer (recopie d'un coup chaque terme, ex. dans Double) et (a+b)² (une parenthèse au carré → le résultat développé, aussi pour (a−b)²)." },
         { v: "v112", text: "La maison ⌂ ramène dans l'ensemble du chapitre qu'on quitte (depuis Fraction → ℚ), plus dans ℕ. " + "Les badges ont leur propre ligne, au-dessus des flèches : tous restent visibles. Le badge a/a = 1 se débloque aussi avec Fraction." },
