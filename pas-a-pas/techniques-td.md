@@ -19,6 +19,16 @@ lus le 31/10/2026). Chaque ligne = un futur chapitre à étapes (ou une
 - **Coefficient sans tout développer** — terme en x⁹ de (2x−5)¹²
 - **Somme et produit des racines** — x² − Sx + P
 
+## Automatismes dans ℂ (cours, demandés par Pierre — difficiles aujourd'hui, réflexes à terme)
+
+- **Racines n-ièmes d'un complexe** — z = r·e^{iθ} : zₖ = r^{1/n}·e^{i(θ + 2kπ)/n}, k = 0…n−1 ; zⁿ = 1 → les n points réguliers du cercle
+- **Racine carrée d'un complexe sous forme algébrique** — (a + ib)² = 3 + 4i : a² − b² = 3, 2ab = 4, a² + b² = |z| = 5 → ±(2 + i)
+- **Discriminant complexe** — z² − (3 + i)z + 2 + 2i = 0 : Δ = (3 + i)² − 4(2 + 2i) = −2i = (1 − i)², puis z = ((3 + i) ± (1 − i))/2
+- **Polynôme scindé** — dans ℂ tout polynôme est scindé (d'Alembert-Gauss) ; dans ℝ : facteurs de degré 1 et trinômes à Δ < 0 ; chercher une racine évidente, factoriser, recommencer
+- **Racine évidente puis division** — P(1) = 0 ⇒ P = (x − 1)·Q
+- **Conjuguée d'une racine d'un polynôme réel** — si z est racine, z̄ aussi
+
+
 ## TD 01 — Fractions, binomiaux, puissances, radicaux (corrigé + énoncé)
 - **Décomposer en facteurs premiers pour trouver le PPCM** — 90=2·3²·5, 35=5·7, 126=2·3²·7 ⇒ dénominateur commun 630 — ℚ
 - **Simplifier avant d'additionner** — 123/270 → 41/90 — ℚ
