@@ -1724,11 +1724,17 @@
         <button class="badge" id="badgePF" aria-label="Badge facteurs premiers" hidden>
           <svg viewBox="0 0 20 20"><circle cx="10" cy="4" r="2.3"/><path d="M8.6 5.9 L5 11.5 M11.4 5.9 L15 11.5"/><circle cx="4.5" cy="14" r="2.3"/><circle cx="15.5" cy="14" r="2.3"/></svg>
         </button>
+        <button class="badge" id="badgeDist" aria-label="Badge distribuer" hidden>
+          <svg viewBox="0 0 20 20"><circle cx="3.5" cy="13" r="1.6"/><path d="M4.5 11.5 Q8 3 11.5 9"/><path d="M4.5 11.5 Q11 0 16.5 9"/><path d="M9 15 L13 15 M14 15 L18 15" stroke-opacity="0.6"/></svg>
+        </button>
+        <button class="badge" id="badgeSq" aria-label="Badge carré" hidden>
+          <svg viewBox="0 0 20 20"><path d="M5 4 Q2 10 5 16"/><path d="M11 4 Q14 10 11 16"/><path d="M6.5 10 L9.5 10 M8 8.5 L8 11.5"/><path d="M14.5 3.5 Q17.5 2.5 17.5 4.5 Q17.5 6 14.5 8 L18 8"/></svg>
+        </button>
         <button class="badge" id="badgeQ" aria-label="Badge a/a = 1" hidden>
-          <svg viewBox="0 0 20 20"><circle cx="6.5" cy="5" r="2.3"/><line x1="2.5" y1="10" x2="10.5" y2="10"/><circle cx="6.5" cy="15" r="2.3"/><path d="M14.5 7 L16.5 5.5 L16.5 15"/></svg>
+          <svg viewBox="0 0 20 20"><circle cx="10" cy="5" r="2.4"/><line x1="5" y1="10" x2="15" y2="10"/><circle cx="10" cy="15" r="2.4"/></svg>
         </button>
         <button class="badge" id="badgeMM" aria-label="Badge (−1)·(−1) = 1" hidden>
-          <svg viewBox="0 0 20 20"><line x1="2" y1="10" x2="18" y2="10" stroke-opacity="0.45"/><path d="M16 10 A6 6 0 0 0 4 10"/><path d="M4 10 A6 6 0 0 0 16 10" stroke-dasharray="1.6 1.6"/><path d="M14.2 12.6 L16 10 L17.4 12.8"/></svg>
+          <svg viewBox="0 0 20 20"><path d="M16 9 A6 6 0 0 0 4 9"/><path d="M2.4 6.6 L4 9 L6.2 7"/><path d="M4 11 A6 6 0 0 0 16 11"/><path d="M17.6 13.4 L16 11 L13.8 13"/></svg>
         </button>
       </div>
       <button class="arrow-btn" id="nextBtn" aria-label="Suivant">→</button>
@@ -3900,6 +3906,26 @@
             })(v);
           }
         });
+        // Quotient a/b pris pour un produit : 4/2 → 8 au lieu de 2
+        toks.forEach(function (t) {
+          if (!/^\d+$/.test(t.t) || !t.from || t.from.length !== 2) return;
+          var src = prevToks.filter(function (p) { return t.from.indexOf(p.id) >= 0; });
+          if (src.length !== 2 || !/^\d+$/.test(src[0].t) || !/^\d+$/.test(src[1].t)) return;
+          var A = Number(src[0].t), B = Number(src[1].t);
+          if (B === 0 || A / B !== Number(t.t)) return;
+          tiers[0].push(function () { var o = t.t; t.t = String(A * B); return function () { t.t = o; }; });
+        });
+        // Équation divisée d'un seul côté : 2x = 4/2 au lieu de 2x/2 = 4/2
+        if (toks.some(function (t) { return t.t === "="; })) {
+          copy.forEach(function (it, i) {
+            if (!it.frac) return;
+            tiers[1].push(function () {
+              var num = it.num;
+              copy.splice.apply(copy, [i, 1].concat(num));
+              return function () { copy.splice(i, num.length, it); };
+            });
+          });
+        }
         // a/a donne 1, pas 0 (confusion avec a − a)
         toks.forEach(function (t) {
           if (t.t !== "1" || !t.from || t.from.length !== 2) return;
@@ -6854,6 +6880,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v113", text: "Mode jeu / examen, Équation : la division a enfin ses questions (diviser un seul côté ? 4/2 = 8 ?) — aucune étape ne passe sans réponse. Le badge x en facteur ne s'allume plus à tort sur 2x/2. Icônes : (−1)·(−1) = deux demi-tours fléchés ; a/a = juste un rond sur un rond. " + "Fraction : toucher directement le 6 ou le 9 le décompose en facteurs premiers (avec le badge facteurs premiers). Nouveaux badges : Distribuer (recopie d'un coup chaque terme, ex. dans Double) et (a+b)² (une parenthèse au carré → le résultat développé, aussi pour (a−b)²)." },
         { v: "v112", text: "La maison ⌂ ramène dans l'ensemble du chapitre qu'on quitte (depuis Fraction → ℚ), plus dans ℕ. " + "Les badges ont leur propre ligne, au-dessus des flèches : tous restent visibles. Le badge a/a = 1 se débloque aussi avec Fraction." },
         { v: "v111", text: "Examen des chapitres à étapes : un point par exercice mené jusqu'au résultat sans faute (plus par réponse). Une faute remet à 0. La flèche ne saute plus une question posée ; les badges sont permis mais ne donnent pas de point." },
         { v: "v110", text: "Premiers : le 1 reste grisé (il n'est pas premier) ; un appui bref dit pourquoi : un seul diviseur, et 6 = 2·3 = 1·2·3 = 1·1·2·3… ne serait plus unique." },
@@ -7210,11 +7237,11 @@
                       en: ["Prime factorisation", "Tap a number bubble then this power: 12 = 2²·3. In Fusion, two bubbles with different numbers can then be factored: 12·x + 18 = 6·(2·x + 3)."] },
         "−×−": { btn: "(−1)·(−1) = 1",fr: ["Moins par moins", "Deux demi-tours font un tour complet : (−1)·(−1) = 1. Tu peux maintenant l'écrire directement, sans refaire la rotation."],
                  en: ["Minus times minus", "Two half-turns make a full turn: (−1)·(−1) = 1. You can now write it directly, without redoing the rotation."] },
-        "Distribuer": { btn: "k·(a + b) → k·a + k·b", fr: ["Développer", "Dans Fusion, touche une bulle k·( … ) puis ce pouvoir : elle se développe. C'est l'inverse de factoriser."],
+        "Distribuer": { btn: "k·(a + b) → k·a + k·b", fr: ["Développer", "Dans Fusion, touche une bulle k·( … ) puis ce pouvoir : elle se développe. C'est l'inverse de factoriser. Ailleurs, le badge recopie d'un coup chaque terme (ex. dans Double)."],
                         en: ["Expand", "In Fusion, tap a k·( … ) bubble then this power: it expands. It is the reverse of factoring."] },
         "Calcul": { btn: "n → a + b", fr: ["Découper un nombre", "Comme en calcul mental (16 = 10 + 6) : dans Fusion, une bulle nombre se découpe pour faire apparaître le nombre d'une voisine. 7 = 5 + 2, puis 5·x + 5 = 5·(x + 1)."],
                     en: ["Split a number", "As in mental maths (16 = 10 + 6): in Fusion, a number bubble splits to reveal a neighbour's number. 7 = 5 + 2, then 5·x + 5 = 5·(x + 1)."] },
-        "(a+b)²": { btn: "+ c − c", fr: ["Compléter le carré", "Dans Fusion, touche la bulle 6·x puis ce pouvoir : + 9 − 9 apparaît (ça vaut 0). x² + 6·x + 9 se referme alors en (x + 3)²."],
+        "(a+b)²": { btn: "+ c − c", fr: ["Compléter le carré", "Dans Fusion, touche la bulle 6·x puis ce pouvoir : + 9 − 9 apparaît (ça vaut 0). x² + 6·x + 9 se referme alors en (x + 3)². Ailleurs, le badge développe d'un coup une parenthèse au carré."],
                     en: ["Complete the square", "In Fusion, tap the 6·x bubble then this power: + 9 − 9 appears (worth 0). x² + 6·x + 9 then closes into (x + 3)²."] },
         "Pascal": { btn: "aⁿ⁺¹ → a·aⁿ", fr: ["Puissances", "Chaque ligne du triangle double : 2ⁿ⁺¹ = 2·2ⁿ. Dans Fusion, 2ⁿ⁺¹ + 2ⁿ = 2·2ⁿ + 2ⁿ = 3·2ⁿ."],
                     en: ["Powers", "Each row of the triangle doubles: 2ⁿ⁺¹ = 2·2ⁿ. In Fusion, 2ⁿ⁺¹ + 2ⁿ = 2·2ⁿ + 2ⁿ = 3·2ⁿ."] },
@@ -7284,10 +7311,13 @@
         ov.classList.remove("info");
       });
       var badgeMM = document.getElementById("badgeMM");
-      var badgeReg = document.getElementById("badgeReg"), badgeFac = document.getElementById("badgeFac"), badgeQ = document.getElementById("badgeQ"), badgePF = document.getElementById("badgePF");
+      var badgeReg = document.getElementById("badgeReg"), badgeFac = document.getElementById("badgeFac"), badgeQ = document.getElementById("badgeQ"), badgePF = document.getElementById("badgePF"),
+          badgeDist = document.getElementById("badgeDist"), badgeSq = document.getElementById("badgeSq");
       badgeLongPress(badgeChip, function () { return BADGE_INFO.dix; });
       badgeLongPress(badgeQ, function () { return BADGE_INFO.q; });
       badgeLongPress(badgePF, function () { return POWERS["Premiers"]; });
+      badgeLongPress(badgeDist, function () { return POWERS["Distribuer"]; });
+      badgeLongPress(badgeSq, function () { return POWERS["(a+b)²"]; });
       badgeLongPress(badgeMM, function () { return POWERS["−×−"]; });
       badgeLongPress(badgeReg, function () { return POWERS["Regrouper"]; });
       badgeLongPress(badgeFac, function () { return POWERS["x en facteur"]; });
@@ -7316,6 +7346,8 @@
         // (appris dans Fraction comme dans Piège : 3/3 = 1)
         badgeQ.hidden = !(doneMap["Piège"] || doneMap["Fraction"]) || universe === "N" || universe === "Z";
         badgePF.hidden = !doneMap["Premiers"];
+        badgeDist.hidden = !doneMap["Distribuer"];
+        badgeSq.hidden = !doneMap["(a+b)²"];
       }
       refreshBadges();
       // Badge 10 : quand l'étape suivante est une addition faite au cadre
@@ -7368,7 +7400,10 @@
       function isFactor(a, b) {
         var A = nonOps(a), B = nonOps(b);
         if (!A || !B) return false;
-        if (B.some(function (t) { return t.t === X && t.from && t.from.length >= 2; })) return true;
+        var txtA = {};
+        A.forEach(function (t) { txtA[t.id] = t.t; });
+        // x sorti en facteur : au moins deux termes en x réunis (pas 2x/2 → x)
+        if (B.some(function (t) { return t.t === X && t.from && t.from.filter(function (id) { return (txtA[id] || "").indexOf(X) >= 0; }).length >= 2; })) return true;
         var before = {};
         A.forEach(function (t) { before[t.id] = t.t; });
         return B.length === A.length && B.some(function (t) { return before[t.id] === X && t.t === "1" + X; });
@@ -7380,15 +7415,26 @@
         while (k + 1 < d.steps.length && test(d.steps[k], d.steps[k + 1])) k++;
         return k > cur ? k : -1;
       }
+      // Distribuer : un terme est recopié pour chaque terme de la parenthèse
+      function isDistrib(a, b) {
+        var B = nonOps(b);
+        if (!B || !nonOps(a)) return false;
+        var txt = {};
+        B.forEach(function (t) { txt[t.id] = t.t; });
+        return B.some(function (t) { return t.from && t.from.length === 1 && t.from[0] !== t.id && txt[t.from[0]] === t.t; });
+      }
       var ACTS = [
         // Regrouper rapproche ; mettre x en facteur, c'est l'autre badge
         { el: badgeReg, ch: "Regrouper", test: isRegroup, why: function () { return LANG === "en" ? "Nothing to group here" : "Rien à regrouper ici"; } },
-        { el: badgeFac, ch: "x en facteur", test: isFactor, why: function () { return LANG === "en" ? "No x to factor out here" : "Pas de x à mettre en facteur ici"; } }
+        { el: badgeFac, ch: "x en facteur", test: isFactor, free: "factor", why: function () { return LANG === "en" ? "No x to factor out here" : "Pas de x à mettre en facteur ici"; } },
+        { el: badgeDist, ch: "Distribuer", test: isDistrib, why: function () { return LANG === "en" ? "Nothing to distribute here" : "Rien à distribuer ici"; } }
       ];
+      ACTS[0].free = "group";
       ACTS.forEach(function (A) {
         A.el.addEventListener("click", function () {
           if (regActive() && !badgeLong) {
             var en = LANG === "en";
+            if (!A.free) { badgeNo(A.el, A.why()); return; }
             if (A.ch === "Regrouper") {
               if (regGroupAll()) { badgeFloat(A.el, tr(A.ch)); SND.badge(); }
               else badgeNo(A.el, en ? "Already grouped" : "Déjà regroupé");
@@ -7401,7 +7447,7 @@
           }
           var k = actTarget(A.test, A.ch);
           if (badgeLong) return;
-          if (k < 0 && !busy && enterFree(A.ch === "Regrouper" ? "group" : "factor")) { badgeFloat(A.el, tr(A.ch)); SND.badge(); return; }
+          if (k < 0 && !busy && A.free && enterFree(A.free)) { badgeFloat(A.el, tr(A.ch)); SND.badge(); return; }
           if (k < 0 || busy) { badgeNo(A.el, A.why()); return; }
           closeChoice();
           SND.badge();
@@ -7431,6 +7477,15 @@
         });
         return split && Object.keys(cnt).some(function (k) { return cnt[k] >= 2; }) ? cur + 1 : -1;
       }
+      // Toucher directement le nombre à décomposer (le 6 ou le 9 d'une
+      // fraction) fait la même chose que le badge
+      stage.addEventListener("click", function (e) {
+        var el = e.target.closest(".tok");
+        if (!el || badgePF.hidden || pfTarget() < 0 || busy) return;
+        var nx = DEMOS[demoIndex].steps[cur + 1], id = el.dataset.id;
+        var src = flatTokens(nx.expr, []).some(function (t) { return t.from && t.from.length === 1 && t.from[0] === id; });
+        if (src) badgePF.click();
+      });
       badgePF.addEventListener("click", function () {
         var k = pfTarget();
         if (badgeLong) return;
@@ -7439,6 +7494,29 @@
         SND.badge();
         badgeFloat(badgePF, LANG === "en" ? "Prime factors" : "Facteurs premiers");
         badgeExam();
+        go(k);
+      });
+      // Badge (a+b)² : une parenthèse au carré → directement le résultat
+      // développé (la dernière étape du calcul)
+      function sqTarget() {
+        var d = DEMOS[demoIndex];
+        if (!d || d.custom || badgeSq.hidden || (homeEl && !homeEl.hidden)) return -1;
+        var st = d.steps[cur];
+        if (!st || !st.expr || st.summary) return -1;
+        var L = flatTokens(st.expr, []);
+        var has = L.some(function (t, i) { return t.t === ")" && L[i + 1] && /\bsup\b/.test(L[i + 1].k) && L[i + 1].t === "2"; });
+        if (!has) return -1;
+        var k = d.steps.length - 1;
+        while (k > cur && d.steps[k].summary) k--;
+        return k > cur ? k : -1;
+      }
+      badgeSq.addEventListener("click", function () {
+        var k = sqTarget();
+        if (badgeLong) return;
+        if (k < 0 || busy) { badgeNo(badgeSq, LANG === "en" ? "No bracket squared here" : "Pas de parenthèse au carré ici"); return; }
+        closeChoice();
+        SND.badge();
+        badgeFloat(badgeSq, "(a ± b)² = a² ± 2ab + b²");
         go(k);
       });
       // Badge a/a = 1 : l'étape suivante réunit deux quantités égales en 1
@@ -7466,11 +7544,12 @@
       });
       function refreshMM() {
         badgePF.classList.toggle("ready", pfTarget() >= 0);
+        badgeSq.classList.toggle("ready", sqTarget() >= 0);
         badgeQ.classList.toggle("ready", qTarget() >= 0);
         badgeMM.classList.toggle("ready", mmTarget() >= 0);
         badgeChip.classList.toggle("ready", dixTarget() >= 0);
         ACTS.forEach(function (A) {
-          A.el.classList.toggle("ready", actTarget(A.test, A.ch) >= 0 || freeCan(A.ch === "Regrouper" ? "group" : "factor"));
+          A.el.classList.toggle("ready", actTarget(A.test, A.ch) >= 0 || (!!A.free && freeCan(A.free)));
         });
       }
       badgeMM.addEventListener("click", function () {

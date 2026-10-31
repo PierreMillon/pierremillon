@@ -9,6 +9,10 @@ Tri : priorité décroissante.
 - [x] v108 — mode « à ta façon » (badges hors du chemin de l'explication),
   badges a/a = 1 et facteurs premiers, fraction : 3/3 sort puis devient 1,
   examen Fraction jouable, Recommencer (chapitre / tout), appui long sonore
+- [x] v111–v113 — examen : un point par exercice complet, flèche bloquée
+  sur une question ; badges sur leur propre ligne ; maison dans l'ensemble
+  en cours ; toucher 6 ou 9 dans Fraction le décompose ; badges Distribuer
+  et (a+b)² ; questions sur la division dans Équation
 
 - [x] Page d'essai avec 3 démos à exemples fixes et bouton « étape suivante »
 - [x] Démo 1 : − devant une parenthèse (le −1 touche chaque terme)
@@ -20,12 +24,10 @@ Tri : priorité décroissante.
 
 ## À faire
 
-- [ ] Badges cohérents partout : chaque chapitre réussi donne un badge qui
-  agit dans les chapitres à étapes (aujourd'hui : 10, Regrouper, x en
-  facteur, (−1)·(−1), a/a = 1, facteurs premiers). Reste : Distribuer,
-  Calcul (découper), (a+b)², Pascal, conjuguée — pour l'instant seulement
-  dans Fusion
-- [ ] Premiers dans Fraction : toucher directement 6 ou 9 pour le décomposer
+- [ ] Badges cohérents partout — reste : quantité conjuguée, Pascal,
+  Calcul (découper un nombre), qui n'agissent encore que dans Fusion.
+  Faits : 10, Regrouper, x en facteur, (−1)·(−1), a/a = 1, facteurs
+  premiers, Distribuer, (a+b)² (v108–v113)
 
 ### Décisions de Pierre (questions du 26/09)
 
