@@ -9,6 +9,7 @@ partie technique de la charte s'applique.
 
 ## Fait
 
+- [x] v3 — 96 variations symétriques (plateaux identiques, poignée centrée)
 - [x] v2 — 100 variations : deux plateaux reliés par une barre + poignée,
   sans pied ni socle
 - [x] v1 — 50 icônes en grille, aperçu en grand et à la taille d'un badge

@@ -6918,6 +6918,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v119", text: "Fraction est à repasser : il avait été validé avec l'ancien examen (un point par réponse). Effacé une seule fois, automatiquement." },
         { v: "v118", text: "Piège débloque le badge a/a = 1, avec une explication claire : (x + 3)/3 = x/3 + 3/3 = x/3 + 1 (plus d'exemple de télescopage incompréhensible)." },
         { v: "v117", text: "Piège : à la fin, plus de « ≠ x » abstrait mais un essai chiffré : avec x = 3, (3 + 3)/3 = 2 ≠ 3." },
         { v: "v116", text: "Icônes simplifiées : (−1)·(−1) devient « − × − » ; la balance n'a plus qu'un fléau, un pied et deux plateaux." },
@@ -7195,6 +7196,17 @@
         doneMap = JSON.parse(localStorage.getItem("pasapas_done") || "{}");
         runs = JSON.parse(localStorage.getItem("pasapas_runs") || "{}");
         prof = localStorage.getItem("pasapas_prof") === "1";
+        // Une seule fois : Fraction avait été validé avec l'ancien examen
+        // (un point par réponse, avant v111) — à repasser pour de vrai
+        if (localStorage.getItem("pasapas_mig_frac") !== "1") {
+          delete doneMap["Fraction"];
+          var es = JSON.parse(localStorage.getItem("pasapas_examscore") || "{}") || {};
+          delete es["Fraction"];
+          localStorage.setItem("pasapas_examscore", JSON.stringify(es));
+          if (typeof examScores !== "undefined") delete examScores["Fraction"];
+          localStorage.setItem("pasapas_done", JSON.stringify(doneMap));
+          localStorage.setItem("pasapas_mig_frac", "1");
+        }
       } catch (e) {}
       if (hasBadge()) doneMap["Singapour"] = true;
 
