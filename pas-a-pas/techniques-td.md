@@ -7,6 +7,8 @@ lus le 31/10/2026). Chaque ligne = un futur chapitre à étapes (ou une
 
 ## Réflexes (transversaux, à faire en premier)
 
+Faits (v121) : B − A, Par les carrés, Tout d'un côté, Un carré.
+
 - **Comparer A et B : étudier B − A** — A ≤ B ⇔ B − A ≥ 0, puis signe
 - **Comparer deux positifs par leurs carrés** — √3 + √5 ? √2 + √6
 - **Tout d'un côté, même dénominateur, tableau de signes** — 2/(x²−4x+3) − 1 > 0
@@ -18,6 +20,23 @@ lus le 31/10/2026). Chaque ligne = un futur chapitre à étapes (ou une
 - **Changement de variable** — X = eˣ, x², |x|, x + 1/x
 - **Coefficient sans tout développer** — terme en x⁹ de (2x−5)¹²
 - **Somme et produit des racines** — x² − Sx + P
+
+## Raisonnements (outils de réflexion, demandés par Pierre)
+
+Chapitres « quel raisonnement ici ? » : on reconnaît la forme de la question
+et on choisit l'outil, puis on le déroule pas à pas. Dans ℝ ou ℂ.
+
+- **Contre-exemple** — « Pour tout x, x² > x » est faux : x = 1/2 donne 1/4 < 1/2
+- **Récurrence** — propriété P(n) pour tout n : initialisation, hérédité (somme des k = n(n+1)/2, 2ⁿ ≥ n + 1, somme des racines de Pierre)
+- **Disjonction de cas** — |x|, partie entière, n pair / impair (n² − n est pair)
+- **Unicité** — prendre deux solutions a et b, montrer a = b (limite, élément neutre, solution de ax = b)
+- **Absurde** — √2 irrationnel ; supposer le contraire, arriver à une contradiction
+- **Contraposée** — n² pair ⇒ n pair, via n impair ⇒ n² impair
+- **Analyse – synthèse** — toute fonction = paire + impaire
+- **Double inclusion** — A = B ⇔ A ⊂ B et B ⊂ A
+- **Équivalence par double implication** — ⇒ puis ⇐
+- **Existence par construction** — exhiber l'objet (x = (b − c)/a)
+- **Quantificateurs** — nier ∀ / ∃, ordre ∀∃ ≠ ∃∀
 
 ## Automatismes dans ℂ (cours, demandés par Pierre — difficiles aujourd'hui, réflexes à terme)
 

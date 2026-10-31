@@ -1767,6 +1767,76 @@
       function V(top, bottom, eq) { return { cancel: true, top: top, bottom: bottom, eq: eq || null }; }
 
       var X = "<i>x</i>";
+      // ---------- Réflexes (feuille de route techniques-td.md) ----------
+      var Y = "<i>y</i>";
+      function op(id, t) { return T(id, t, "op"); }
+      // Comparer A et B : on étudie B − A. x² + k² contre 2kx → (x − k)² ≥ 0
+      function cmpDiff(k) {
+        var A = (2 * k) + X, K2 = String(k * k);
+        return [
+          { top: true, expr: [T("A", A), op("q", "?"), T("B1", X + "²"), op("p", "+"), T("B2", K2)],
+            magic: "« Comparer, c'est étudier le signe de la différence. »",
+            note: "Qui est le plus grand : " + (2 * k) + "<i>x</i> ou <i>x</i>² + " + K2 + " ? Réflexe : on étudie B − A." },
+          { fresh: true, expr: [T("B1", X + "²"), op("p", "+"), T("B2", K2), op("m", "−"), T("A", A)], hl: ["m", "A"],
+            note: "B − A : tout d'un côté, on compare à 0." },
+          { expr: [T("B1", X + "²"), op("m", "−"), T("A", A), op("p", "+"), T("B2", K2)], note: "On range par puissances de <i>x</i>." },
+          { expr: [T("l", "(", "par"), T("x", X, "", ["B1"]), op("m", "−"), T("k", String(k), "", ["A", "B2"]), T("r", ")", "par"), T("sq", "2", "sup")],
+            note: "Identité remarquable : <i>x</i>² − " + (2 * k) + "<i>x</i> + " + K2 + " = (<i>x</i> − " + k + ")²." },
+          { expr: [T("l", "(", "par"), T("x", X), op("m", "−"), T("k", String(k)), T("r", ")", "par"), T("sq", "2", "sup"), op("ge", "≥"), T("z", "0")],
+            hl: ["ge", "z"], note: "Un carré est toujours ≥ 0." },
+          { top: true, expr: [T("B1", X + "²"), op("p", "+"), T("B2", K2), op("ge", "≥"), T("A", A)],
+            note: "Donc <i>x</i>² + " + K2 + " ≥ " + (2 * k) + "<i>x</i> pour tout <i>x</i> — égalité seulement en <i>x</i> = " + k + "." }
+        ];
+      }
+      // Deux positifs : on compare leurs carrés. √a + √b ? √c + √d, a + b = c + d
+      function sqCmp(a, b, c, d) {
+        var S = a + b, P1 = a * b, P2 = c * d, sg = P1 > P2 ? ">" : "<";
+        var L = function (id, u, v) { return [T(id + "1", "√" + u), op(id + "p", "+"), T(id + "2", "√" + v)]; };
+        return [
+          { top: true, expr: L("a", a, b).concat([op("q", "?")], L("c", c, d)),
+            magic: "« Deux positifs sont rangés comme leurs carrés. »", note: "Les deux côtés sont positifs : on peut comparer leurs carrés, l'ordre ne change pas." },
+          { expr: [T("l1", "(", "par")].concat(L("a", a, b), [T("r1", ")", "par"), T("s1", "2", "sup"), op("q", "?"), T("l2", "(", "par")], L("c", c, d), [T("r2", ")", "par"), T("s2", "2", "sup")]),
+            note: "On élève au carré de chaque côté." },
+          { expr: [T("u", a + " + " + b), op("p1", "+"), T("w1", "2√" + P1), op("q", "?"), T("v", c + " + " + d), op("p2", "+"), T("w2", "2√" + P2)],
+            note: "(√u + √v)² = u + v + 2√(uv)." },
+          { expr: [T("u", String(S)), op("p1", "+"), T("w1", "2√" + P1), op("q", "?"), T("v", String(S)), op("p2", "+"), T("w2", "2√" + P2)], hl: ["u", "v"],
+            note: a + " + " + b + " = " + c + " + " + d + " = " + S + " : la même chose des deux côtés." },
+          { expr: [T("w1", "√" + P1), op("q", "?"), T("w2", "√" + P2)], note: "On retire " + S + " des deux côtés, puis on divise par 2 : l'ordre ne change pas." },
+          { expr: [T("w1", String(P1)), op("q", sg), T("w2", String(P2))], hl: ["q"], note: P1 + (sg === ">" ? " > " : " < ") + P2 + ", et la racine garde l'ordre." },
+          { top: true, expr: L("a", a, b).concat([op("q", sg)], L("c", c, d)), note: "En remontant : √" + a + " + √" + b + (sg === ">" ? " > " : " < ") + "√" + c + " + √" + d + "." }
+        ];
+      }
+      // Inégalité avec x au dénominateur : tout d'un côté, même dénominateur, signes
+      function signSide(p) {
+        var P = String(p), P2 = String(2 * p);
+        var xp = function (id) { return [T(id + "x", X), op(id + "m", "−"), T(id + "p", P)]; };
+        return [
+          { top: true, expr: [F([T("nx", X)], xp("d")), op("ge", "≥"), T("two", "2")],
+            magic: "« Tout d'un côté, puis le signe. »", note: "On ne multiplie pas par <i>x</i> − " + P + " : son signe est inconnu. On passe tout d'un côté." },
+          { expr: [F([T("nx", X)], xp("d")), op("m2", "−"), T("two", "2"), op("ge", "≥"), T("z", "0")], hl: ["m2", "two", "z"], note: "On compare à 0." },
+          { expr: [F([T("nx", X), op("m2", "−"), T("two", "2"), T("l", "(", "par")].concat(xp("e"), [T("r", ")", "par")]), xp("d")), op("ge", "≥"), T("z", "0")],
+            note: "Même dénominateur : 2 = 2(<i>x</i> − " + P + ")/(<i>x</i> − " + P + ")." },
+          { expr: [F([T("n2", P2), op("m3", "−"), T("nx", X)], xp("d")), op("ge", "≥"), T("z", "0")],
+            note: "En haut : <i>x</i> − 2<i>x</i> + " + P2 + " = " + P2 + " − <i>x</i>." },
+          { top: true, expr: [T("res", X), op("in", "∈"), T("iv", "] " + P + " ; " + P2 + " ]")],
+            note: "Le haut s'annule en " + P2 + ", le bas en " + P + " (interdit). Tableau de signes : le quotient est ≥ 0 seulement entre les deux, " + P2 + " compris." }
+        ];
+      }
+      // Faire apparaître un carré : x/(ky) + ky/x ≥ 2 (x, y > 0)
+      function sqAppear(k) {
+        var ky = (k === 1 ? "" : k) + Y, K2 = k * k;
+        return [
+          { top: true, expr: [F([T("x1", X)], [T("y1", ky)]), op("p", "+"), F([T("y2", ky)], [T("x2", X)]), op("ge", "≥"), T("two", "2")],
+            magic: "« Chercher un carré : il est toujours ≥ 0. »", note: "<i>x</i>, <i>y</i> > 0. Réflexe : tout d'un côté, puis faire apparaître un carré." },
+          { expr: [F([T("x1", X)], [T("y1", ky)]), op("p", "+"), F([T("y2", ky)], [T("x2", X)]), op("m", "−"), T("two", "2"), op("ge", "≥"), T("z", "0")], hl: ["m", "two", "z"], note: "On compare à 0." },
+          { expr: [F([T("a2", X + "²"), op("p", "+"), T("b2", (K2 === 1 ? "" : K2) + Y + "²"), op("m", "−"), T("ab", (2 * k) + X + Y)], [T("d", (k === 1 ? "" : k) + X + Y)]), op("ge", "≥"), T("z", "0")],
+            note: "Même dénominateur " + (k === 1 ? "" : k) + "<i>xy</i>." },
+          { expr: [F([T("l", "(", "par"), T("cx", X), op("m", "−"), T("cy", ky), T("r", ")", "par"), T("sq", "2", "sup")], [T("d", (k === 1 ? "" : k) + X + Y)]), op("ge", "≥"), T("z", "0")],
+            hl: ["l", "r", "sq"], note: "Le haut est un carré : (<i>x</i> − " + ky.replace(Y, "<i>y</i>") + ")²." },
+          { top: true, expr: [F([T("l", "(", "par"), T("cx", X), op("m", "−"), T("cy", ky), T("r", ")", "par"), T("sq", "2", "sup")], [T("d", (k === 1 ? "" : k) + X + Y)]), op("ge", "≥"), T("z", "0")],
+            note: "Carré ≥ 0 et dénominateur > 0 : c'est vrai, donc l'inégalité de départ aussi. Égalité quand <i>x</i> = " + ky.replace(Y, "<i>y</i>") + "." }
+        ];
+      }
       // Fin d'une équation a·x = r : on multiplie les deux côtés par
       // l'inverse 1/a (pas de barre de fraction sous x), on écrit r = a·x
       // pour voir le même a de chaque côté, puis 1/a · a = 1 et 1·x = x.
@@ -2250,7 +2320,11 @@
               magic: "« On multiplie les deux côtés par l'inverse de 2. »"
             }
           ].concat(eqInverse(2, 4, 2))
-        }
+        },
+        { title: "B − A", set: "R", split: true, finalSign: "→", steps: cmpDiff(1) },
+        { title: "Par les carrés", set: "R", split: true, finalSign: "→", steps: sqCmp(3, 5, 2, 6) },
+        { title: "Tout d'un côté", set: "R", split: true, finalSign: "⇔", steps: signSide(1) },
+        { title: "Un carré", set: "R", split: true, finalSign: "⇔", steps: sqAppear(1) }
       ];
 
       // ---------- Langue (FR / EN) ----------
@@ -2657,6 +2731,10 @@
           "(a+b)(a−b)": [conj(3), conj(5)],
           "a²+b² ℂ": [cplx(2), cplx(3)],
           "Équation": [equation(3, 5, 17), equation(4, 1, 21)],
+          "B − A": [cmpDiff(2), cmpDiff(3)],
+          "Par les carrés": [sqCmp(1, 9, 4, 6), sqCmp(2, 7, 4, 5)],
+          "Tout d'un côté": [signSide(2), signSide(3)],
+          "Un carré": [sqAppear(2), sqAppear(3)],
           // Dans ℕ : que des +, le geste reste le même (et le badge, lui,
           // sert aussi dans ℤ, signes compris)
           "x en facteur": [factorX([3, 5]), factorX([4, 1])]
@@ -2755,10 +2833,10 @@
       function evalExpr(str, env) {
         // Multiplication implicite : 2x, 2(…), )(…, x(…
         var js = str.replace(/\s+/g, "")
-          .replace(/([0-9xOQabI)])(?=[xOQabI(])/g, "$1*")
+          .replace(/([0-9xyOQabI)])(?=[xyOQabI(])/g, "$1*")
           .replace(/\^(\d)/g, "**$1");
-        if (!/^[0-9xOQabI+\-*\/().]*$/.test(js)) throw new Error("caractère inattendu : " + str);
-        return Function("x", "O", "Q", "a", "b", "I", "return (" + js + ");")(env.x, env.O, env.Q, env.a, env.b, env.I || 0);
+        if (!/^[0-9xyOQabI+\-*\/().]*$/.test(js)) throw new Error("caractère inattendu : " + str);
+        return Function("x", "y", "O", "Q", "a", "b", "I", "return (" + js + ");")(env.x, env.y === undefined ? 1.3 : env.y, env.O, env.Q, env.a, env.b, env.I || 0);
       }
 
       // Valeur complexe [réel, imaginaire] : l'expression est un polynôme
@@ -2797,7 +2875,31 @@
                 });
               }
             });
-            if (/[≠]/.test(txt)) return;
+            if (/[≠?∈√]/.test(txt)) return;
+            // Inégalité : même ensemble de solutions d'une étape à l'autre
+            // (vrai / faux / non défini en une dizaine de points)
+            var ineq = /[≤≥<>]/.exec(txt);
+            if (ineq) {
+              try {
+                var sd = txt.split(ineq[0]), XS = [-3.3, -0.7, 0.45, 1.3, 1.9, 2.55, 3.7, 5.1, 6.6];
+                var truth = XS.map(function (x) {
+                  var l = evalExpr(sd[0], { x: x, O: 0, Q: 0 }), r = evalExpr(sd[1], { x: x, O: 0, Q: 0 });
+                  if (!isFinite(l) || !isFinite(r)) return "u";
+                  var dlt = r - l, tol = 1e-9;
+                  return String(ineq[0] === "≥" ? dlt <= tol : ineq[0] === "≤" ? dlt >= -tol : ineq[0] === ">" ? dlt < -tol : dlt > tol);
+                }).join("");
+                // et, sauf étape marquée « scale » (multipliée par un positif),
+                // la même différence gauche − droite
+                var diff = XS.map(function (x) {
+                  var v = evalExpr(sd[0], { x: x, O: 0, Q: 0 }) - evalExpr(sd[1], { x: x, O: 0, Q: 0 });
+                  return isFinite(v) ? v.toFixed(7) : "u";
+                }).join(",");
+                if (demo.ineqRef === undefined || st.fresh) { demo.ineqRef = truth; demo.diffRef = diff; }
+                else if (truth !== demo.ineqRef) issues.push(demo.title + " étape " + (i + 1) + " : « " + txt + " » n'a plus les mêmes solutions");
+                else if (!st.scale && diff !== demo.diffRef) issues.push(demo.title + " étape " + (i + 1) + " : « " + txt + " » ne vaut plus la même différence");
+              } catch (e) { issues.push(demo.title + " étape " + (i + 1) + " : illisible (" + e.message + ")"); }
+              return;
+            }
             try {
               if (txt.indexOf("=") >= 0) {
                 var sides = txt.split("=");
@@ -3967,6 +4069,15 @@
         // 2 et 3. Signes : d'abord ceux que l'étape vient de toucher
         toks.forEach(function (t) {
           var tier = changed(t) ? 1 : 2;
+          // Intervalle : borne interdite incluse ( ]1 ; 2] → [1 ; 2] )
+          if (tier === 1 && /^\]/.test(t.t)) {
+            tiers[1].push(function () { var o = t.t; t.t = "[" + o.slice(1); return function () { t.t = o; }; });
+          }
+          // Sens d'une inégalité retourné
+          var FLIP = { "≥": "≤", "≤": "≥", "<": ">", ">": "<" };
+          if (FLIP[t.t] && /\bop\b/.test(t.k)) {
+            tiers[tier].push(function () { var o = t.t; t.t = FLIP[o]; return function () { t.t = o; }; });
+          }
           // Produit pris pour une somme : 6 = 2 + 3 au lieu de 2 · 3
           if (t.t === "·" && /\bop\b/.test(t.k)) {
             tiers[tier].push(function () { var o = t.k; t.t = "+"; t.k = "op"; return function () { t.t = "·"; t.k = o; }; });
@@ -6918,6 +7029,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v121", text: "Quatre chapitres de réflexes dans ℝ (feuille de route des TD) : B − A (comparer par la différence), Par les carrés (comparer deux positifs), Tout d'un côté (inégalité avec x au dénominateur, tableau de signes), Un carré (x/y + y/x ≥ 2). Le vérificateur contrôle aussi les inégalités : mêmes solutions et même différence d'une étape à l'autre." },
         { v: "v120", text: "Icône du badge balance : la n° 57 choisie sur la planche (barre droite, petite tige, deux bols suspendus par deux fils)." },
         { v: "v119", text: "Fraction est à repasser : il avait été validé avec l'ancien examen (un point par réponse). Effacé une seule fois, automatiquement." },
         { v: "v118", text: "Piège débloque le badge a/a = 1, avec une explication claire : (x + 3)/3 = x/3 + 3/3 = x/3 + 1 (plus d'exemple de télescopage incompréhensible)." },
@@ -7121,7 +7233,8 @@
       var SET_OF = {
         "Singapour": "N", "Premiers": "N", "Ensembles": "N", "Venn": "N", "Structures": "N", "Regrouper": "N", "x en facteur": "N", "−( … )": "Z", "Opposés": "Z", "−×−": "Z",
         "Fraction": "Q", "Piège": "Q", "Équation": "Q",
-        "Distribuer": "R", "Factoriser": "R", "Exp / ln": "R", "Double": "R", "Fusion": "R", "Pascal": "R"
+        "Distribuer": "R", "Factoriser": "R", "Exp / ln": "R", "Double": "R", "Fusion": "R", "Pascal": "R",
+        "B − A": "R", "Par les carrés": "R", "Tout d'un côté": "R", "Un carré": "R"
       };
       // Univers emboîtés ℕ ⊂ ℤ ⊂ ℚ ⊂ ℝ ⊂ ℂ : on choisit dans quel ensemble
       // on travaille (barre toujours visible en bas). Tout ce qui est plus
