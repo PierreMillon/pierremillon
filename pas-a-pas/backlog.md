@@ -24,6 +24,9 @@ Tri : priorité décroissante.
 
 ## À faire
 
+- [ ] P1 — **Techniques des TD** : feuille de route complète dans
+  `techniques-td.md` (≈ 100 techniques + réflexes), à transformer en
+  chapitres à étapes, réflexes d'abord
 - [ ] P1 — **Télescopage** (demandé par Pierre, important pour la suite) :
   un vrai chapitre à part, après Piège, où l'on voit 1/(k(k+1)) = 1/k −
   1/(k+1) (vérifié : 1/2 − 1/3 = 3/6 − 2/6 = 1/6), puis une somme
