@@ -82,6 +82,16 @@ plutôt que de fusionner en l'état.
 sur le site hébergé, pas ailleurs. Un Artifact seulement quand il demande
 explicitement une page de test à part (ex. l'effet oscilloscope).
 
+## Pas à Pas : suivre les TD de licence
+
+`pas-a-pas/` doit, à terme, faire travailler **toutes** les techniques de
+calcul, astuces et méthodes des TD et cours de L1 de Pierre (sur son
+Google Drive : TD 01 fractions/puissances, TD 02 trinôme, TD 03 exp/ln,
+TD 04 dérivation, TD 5 développements/sommes, TD 06 intégration, Analyse 1
+TD1/TD2…). Des dizaines de chapitres à étapes, surtout dans ℝ. Avant
+d'ajouter des chapitres, regarder le Drive pour les nouveaux TD, et tenir
+la feuille de route « Techniques des TD » de `pas-a-pas/backlog.md` à jour.
+
 ## Bulles : une seule sensation
 
 Les bulles de `bulles-sonores/` sont la référence du toucher de Pierre
