@@ -24,6 +24,18 @@ Tri : priorité décroissante.
 
 ## À faire
 
+- [ ] P1 — **Télescopage** (demandé par Pierre, important pour la suite) :
+  un vrai chapitre à part, après Piège, où l'on voit 1/(k(k+1)) = 1/k −
+  1/(k+1) (vérifié : 1/2 − 1/3 = 3/6 − 2/6 = 1/6), puis une somme
+  1/(1·2) + 1/(2·3) + … + 1/(n(n+1)) où les termes s'annulent en chaîne
+  et il ne reste que 1 − 1/(n+1). Il débloque le pouvoir Fusion existant
+  (`fusTel`, aujourd'hui rattaché à Piège) et un badge. Ne pas supprimer
+  le pouvoir en attendant
+- [ ] P1 — **Bulles de Fusion = même toucher que Bulles Sonores**
+  (`../bulles-sonores/`, que Pierre continue de travailler à part) : même
+  matière molle, mêmes gestes (glisser, fusion façon gouttes), même son au
+  contact. À chaque évolution de Bulles Sonores, reporter la sensation dans
+  Fusion (et inversement si Fusion invente un geste)
 - [ ] Badges cohérents partout — reste : quantité conjuguée, Pascal,
   Calcul (découper un nombre), qui n'agissent encore que dans Fusion.
   Faits : 10, Regrouper, x en facteur, (−1)·(−1), a/a = 1, facteurs

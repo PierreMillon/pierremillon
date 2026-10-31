@@ -20,6 +20,9 @@ Tri : priorité décroissante.
 
 ## À faire
 
+- [ ] Référence de toucher pour les bulles du chapitre Fusion de Pas à Pas
+  (`../pas-a-pas/`) : tout changement de sensation ici est à reporter là-bas
+
 - [ ] P1 — Tester la v9 sur iPhone : gouttes qui fusionnent, aspiration, sons (note tenue, accords, pulsation), plus de remise à zéro (Pierre)
 - [ ] P2 — Régler d'après le ressenti : matière (`K_EDGE`, `K_PRESS`, `K_SHAPE`, `C_WOBBLE`), fusion (`MERGE_CONTACT_MS`, `MERGE_SPEED`, `COHESION`), aspiration (`SIP_SHARE`, `SIP_RATE`, `SIP_REACH`) — tout en tête du script
 - [ ] P3 — Toutes les bulles finissent par fusionner si on les laisse faire : à voir si c'est voulu ou s'il faut un contrepoids

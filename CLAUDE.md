@@ -82,6 +82,14 @@ plutôt que de fusionner en l'état.
 sur le site hébergé, pas ailleurs. Un Artifact seulement quand il demande
 explicitement une page de test à part (ex. l'effet oscilloscope).
 
+## Bulles : une seule sensation
+
+Les bulles de `bulles-sonores/` sont la référence du toucher de Pierre
+(matière molle, fusion façon gouttes, son au contact). Toute bulle d'un
+autre projet — en premier le chapitre Fusion de `pas-a-pas/` — doit avoir
+le même toucher et la même sensation. Quand l'un évolue, reporter dans
+l'autre.
+
 ## Historique utile
 
 - `bastion-orbit/` et `forge-line/` ont été extraits vers leurs propres
