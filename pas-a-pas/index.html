@@ -948,27 +948,26 @@
       gap: 0.4rem;
       flex: none;
       width: 100%;
-      height: 5.4rem;
       align-content: flex-start;
       overflow: hidden;
       padding-bottom: 0.4rem;
     }
 
-    /* Chapitres : deux lignes au plus, les boutons se resserrent */
+    /* Chapitres : titres en entier, autant de lignes qu'il faut. La hauteur
+       de la zone est celle de l'ensemble le plus rempli (fixée en JS), pour
+       que les ellipses ne bougent pas quand on change d'ensemble. */
     .home-list button {
-      flex: 1 1 28%;
-      min-width: 0;
+      flex: 0 1 auto;
+      max-width: 100%;
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
       font-family: inherit;
-      font-size: 0.66rem;
+      font-size: 0.78rem;
       letter-spacing: 0;
       color: var(--ink);
       background: transparent;
       border: 1px solid var(--ink-soft);
       border-radius: 999px;
-      padding: 0.5rem 0.15rem;
+      padding: 0.55rem 0.8rem;
       cursor: pointer;
     }
 
@@ -7029,6 +7028,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v122", text: "Accueil : les titres des chapitres sont lisibles en entier, boutons plus grands, autant de lignes qu'il faut (hauteur fixe sur l'ensemble le plus rempli : les ellipses ne bougent pas)." },
         { v: "v121", text: "Quatre chapitres de réflexes dans ℝ (feuille de route des TD) : B − A (comparer par la différence), Par les carrés (comparer deux positifs), Tout d'un côté (inégalité avec x au dénominateur, tableau de signes), Un carré (x/y + y/x ≥ 2). Le vérificateur contrôle aussi les inégalités : mêmes solutions et même différence d'une étape à l'autre." },
         { v: "v120", text: "Icône du badge balance : la n° 57 choisie sur la planche (barre droite, petite tige, deux bols suspendus par deux fils)." },
         { v: "v119", text: "Fraction est à repasser : il avait été validé avec l'ancien examen (un point par réponse). Effacé une seule fois, automatiquement." },
@@ -7870,10 +7870,33 @@
           });
           list.appendChild(b);
         });
-        // Deux lignes au plus : la largeur suit le nombre de chapitres
-        var perRow = Math.max(1, Math.ceil(list.children.length / 2));
-        [].forEach.call(list.children, function (b) { b.style.flexBasis = "calc(" + (100 / perRow) + "% - 0.4rem)"; });
+        homeListHeight();
       }
+      // Hauteur de la liste = celle de l'ensemble qui a le plus de lignes
+      // (mesurée sur une copie invisible), recalculée si la largeur change
+      var homeListW = -1;
+      function homeListHeight() {
+        var list = document.getElementById("homeList");
+        if (!list.clientWidth || list.clientWidth === homeListW) return;
+        homeListW = list.clientWidth;
+        var probe = list.cloneNode(false);
+        probe.removeAttribute("id");
+        probe.style.cssText = "position:absolute;visibility:hidden;left:0;top:0;height:auto;width:" + list.clientWidth + "px";
+        list.parentNode.appendChild(probe);
+        var maxH = 0;
+        UNIV.forEach(function (k) {
+          probe.innerHTML = "";
+          chaptersOf(k).forEach(function (d) {
+            var b = document.createElement("button");
+            b.textContent = "✓ " + tr(d.title);
+            probe.appendChild(b);
+          });
+          maxH = Math.max(maxH, probe.scrollHeight);
+        });
+        probe.remove();
+        list.style.height = maxH + "px";
+      }
+      window.addEventListener("resize", function () { homeListW = -1; if (!homeEl.hidden) homeListHeight(); });
       // Toucher ou glisser sur la carte : l'ensemble sous le doigt est
       // sélectionné en continu (l'ellipse la plus intérieure qui contient
       // le point).
