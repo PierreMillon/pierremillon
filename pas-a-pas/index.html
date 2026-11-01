@@ -7028,6 +7028,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v123", text: "Badge a/a = 1 : il marche aussi avant la sortie des facteurs (sur 2·7·x / 7·3, il sort 7/7, le change en 1 et l'efface d'un coup)." },
         { v: "v122", text: "Accueil : les titres des chapitres sont lisibles en entier, boutons plus grands, autant de lignes qu'il faut (hauteur fixe sur l'ensemble le plus rempli : les ellipses ne bougent pas)." },
         { v: "v121", text: "Quatre chapitres de réflexes dans ℝ (feuille de route des TD) : B − A (comparer par la différence), Par les carrés (comparer deux positifs), Tout d'un côté (inégalité avec x au dénominateur, tableau de signes), Un carré (x/y + y/x ≥ 2). Le vérificateur contrôle aussi les inégalités : mêmes solutions et même différence d'une étape à l'autre." },
         { v: "v120", text: "Icône du badge balance : la n° 57 choisie sur la planche (barre droite, petite tige, deux bols suspendus par deux fils)." },
@@ -7713,14 +7714,34 @@
       function qTarget() {
         var d = DEMOS[demoIndex];
         if (!d || d.custom || badgeQ.hidden || (homeEl && !homeEl.hidden)) return -1;
-        var st = d.steps[cur], nx = d.steps[cur + 1];
-        if (!st || !st.expr || !nx || !nx.expr || !nx.fx || nx.fx.type !== "meet" || nx.fx.blocks || nx.fx.ids.length !== 2) return -1;
+        var st = d.steps[cur];
+        if (!st || !st.expr || st.summary) return -1;
         var txt = {};
         flatTokens(st.expr, []).forEach(function (t) { txt[t.id] = t.t; });
-        var a = txt[nx.fx.ids[0]], b = txt[nx.fx.ids[1]];
-        if (a === undefined || a !== b || a === "0") return -1;
-        var one = flatTokens(nx.expr, []).some(function (t) { return t.t === "1" && t.from && t.from.indexOf(nx.fx.ids[0]) >= 0; });
-        return one ? cur + 1 : -1;
+        // L'étape a/a = 1 peut venir juste après, ou après la sortie des deux
+        // facteurs de la fraction (7/7 · le reste) : le badge fait les deux
+        // Les étapes sautées ne font que déplacer : mêmes nombres (pas de
+        // décomposition 12 → 3·4 escamotée, c'est l'autre badge)
+        var nums = function (e) { return flatTokens(e, []).map(function (t) { return t.t; }).filter(function (v) { return /^\d+$/.test(v); }).sort().join(","); };
+        var base = nums(st.expr);
+        for (var m = cur + 1; m <= cur + 3 && m < d.steps.length; m++) {
+          var nx = d.steps[m];
+          if (!nx || !nx.expr || nx.summary) return -1;
+          if (!nx.fx || nx.fx.type !== "meet" || nx.fx.blocks || nx.fx.ids.length !== 2) {
+            if (nums(nx.expr) !== base) return -1;
+            continue;
+          }
+          var a = txt[nx.fx.ids[0]], b = txt[nx.fx.ids[1]];
+          if (a === undefined || a !== b || a === "0") return -1;
+          var ones = flatTokens(nx.expr, []).filter(function (t) { return t.t === "1" && t.from && t.from.indexOf(nx.fx.ids[0]) >= 0; });
+          if (!ones.length) return -1;
+          // … et le 1 qui disparaît juste après (· 1 ne change rien)
+          var after = d.steps[m + 1];
+          if (after && after.expr && !after.summary && !after.fx &&
+              !flatTokens(after.expr, []).some(function (t) { return ones.some(function (o) { return o.id === t.id; }); })) return m + 1;
+          return m;
+        }
+        return -1;
       }
       badgeQ.addEventListener("click", function () {
         var k = qTarget();
