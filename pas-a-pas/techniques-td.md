@@ -27,7 +27,15 @@ Chapitres « quel raisonnement ici ? » : on reconnaît la forme de la question
 et on choisit l'outil, puis on le déroule pas à pas. Dans ℝ ou ℂ.
 
 - **Contre-exemple** — « Pour tout x, x² > x » est faux : x = 1/2 donne 1/4 < 1/2
-- **Récurrence** — propriété P(n) pour tout n : initialisation, hérédité (somme des k = n(n+1)/2, 2ⁿ ≥ n + 1, somme des racines de Pierre)
+- **Récurrence** — propriété P(n) pour tout n : initialisation, hérédité. Les différentes formes, chacune avec son chapitre :
+  - **simple** — P(n) ⇒ P(n + 1) : 1 + 2 + … + n = n(n + 1)/2, somme des racines de Pierre
+  - **à partir d'un rang n₀** — 2ⁿ ≥ n² pour n ≥ 4 (initialisation au bon rang)
+  - **double** (deux rangs) — P(n) et P(n + 1) ⇒ P(n + 2) : Fibonacci, Fₙ ≤ 2ⁿ ; deux initialisations
+  - **forte** — P(0), …, P(n) ⇒ P(n + 1) : tout entier ≥ 2 a un diviseur premier, décomposition en facteurs premiers
+  - **sur une suite récurrente** — uₙ₊₁ = f(uₙ) : montrer 0 ≤ uₙ ≤ 2, ou uₙ croissante
+  - **descendante / descente infinie** — pas de plus petit contre-exemple (√2 irrationnel)
+  - **piège** — hérédité vraie mais initialisation fausse (« n = n + 1 »), ou hérédité qui ne marche pas au premier pas (« tous les chevaux ont la même couleur »)
+- **Suites récurrentes (calcul)** — arithmético-géométrique uₙ₊₁ = a·uₙ + b : point fixe ℓ, puis vₙ = uₙ − ℓ géométrique ; linéaire d'ordre 2 uₙ₊₂ = a·uₙ₊₁ + b·uₙ : équation caractéristique r² = a·r + b
 - **Disjonction de cas** — |x|, partie entière, n pair / impair (n² − n est pair)
 - **Unicité** — prendre deux solutions a et b, montrer a = b (limite, élément neutre, solution de ax = b)
 - **Absurde** — √2 irrationnel ; supposer le contraire, arriver à une contradiction
