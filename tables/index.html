@@ -392,32 +392,37 @@
     .win.show .big { animation: pop 0.5s cubic-bezier(.3, 1.6, .5, 1) both; }
     /* Note de musique gagnée en jouant de la loupe (voir musician) */
     h1 { position: relative; }
-    /* Jusqu'à trois notes à la suite, une par partie de tables (2–9,
-       12–19, tout), toujours dans cet ordre */
+    /* Partition du musicien : les notes gagnées (jusqu'à 7), dessinées en
+       vrai rythme (rondes, blanches, noires, croches reliées…) */
     .notes {
       position: absolute;
       left: 100%;
-      top: -0.1em;
-      margin-left: 0.15em;
-      display: flex;
-      gap: 0.05em;
-      font-size: 0.6em;
-      white-space: nowrap;
+      top: 50%;
+      transform: translateY(-55%);
+      margin-left: 0.2em;
+      padding: 0;
+      background: none;
+      border: none;
+      cursor: pointer;
+      line-height: 0;
     }
-    .note {
-      display: inline-block;
-      color: var(--accent);
-      text-shadow: 0 0 10px rgba(109, 255, 176, 0.7);
-    }
-    .note[hidden] { display: none; }
-    .note.born { animation: noteBorn 1.1s cubic-bezier(.25, 1.6, .45, 1) both; }
+    .notes[hidden] { display: none; }
+    .notes svg { display: block; height: 1.5em; width: auto; overflow: visible; }
+    .notes .hd { stroke: var(--accent); stroke-width: 1.3; }
+    .notes .hd.fill { fill: var(--accent); }
+    .notes .hd.open { fill: none; }
+    .notes .st { stroke: var(--accent); stroke-width: 1.2; stroke-linecap: round; fill: none; }
+    .notes .bm { fill: var(--accent); }
+    .notes svg { filter: drop-shadow(0 0 3px rgba(109, 255, 176, 0.6)); }
+    .notes .born { animation: noteBorn 1.1s cubic-bezier(.25, 1.6, .45, 1) both; transform-box: fill-box; transform-origin: 50% 80%; }
+    .notes .lit .hd { fill: #f2fff8; stroke: #f2fff8; }
     @keyframes noteBorn {
-      0% { transform: translateY(0.8em) scale(0) rotate(-40deg); opacity: 0; text-shadow: 0 0 0 transparent; }
-      45% { transform: translateY(-0.35em) scale(1.7) rotate(14deg); opacity: 1; text-shadow: 0 0 22px rgba(109, 255, 176, 1); }
-      70% { transform: translateY(0.05em) scale(0.9) rotate(-6deg); }
+      0% { transform: translateY(12px) scale(0) rotate(-40deg); opacity: 0; }
+      45% { transform: translateY(-5px) scale(1.7) rotate(14deg); opacity: 1; }
+      70% { transform: translateY(1px) scale(0.9) rotate(-6deg); }
       100% { transform: none; opacity: 1; }
     }
-    @media (prefers-reduced-motion: reduce) { .note.born { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .notes .born { animation: none; } }
     @keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
     .menu-list { width: 100%; max-width: 20rem; display: flex; flex-direction: column; }
@@ -470,7 +475,7 @@
       <div class="left">
         <a class="back" href="../" aria-label="Portfolio">←</a>
       </div>
-      <h1 id="title">Tables<span class="notes" id="notes"><span class="note" data-part="t9" hidden aria-label="Musicien 2–9">♪</span><span class="note" data-part="t20" hidden aria-label="Musicien 12–19">♫</span><span class="note" data-part="all" hidden aria-label="Musicien tout">♬</span></span></h1>
+      <h1 id="title">Tables<button class="notes" id="notes" hidden aria-label="Mélodie"></button></h1>
       <button class="link-btn menu-icon" id="menuBtn" aria-label="Menu">☰</button>
     </header>
   </div>
@@ -1372,33 +1377,181 @@
       // ---------- Musicien (demande de Pierre) ----------
       // Glisser vite sur la grille fait une petite mélodie de « tic ». Règle
       // de Pierre : 5 secondes de glissé rapide, cumulées, sur les 10
-      // dernières secondes → c'est qu'on joue. Une note par partie de
-      // tables (2–9 ♪, 12–19 ♫, tout ♬), chacune avec son arpège, comme
-      // des choses à débloquer ; elles s'affichent à la suite du titre.
-      // Chaque note n'arrive qu'une fois : elle reste (gardée en local) et
-      // ne rejoue plus jamais son son. « Rapide » : deux cases traversées
-      // à moins de 250 ms d'écart ; le temps entre elles compte.
+      // dernières secondes → c'est qu'on joue, et on gagne une note.
+      // Une note par bouton du haut : les 6 parties et « erreurs courantes »
+      // (7 en tout, choix de Pierre). Chaque note n'arrive qu'une fois.
+      // Les notes gagnées s'écrivent après le titre en vrai rythme : une
+      // partition tirée au hasard (durées : ronde, blanche, noire, croche,
+      // double croche ; hauteurs dans une gamme pentatonique), les croches
+      // voisines reliées par une barre. Toucher la partition la joue.
+      // Les 7 gagnées : un accord de toutes les notes. « Réinitialiser la
+      // progression » efface les notes et tire une nouvelle partition.
+      // « Rapide » : deux cases traversées à moins de 250 ms d'écart.
       var MUS_NEED = 5000, MUS_WINDOW = 10000, MUS_GAP = 250;
-      var MUS_PARTS = ["t9", "t20", "all"];
-      // Trois arpèges : do majeur 7/9 (clair), la mineur 9 (doux), ré
-      // majeur montant jusqu'au la aigu (éclatant, pour le grand triangle)
-      var ARPS = {
-        t9: [[262, 330, 392, 494, 587], 523],
-        t20: [[220, 262, 330, 392, 494], 440],
-        all: [[294, 370, 440, 554, 659], 880]
-      };
-      var mus = { last: 0, segs: [], part: null };
-      var earned = {};
-      // Ancienne note unique (avant v21) : comptée pour 2–9
-      if (load("musician") === "1") save("music-t9", "1");
-      MUS_PARTS.forEach(function (p) { earned[p] = load("music-" + p) === "1"; });
-      function noteOf(p) { return document.querySelector('.note[data-part="' + p + '"]'); }
-      MUS_PARTS.forEach(function (p) { if (earned[p]) noteOf(p).hidden = false; });
+      var MUS_SLOTS = ["t9", "t20", "all", "sq", "cu", "p2", "err"];
+      var SCALE = [262, 294, 330, 392, 440, 523, 587, 659]; // do ré mi sol la do ré mi
+      var DURS = [4, 2, 1, 0.5, 0.25];                       // en temps
+      var DUR_W = [0.7, 1.5, 3, 3, 1];
+      var mus = { last: 0, segs: [], slot: null };
+      var notesEl = document.getElementById("notes");
+      function newScore() {
+        var sc = [];
+        for (var i = 0; i < MUS_SLOTS.length; i++) {
+          var x = Math.random() * 9.2, d = DURS[DURS.length - 1];
+          for (var k = 0; k < DURS.length; k++) { x -= DUR_W[k]; if (x < 0) { d = DURS[k]; break; } }
+          sc.push({ d: d, p: Math.floor(Math.random() * SCALE.length) });
+        }
+        // Une double croche seule sonne mal : on la jumelle à sa voisine
+        for (var j = 0; j < sc.length; j++) {
+          if (sc[j].d === 0.25 && !(sc[j - 1] && sc[j - 1].d <= 0.5) && !(sc[j + 1] && sc[j + 1].d <= 0.5) && sc[j + 1]) sc[j + 1].d = 0.25;
+        }
+        return sc;
+      }
+      // Sauvegarde relue strictement : 7 notes, durées et hauteurs connues
+      var score = (function () {
+        try {
+          var o = JSON.parse(load("music-score") || "null");
+          if (Array.isArray(o) && o.length === MUS_SLOTS.length && o.every(function (n) {
+            return n && DURS.indexOf(n.d) >= 0 && Number.isInteger(n.p) && n.p >= 0 && n.p < SCALE.length;
+          })) return o.map(function (n) { return { d: n.d, p: n.p }; });
+        } catch (e) {}
+        var sc = newScore();
+        save("music-score", JSON.stringify(sc));
+        return sc;
+      })();
+      var earnedList = (function () {
+        var out = [];
+        try {
+          var o = JSON.parse(load("music-earned") || "null");
+          if (Array.isArray(o)) o.forEach(function (k) { if (MUS_SLOTS.indexOf(k) >= 0 && out.indexOf(k) < 0) out.push(k); });
+        } catch (e) {}
+        // Anciennes notes (avant v23) reprises
+        if (load("musician") === "1" && out.indexOf("t9") < 0) out.push("t9");
+        ["t9", "t20", "all"].forEach(function (k) { if (load("music-" + k) === "1" && out.indexOf(k) < 0) out.push(k); });
+        return out;
+      })();
+      save("music-earned", JSON.stringify(earnedList));
+
+      // Dessin de la partition (unités du viewBox ; hauteur = plus aigu en haut)
+      function drawScore(bornIdx, litIdx) {
+        var n = earnedList.length;
+        notesEl.hidden = n === 0;
+        notesEl.textContent = "";
+        if (!n) return;
+        var NS = SVGNS, GAP = 13, BASE = 34, STEM = 22;
+        var svg = document.createElementNS(NS, "svg");
+        var notes = score.slice(0, n);
+        var xs = [], ys = [];
+        var x = 6;
+        notes.forEach(function (nt, i) { xs.push(x); ys.push(BASE - nt.p * 2.2); x += GAP + (nt.d >= 2 ? 3 : 0); });
+        var W = x - GAP + 10;
+        svg.setAttribute("viewBox", "0 -4 " + W + " 44");
+        function el(tag, attrs, parent) {
+          var e = document.createElementNS(NS, tag);
+          Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+          parent.appendChild(e);
+          return e;
+        }
+        // Groupes de croches / doubles voisines (reliées par une barre)
+        var beamOf = [];
+        for (var i = 0; i < n; ) {
+          if (notes[i].d <= 0.5) {
+            var j = i;
+            while (j + 1 < n && notes[j + 1].d <= 0.5) j++;
+            for (var k = i; k <= j; k++) beamOf[k] = j > i ? [i, j] : null;
+            i = j + 1;
+          } else { beamOf[i] = null; i++; }
+        }
+        var groups = [];
+        notes.forEach(function (nt, i) {
+          var g = el("g", { "class": "nt" + (i === bornIdx ? " born" : "") + (i === litIdx ? " lit" : "") }, svg);
+          groups.push(g);
+          var hx = xs[i], hy = ys[i];
+          var open = nt.d >= 2;
+          el("ellipse", { "class": "hd " + (open ? "open" : "fill"), cx: hx, cy: hy, rx: nt.d === 4 ? 4.6 : 4, ry: 2.9, transform: "rotate(-20 " + hx + " " + hy + ")" }, g);
+          if (nt.d === 4) return; // ronde : pas de hampe
+          var sx = hx + 3.7, top = hy - STEM;
+          var bm = beamOf[i];
+          if (bm) {
+            // Barre horizontale au-dessus de la plus haute hampe du groupe
+            var minTop = Infinity;
+            for (var q = bm[0]; q <= bm[1]; q++) minTop = Math.min(minTop, ys[q] - STEM);
+            top = minTop;
+          }
+          el("line", { "class": "st", x1: sx, y1: hy - 0.5, x2: sx, y2: top }, g);
+          if (!bm && nt.d <= 0.5) {
+            // Croche ou double croche seule : crochet(s)
+            el("path", { "class": "st", d: "M" + sx + " " + top + " q 1 5 6 8" }, g);
+            if (nt.d === 0.25) el("path", { "class": "st", d: "M" + sx + " " + (top + 4.5) + " q 1 5 6 8" }, g);
+          }
+        });
+        // Barres des groupes (dessinées par-dessus)
+        var done = {};
+        beamOf.forEach(function (bm, i) {
+          if (!bm || done[bm[0]]) return;
+          done[bm[0]] = 1;
+          var minTop = Infinity;
+          for (var q = bm[0]; q <= bm[1]; q++) minTop = Math.min(minTop, ys[q] - STEM);
+          var x1 = xs[bm[0]] + 3.7, x2 = xs[bm[1]] + 3.7;
+          el("rect", { "class": "bm", x: x1 - 0.6, y: minTop, width: x2 - x1 + 1.2, height: 2.6 }, groups[bm[1]]);
+          // Seconde barre pour les doubles croches (courte si voisine croche)
+          for (var q2 = bm[0]; q2 <= bm[1]; q2++) {
+            if (notes[q2].d !== 0.25) continue;
+            var a = xs[q2] + 3.7, b2 = q2 < bm[1] ? Math.min(xs[q2 + 1] + 3.7, a + 6) : a, a2 = q2 === bm[1] ? a - 6 : a;
+            if (q2 < bm[1] && notes[q2 + 1].d === 0.25) b2 = xs[q2 + 1] + 3.7;
+            el("rect", { "class": "bm", x: Math.min(a2, b2) - 0.6, y: minTop + 4.4, width: Math.abs(b2 - a2) + 1.2, height: 2.4 }, groups[q2]);
+          }
+        });
+        notesEl.appendChild(svg);
+        fitNotes();
+      }
+      // La partition ne déborde jamais sur le bouton du menu
+      function fitNotes() {
+        var svg = notesEl.querySelector("svg");
+        if (!svg) return;
+        svg.style.height = "";
+        var room = document.getElementById("menuBtn").getBoundingClientRect().left - notesEl.getBoundingClientRect().left - 6;
+        var w = svg.getBoundingClientRect().width;
+        if (w > room && room > 20) svg.style.height = (svg.getBoundingClientRect().height * room / w).toFixed(1) + "px";
+      }
+      window.addEventListener("resize", fitNotes);
+
+      function playMelody(upTo, then) {
+        try {
+          unlockAudio();
+          if (!actx) return;
+          var BEAT = 0.42, w = actx.currentTime + 0.05, t0 = 0;
+          score.slice(0, upTo).forEach(function (nt, i) {
+            var f = SCALE[nt.p], len = nt.d * BEAT;
+            tone(f, f, 0.09, Math.max(0.25, len * 1.15), w + t0, 0.012);
+            (function (idx, at) { setTimeout(function () { drawScore(-1, idx); }, at * 1000); })(i, t0 + 0.05);
+            t0 += len;
+          });
+          setTimeout(function () { drawScore(-1, -1); if (then) then(); }, (t0 + 0.1) * 1000);
+        } catch (e) {}
+      }
+      // Les 7 notes : un accord égrené de toutes les hauteurs, avec la
+      // basse une octave en dessous
+      function playChord() {
+        try {
+          unlockAudio();
+          if (!actx) return;
+          var w = actx.currentTime + 0.05, seen = {};
+          tone(SCALE[score[0].p] / 2, SCALE[score[0].p] / 2, 0.08, 3.2, w, 0.05);
+          score.map(function (nt) { return SCALE[nt.p]; }).sort(function (a, b) { return a - b; }).forEach(function (f, i) {
+            if (seen[f]) return;
+            seen[f] = 1;
+            tone(f, f, 0.06, 3 - i * 0.12, w + 0.04 * i, 0.03);
+          });
+        } catch (e) {}
+      }
+      notesEl.addEventListener("click", function () { playMelody(earnedList.length); });
+
       function musicTick() {
-        var p = S.part;
-        if (MUS_PARTS.indexOf(p) < 0 || earned[p]) return;
+        var slot = S.err ? "err" : S.part;
+        if (earnedList.indexOf(slot) >= 0) return;
         // Changer de partie remet le compte à zéro
-        if (mus.part !== p) { mus.part = p; mus.segs = []; }
+        if (mus.slot !== slot) { mus.slot = slot; mus.segs = []; }
         var now = Date.now(), dt = now - mus.last;
         mus.last = now;
         if (dt > MUS_GAP) return;
@@ -1406,41 +1559,31 @@
         mus.segs = mus.segs.filter(function (sg) { return now - sg[0] <= MUS_WINDOW; });
         var tot = 0;
         mus.segs.forEach(function (sg) { tot += sg[1]; });
-        if (tot >= MUS_NEED) musician(p);
+        if (tot >= MUS_NEED) musician(slot);
       }
       function resetMusic() {
         save("musician", "0");
-        MUS_PARTS.forEach(function (p) {
-          earned[p] = false;
-          save("music-" + p, "0");
-          var el = noteOf(p);
-          el.hidden = true;
-          el.classList.remove("born");
-        });
+        ["t9", "t20", "all"].forEach(function (k) { save("music-" + k, "0"); });
+        earnedList = [];
+        save("music-earned", "[]");
+        score = newScore();
+        save("music-score", JSON.stringify(score));
         mus.segs = [];
+        drawScore(-1, -1);
       }
-      function musician(p) {
-        earned[p] = true;
+      function musician(slot) {
+        earnedList.push(slot);
+        save("music-earned", JSON.stringify(earnedList));
         mus.segs = [];
-        save("music-" + p, "1");
-        var el = noteOf(p);
-        el.hidden = false;
-        el.classList.remove("born");
-        void el.offsetWidth;
-        el.classList.add("born");
+        var n = earnedList.length;
+        drawScore(n - 1, -1);
         buzz(20);
-        try {
-          unlockAudio();
-          if (!actx) return;
-          var w = actx.currentTime + 0.03, arp = ARPS[p];
-          // L'arpège égrené, chaque note laissée sonner pour former
-          // l'accord, puis une note tenue en haut
-          arp[0].forEach(function (f, i) {
-            tone(f, f, 0.075, 2.2 - i * 0.15, w + i * 0.11, 0.015);
-          });
-          tone(arp[1], arp[1], 0.05, 1.8, w + 0.62, 0.04);
-        } catch (e) {}
+        // La mélodie jusqu'à la nouvelle note ; avec la 7e, l'accord final
+        setTimeout(function () {
+          playMelody(n, n === MUS_SLOTS.length ? playChord : null);
+        }, 350);
       }
+      drawScore(-1, -1);
 
       var mag = null;
       var LENS = 1.8, NEAR = 0.3;
@@ -1612,6 +1755,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v23", text: "Partition du musicien : 7 notes à gagner, une par bouton du haut (les 6 parties et « erreurs courantes »). Les notes gagnées s'écrivent après le titre en vrai rythme (rondes, blanches, noires, croches reliées par une barre…), tiré au hasard. Chaque nouvelle note joue la mélodie jusqu'à elle ; les 7 jouent un accord. Toucher la partition la rejoue. « Réinitialiser » efface les notes et tire un autre rythme et une autre mélodie." },
         { v: "v22", text: "Pavé de chiffres au glissé : pour 12, poser le doigt sur 1, glisser jusqu'à 2 et relâcher. Une touche traversée vite n'est pas tapée ; elle l'est si le doigt s'y arrête un instant (pour 121 : 1, glisser sur 2, marquer un temps, revenir sur 1). Un chiffre répété (11) : relever le doigt et retaper. Taper chiffre par chiffre marche toujours." },
         { v: "v21", text: "Trois notes à gagner au lieu d'une : une par partie de tables (2–9 ♪, 12–19 ♫, tout ♬), chacune avec son propre arpège (do majeur, la mineur, ré majeur). Même règle : 5 secondes de glissé rapide sur 10 secondes, dans la partie. Elles s'affichent à la suite du titre ; une note déjà gagnée avant reste comptée pour 2–9. « Réinitialiser la progression » efface aussi les notes. Bouton « erreurs courantes » en doré. Compteur « erreurs comptées depuis le début » retiré du menu." },
         { v: "v20", text: "Note ♪ du musicien plus dure à gagner : 5 secondes de glissé rapide cumulées sur 10 secondes. Elle n'arrive qu'une fois, avec un petit arpège (do – mi – sol – si – ré) ; ensuite elle reste, sans rejouer le son." },

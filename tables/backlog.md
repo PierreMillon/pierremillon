@@ -70,6 +70,9 @@ Tri : priorité décroissante.
   « erreurs courantes » en doré ; compteur d'erreurs total retiré du menu
 - [x] v22 — Pavé au glissé : poser sur le 1er chiffre, glisser, relâcher
   sur le dernier ; s'arrêter un instant tape un chiffre du milieu
+- [x] v23 — Partition du musicien : 7 notes (6 parties + erreurs), rythme et
+  mélodie tirés au hasard, croches reliées ; toucher = mélodie ; 7 = accord ;
+  réinitialiser = nouvelle partition
 
 ## À faire
 
