@@ -303,6 +303,11 @@
       cursor: pointer;
     }
     .key:active { background: var(--accent-soft); }
+    /* Glisser sur le pavé : la touche sous le doigt s'allume, celle qui
+       vient d'être tapée flashe */
+    .keypad { touch-action: none; }
+    .key.hot { border-color: var(--accent); background: var(--accent-soft); }
+    .key.hit { background: rgba(109, 255, 176, 0.38); color: #f2fff8; }
     .key.blank { visibility: hidden; }
 
     /* Compteur d'erreurs tout en haut, à côté de la flèche de retour :
@@ -1263,11 +1268,69 @@
           var bt = document.createElement("button");
           bt.className = "key" + (k ? "" : " blank");
           bt.textContent = k;
-          if (k) bt.addEventListener("click", function () { typeKey(k); });
+          // Au clavier seulement : au doigt, c'est le glissé qui tape
+          if (k) { bt.dataset.k = k; bt.addEventListener("click", function (e) { if (e.detail === 0) typeKey(k); }); }
           else bt.tabIndex = -1;
           keypad.appendChild(bt);
         });
       }
+
+      // ---------- Glisser sur le pavé (demande de Pierre) ----------
+      // Pour 12 : poser le doigt sur 1, glisser jusqu'à 2, relâcher. Le
+      // chiffre sous le doigt au posé est tapé tout de suite ; une touche
+      // traversée vite n'est pas tapée (1 → 9 passe par 5 sans le taper) ;
+      // elle l'est si le doigt s'y arrête un instant (KEY_DWELL), ou si on
+      // relâche dessus. Pour 121 : 1, glisser sur 2, marquer un temps,
+      // revenir sur 1, relâcher. Taper chiffre par chiffre marche toujours.
+      var KEY_DWELL = 170, kd = null;
+      function keyAt(x, y) {
+        var el = document.elementFromPoint(x, y);
+        el = el && el.closest ? el.closest(".key") : null;
+        return el && el.dataset.k ? el : null;
+      }
+      function keyCommit(el) {
+        if (!el) return;
+        el.classList.remove("hit");
+        void el.offsetWidth;
+        el.classList.add("hit");
+        setTimeout(function () { el.classList.remove("hit"); }, 140);
+        typeKey(el.dataset.k);
+      }
+      function keyHover(el) {
+        if (!kd || el === kd.cur) return;
+        clearTimeout(kd.t);
+        if (kd.cur) kd.cur.classList.remove("hot");
+        kd.cur = el;
+        kd.done = false;
+        if (!el) return;
+        el.classList.add("hot");
+        kd.t = setTimeout(function () { if (kd && kd.cur === el && !kd.done) { kd.done = true; keyCommit(el); } }, KEY_DWELL);
+      }
+      function keyEnd() {
+        if (!kd) return;
+        clearTimeout(kd.t);
+        if (kd.cur) kd.cur.classList.remove("hot");
+        kd = null;
+      }
+      keypad.addEventListener("pointerdown", function (e) {
+        if (kd) return;
+        var el = keyAt(e.clientX, e.clientY);
+        if (!el) return;
+        e.preventDefault();
+        try { keypad.setPointerCapture(e.pointerId); } catch (er) {}
+        kd = { id: e.pointerId, cur: el, done: true, t: 0 };
+        el.classList.add("hot");
+        keyCommit(el);
+      });
+      keypad.addEventListener("pointermove", function (e) {
+        if (kd && e.pointerId === kd.id) keyHover(keyAt(e.clientX, e.clientY));
+      });
+      keypad.addEventListener("pointerup", function (e) {
+        if (!kd || e.pointerId !== kd.id) return;
+        if (kd.cur && !kd.done) { kd.done = true; keyCommit(kd.cur); }
+        keyEnd();
+      });
+      keypad.addEventListener("pointercancel", keyEnd);
 
       function render() {
         renderParts();
@@ -1456,7 +1519,7 @@
       document.addEventListener("touchstart", function (e) {
         // Un glissé sur la grille sert à la loupe, pas à changer de partie
         if (e.touches.length !== 1 || !winEl.hidden || !menuOverlay.hidden || !histOverlay.hidden ||
-            (e.target.closest && e.target.closest("#tgrid"))) { swX = null; return; }
+            (e.target.closest && e.target.closest("#tgrid, #keypad"))) { swX = null; return; }
         swX = e.touches[0].clientX;
         swY = e.touches[0].clientY;
       }, { passive: true });
@@ -1549,6 +1612,7 @@
       // ---------- Historique ----------
 
       var VERSIONS = [
+        { v: "v22", text: "Pavé de chiffres au glissé : pour 12, poser le doigt sur 1, glisser jusqu'à 2 et relâcher. Une touche traversée vite n'est pas tapée ; elle l'est si le doigt s'y arrête un instant (pour 121 : 1, glisser sur 2, marquer un temps, revenir sur 1). Un chiffre répété (11) : relever le doigt et retaper. Taper chiffre par chiffre marche toujours." },
         { v: "v21", text: "Trois notes à gagner au lieu d'une : une par partie de tables (2–9 ♪, 12–19 ♫, tout ♬), chacune avec son propre arpège (do majeur, la mineur, ré majeur). Même règle : 5 secondes de glissé rapide sur 10 secondes, dans la partie. Elles s'affichent à la suite du titre ; une note déjà gagnée avant reste comptée pour 2–9. « Réinitialiser la progression » efface aussi les notes. Bouton « erreurs courantes » en doré. Compteur « erreurs comptées depuis le début » retiré du menu." },
         { v: "v20", text: "Note ♪ du musicien plus dure à gagner : 5 secondes de glissé rapide cumulées sur 10 secondes. Elle n'arrive qu'une fois, avec un petit arpège (do – mi – sol – si – ré) ; ensuite elle reste, sans rejouer le son." },
         { v: "v19", text: "Menu : seulement les trois barres ☰. Le bouton des erreurs quitte le haut à gauche et devient « erreurs courantes », à la fin des boutons des parties : il fait refaire seulement les cases ratées de la partie en cours." },
