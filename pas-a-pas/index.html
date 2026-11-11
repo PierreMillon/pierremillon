@@ -444,6 +444,13 @@
     }
 
     .tok.sign-hl { color: var(--sign); }
+    /* Toute division écrite en texte s'affiche en fraction à barre
+       horizontale (fracHTML / observateur plus bas) */
+    .ifrac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; font-size: 0.82em; line-height: 1.15; margin: 0 0.08em; }
+    .ifrac > span { padding: 0 0.15em; white-space: nowrap; }
+    .ifrac > span:first-child { border-bottom: 1px solid currentColor; }
+    sup .ifrac { font-size: 0.9em; vertical-align: baseline; }
+    .expl-f > span > .ifrac, .magic .ifrac { font-size: 1em; }
     /* Même opération des deux côtés (balance) : un halo lumineux, gardé
        en examen — c'est l'opération elle-même, pas un indice */
     .tok.bal {
@@ -2809,6 +2816,62 @@
       // erreur de saisie (signe oublié, mauvais nombre) est donc repérée
       // dès le chargement au lieu d'être découverte à l'écran.
 
+      // ---------- Divisions : toujours une barre horizontale ----------
+      // fracHTML : sur une chaîne HTML qu'on maîtrise (a/b, (…)/(…),
+      // e<sup>…</sup>/x<sup>5</sup>), espaces autour du / permis. Les
+      // <sup>, <sub>, <i> deviennent des jetons opaques le temps du calcul
+      // (leur contenu est traité à part : x<sup>1/2</sup>).
+      var FR_OP = "\\((?:[^()]|\\([^()]*\\))*\\)(?:\u0001\\d+\u0002)*|(?:[0-9A-Za-zπ√²³ⁿ.,]|\u0001\\d+\u0002)+";
+      var FR_RE = new RegExp("(" + FR_OP + ")\\s*/\\s*(" + FR_OP + ")");
+      function frBare(t) { return /^\((?:[^()]|\([^()]*\))*\)$/.test(t) ? t.slice(1, -1) : t; }
+      function fracHTML(h) {
+        if (!h || h.indexOf("/") < 0) return h;
+        var bits = [];
+        h = h.replace(/<(sup|sub|i)>([^<]*)<\/\1>/g, function (m, tag, inner) {
+          bits.push("<" + tag + ">" + (tag === "i" ? inner : fracHTML(inner)) + "</" + tag + ">");
+          return "\u0001" + (bits.length - 1) + "\u0002";
+        });
+        for (var guard = 0; guard < 20 && FR_RE.test(h); guard++) {
+          h = h.replace(FR_RE, function (m, a, b) {
+            bits.push('<span class="ifrac"><span>' + frBare(a) + "</span><span>" + frBare(b) + "</span></span>");
+            return "\u0001" + (bits.length - 1) + "\u0002";
+          });
+        }
+        for (var k = 0; k < 40 && /\u0001/.test(h); k++) h = h.replace(/\u0001(\d+)\u0002/g, function (m, n) { return bits[+n]; });
+        return h;
+      }
+      // Texte posé ailleurs (textContent) : a/b sans espace autour du /
+      var FRT_RE = /(\((?:[^()]|\([^()]*\))*\)|[0-9A-Za-zπ√²³ⁿ,]+)\/(\((?:[^()]|\([^()]*\))*\)|[0-9A-Za-zπ√²³ⁿ,]+)/;
+      function fracText(node) {
+        var v = node.nodeValue, m = FRT_RE.exec(v);
+        if (!m) return;
+        var par = node.parentNode;
+        if (!par || (par.closest && par.closest("svg, input, textarea, .pf-wheel, .pf-head, .ifrac, .menu-panel, #histOverlay, script, style, header, .exam-btn, .sg-streak, .count"))) return;
+        var after = node.splitText(m.index);
+        after.nodeValue = after.nodeValue.slice(m[0].length);
+        var f = document.createElement("span");
+        f.className = "ifrac";
+        var a = document.createElement("span"), b = document.createElement("span");
+        a.textContent = frBare(m[1]); b.textContent = frBare(m[2]);
+        f.appendChild(a); f.appendChild(b);
+        par.insertBefore(f, after);
+        fracText(after);
+      }
+      function fracScan(root) {
+        if (root.nodeType === 3) { fracText(root); return; }
+        if (root.nodeType !== 1 || (root.closest && root.closest("svg, script, style, .pf-wheel, .menu-panel, #histOverlay"))) return;
+        var w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), list = [], n;
+        while ((n = w.nextNode())) if (n.nodeValue.indexOf("/") >= 0) list.push(n);
+        list.forEach(fracText);
+      }
+      new MutationObserver(function (muts) {
+        muts.forEach(function (m) {
+          if (m.type === "characterData") fracScan(m.target);
+          else m.addedNodes.forEach(fracScan);
+        });
+      }).observe(document.body, { childList: true, subtree: true, characterData: true });
+      document.addEventListener("DOMContentLoaded", function () { fracScan(document.body); });
+
       function tokText(t) {
         return t.t
           .replace(/<svg[^>]*><circle[^>]*\/><\/svg>/g, "O")
@@ -3304,7 +3367,7 @@
         // rigoureux, contrasté avec le détail sans raccourci en dessous.
         magicEl.classList.remove("show");
         setTimeout(function () {
-          magicEl.innerHTML = tr(step.magic || "");
+          magicEl.innerHTML = fracHTML(tr(step.magic || ""));
           if (step.magic) magicEl.classList.add("show");
         }, animate ? ms(200) : 0);
       }
@@ -5514,7 +5577,7 @@
         fus.sel = null;
         fus.won = false;
         try { localStorage.setItem("pasapas_fus", String(fus.level)); } catch (e) {}
-        document.getElementById("fusGoal").innerHTML = (LANG === "en" ? "Goal " : "But ") + (fus.level + 1) + "/" + FUS_LEVELS.length + " &nbsp; <b>" + L.goal + "</b>";
+        document.getElementById("fusGoal").innerHTML = (LANG === "en" ? "Goal " : "But ") + '<span class="count">' + (fus.level + 1) + "/" + FUS_LEVELS.length + "</span> &nbsp; <b>" + L.goal + "</b>";
         document.getElementById("fusMsg").textContent = "";
         nextBtn.disabled = true;
         nextBtn.textContent = "→";
@@ -6368,7 +6431,7 @@
         { k: "s", f: E_("3 ln x") + " &nbsp;(x &gt; 0)", ok: "x<sup>3</sup>", no: ["3x", E_("3") + " · x"], why: "3 ln x = ln(x<sup>3</sup>), puis " + E_("ln u") + " = u." },
         { k: "s", f: "ln(x<sup>2</sup>) − ln x &nbsp;(x &gt; 0)", ok: "ln x", no: ["ln(x<sup>2</sup> − x)", "2"], why: "ln(x<sup>2</sup>) = 2 ln x, donc 2 ln x − ln x = ln x. (ln ne se distribue pas sur une soustraction.)" },
         { k: "s", f: E_("x²") + " / " + E_("2x"), ok: E_("x² − 2x"), no: [E_("x/2"), E_("x² / 2x")], why: E_("a") + " / " + E_("b") + " = " + E_("a − b") + "." },
-        { k: "s", f: "ln √x &nbsp;(x &gt; 0)", ok: "½ ln x", no: ["√(ln x)", "ln x / 2x"], why: "√x = x<sup>1/2</sup>, et ln(x<sup>n</sup>) = n ln x." },
+        { k: "s", f: "ln √x &nbsp;(x &gt; 0)", ok: "½ ln x", no: ["√(ln x)", "(ln x)/(2x)"], why: "√x = x<sup>1/2</sup>, et ln(x<sup>n</sup>) = n ln x." },
         { k: "s", f: "log(1000)", ok: "3", no: ["100", "ln 1000"], why: "log = logarithme décimal : log(10<sup>n</sup>) = n, et 1000 = 10<sup>3</sup>." },
         { k: "s", f: "log(5 × 10<sup>−3</sup>)", ok: "log 5 − 3", no: ["−3 log 5", "2"], why: "log(ab) = log a + log b, et log(10<sup>−3</sup>) = −3." },
         { k: "s", f: "x<sup>√x</sup> &nbsp;(x &gt; 0)", ok: E_("√x · ln x"), no: ["(√x)<sup>x</sup>", "√x · " + E_("x")], why: "Une puissance réelle s'écrit toujours a<sup>b</sup> = " + E_("b ln a") + "." },
@@ -6379,7 +6442,7 @@
         { k: "e", f: E_("2x") + " + " + E_("x") + " − 2 = 0", ok: "x = 0", no: ["x = 0 ou x = ln(−2)", "x = 1"], why: "On pose X = " + E_("x") + " &gt; 0 : X<sup>2</sup> + X − 2 = 0, X = 1 ou X = −2 (refusé, X &gt; 0). " + E_("x") + " = 1 donne x = 0." },
         { k: "e", f: "ln(x + 1) = ln 5", ok: "x = 4", no: ["x = 5", "x = ln 4"], why: "ln est injective : x + 1 = 5 (et x + 1 &gt; 0)." },
         { k: "l", f: "lim<sub>x→+∞</sub> x<sup>3</sup>" + E_("−x"), ok: "0", no: ["+∞", "on ne peut pas savoir"], why: "Croissances comparées : l'exponentielle l'emporte sur toute puissance de x." },
-        { k: "l", f: "lim<sub>x→+∞</sub> ln x / x", ok: "0", no: ["1", "+∞"], why: "Croissances comparées : x l'emporte sur ln x." },
+        { k: "l", f: "lim<sub>x→+∞</sub> (ln x)/x", ok: "0", no: ["1", "+∞"], why: "Croissances comparées : x l'emporte sur ln x." },
         { k: "l", f: "lim<sub>x→0⁺</sub> x ln x", ok: "0", no: ["−∞", "1"], why: "Croissances comparées en 0 : x tend vers 0 plus vite que ln x vers −∞." },
         { k: "l", f: "lim<sub>x→+∞</sub> " + E_("x") + " / x<sup>5</sup>", ok: "+∞", no: ["0", "1"], why: "Croissances comparées : " + E_("x") + " l'emporte sur x<sup>5</sup>." },
         { k: "l", f: "lim<sub>x→+∞</sub> (ln x − ln(x<sup>2</sup> + 1))", ok: "−∞", no: ["0", "+∞"], why: "ln a − ln b = ln(a/b) : ln(x / (x<sup>2</sup> + 1)), et x / (x<sup>2</sup> + 1) → 0<sup>+</sup>, donc ln → −∞." },
@@ -6395,7 +6458,7 @@
         var it = EXPL[i];
         explState = { it: it, done: false };
         document.getElementById("explQ").textContent = it.k === "s" ? (en ? "Simplify" : "Simplifie") : it.k === "e" ? (en ? "Solve in ℝ" : "Résous dans ℝ") : (en ? "Limit" : "Limite");
-        document.getElementById("explF").innerHTML = "<span>" + it.f + "</span>"; // (un bloc : les exposants restent en haut)
+        document.getElementById("explF").innerHTML = "<span>" + fracHTML(it.f) + "</span>"; // (un bloc : les exposants restent en haut)
         var msg = document.getElementById("explMsg"), opts = document.getElementById("explOpts");
         msg.textContent = "";
         opts.innerHTML = "";
@@ -6404,7 +6467,7 @@
         nextBtn.classList.remove("text");
         [it.ok].concat(it.no).sort(function () { return Math.random() - 0.5; }).forEach(function (h) {
           var b = document.createElement("button");
-          b.innerHTML = h;
+          b.innerHTML = fracHTML(h);
           b.addEventListener("click", function () {
             if (explState.done) return;
             explState.done = true;
@@ -6413,7 +6476,7 @@
             if (ok) SND.ok(); else SND.bad();
             [].forEach.call(opts.children, function (x) { if (x._ok) x.classList.add("good"); });
             if (!ok) b.classList.add("bad");
-            msg.innerHTML = (ok ? "✓ " : "") + it.why;
+            msg.innerHTML = (ok ? "✓ " : "") + fracHTML(it.why);
             nextBtn.disabled = false;
             if (ok) quickNext("expl", explStart, 2200);
           });
@@ -7028,6 +7091,7 @@
 
       // (le numéro de version affiché dans le menu est la première entrée)
       var VERSIONS = [
+        { v: "v124", text: "Partout, une division s'écrit en fraction à barre horizontale (Exp / ln, explications, phrases magiques, Ensembles, Fusion…), plus jamais avec « / »." },
         { v: "v123", text: "Badge a/a = 1 : il marche aussi avant la sortie des facteurs (sur 2·7·x / 7·3, il sort 7/7, le change en 1 et l'efface d'un coup)." },
         { v: "v122", text: "Accueil : les titres des chapitres sont lisibles en entier, boutons plus grands, autant de lignes qu'il faut (hauteur fixe sur l'ensemble le plus rempli : les ellipses ne bougent pas)." },
         { v: "v121", text: "Quatre chapitres de réflexes dans ℝ (feuille de route des TD) : B − A (comparer par la différence), Par les carrés (comparer deux positifs), Tout d'un côté (inégalité avec x au dénominateur, tableau de signes), Un carré (x/y + y/x ≥ 2). Le vérificateur contrôle aussi les inégalités : mêmes solutions et même différence d'une étape à l'autre." },
